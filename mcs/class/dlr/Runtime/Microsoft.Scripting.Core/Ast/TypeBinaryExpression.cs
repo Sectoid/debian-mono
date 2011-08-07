@@ -2,34 +2,29 @@
  *
  * Copyright (c) Microsoft Corporation. 
  *
- * This source code is subject to terms and conditions of the Microsoft Public License. A 
+ * This source code is subject to terms and conditions of the Apache License, Version 2.0. A 
  * copy of the license can be found in the License.html file at the root of this distribution. If 
- * you cannot locate the  Microsoft Public License, please send an email to 
+ * you cannot locate the  Apache License, Version 2.0, please send an email to 
  * dlr@microsoft.com. By using this source code in any fashion, you are agreeing to be bound 
- * by the terms of the Microsoft Public License.
+ * by the terms of the Apache License, Version 2.0.
  *
  * You must not remove this notice, or any other, from this software.
  *
  *
  * ***************************************************************************/
-using System; using Microsoft;
 
-
+using System;
 using System.Diagnostics;
-#if CODEPLEX_40
 using System.Dynamic.Utils;
-#else
-using Microsoft.Scripting.Utils;
-#endif
 
 #if SILVERLIGHT
 using System.Core;
 #endif
 
-#if CODEPLEX_40
-namespace System.Linq.Expressions {
+#if CLR2
+namespace Microsoft.Scripting.Ast {
 #else
-namespace Microsoft.Linq.Expressions {
+namespace System.Linq.Expressions {
 #endif
     /// <summary>
     /// Represents an operation between an expression and a type. 
@@ -200,7 +195,7 @@ namespace Microsoft.Linq.Expressions {
         public static TypeBinaryExpression TypeIs(Expression expression, Type type) {
             RequiresCanRead(expression, "expression");
             ContractUtils.RequiresNotNull(type, "type");
-            ContractUtils.Requires(!type.IsByRef, "type", Strings.TypeMustNotBeByRef);
+            if (type.IsByRef) throw Error.TypeMustNotBeByRef();
 
             return new TypeBinaryExpression(expression, type, ExpressionType.TypeIs);
         }
@@ -214,7 +209,7 @@ namespace Microsoft.Linq.Expressions {
         public static TypeBinaryExpression TypeEqual(Expression expression, Type type) {
             RequiresCanRead(expression, "expression");
             ContractUtils.RequiresNotNull(type, "type");
-            ContractUtils.Requires(!type.IsByRef, "type", Strings.TypeMustNotBeByRef);
+            if (type.IsByRef) throw Error.TypeMustNotBeByRef();
 
             return new TypeBinaryExpression(expression, type, ExpressionType.TypeEqual);
         }

@@ -36,9 +36,7 @@ using System.Runtime.InteropServices;
 
 namespace System.Reflection
 {
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	[Serializable]
 	[ClassInterface(ClassInterfaceType.AutoDual)]
 	public abstract class Binder
@@ -169,7 +167,48 @@ namespace System.Reflection
 				state = null;
 				if (names != null)
 					ReorderParameters (names, ref args, selected);
+
+				if (selected != null) {
+					if (args == null)
+						args = new object [0];
+	
+					AdjustArguments (selected, ref args);
+				}
+
 				return selected;
+			}
+
+			// probably belongs in ReorderArgumentArray
+			static void AdjustArguments (MethodBase selected, ref object [] args)
+			{
+				var parameters = selected.GetParameters ();
+				var parameters_length = parameters.Length;
+				if (parameters_length == 0)
+					return;
+
+				var last_parameter = parameters [parameters.Length - 1];
+				Type last_parameter_type = last_parameter.ParameterType;
+				if (!Attribute.IsDefined (last_parameter, typeof (ParamArrayAttribute)))
+					return;
+
+				var args_length = args.Length;
+				var param_args_count = args_length + 1 - parameters_length;
+				var first_vararg_index = args_length - param_args_count;
+				if (first_vararg_index < args_length) {
+					var first_vararg = args [first_vararg_index];
+					if (first_vararg != null && first_vararg.GetType () == last_parameter_type)
+						return;
+				}
+				
+				var params_args = Array.CreateInstance (last_parameter_type.GetElementType (), param_args_count);
+				for (int i = 0; i < param_args_count; i++)
+					params_args.SetValue (args [first_vararg_index + i], i);
+
+				var adjusted = new object [parameters_length];
+				Array.Copy (args, adjusted, parameters_length - 1);
+				
+				adjusted [adjusted.Length - 1] = params_args;
+				args = adjusted;
 			}
 
 			void ReorderParameters (string [] names, ref object [] args, MethodBase selected)
@@ -255,10 +294,8 @@ namespace System.Reflection
 						return true;
 				}
 
-#if NET_2_0
 				if (to.IsGenericType && to.GetGenericTypeDefinition () == typeof (Nullable<>) && to.GetGenericArguments ()[0] == from)
 					return true;
-#endif
 
 				TypeCode fromt = Type.GetTypeCode (from);
 				TypeCode tot = Type.GetTypeCode (to);
@@ -387,6 +424,7 @@ namespace System.Reflection
 					throw new ArgumentNullException ("match");
 
 				/* first look for an exact match... */
+				MethodBase exact_match = null;
 				for (i = 0; i < match.Length; ++i) {
 					m = match [i];
 					ParameterInfo[] args = m.GetParameters ();
@@ -396,9 +434,17 @@ namespace System.Reflection
 						if (types [j] != args [j].ParameterType)
 							break;
 					}
-					if (j == types.Length)
-						return m;
+					if (j == types.Length) {
+						if (exact_match != null) {
+							exact_match = null;
+							break;
+						} else {
+							exact_match = m;
+						}
+					}
 				}
+				if (exact_match != null)
+					return exact_match;
 
 				/* Try methods with ParamArray attribute */
 				bool isdefParamArray = false;
@@ -406,7 +452,7 @@ namespace System.Reflection
 				for (i = 0; i < match.Length; ++i) {
 					m = match [i];
 					ParameterInfo[] args = m.GetParameters ();
-					if (args.Length > types.Length)
+					if (args.Length > types.Length + 1)
 						continue;
 					else if (args.Length == 0)
 						continue;
@@ -447,15 +493,6 @@ namespace System.Reflection
 
 			MethodBase GetBetterMethod (MethodBase m1, MethodBase m2, Type [] types)
 			{
-#if NET_2_0
-				if (m1.IsGenericMethodDefinition && 
-				    !m2.IsGenericMethodDefinition)
-					return m2;
-				if (m2.IsGenericMethodDefinition && 
-				    !m1.IsGenericMethodDefinition)
-					return m1;
-#endif
-
 				ParameterInfo [] pl1 = m1.GetParameters ();
 				ParameterInfo [] pl2 = m2.GetParameters ();
 				int prev = 0;
@@ -492,12 +529,10 @@ namespace System.Reflection
 			{
 				if (t1 == t2)
 					return 0;
-#if NET_2_0
 				if (t1.IsGenericParameter && !t2.IsGenericParameter)
 					return 1; // t2
 				if (!t1.IsGenericParameter && t2.IsGenericParameter)
 					return -1; // t1
-#endif
 				if (t1.HasElementType && t2.HasElementType)
 					return CompareCloserType (
 						t1.GetElementType (),

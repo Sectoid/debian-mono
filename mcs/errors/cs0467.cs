@@ -1,25 +1,22 @@
-// cs0467.cs: Ambiguity between method `ICounter.Count(int)' and non-method `IList.Count'. Using method `ICounter.Count(int)'
-// Line: 30
-// Compiler options: -warnaserror -warn:2
+// CS0467: Ambiguity between method `IMethod.Count()' and invocable non-method `IList.Count'. Using method group
+// Line: 27
+// Compiler options: -warn:2 -warnaserror
 
 using System;
 
+delegate void D (int i);
+
 interface IList 
 {
-	int Count { get; set; }
+	D Count { get; }
 }
 
-interface ICounter
+interface IMethod
 {
-	void Count (int i);
+	int Count ();
 }
 
-interface IEx
-{
-	void Count (params int[] i);
-}
-
-interface IListCounter: IEx, IList, ICounter
+interface IListCounter: IList, IMethod
 {
 }
 
@@ -27,6 +24,6 @@ class Test
 {
 	static void Foo (IListCounter t)
 	{
-		t.Count (1); 
+		t.Count ();
 	}
 }

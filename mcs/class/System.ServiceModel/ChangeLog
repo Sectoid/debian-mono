@@ -1,3 +1,271 @@
+2011-07-19  Atsushi Eno  <atsushieno@veritas-vos-liberabit.com>
+
+	support action parameter in SOAP 1.2 content type. Close pull
+	request #133.
+
+2011-05-11  Atsushi Eno  <atsushi@ximian.com>
+
+	Add PipeException. fixed bug #692987 by Eberhard Beilharz.
+
+2011-05-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Add new MetadataSetTest and fix couple of minor issues.
+
+2011-05-09  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing XmlSerializerMessageContractImporter work.
+
+	It is part of bugfix #670945.
+
+2011-04-30  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Avoid doubly declaring some types in the 2.1 profile for mobile
+
+2011-04-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Log net.tcp transport messages too.
+
+2011-04-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Actual source directory changes after changing namespaces.
+
+2011-04-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Use XPathNavigator output in WCF diagnostics. Got sorta-valid
+	message trace.
+
+2011-04-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Add ServiceKnownTypeAttributeTest.
+
+2011-04-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Add XmlSerializerFormatAttribute support in mobile profiles.
+
+	Unlike moonlight, XmlSerializer is in the framework lib (sys.xml),
+	so we don't have to split them out to Sys.Xml.Serialization.dll.
+
+2011-04-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Split XmlMessagesFormatter out. It is for use in
+	Sys.Xml.Serialization.dll.
+
+	XmlMessagesFormatter will be used in Sys.Xml.Serialization.dll and
+	this type should not be excluded by !NET_2_1 or !MOONLIGHT. It is
+	not doable if this class is in BaseMessagesFormatter.cs.
+
+2011-04-07  Atsushi Eno  <atsushi@ximian.com>
+
+	DataContractSerializerOperationBehavior is done too. Fix
+	moonlight_raw build.
+
+2011-04-04  Atsushi Eno  <atsushi@ximian.com>
+
+	Add WCF diagnostics implementation (not working yet).
+
+2011-03-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Add endpoint behavior support in NET_2_1, which involved not a few
+	additions.
+
+2011-03-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Replace SRE-based client proxy generator with RealProxy.
+
+	Now PE verified workaround should be unnecessary.
+
+2011-02-16  Atsushi Eno  <atsushi@ximian.com>
+
+	xsi:type parsing is wrong in default namespace resolution.
+
+	Fixed case #3 in bug #652331.
+
+2011-02-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Support ServiceKnownTypes. Fixed another case on bug #652331.
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	And rename source file name.
+
+2010-11-04  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* System.ServiceModel_test.dll.sources: Add
+	MsmqTransportSecurityTest.cs, CustomPolicyConversionContext.cs,
+	ConnectionOrientedTransportBindingElementTest.cs, and
+	MsmqBindingElementBaseTest.cs to our test build.
+
+2010-10-20  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf] make /js and /jsdebug dispatchers work.
+
+	There were several issues here:
+
+	- The IChannelDispatcherBoundListener was defined twice, in two
+	different namespaces, and it caused code in
+	ChannelDispatcher.Attach not to set its associated listener's
+	ChannelDispatcher property to the correct value. This, in turn,
+	caused incorrect HttpListenerManagerTable operation, where it
+	would put the "/js" and "/jsdebug" dispatchers in separate
+	HttpListenerManagers, instead of in the main (base) service's one.
+	- After fixing the above, it turned out that SvcHttpHandler
+	selected the manager based on the host's base address, when it
+	should first try to find one whose URL matches the current request
+	exactly.
+
+2010-10-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Add SecurityDuplexSessionChannel, and making room for duplex
+	channel, phase 2.
+
+2010-09-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Add ProtocolMapping support.
+
+2010-09-13  Atsushi Eno  <atsushi@ximian.com>
+
+	implemented large parts of WCF standard endpoints and
+	configuration support.
+
+2010-09-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove USE_DATA_CONTRACT_IMPORTER conditional compilation flag.
+
+2010-09-10  Jb Evain  <jbevain@gmail.com>
+
+	Add another stub for the compatibility with the SL SDK
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Factorize the System.ServiceModel monotouch and monodroid sources
+	into a mobile.sources
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System.ServiceModel build for monodroid
+
+2010-07-30  Astushi Enomoto  <atsushi@ximian.com>
+
+	* System.ServiceModel.dll.sources: add 4.0 standard endpoint types.
+
+2010-07-12  Astushi Enomoto  <atsushi@ximian.com>
+
+	* System.ServiceModel.dll.sources: remove SecurityHandler.cs
+
+2010-07-12  Astushi Enomoto  <atsushi@ximian.com>
+
+	* System.ServiceModel.dll.sources:
+	  move MessageSecurityBindingSupport.cs too.
+
+2010-07-12  Astushi Enomoto  <atsushi@ximian.com>
+
+	* System.ServiceModel.dll.sources: moved bunch of security internal
+	  classes to System.ServiceModel.Channels.Security directory.
+
+2010-07-12  Astushi Enomoto  <atsushi@ximian.com>
+
+	* Dummy_2_1.cs : add internal namespaces.
+	* System.ServiceModel.dll.sources: add SecurityReplyChannel.cs
+
+2010-07-05  Astushi Enomoto  <atsushi@ximian.com>
+
+	* System.ServiceModel.dll.sources :
+	  renamed new HTTP channel listener implementation sources, and
+	  removed old sources.
+
+2010-06-28  Astushi Enomoto  <atsushi@ximian.com>
+
+	* HTTP_listener_notes.txt : updated, things became much better.
+
+2010-06-24  Astushi Enomoto  <atsushi@ximian.com>
+
+	* System.ServiceModel.dll.sources :
+	  add new HTTP channel listener implementation sources.
+
+	  Old sources will be kept for a while, won't entirely vanish as
+	  ASP.NET support will live there.
+
+2010-05-28  Astushi Enomoto  <atsushi@ximian.com>
+
+	* System.ServiceModel.dll.sources : remove old code from winfx beta.
+
+2010-04-28  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile (LIB_MCS_FLAGS): added a reference to
+	System.Web.ApplicationServices in the 4.0 profile.
+
+2010-04-23  Astushi Enomoto  <atsushi@ximian.com>
+
+	* Http_listener_notes.txt: update comment, as I have fixed one issue
+	  with lengthy explanation.
+
+2010-04-21  Astushi Enomoto  <atsushi@ximian.com>
+
+	* Http_listener_notes.txt: more comment.
+
+2010-04-20  Astushi Enomoto  <atsushi@ximian.com>
+
+	* Http_listener_notes.txt: added explanation on *why* it is SO hard
+	  to solve.
+
+2010-04-05  Astushi Enomoto  <atsushi@ximian.com>
+
+	* System.ServiceModel.dll.sources : add some new config types and
+	  ChannelTerminatedException.cs.
+
+2010-04-02  Astushi Enomoto  <atsushi@ximian.com>
+
+	* System.ServiceModel_test.dll.sources : add some new fault tests.
+
+2010-03-24  Astushi Enomoto  <atsushi@ximian.com>
+
+	* System.ServiceModel.dll.sources : move back all the Features tests
+	  that were once disabled (now we can handle mannerless tests).
+
+2010-03-19  Astushi Enomoto  <atsushi@ximian.com>
+
+	* System.ServiceModel.dll.sources : remove unused class.
+	* HTTP_listener_notes.txt : add some more comments.
+
+2010-03-18  Astushi Enomoto  <atsushi@ximian.com>
+
+	* System.ServiceModel_test.dll.sources :
+	  Add Constants.cs and XPathMessageContextTest.cs.
+
+2010-03-18  Astushi Enomoto  <atsushi@ximian.com>
+
+	* System.ServiceModel.dll.sources : added some missing types.
+
+2010-03-17  Astushi Enomoto  <atsushi@ximian.com>
+
+	* System.ServiceModel_test.dll.sources :
+	  add MetadataExchangeBindingsTest.cs.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* net_2_1_*.dll.sources: rename to moonlight_*.dll.sources.
+
+2010-03-15  Astushi Enomoto  <atsushi@ximian.com>
+
+	* net_4_0_System.ServiceModel.dll.sources:
+	  more types from Sys.SM.Web.dll in 4.0 profile here.
+
+2010-03-15  Astushi Enomoto  <atsushi@ximian.com>
+
+	* Dummy_2_1.cs : added cosmetic silverlight sdk compatibility stuff.
+
+2010-03-11  Astushi Enomoto  <atsushi@ximian.com>
+
+	* System.ServiceModel.dll.sources,
+	  net_2_1_raw_System.ServiceModel.dll.sources:
+	  added XmlName.cs.
+
+2010-02-19  Astushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile: enable USE_DATA_CONTRACT_IMPORTER as
+	  memorabilia.hardrock now works. (Will be removed when I remove
+	  relevant code.)
+
 2010-02-10  Astushi Enomoto  <atsushi@ximian.com>
 
 	* Makefile: sigh, just disable it. make dist is somehow broken.

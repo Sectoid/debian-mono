@@ -56,18 +56,6 @@ namespace MonoTests.System.Web
 		public void SetUp ()
 		{
 			Type myType = GetType ();
-#if VISUAL_STUDIO
-			WebTest.CopyResource (myType, "System.Web_test.mainsoft.NunitWeb.NunitWeb.Resources.test_map_01.sitemap", "test_map_01.sitemap");
-			WebTest.CopyResource (myType, "System.Web_test.mainsoft.NunitWeb.NunitWeb.Resources.test_map_02.sitemap", "test_map_02.sitemap");
-			WebTest.CopyResource (myType, "System.Web_test.mainsoft.NunitWeb.NunitWeb.Resources.test_map_03.sitemap", "test_map_03.sitemap");
-			WebTest.CopyResource (myType, "System.Web_test.mainsoft.NunitWeb.NunitWeb.Resources.test_map_04.sitemap", "test_map_04.sitemap");
-			WebTest.CopyResource (myType, "System.Web_test.mainsoft.NunitWeb.NunitWeb.Resources.test_map_05.sitemap", "test_map_05.sitemap");
-			WebTest.CopyResource (myType, "System.Web_test.mainsoft.NunitWeb.NunitWeb.Resources.test_map_06.sitemap", "test_map_06.sitemap");
-			WebTest.CopyResource (myType, "System.Web_test.mainsoft.NunitWeb.NunitWeb.Resources.test_map_07.sitemap", "test_map_07.sitemap");
-			WebTest.CopyResource (myType, "System.Web_test.mainsoft.NunitWeb.NunitWeb.Resources.test_map_08.sitemap", "test_map_08.sitemap");
-			WebTest.CopyResource (myType, "System.Web_test.mainsoft.NunitWeb.NunitWeb.Resources.test_map_09.sitemap", "test_map_09.sitemap");
-			WebTest.CopyResource (myType, "System.Web_test.mainsoft.NunitWeb.NunitWeb.Resources.sub_map_01.sitemap", "sub_map_01.sitemap");
-#else
 			WebTest.CopyResource (myType, "test_map_01.sitemap", "test_map_01.sitemap");
 			WebTest.CopyResource (myType, "test_map_02.sitemap", "test_map_02.sitemap");
 			WebTest.CopyResource (myType, "test_map_03.sitemap", "test_map_03.sitemap");
@@ -78,7 +66,6 @@ namespace MonoTests.System.Web
 			WebTest.CopyResource (myType, "test_map_08.sitemap", "test_map_08.sitemap");
 			WebTest.CopyResource (myType, "test_map_09.sitemap", "test_map_09.sitemap");
 			WebTest.CopyResource (myType, "sub_map_01.sitemap", "sub_map_01.sitemap");
-#endif
 		}
 
 		[Test]
@@ -262,8 +249,8 @@ namespace MonoTests.System.Web
 			Assert.AreEqual (provider.RootNode.Provider, provider, "#A2");
 			Assert.IsNotNull (provider.CallTrace, "#A3");
 			Assert.Greater (provider.CallTrace.Length, 1, "#A3-1");
-			Assert.AreEqual (provider.CallTrace[0].Name, "BuildSiteMap", "#A3-2");
-			Assert.AreEqual (provider.CallTrace[1].Name, "get_RootNode", "#A3-3");
+			Assert.AreEqual ("BuildSiteMap", provider.CallTrace[0].Name, "#A3-2");
+			Assert.AreEqual ("get_RootNode", provider.CallTrace[1].Name, "#A3-3");
 		}
 
 		[Test]

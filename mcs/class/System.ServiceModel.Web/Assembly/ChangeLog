@@ -1,7 +1,37 @@
+2010-10-15  Andreia Gaita  <shana@jitted.com>
+
+	[Json] Add support for calling external json (de)serialization
+	methods
+
+	On Moonlight, ScriptObject types have custom (de)serialization
+	methods that need to be called whenever a user object includes
+	properties of that type. This patch creates a TypeMap subclass
+	(ExternalTypeMap) and exposes a method that can be called from
+	moon's System.Windows.Browser to register custom serialization and
+	deserialization methods, keyed by type. These are called whenever
+	a property is found with a type (or base type) that has custom
+	methods registered.
+
+2010-08-27  Sebastien Pouliot  <sebastien@ximian.com>
+
+	Fix public key in [InternalsVisibleTo] attribute
+
+	mcs/class/System.ServiceModel.Web/Assembly/AssemblyInfo.cs: Use
+	the Silverlight public key (instead of the regular FX public key)
+	for NET_2_1
+
+2010-07-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* AssemblyInfo.cs : InternalVisibleTo System.ServiceModel.Web.Extensions.
+
+2010-03-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* AssemblyInfo.cs: added InternalVisibleTo(System.Json). Also added
+	  dummy 2.0 for easy testing.
+
 2010-01-25  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* AssemblyInfo.cs: Fix attributes for Moonlight
-	[Backport r150147]
 
 2009-01-14  Jb Evain  <jbevain@novell.com>
 

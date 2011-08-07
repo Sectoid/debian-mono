@@ -1,3 +1,55 @@
+2011-02-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix 2.0 test build (disable it).
+
+2011-02-16  Atsushi Eno  <atsushi@ximian.com>
+
+	xsi:type parsing is wrong in default namespace resolution.
+
+	Fixed case #3 in bug #652331.
+
+2011-02-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Support ServiceKnownTypes. Fixed another case on bug #652331.
+
+2010-09-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix the issue that callback contract often gets confused by
+	picking unexpected contract type.
+
+	The problem is that DispatchRuntime.Type is a service
+	implementation type that could implement two or more contract
+	interfaces, and it was in random order how ServiceProxyGenerator
+	picks up the contract type. Now it looks for correct contract type
+	instead of the service type by exactly looking for the target
+	contract in the endpoint (dispatcher).
+
+2010-06-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DispatchRuntimeTest.cs : add another line of assertion.
+
+2010-06-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcherTest.cs : had to disable a test that regressed from
+	  validating duplicate listen URI. Possible remedy is described too.
+
+2010-04-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EndpointAddressMessageFilterTest.cs :
+	  Add null arg case. Enable working test.
+
+2010-04-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DispatchRuntimeTest.cs : enabled working tests again.
+
+2010-04-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DispatchOperationTest.cs : added not-working FaultContractInfo test.
+
+2010-03-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XPathMessageContextTest.cs : new.
+
 2010-01-06  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* ChannelDispatcherTest.cs : format message correctly.

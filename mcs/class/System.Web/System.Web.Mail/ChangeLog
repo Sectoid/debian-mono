@@ -1,3 +1,7 @@
+2010-10-08  Sebastien Pouliot  <sebastien@ximian.com>
+
+	Remove unneeded 'using' clauses
+
 2007-12-13  Marek Habersack  <mhabersack@novell.com>
 
 	* MailAddress.cs, SmtpClient.cs, MailMessageWrapper.cs: speed

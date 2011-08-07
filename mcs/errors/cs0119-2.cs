@@ -1,14 +1,14 @@
-// cs0119-2.cs: Expression denotes a `method group', where a `variable', `value' or `type' was expected
-// Line: 9
-
-public class App {
-
-  public static void Main() {}
-
-  SomeEnum SomeEnum() {
-    return SomeEnum.First;
-  }
-
+// CS0119: Expression denotes a `type', where a `variable' or `value' was expected
+// Line: 12
+ 
+public class Foo<T>
+{
 }
-
-enum SomeEnum { First, Second };
+ 
+class X
+{
+	static void Main ()
+	{
+		Foo<X> = new Foo<X> ();
+	}
+}

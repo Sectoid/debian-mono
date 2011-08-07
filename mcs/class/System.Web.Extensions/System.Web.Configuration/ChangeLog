@@ -1,3 +1,8 @@
+2010-12-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implmeneted the
+	System.Web.Configuration.ScriptingRoleServiceSection type
+
 2009-08-17  Marek Habersack  <mhabersack@novell.com>
 
 	* ScriptingJsonSerializationSection.cs: MaxJsonLength default

@@ -1359,6 +1359,21 @@ namespace System.Windows.Forms {
 		_NET_WM_STATE_TOGGLE		= 2
 	}
 
+	internal enum NetWmMoveResize {
+		_NET_WM_MOVERESIZE_SIZE_TOPLEFT = 	0,
+		_NET_WM_MOVERESIZE_SIZE_TOP = 		1,
+		_NET_WM_MOVERESIZE_SIZE_TOPRIGHT = 	2,
+		_NET_WM_MOVERESIZE_SIZE_RIGHT = 	3,
+		_NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT = 	4,
+		_NET_WM_MOVERESIZE_SIZE_BOTTOM = 	5,
+		_NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT =	6,
+		_NET_WM_MOVERESIZE_SIZE_LEFT = 		7,
+		_NET_WM_MOVERESIZE_MOVE = 		8,
+		_NET_WM_MOVERESIZE_SIZE_KEYBOARD = 	9,
+		_NET_WM_MOVERESIZE_MOVE_KEYBOARD = 	10,
+		_NET_WM_MOVERESIZE_CANCEL = 		11
+	}
+
 	[Flags]
 	internal enum XSizeHintsFlags  {
 		USPosition			= (1 << 0),
@@ -1702,11 +1717,26 @@ namespace System.Windows.Forms {
 			gch.Free ();
 		}
 	}
+	
+	internal enum XIMFeedback
+	{
+		Reverse = 1,
+		Underline = 2,
+		Highlight = 4,
+		Primary = 32,
+		Secondary = 64,
+		Tertiary = 128,
+	}
 
+	internal struct XIMFeedbackStruct
+	{
+		public byte FeedbackMask; // one or more of XIMFeedback enum
+	}
+	
 	internal struct XIMText
 	{
 		public ushort Length;
-		public IntPtr Feedback;
+		public IntPtr Feedback; // to XIMFeedbackStruct
 		public bool EncodingIsWChar;
 		public IntPtr String; // it could be either char* or wchar_t*
 	}

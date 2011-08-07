@@ -521,7 +521,7 @@ mono_arch_allocate_vars (MonoCompile *m)
 	DEBUG_FUNC_ENTER();
 	m->flags |= MONO_CFG_HAS_SPILLUP;
 
-	header = mono_method_get_header (m->method);
+	header = m->header;
 
 	sig = mono_method_signature (m->method);
 	DEBUG (printf ("Allocating locals - incoming params:\n"));
@@ -2039,7 +2039,7 @@ mono_arch_register_lowlevel_calls (void)
 }
 
 void
-mono_arch_patch_code (MonoMethod *method, MonoDomain *domain, guint8 *code, MonoJumpInfo *ji, gboolean run_cctors)
+mono_arch_patch_code (MonoMethod *method, MonoDomain *domain, guint8 *code, MonoJumpInfo *ji, MonoCodeManager *dyn_code_mp, gboolean run_cctors)
 {
 	MonoJumpInfo *patch_info;
 
@@ -2923,11 +2923,6 @@ mono_arch_print_tree (MonoInst *tree, int arity)
 }
 
 MonoInst* mono_arch_get_domain_intrinsic (MonoCompile* cfg)
-{
-	return NULL;
-}
-
-MonoInst* mono_arch_get_thread_intrinsic (MonoCompile* cfg)
 {
 	return NULL;
 }

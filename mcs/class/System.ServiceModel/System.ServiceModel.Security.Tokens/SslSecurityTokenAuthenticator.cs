@@ -105,12 +105,12 @@ namespace System.ServiceModel.Security.Tokens
 			get { throw new NotImplementedException (); }
 		}
 
-		public override Message ProcessNegotiation (Message request)
+		public override Message ProcessNegotiation (Message request, TimeSpan timeout)
 		{
 			if (request.Headers.Action == Constants.WstIssueAction)
-				return ProcessClientHello (request);
+				return ProcessClientHello (request, timeout);
 			else
-				return ProcessClientKeyExchange (request);
+				return ProcessClientKeyExchange (request, timeout);
 		}
 
 		class TlsServerSessionInfo
@@ -142,7 +142,8 @@ namespace System.ServiceModel.Security.Tokens
 			tlsInfo.Messages.Write (bytes, 0, bytes.Length);
 		}
 
-		Message ProcessClientHello (Message request)
+		// FIXME: use timeout
+		Message ProcessClientHello (Message request, TimeSpan timeout)
 		{
 			// FIXME: use correct buffer size
 			MessageBuffer buffer = request.CreateBufferedCopy (0x10000);
@@ -153,6 +154,9 @@ namespace System.ServiceModel.Security.Tokens
 			if (sessions.ContainsKey (reader.Value.Context))
 				throw new SecurityNegotiationException (String.Format ("The context '{0}' already exists in this SSL negotiation manager", reader.Value.Context));
 
+			// FIXME: it seems .NET retrieves X509 Certificate through CreateSecurityTokenProvider(somex509requirement).GetToken().SecurityKeys[0]
+			// (should result in X509AsymmetricSecurityKey) and continues tlsstart.
+			// That's not very required feature so I ignore it.
 			TlsServerSession tls = new TlsServerSession (owner.Manager.ServiceCredentials.ServiceCertificate.Certificate, owner.IsMutual);
 			TlsServerSessionInfo tlsInfo = new TlsServerSessionInfo (
 				reader.Value.Context, tls);
@@ -178,10 +182,12 @@ namespace System.ServiceModel.Security.Tokens
 			return buffer.CreateMessage ();
 		}
 
-		Message ProcessClientKeyExchange (Message request)
+		// FIXME: use timeout
+		Message ProcessClientKeyExchange (Message request, TimeSpan timeout)
 		{
 			// FIXME: use correct buffer size
 			MessageBuffer buffer = request.CreateBufferedCopy (0x10000);
+
 			WSTrustRequestSecurityTokenResponseReader reader =
 				new WSTrustRequestSecurityTokenResponseReader (Constants.WstTlsnegoProofTokenType, buffer.CreateMessage ().GetReaderAtBodyContents (), SecurityTokenSerializer, null);
 			reader.Read ();

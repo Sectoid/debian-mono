@@ -179,6 +179,12 @@ namespace System.Xml
 			get { return implementation; }
 		}
 
+#if NET_4_0
+		public override string InnerText {
+			set { throw new InvalidOperationException (); }
+		}
+#endif
+
 		public override string InnerXml {
 			get {
 				return base.InnerXml;
@@ -632,7 +638,7 @@ namespace System.Xml
 				return df;
 
 			case XmlNodeType.DocumentType:
-				throw new XmlException ("DocumentType cannot be imported.");
+				return ((XmlDocumentType) node).CloneNode (deep);
 
 			case XmlNodeType.Element:
 				XmlElement src = (XmlElement)node;
@@ -734,7 +740,7 @@ namespace System.Xml
 						break;
 					if (preserveWhitespace || n.NodeType != XmlNodeType.Whitespace)
 						AppendChild (n, false);
-				} while (true);
+				} while (xmlReader.NodeType != XmlNodeType.EndElement);
 #if NET_2_0
 				if (xmlReader.Settings != null)
 					schemas = xmlReader.Settings.Schemas;
@@ -825,7 +831,7 @@ namespace System.Xml
 			XmlAttribute attribute = CreateAttribute (reader.Prefix, reader.LocalName, reader.NamespaceURI);
 #if NET_2_0
 			if (reader.SchemaInfo != null)
-				SchemaInfo = new XmlSchemaInfo (reader.SchemaInfo);
+				SchemaInfo = reader.SchemaInfo;
 #endif
 			bool isDefault = reader.IsDefault;
 
@@ -876,7 +882,7 @@ namespace System.Xml
 			case ReadState.Initial:
 #if NET_2_0
 				if (reader.SchemaInfo != null)
-					this.SchemaInfo = new XmlSchemaInfo (reader.SchemaInfo);
+					SchemaInfo = reader.SchemaInfo;
 #endif
 				reader.Read ();
 				break;
@@ -907,7 +913,7 @@ namespace System.Xml
 				XmlElement element = CreateElement (reader.Prefix, reader.LocalName, reader.NamespaceURI, reader.NameTable == this.NameTable);
 #if NET_2_0
 				if (reader.SchemaInfo != null)
-					SchemaInfo = new XmlSchemaInfo (reader.SchemaInfo);
+					SchemaInfo = reader.SchemaInfo;
 #endif
 				element.IsEmpty = reader.IsEmptyElement;
 

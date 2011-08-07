@@ -30,47 +30,54 @@ using System;
 using System.Dynamic;
 using System.Collections.Generic;
 using System.Linq;
+using Compiler = Mono.CSharp;
 
 namespace Microsoft.CSharp.RuntimeBinder
 {
-	public class CSharpArgumentInfo
+	public sealed class CSharpArgumentInfo
 	{
-		CSharpArgumentInfoFlags flags;
-		string name;
+		readonly CSharpArgumentInfoFlags flags;
+		readonly string name;
 		
-		public CSharpArgumentInfo (CSharpArgumentInfoFlags flags, string name)
+		CSharpArgumentInfo (CSharpArgumentInfoFlags flags, string name)
 		{
 			this.flags = flags;
 			this.name = name;
 		}
 		
-		public override bool Equals (object obj)
+		public static CSharpArgumentInfo Create (CSharpArgumentInfoFlags flags, string name)
 		{
-			var other = obj as CSharpArgumentInfo;
-			return other != null && other.name == name && other.flags == flags;
+			return new CSharpArgumentInfo (flags, name);
 		}
 
-		public CSharpArgumentInfoFlags Flags {
+		internal Compiler.Argument.AType ArgumentModifier {
+			get {
+				if ((flags & CSharpArgumentInfoFlags.IsRef) != 0)
+					return Compiler.Argument.AType.Ref;
+
+				if ((flags & CSharpArgumentInfoFlags.IsOut) != 0)
+					return Compiler.Argument.AType.Out;
+
+				return Compiler.Argument.AType.None;
+			}
+		}
+
+		internal static CallInfo CreateCallInfo (IEnumerable<CSharpArgumentInfo> argumentInfo, int skipCount)
+		{
+			var named = from arg in argumentInfo.Skip (skipCount) where arg.IsNamed select arg.name;
+			return new CallInfo (Math.Max (0, argumentInfo.Count () - skipCount), named);
+		}
+		
+		internal CSharpArgumentInfoFlags Flags {
 			get { return flags; }
 		}
-		
-		public override int GetHashCode ()
-		{
-			return EqualityComparer<string>.Default.GetHashCode (name) ^ flags.GetHashCode ();
-		}
-		
+
 		internal bool IsNamed {
 			get { return (flags & CSharpArgumentInfoFlags.NamedArgument) != 0; }
 		}
 
-		public string Name {
+		internal string Name {
 			get { return name; }
-		}
-		
-		internal static CallInfo CreateCallInfo (IEnumerable<CSharpArgumentInfo> argumentInfo, int skipCount)
-		{
-			var named = from arg in argumentInfo.Skip (skipCount) where arg.IsNamed select arg.Name;
-			return new CallInfo (Math.Max (0, argumentInfo.Count () - skipCount), named);
 		}
 	}
 }

@@ -11,6 +11,7 @@ using NUnit.Framework;
 using System;
 using System.Collections;
 using System.Globalization;
+using System.Reflection;
 
 #if NET_2_0
 using System.Collections.Generic;
@@ -48,6 +49,11 @@ namespace MonoTests.System
 		public override bool Equals (object obj)
 		{
 			return true;
+		}
+
+		public override int GetHashCode ()
+		{
+			return 0;
 		}
 	}
 		
@@ -296,6 +302,15 @@ public class ArrayTest
 
 		d1[0][0] = 'z';
 		Assert.AreEqual (d1[0], d2[0], "#D07");
+	}
+
+	[Test]
+	public void TestMemberwiseClone () {
+		int[] array = new int[] { 1, 2, 3 };
+		MethodBase mi = array.GetType ().GetMethod("MemberwiseClone",
+												   BindingFlags.Instance | BindingFlags.NonPublic);
+		int[] res = (int[])mi.Invoke (array, null);
+		Assert.AreEqual (3, res.Length);
 	}
 
 	[Test] public void TestIndexer ()
@@ -2306,6 +2321,46 @@ public class ArrayTest
 			Assert.AreEqual (3, i1[4], "#N91");
 			Assert.AreEqual (6, i1[5], "#N92");
 		}
+
+		{
+			// #648828
+			double[] a = new double[115];
+			int[] b = new int[256];
+			Array.Sort<double, int> (a, b, 0, 115);
+		}
+	}
+
+	[Test] // #616416
+	public void SortNonGenericDoubleItems () {
+            double[] doubleValues = new double[11];
+
+			doubleValues[0] = 0.221788066253601;
+			doubleValues[1] = 0.497278285809481;
+			doubleValues[2] = 0.100565033883643;
+			doubleValues[3] = 0.0433309347749905;
+			doubleValues[4] = 0.00476726438463812;
+			doubleValues[5] = 0.1354609735456;
+			doubleValues[6] = 0.57690356588135;
+			doubleValues[7] = 0.466239434334826;
+			doubleValues[8] = 0.409741461978934;
+			doubleValues[9] = 0.0112412763949565;
+			doubleValues[10] = 0.668704347674307;
+
+            int[] indices = new int[11];
+            indices[0] = 0;
+            indices[1] = 1;
+            indices[2] = 2;
+            indices[3] = 3;
+            indices[4] = 4;
+            indices[5] = 5;
+            indices[6] = 6;
+            indices[7] = 7;
+            indices[8] = 8;
+            indices[9] = 9;
+            indices[10] = 10;
+
+			Array.Sort ((Array)doubleValues, (Array)indices);
+			Assert.AreEqual (4, indices [0]);
 	}
 
 	[Test]
@@ -2827,6 +2882,22 @@ public class ArrayTest
 	}
 
 	[Test]
+	public void ReadOnly_CopyTo ()
+	{
+		int[] arr = new int [2];
+		arr [0] = 3;
+		arr [1] = 5;
+		IList<int> a = Array.AsReadOnly (arr);
+
+		int[] arr2 = new int [3];
+		a.CopyTo (arr2, 1);
+
+		Assert.AreEqual (0, arr2 [0]);
+		Assert.AreEqual (3, arr2 [1]);
+		Assert.AreEqual (5, arr2 [2]);
+	}
+
+	[Test]
 	public void Resize ()
 	{
 		int [] arr = new int [] { 1, 3, 5 };
@@ -3063,7 +3134,6 @@ public class ArrayTest
 		Array.CreateInstance (typeof (void), 42);
 	}
 
-#if NET_2_0
 	class Foo<T> {}
 
 	[Test]
@@ -3072,7 +3142,6 @@ public class ArrayTest
 	{
 		Array.CreateInstance (typeof (Foo<>), 42);
 	}
-#endif
 
 	[Test]
 	[ExpectedException (typeof (IndexOutOfRangeException))]
@@ -3096,5 +3165,205 @@ public class ArrayTest
 		IList array = new int [1, 1];
 		int a = (int) array [0];
 	}
+
+	[Test]
+	public void SetValue_Nullable () {
+		Array array = Array.CreateInstance (typeof (int?), 7);
+
+		object o = 42;
+
+		array.SetValue (o, 0);
+		Assert.AreEqual (42, array.GetValue (0));
+
+		array.SetValue (null, 0);
+		Assert.AreEqual (null, array.GetValue (0));
+	}
+
+	[Test]
+	public void SortNullsWithGenericVersion ()
+	{
+            string[] s1 = new string[6]{
+	        "J",
+                "M",
+                 null,
+                "P",
+                "T",
+                "A"};
+
+            string[] s2 = new string[]{null,
+                "A",
+                "J",
+                "M",
+                "P",
+                "T"};
+
+	    Array.Sort<string> (s1);
+            for (int i = 0; i < 6; i++) {
+		    Assert.AreEqual (s1[i], s2[i], "At:" + i);
+            }
+	}
+	
+	//
+	// This is a test case for the case that was broken by the code contributed
+	// for bug  #351638.
+	//
+	// This tests the fix for: #622101
+	//
+	[Test]
+	public void SortActuallyWorks ()
+	{
+		string[] data = new string[9]{"Foo", "Bar", "Dingus", null, "Dingu4", "123", "Iam", null, "NotNull"};
+		IComparer comparer = new NullAtEndComparer ();
+		Array.Sort (data, comparer);
+
+		Assert.AreEqual (data [7], null);
+		Assert.AreNotEqual (data [0], null);
+	}
+
+	class NullAtEndComparer : IComparer {
+		public int Compare(object x, object y)
+		{
+			if (x == null) return 1;
+			if (y == null) return -1;
+			return ((string)x).CompareTo((string)y);
+		}
+	}
+
+#if NET_4_0
+	[Test]
+	[ExpectedException (typeof (ArgumentException))]
+	public void CompareToWithJaggedArray () {
+		IStructuralComparable a = new int[][] { new int [] { 1,2 }, new int [] { 3,4 }};
+		IStructuralComparable b = new int[][] { new int [] { 1,2 }, new int [] { 3,4 }};
+		a.CompareTo (b, Comparer<object>.Default);
+	}
+
+	[Test]
+	[ExpectedException (typeof (ArgumentException))]
+	public void CompareToWithArrayOfTheWrongKind () {
+		IStructuralComparable a = new int[] { 1, 2 };
+		IStructuralComparable b = new double[] { 1, 2 };
+		a.CompareTo (b, Comparer<object>.Default);
+	}
+
+	[Test]
+	[ExpectedException (typeof (ArgumentException))]
+	public void CompareToWithNonArrayType () {
+		IStructuralComparable a = new int[] { 1, 2 };
+		a.CompareTo (99, Comparer<object>.Default);
+	}
+
+	[Test]
+	[ExpectedException (typeof (ArgumentException))]
+	public void CompareToWithNonArrayOfDifferentSize () {
+		IStructuralComparable a = new int[] { 1, 2 };
+		IStructuralComparable b = new int[] { 1, 2, 3 };
+		a.CompareTo (b, Comparer<object>.Default);
+	}
+
+	[Test]
+	[ExpectedException (typeof (ArgumentException))]
+	public void CompareToWithMultiDimArray1 () {
+		IStructuralComparable a = new int [2,2] { {10, 10 }, { 10, 10 } };
+		IStructuralComparable b = new int [2,2] { {10, 10 }, { 10, 10 } };
+		a.CompareTo (b, Comparer<object>.Default);
+	}
+
+	[Test]
+	[ExpectedException (typeof (ArgumentException))]
+	public void CompareToWithMultiDimArray2 () {
+		IStructuralComparable a = new int [2] { 10, 10 };
+		IStructuralComparable b = new int [2,2] { {10, 10 }, { 10, 10 } };
+		a.CompareTo (b, Comparer<object>.Default);
+	}
+
+	[Test]
+	[ExpectedException (typeof (ArgumentException))]
+	public void CompareToWithMultiDimArray3 () {
+		IStructuralComparable a = new int [4] { 10, 10, 10, 10 };
+		IStructuralComparable b = new int [2,2] { {10, 10 }, { 10, 10 } };
+		a.CompareTo (b, Comparer<object>.Default);
+	}
+
+	[Test]
+	[ExpectedException (typeof (IndexOutOfRangeException))]
+	public void CompareToWithBoundedArray1 () {
+		IStructuralComparable a = new int [2] { 10, 10 };
+		Array ab = Array.CreateInstance (typeof (int), new int[] { 2 }, new int [] { 5 });
+		IStructuralComparable b = ab;
+		ab.SetValue (10, 5);
+		ab.SetValue (10, 6);
+
+		a.CompareTo (b, Comparer<object>.Default);
+	}
+
+	[Test]
+	[ExpectedException (typeof (IndexOutOfRangeException))]
+	public void CompareToWithBoundedArray2 () {
+		IStructuralComparable a = new int [2] { 10, 10 };
+		Array ab = Array.CreateInstance (typeof (int), new int[] { 2 }, new int [] { 5 });
+		IStructuralComparable b = ab;
+		ab.SetValue (10, 5);
+		ab.SetValue (10, 6);
+
+		//Yes, CompareTo simply doesn't work with bounded arrays!
+		b.CompareTo (b, Comparer<object>.Default);
+	}
+
+	[Test]
+	[ExpectedException (typeof (NullReferenceException))]
+	public void CompareToWithNullComparer () {
+		IStructuralComparable a = new int[] { 1, 2 };
+		IStructuralComparable b = new int[] { 1, 2 };
+		a.CompareTo (b, null);
+	}
+
+	[Test]
+	public void CompareToWithNullArray () {
+		IStructuralComparable a = new int[] { 1, 2 };
+		Assert.AreEqual (1, a.CompareTo (null, Comparer<object>.Default));
+	}
+
+	[Test]
+	public void CompareToWithGoodArrays () {
+		IStructuralComparable a = new int[] { 10, 20 };
+		Assert.AreEqual (0, a.CompareTo (a, Comparer<object>.Default));
+		Assert.AreEqual (0, a.CompareTo (new int [] { 10, 20 }, Comparer<object>.Default));
+		Assert.AreEqual (-1, a.CompareTo (new int [] { 11, 20 }, Comparer<object>.Default));
+		Assert.AreEqual (-1, a.CompareTo (new int [] { 10, 21 }, Comparer<object>.Default));
+		Assert.AreEqual (1, a.CompareTo (new int [] { 9, 20 }, Comparer<object>.Default));
+		Assert.AreEqual (1, a.CompareTo (new int [] { 10, 19 }, Comparer<object>.Default));
+	}
+
+	[Test]
+	public void IStructuralEquatable_Equals ()
+	{
+		IStructuralEquatable array = new int[] {1, 2, 3};
+		IStructuralEquatable array2 = new int[] {1, 2, 3};
+		Assert.AreEqual (false, array.Equals (null, null));
+		Assert.AreEqual (true, array.Equals (array, null));
+		Assert.AreEqual (true, array.Equals (array2, EqualityComparer<int>.Default));
+	}
+
+	[Test]
+	[ExpectedException (typeof (NullReferenceException))]
+	public void IStructuralEquatable_Equals_NoComparer ()
+	{
+		IStructuralEquatable array = new int[] {1, 2, 3};
+		IStructuralComparable array2 = new int[] {1, 2, 3};
+		array.Equals (array2, null);
+	}
+
+	[Test]
+	[ExpectedException (typeof (ArgumentException))]
+	public void IStructuralEquatable_Equals_ComparerThrows ()
+	{
+		IStructuralEquatable array = new int[] {1, 2, 3};
+		IStructuralComparable array2 = new int[] {1, 2, 3};
+		array.Equals (array2, EqualityComparer<long>.Default);
+	}
+
+#endif
+
 }
 }

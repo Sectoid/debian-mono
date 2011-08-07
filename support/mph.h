@@ -36,7 +36,7 @@
 #include <stdint.h>             /* for SIZE_MAX */
 #endif
 
-#if __APPLE__ || __BSD__ || __FreeBSD__
+#if __APPLE__ || __BSD__ || __FreeBSD__ || __OpenBSD__
 #define MPH_ON_BSD
 #endif
 
@@ -46,11 +46,15 @@
 #define MPH_INTERNAL
 #endif
 
-#if defined (PLATFORM_WIN32) && !defined (EOVERFLOW)
-#define EOVERFLOW 75
-#endif /* def PLATFORM_WIN32 && ndef EOVERFLOW */
+#if !defined(EOVERFLOW)
+#  if defined(HOST_WIN32)
+#    define EOVERFLOW 75
+#  elif defined(__OpenBSD__)
+#    define EOVERFLOW 87
+#  endif
+#endif /* !defined(EOVERFLOW) */
 
-#if !defined (PLATFORM_WIN32)
+#if !defined (HOST_WIN32)
 
 /* 
  * Solaris doesn't define these BSD values, and if they're not present then
@@ -80,7 +84,7 @@
 #define XATTR_AUTO 0
 #endif /* ndef XATTR_AUTO */
 
-#endif /* ndef PLATFORM_WIN32 */
+#endif /* ndef HOST_WIN32 */
 
 typedef    gint64 mph_blkcnt_t;
 typedef    gint64 mph_blksize_t;

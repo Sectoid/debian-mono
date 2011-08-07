@@ -38,6 +38,8 @@ using System.IO;
 using System.Threading;
 using System.Globalization;
 
+using MonoTests.Common;
+
 namespace MonoTests.System.Web {
 
 	[TestFixture]
@@ -203,10 +205,59 @@ namespace MonoTests.System.Web {
 				r.MapPath ("Web.config", "~", false), "test10");
 			Assert.AreEqual (Path.Combine (appBase, "DIR" + Path.DirectorySeparatorChar + "Web.config"),
 				r.MapPath ("Web.config", "~/DIR", false), "test11");
+
+			AssertExtensions.Throws<InvalidOperationException> (() => {
+				// Throws because the test's virtual dir is /NunitWeb and / is above it
+				r.MapPath ("/test.txt");
+			}, "test12");
+
+			AssertExtensions.Throws<InvalidOperationException> (() => {
+				// Throws because the test's virtual dir is /NunitWeb and /NunitWeb1 does not match it
+				r.MapPath ("/NunitWeb1/test.txt");
+			}, "test13");
+
+			AssertExtensions.Throws<ArgumentException> (() => {
+				r.MapPath ("/test.txt", "/", false);
+			}, "test14");
+
+			AssertExtensions.Throws<ArgumentException> (() => {
+				r.MapPath ("/test.txt", "/NunitWeb", false);
+			}, "test15");
+
+			Assert.AreEqual (Path.Combine (appBase, "test.txt"), r.MapPath ("/NunitWeb/test.txt", "/NunitWeb", true), "test16");
+		}
+	
+		[Test]
+		[Category ("NunitWeb")]
+		[ExpectedException (typeof (ArgumentException))]
+		public void Test_MapPath_InvalidBase_1 ()
+		{
+			WebTest t = new WebTest (new HandlerInvoker (new HandlerDelegate (
+				MapPathDelegate_InvalidBase_1)));
+			t.Run ();
+		}
+
+		static public void MapPathDelegate_InvalidBase_1 ()
+		{
+			HttpContext.Current.Request.MapPath ("Web.config", "something", true);
+		}
+
+		[Test]
+		[Category ("NunitWeb")]
+		[ExpectedException (typeof (ArgumentException))]
+		public void Test_MapPath_InvalidBase_2 ()
+		{
+			WebTest t = new WebTest (new HandlerInvoker (new HandlerDelegate (
+				MapPathDelegate_InvalidBase_2)));
+			t.Run ();
+		}
+
+		static public void MapPathDelegate_InvalidBase_2 ()
+		{
+			HttpContext.Current.Request.MapPath ("Web.config", "something", false);
 		}
 	}
 	
-
 	[TestFixture]
 	public class Test_HttpFakeRequest {
 		class FakeHttpWorkerRequest : HttpWorkerRequest {
@@ -506,8 +557,8 @@ namespace MonoTests.System.Web {
 		}
 		
 		[Test] 
-        [Category ("NotWorking")]
-        public void Test_RequestFields ()
+	[Category ("NotWorking")]
+	public void Test_RequestFields ()
 		{
 			HttpContext c = Cook (1);
 

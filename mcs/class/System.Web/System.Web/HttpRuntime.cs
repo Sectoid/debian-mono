@@ -1,11 +1,12 @@
 //
 // System.Web.HttpRuntime.cs 
 // 
-// Author:
+// Authors:
 //	Miguel de Icaza (miguel@novell.com)
+//      Marek Habersack <mhabersack@novell.com>
 //
 //
-// Copyright (C) 2005 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2005-2010 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -39,6 +40,7 @@ using System.Security;
 using System.Security.Permissions;
 using System.Web.Caching;
 using System.Web.Configuration;
+using System.Web.Management;
 using System.Web.UI;
 using System.Web.Util;
 #if MONOWEB_DEP
@@ -47,22 +49,17 @@ using Mono.Web.Util;
 using System.Threading;
 #if TARGET_J2EE
 using Mainsoft.Web;
-#endif
-
-#if NET_2_0 && !TARGET_JVM
+#else
 using System.CodeDom.Compiler;
 using System.Web.Compilation;
 #endif
 
-namespace System.Web {
-	
+namespace System.Web
+{	
 	// CAS - no InheritanceDemand here as the class is sealed
 	[AspNetHostingPermission (SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
-	public sealed class HttpRuntime {
-		static bool caseInsensitive;
-		static bool runningOnWindows;
-		static bool isunc;
-		static string monoVersion;
+	public sealed class HttpRuntime
+	{
 		static bool domainUnloading;
 		
 #if TARGET_J2EE
@@ -117,18 +114,14 @@ namespace System.Web {
 		static Cache cache;
 		static Cache internalCache;
 		static WaitCallback do_RealProcessRequest;
+		static HttpWorkerRequest.EndOfSendNotification end_of_send_cb;
 		static Exception initialException;
 		static bool firstRun;
-		
-#if NET_2_0
 		static bool assemblyMappingEnabled;
 		static object assemblyMappingLock = new object ();
 		static object appOfflineLock = new object ();
-#endif
+		static HttpRuntimeSection runtime_section;
 		
-#if ONLY_1_1
-		[SecurityPermission (SecurityAction.Demand, UnmanagedCode = true)]
-#endif
 		public HttpRuntime ()
 		{
 
@@ -137,80 +130,64 @@ namespace System.Web {
 
 		static HttpRuntime ()
 		{
-			PlatformID pid = Environment.OSVersion.Platform;
-			runningOnWindows = ((int) pid != 128
-#if NET_2_0
-					    && pid != PlatformID.Unix && pid != PlatformID.MacOSX
-#endif
-			);
-
-			if (runningOnWindows) {
-				caseInsensitive = true;
-				if (AppDomainAppPath != null)
-					isunc = new Uri (AppDomainAppPath).IsUnc;
-			} else {
-				string mono_iomap = Environment.GetEnvironmentVariable ("MONO_IOMAP");
-				if (mono_iomap != null) {
-					if (mono_iomap == "all")
-						caseInsensitive = true;
-					else {
-						string[] parts = mono_iomap.Split (':');
-						foreach (string p in parts) {
-							if (p == "all" || p == "case") {
-								caseInsensitive = true;
-								break;
-							}
-						}
-					}
-				}
-			}
-
-			Type monoRuntime = Type.GetType ("Mono.Runtime", false);
-			monoVersion = null;
-			if (monoRuntime != null) {
-				MethodInfo mi = monoRuntime.GetMethod ("GetDisplayName", BindingFlags.Static | BindingFlags.NonPublic);
-				if (mi != null)
-					monoVersion = mi.Invoke (null, new object [0]) as string;
-			}
-
-			if (monoVersion == null)
-				monoVersion = Environment.Version.ToString ();
-			
 #if !TARGET_J2EE
 			firstRun = true;
-#if NET_2_0
+
 			try {
 				WebConfigurationManager.Init ();
 #if MONOWEB_DEP
 				SettingsMappingManager.Init ();
 #endif
+				runtime_section = (HttpRuntimeSection) WebConfigurationManager.GetSection ("system.web/httpRuntime");
 			} catch (Exception ex) {
 				initialException = ex;
 			}
-#endif
 
 			// The classes in whose constructors exceptions may be thrown, should be handled the same way QueueManager
 			// and TraceManager are below. The constructors themselves MUST NOT throw any exceptions - we MUST be sure
 			// the objects are created here. The exceptions will be dealt with below, in RealProcessRequest.
 			queue_manager = new QueueManager ();
-			if (queue_manager.HasException)
-				initialException = queue_manager.InitialException;
+			if (queue_manager.HasException) {
+				if (initialException == null)
+					initialException = queue_manager.InitialException;
+				else {
+					Console.Error.WriteLine ("Exception during QueueManager initialization:");
+					Console.Error.WriteLine (queue_manager.InitialException);
+				}
+			}
 
 			trace_manager = new TraceManager ();
-			if (trace_manager.HasException)
+			if (trace_manager.HasException) {
+				if (initialException == null)
 					initialException = trace_manager.InitialException;
+				else {
+					Console.Error.WriteLine ("Exception during TraceManager initialization:");
+					Console.Error.WriteLine (trace_manager.InitialException);
+				}
+			}
 
 			cache = new Cache ();
 			internalCache = new Cache ();
-			internalCache.DependencyCache = cache;
+			internalCache.DependencyCache = internalCache;
 #endif
-			do_RealProcessRequest = new WaitCallback (RealProcessRequest);
+			do_RealProcessRequest = new WaitCallback (state => {
+				try {
+					RealProcessRequest (state);
+				} catch {}
+				});
+			end_of_send_cb = new HttpWorkerRequest.EndOfSendNotification (EndOfSend);
 		}
 		
 #region AppDomain handling
 		internal static bool DomainUnloading {
 			get { return domainUnloading; }
 		}
+
+		[MonoDocumentationNote ("Currently returns path to the application root")]
+		public static string AspClientScriptPhysicalPath { get { return AppDomainAppPath; } }
+
+		[MonoDocumentationNote ("Currently returns path to the application root")]
+		public static string AspClientScriptVirtualPath { get { return AppDomainAppVirtualPath; } }
 		
 		//
 		// http://radio.weblogs.com/0105476/stories/2002/07/12/executingAspxPagesWithoutAWebServer.html
@@ -329,7 +306,7 @@ namespace System.Web {
 		public static bool IsOnUNCShare {
 			[AspNetHostingPermission (SecurityAction.Demand, Level = AspNetHostingPermissionLevel.Low)]
 			get {
-				return isunc;
+				return RuntimeHelpers.IsUncShare;
 			}
 		}
 
@@ -343,6 +320,9 @@ namespace System.Web {
 			}
 		}
 
+		internal static HttpRuntimeSection Section { get { return runtime_section; } }
+
+		public static bool UsingIntegratedPipeline { get { return false; } }
 		
 		[SecurityPermission (SecurityAction.Demand, UnmanagedCode = true)]
 		public static void Close ()
@@ -365,7 +345,6 @@ namespace System.Web {
 		}
 
 #if !TARGET_J2EE
-#if NET_2_0
 		static readonly string[] app_offline_files = {"app_offline.htm", "App_Offline.htm", "APP_OFFLINE.HTM"};
 		static string app_offline_file;
 		
@@ -449,7 +428,6 @@ namespace System.Web {
 				RenamedEventHandler reh = new RenamedEventHandler (AppOfflineFileRenamed);
 
 				string app_dir = AppDomainAppPath;
-				ArrayList watchers = new ArrayList ();
 				FileSystemWatcher watcher;
 				string offlineFile = null, tmp;
 				
@@ -463,8 +441,6 @@ namespace System.Web {
 					watcher.Created += seh;
 					watcher.Renamed += reh;
 					watcher.EnableRaisingEvents = true;
-					
-					watchers.Add (watcher);
 
 					tmp = Path.Combine (app_dir, f);
 					if (File.Exists (tmp))
@@ -476,10 +452,14 @@ namespace System.Web {
 			}
 		}
 #endif
-#endif
 		
 		static void RealProcessRequest (object o)
 		{
+			if (domainUnloading) {
+				Console.Error.WriteLine ("Domain is unloading, not processing the request.");
+				return;
+			}
+
 			HttpWorkerRequest req = (HttpWorkerRequest) o;
 			bool started_internally = req.StartedInternally;
 			do {
@@ -490,6 +470,7 @@ namespace System.Web {
 
 		static void Process (HttpWorkerRequest req)
 		{
+			bool error = false;
 #if TARGET_J2EE
 			HttpContext context = HttpContext.Current;
 			if (context == null)
@@ -497,26 +478,20 @@ namespace System.Web {
 			else
 				context.SetWorkerRequest (req);
 #else
+			if (firstRun) {
+				firstRun = false;
+				if (initialException != null) {
+					FinishWithException (req, HttpException.NewWithCode ("Initial exception", initialException, WebEventCodes.RuntimeErrorRequestAbort));
+					error = true;
+				}
+				SetupOfflineWatch ();
+			}
 			HttpContext context = new HttpContext (req);
 #endif
 			HttpContext.Current = context;
-			bool error = false;
 #if !TARGET_J2EE
-			if (firstRun) {
-#if NET_2_0
-				SetupOfflineWatch ();
-#endif
-				firstRun = false;
-				if (initialException != null) {
-					FinishWithException (req, new HttpException ("Initial exception", initialException));
-					error = true;
-				}
-			}
-
-#if NET_2_0
 			if (AppIsOffline (context))
 				return;
-#endif
 #endif
 			
 			//
@@ -527,7 +502,7 @@ namespace System.Web {
 				try {
 					app = HttpApplicationFactory.GetApplication (context);
 				} catch (Exception e) {
-					FinishWithException (req, new HttpException ("", e));
+					FinishWithException (req, HttpException.NewWithCode (String.Empty, e, WebEventCodes.RuntimeErrorRequestAbort));
 					error = true;
 				}
 			}
@@ -538,6 +513,7 @@ namespace System.Web {
 				HttpContext.Current = null;
 			} else {
 				context.ApplicationInstance = app;
+				req.SetEndOfSendNotification (end_of_send_cb, context);
 
 				//
 				// Ask application to service the request
@@ -567,7 +543,11 @@ namespace System.Web {
 				HttpApplicationFactory.Recycle (app);
 			}
 		}
-		
+
+		static void EndOfSend (HttpWorkerRequest ignored1, object ignored2)
+		{
+		}
+
 		//
 		// ProcessRequest method is executed in the AppDomain of the application
 		//
@@ -622,23 +602,34 @@ namespace System.Web {
 			// TODO: call ReleaseResources
 			//
 			domainUnloading = true;
-			ThreadPool.QueueUserWorkItem (new WaitCallback (ShutdownAppDomain), null);
+			HttpApplicationFactory.DisableWatchers ();
+			ThreadPool.QueueUserWorkItem (delegate {
+				try {
+					ShutdownAppDomain ();
+				} catch (Exception e){
+					Console.Error.WriteLine (e);
+				}
+			});
 		}
 #endif
 		//
 		// Shuts down the AppDomain
 		//
-		static void ShutdownAppDomain (object args)
+		static void ShutdownAppDomain ()
 		{
 			queue_manager.Dispose ();
 			// This will call Session_End if needed.
 			InternalCache.InvokePrivateCallbacks ();
 			// Kill our application.
 			HttpApplicationFactory.Dispose ();
-			ThreadPool.QueueUserWorkItem (new WaitCallback (DoUnload), null);
+			ThreadPool.QueueUserWorkItem (delegate {
+				try {
+					DoUnload ();
+				} catch {
+				}});
 		}
 
-		static void DoUnload (object state)
+		static void DoUnload ()
 		{
 #if TARGET_J2EE
 			// No unload support for appdomains under Grasshopper
@@ -687,7 +678,13 @@ namespace System.Web {
 			HttpApplication.requests_total_counter.Increment ();
 		}
 
-#if NET_2_0 
+		[AspNetHostingPermissionAttribute(SecurityAction.Demand, Level = AspNetHostingPermissionLevel.Unrestricted)]
+		[MonoDocumentationNote ("Always returns null on Mono")]
+		public static NamedPermissionSet GetNamedPermissionSet ()
+		{
+			return null;
+		}
+		
 #if !TARGET_J2EE
 		static internal void WritePreservationFile (Assembly asm, string genericNameBase)
 		{
@@ -755,36 +752,6 @@ namespace System.Web {
 			}
 		}
 #endif // #if !TARGET_J2EE
-#endif
-		internal static string MonoVersion {
-			get { return monoVersion; }
-		}
-		
-		internal static bool RunningOnWindows {
-			get { return runningOnWindows; }
-		}
-
-		internal static bool CaseInsensitive {
-			get { return caseInsensitive; }
-		}
-
-		internal static bool IsDebuggingEnabled {
-			get {
-#if NET_2_0
-				CompilationSection cs = WebConfigurationManager.GetSection ("system.web/compilation") as CompilationSection;
-				if (cs != null)
-					return cs.Debug;
-
-				return false;
-#else
-				try {
-					return CompilationConfiguration.GetInstance (HttpContext.Current).Debug;
-				} catch {
-					return false;
-				}
-#endif
-			}
-		}
 		
 		internal static TraceManager TraceManager {
 			get {

@@ -37,11 +37,13 @@ namespace System.ServiceModel.Channels
 	{
 		Encoding encoding;
 		MessageVersion version;
+		XmlDictionaryReaderQuotas quotas;
 
 		public MtomMessageEncoder (MtomMessageEncoderFactory owner)
 		{
 			version = owner.MessageVersion;
 			encoding = owner.Owner.WriteEncoding;
+			quotas = owner.Owner.ReaderQuotas;
 		}
 
 		public override string ContentType {
@@ -63,10 +65,12 @@ namespace System.ServiceModel.Channels
 			// FIXME: where should bufferManager be used?
 			// FIXME: no way to take maxSizeOfHeaders
 			// FIXME: create proper quotas
-			return Message.CreateMessage (
-				XmlDictionaryReader.CreateMtomReader (buffer.Array, buffer.Offset, buffer.Count, encoding, new XmlDictionaryReaderQuotas ()),
+			var ret = Message.CreateMessage (
+				XmlDictionaryReader.CreateMtomReader (buffer.Array, buffer.Offset, buffer.Count, encoding, quotas),
 				int.MaxValue,
 				MessageVersion);
+			ret.Properties.Encoder = this;
+			return ret;
 		}
 
 		[MonoTODO]
@@ -76,7 +80,7 @@ namespace System.ServiceModel.Channels
 			// FIXME: create proper quotas
 			return Message.CreateMessage (
 				XmlDictionaryReader.CreateMtomReader (
-					stream, encoding, new XmlDictionaryReaderQuotas ()),
+					stream, encoding, quotas),
 				maxSizeOfHeaders,
 				MessageVersion);
 		}

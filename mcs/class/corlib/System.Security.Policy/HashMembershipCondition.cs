@@ -28,7 +28,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 
 using System.Collections;
 using System.Globalization;
@@ -42,12 +42,8 @@ using Mono.Security.Cryptography;
 namespace System.Security.Policy {
 
 	[Serializable]
-#if NET_2_0
 	[ComVisible (true)]
 	public sealed class HashMembershipCondition : IMembershipCondition, IDeserializationCallback, ISerializable {
-#else
-	public sealed class HashMembershipCondition : IMembershipCondition {
-#endif
 		private readonly int version = 1;
 
 		private HashAlgorithm hash_algorithm;
@@ -199,7 +195,6 @@ namespace System.Security.Policy {
 			return true;
 		}
 
-#if NET_2_0
 		[MonoTODO ("fx 2.0")]
 		void IDeserializationCallback.OnDeserialization (object sender)
 		{
@@ -209,7 +204,6 @@ namespace System.Security.Policy {
 		void ISerializable.GetObjectData (SerializationInfo info, StreamingContext context) 
 		{
 		}
-#endif
 	}
 }
 

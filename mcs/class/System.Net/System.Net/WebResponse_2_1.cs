@@ -30,18 +30,34 @@
 
 #if NET_2_1
 
-using System;
 using System.IO;
 
 namespace System.Net {
 
 	public abstract class WebResponse : IDisposable {
 
+		private WebHeaderCollection headers;
+
 		public abstract long ContentLength { get; }
 		public abstract string ContentType { get; }
 		public abstract Uri ResponseUri { get; }
 
-		public virtual WebHeaderCollection Headers { get; internal set; }
+		public virtual WebHeaderCollection Headers {
+			get {
+				if (!SupportsHeaders)
+					throw NotImplemented ();
+				return headers;
+			}
+		}
+
+		internal WebHeaderCollection InternalHeaders {
+			get { return headers; }
+			set { headers = value; }
+		}
+
+		public virtual bool SupportsHeaders {
+			get { return false; }
+		}
 
 		protected WebResponse ()
 		{
@@ -53,6 +69,12 @@ namespace System.Net {
 		void IDisposable.Dispose ()
 		{
 			Close ();
+		}
+
+		static Exception NotImplemented ()
+		{
+			// hide the "normal" NotImplementedException from corcompare-like tools
+			return new NotImplementedException ();
 		}
 	}
 }

@@ -1,27 +1,39 @@
-// Compiler options: -langversion:future
-
-using System;
-
-public class Blah
+interface IA
 {
-	public delegate int MyDelegate (int i, int j = 7);
+}
+
+interface IF : IA
+{
+	int Prop { set; }
+}
+
+struct S : IF
+{
+	int prop;
 	
-	public int Foo (int i, int j)
+	public S (int a)
 	{
-		return i+j;
+		this.prop = 5;
 	}
-
-	public static int Main ()
+	
+	public int Prop {
+		set {
+			prop = value;
+		}
+	}
+	
+	void M<T> (T ia) where T : struct, IA
 	{
-		Blah i = new Blah ();
-		MyDelegate del = new MyDelegate (i.Foo);
-
-		int number = del (2);
-
-		Console.WriteLine (number);
-		if (number != 9)
-			return 1;
-
-		return 0;
+		((IF)ia).Prop = 3;
+	}
+	
+	static void Main ()
+	{
+		S s = new S ();
+		object o = s;
+		((IF)((S)o)).Prop = 3;
+		
+		IA ia = new S ();
+		((IF)ia).Prop = 3;
 	}
 }

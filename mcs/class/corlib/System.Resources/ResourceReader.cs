@@ -40,9 +40,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Security.Permissions;
-#if NET_2_0
 using System.Collections.Generic;
-#endif
 
 namespace System.Resources
 {
@@ -70,9 +68,7 @@ namespace System.Resources
 		FistCustom	= 64
 	}
 
-#if NET_2_0
 	[System.Runtime.InteropServices.ComVisible (true)]
-#endif
 	public sealed class ResourceReader : IResourceReader, IEnumerable, IDisposable
 	{
 		struct ResourceInfo
@@ -173,11 +169,7 @@ namespace System.Resources
 				/* Now read the ResourceReader header */
 				resource_ver = reader.ReadInt32();
 
-				if(resource_ver != 1
-#if NET_2_0
-					&& resource_ver != 2
-#endif
-					) {
+				if(resource_ver != 1 && resource_ver != 2) {
 					throw new NotSupportedException("This .resources file requires unsupported set class version: " + resource_ver.ToString());
 				}
 
@@ -285,7 +277,6 @@ namespace System.Resources
 			return ret;
 		}
 
-#if NET_2_0
 		object ReadValueVer2 (int type_index)
 		{
 			switch ((PredefinedResourceType)type_index)
@@ -354,7 +345,6 @@ namespace System.Resources
 			type_index -= (int)PredefinedResourceType.FistCustom;
 			return ReadNonPredefinedValue (Type.GetType (typeNames[type_index], true));
 		}
-#endif		
 
 		object ReadValueVer1 (Type type)
 		{
@@ -428,11 +418,9 @@ namespace System.Resources
 					}
 
 					reader.BaseStream.Seek (ri.ValuePosition, SeekOrigin.Begin);
-#if NET_2_0
 					if (resource_ver == 2)
 						value = ReadValueVer2 (ri.TypeIndex);
 					else
-#endif
 						value = ReadValueVer1 (Type.GetType (typeNames [ri.TypeIndex], true));
 
 					store [i] = new ResourceCacheItem (ri.ResourceName, value);
@@ -440,7 +428,6 @@ namespace System.Resources
 			}
 		}
 		
-#if NET_2_0
 		internal UnmanagedMemoryStream ResourceValueAsStream (string name, int index)
 		{
 			ResourceInfo ri = infos [index];
@@ -484,9 +471,17 @@ namespace System.Resources
 				}
 			}
 		}
-#endif
 
 		public void Close ()
+		{
+			Dispose(true);
+		}
+
+#if NET_4_0
+		public void Dispose ()
+#else
+		void IDisposable.Dispose ()
+#endif
 		{
 			Dispose(true);
 		}
@@ -504,7 +499,7 @@ namespace System.Resources
 		{
 			return ((IResourceReader) this).GetEnumerator();
 		}
-#if NET_2_0
+
 		public void GetResourceData (string resourceName, out string resourceType, out byte [] resourceData)
 		{
 			if (resourceName == null)
@@ -552,11 +547,6 @@ namespace System.Resources
 				data = new byte [datalen];
 				reader.BaseStream.Read (data, 0, datalen);
 			}
-		}
-#endif
-		void IDisposable.Dispose ()
-		{
-			Dispose(true);
 		}
 
 		private void Dispose (bool disposing)
@@ -625,7 +615,6 @@ namespace System.Resources
 				}
 			}
 			
-#if NET_2_0
 			public UnmanagedMemoryStream ValueAsStream
 			{
 				get {
@@ -636,7 +625,6 @@ namespace System.Resources
 					return(reader.ResourceValueAsStream((string) Key, index));
 				}
 			}
-#endif
 			
 			public object Current
 			{

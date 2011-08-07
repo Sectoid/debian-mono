@@ -1,16 +1,18 @@
 INCLUDES = $(GLIB_CFLAGS) -I$(top_srcdir)
 
-if PLATFORM_WIN32
+if HOST_WIN32
 export HOST_CC
 endif
 
 if JIT_SUPPORTED
-runtime_lib=../mini/libmono.la
+runtime_lib=../mini/libmono-$(API_VER).la
 else
 runtime_lib=../interpreter/libmint.la
 endif
 
+if SUPPORT_BOEHM
 bin_PROGRAMS = monodis
+endif
 
 noinst_LIBRARIES = libmonodis.a
 
@@ -33,7 +35,12 @@ monodis_SOURCES =	\
 monodis_LDADD = 			\
 	libmonodis.a			\
 	$(runtime_lib)			\
+	$(LLVM_LIBS)			\
 	$(GLIB_LIBS) 
+
+if PLATFORM_DARWIN
+monodis_LDFLAGS=-framework CoreFoundation
+endif
 
 man_MANS = monodis.1
 

@@ -1,3 +1,33 @@
+2010-12-01  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Add response file suport to Mono.Options.
+
+	Response file support is an "opt-in" feature, performed by adding
+	a ResponseFileSource to the OptionSet initialization logic:
+
+	var p = new OptionSet () { // normal options here... new
+	ResponseFileSource (), };
+
+	Response files make use of the new "ArgumentSource" support, which
+	acts as a low-level argument pre-processor, allowing processing of
+	arguments _before_ Option processing is performed.
+
+2010-06-09  Jonathan Pryor  <jpryor@novell.com>
+
+	* OptionSetTest.cs: Make OptionSetTest inherit from ListContract so
+	  that the IList<T> and ICollection<T> interfaces are fully tested.
+	* BaseRocksFixture.cs, CollectionContract.cs, ListContract.cs: Added;
+	  interface contract tests from Cadenza.
+
+2010-06-08  Jonathan Pryor  <jpryor@novell.com>
+
+	* OptionSetTest.cs: Add tests for constrained value splitting.
+
+2008-04-18  Jonathan Pryor  <jpryor@novell.com>
+
+	* OptionSetTest.cs: Update WriteOptionDescriptions() for new, 
+	  better-defined line-wrapping semantics.
+
 2008-04-18  Jonathan Pryor  <jpryor@novell.com>
 
 	* OptionSetTest.cs: Add test to check \n\n Option.Description handling.

@@ -25,9 +25,7 @@ using System.Runtime.InteropServices;
 using NUnit.Framework;
 using System.Runtime.CompilerServices;
 
-#if NET_2_0
 using System.Collections.Generic;
-#endif
 
 namespace MonoTests.System.Reflection.Emit
 {
@@ -47,11 +45,9 @@ namespace MonoTests.System.Reflection.Emit
 	{
 	}
 
-#if NET_2_0
 	public class Gen<T> {
 		public static T field = default(T);
 	}
-#endif
 
 	[TestFixture]
 	public class TypeBuilderTest
@@ -95,13 +91,11 @@ namespace MonoTests.System.Reflection.Emit
 		public interface IDestroyable
 		{
 		}
-#if NET_2_0
 
 		public class Tuple <A,B> {
 			A a;
 			B b;
 		}
-#endif
 
 		private AssemblyBuilder assembly;
 
@@ -273,46 +267,17 @@ namespace MonoTests.System.Reflection.Emit
 			// According to the MSDN docs, this member works, but in reality, it
 			// returns a NotSupportedException
 			TypeBuilder tb = module.DefineType (genTypeName ());
-#if NET_2_0
 			Assert.IsFalse (tb.HasElementType);
-#else
-			try {
-				bool b = tb.HasElementType;
-				Assert.Fail ("#1: " + b);
-			} catch (NotSupportedException ex) {
-				// The invoked member is not supported in a
-				// dynamic module
-				Assert.AreEqual (typeof (NotSupportedException), ex.GetType (), "#2");
-				Assert.IsNull (ex.InnerException, "#3");
-				Assert.IsNotNull (ex.Message, "#4");
-			}
-#endif
 		}
 
 		[Test]
-#if ONLY_1_1
-		[Category ("NotWorking")]
-#endif
 		public void TestHasElementType_Complete ()
 		{
 			// According to the MSDN docs, this member works, but in reality, it
 			// returns a NotSupportedException
 			TypeBuilder tb = module.DefineType (genTypeName ());
 			tb.CreateType ();
-#if NET_2_0
 			Assert.IsFalse (tb.HasElementType);
-#else
-			try {
-				bool b = tb.HasElementType;
-				Assert.Fail ("#1: " + b);
-			} catch (NotSupportedException ex) {
-				// The invoked member is not supported in a
-				// dynamic module
-				Assert.AreEqual (typeof (NotSupportedException), ex.GetType (), "#2");
-				Assert.IsNull (ex.InnerException, "#3");
-				Assert.IsNotNull (ex.Message, "#4");
-			}
-#endif
 		}
 
 		[Test] // bug #324692
@@ -328,15 +293,10 @@ namespace MonoTests.System.Reflection.Emit
 			} catch (TypeLoadException) {
 			}
 
-#if NET_2_0
-			//Assert.IsTrue (tb.IsCreated (), "#2");
-#endif
+			Assert.IsTrue (tb.IsCreated (), "#2");
 		}
 
 		[Test] // bug #324692
-#if ONLY_1_1
-		[Category ("NotWorking")] // we do not throw IOE when repeatedly invoking CreateType
-#endif
 		public void TestCreateTypeReturnsNullOnSecondCallForBadType ()
 		{
 			TypeBuilder tb = module.DefineType (genTypeName (),
@@ -352,21 +312,9 @@ namespace MonoTests.System.Reflection.Emit
 				Assert.IsNotNull (ex.Message, "#A4");
 			}
 
-#if NET_2_0
-			//Assert.IsTrue (tb.IsCreated (), "#B1");
+			Assert.IsTrue (tb.IsCreated (), "#B1");
 			Assert.IsNull (tb.CreateType (), "#B2");
-			//Assert.IsTrue (tb.IsCreated (), "#B3");
-#else
-			try {
-				tb.CreateType ();
-				Assert.Fail ("#B1");
-			} catch (InvalidOperationException ex) {
-				// Unable to change after type has been created
-				Assert.AreEqual (typeof (InvalidOperationException), ex.GetType (), "#B2");
-				Assert.IsNull (ex.InnerException, "#B3");
-				Assert.IsNotNull (ex.Message, "#B4");
-			}
-#endif
+			Assert.IsTrue (tb.IsCreated (), "#B3");
 		}
 
 		[Test]
@@ -386,9 +334,7 @@ namespace MonoTests.System.Reflection.Emit
 				Assert.Fail ("#1: must build enum type ok");
 			}
 
-#if NET_2_0
 			Assert.IsTrue (tb.IsCreated (), "#2");
-#endif
 		}
 
 		[Test]
@@ -409,9 +355,7 @@ namespace MonoTests.System.Reflection.Emit
 			} catch (TypeLoadException) {
 			}
 
-#if NET_2_0
 			Assert.IsTrue (tb.IsCreated (), "#2");
-#endif
 		}
 
 		[Test]
@@ -430,9 +374,7 @@ namespace MonoTests.System.Reflection.Emit
 			} catch (TypeLoadException) {
 			}
 
-#if NET_2_0
 			Assert.IsTrue (tb.IsCreated (), "#2");
-#endif
 		}
 
 		[Test]
@@ -450,9 +392,7 @@ namespace MonoTests.System.Reflection.Emit
 			} catch (TypeLoadException) {
 			}
 
-#if NET_2_0
-			//Assert.IsTrue (tb.IsCreated (), "#2");
-#endif
+			Assert.IsTrue (tb.IsCreated (), "#2");
 		}
 
 		[Test]
@@ -470,9 +410,7 @@ namespace MonoTests.System.Reflection.Emit
 			} catch (TypeLoadException) {
 			}
 
-#if NET_2_0
-			//Assert.IsTrue (tb.IsCreated (), "#2");
-#endif
+			Assert.IsTrue (tb.IsCreated (), "#2");
 		}
 
 		[Test]
@@ -496,9 +434,7 @@ namespace MonoTests.System.Reflection.Emit
 			} catch (TypeLoadException) {
 			}
 
-#if NET_2_0
-			//Assert.IsTrue (tb.IsCreated (), "#2");
-#endif
+			Assert.IsTrue (tb.IsCreated (), "#2");
 		}
 
 		[Test]
@@ -523,9 +459,7 @@ namespace MonoTests.System.Reflection.Emit
 				} catch (TypeLoadException) {
 				}
 
-#if NET_2_0
-				//Assert.IsTrue (tb.IsCreated (), "#2");
-#endif
+				Assert.IsTrue (tb.IsCreated (), "#2");
 			}
 		}
 
@@ -572,9 +506,7 @@ namespace MonoTests.System.Reflection.Emit
 			} catch (TypeLoadException) {
 			}
 
-#if NET_2_0
-			//Assert.IsTrue (tb.IsCreated (), "#2");
-#endif
+			Assert.IsTrue (tb.IsCreated (), "#2");
 		}
 
 		[Test]
@@ -962,39 +894,14 @@ namespace MonoTests.System.Reflection.Emit
 		{
 			TypeBuilder tb = module.DefineType (genTypeName (), TypeAttributes.Class,
 				typeof (Attribute));
-#if NET_2_0
 			tb.SetParent (null);
 			Assert.AreEqual (typeof (object), tb.BaseType, "#A1");
-#else
-			try {
-				tb.SetParent (null);
-				Assert.Fail ("#A1");
-			} catch (ArgumentNullException ex) {
-				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#A2");
-				Assert.IsNull (ex.InnerException, "#A3");
-				Assert.IsNotNull (ex.Message, "#A4");
-				Assert.AreEqual ("parent", ex.ParamName, "#A5");
-			}
-#endif
 
 			tb = module.DefineType (genTypeName (), TypeAttributes.Interface |
 				TypeAttributes.Abstract);
-#if NET_2_0
 			tb.SetParent (null);
 			Assert.IsNull (tb.BaseType, "#B1");
-#else
-			try {
-				tb.SetParent (null);
-				Assert.Fail ("#B1");
-			} catch (ArgumentNullException ex) {
-				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#B2");
-				Assert.IsNull (ex.InnerException, "#B3");
-				Assert.IsNotNull (ex.Message, "#B4");
-				Assert.AreEqual ("parent", ex.ParamName, "#B5");
-			}
-#endif
 
-#if NET_2_0
 			tb = module.DefineType (genTypeName (), TypeAttributes.Interface |
 				TypeAttributes.Abstract, typeof (ICloneable));
 			Assert.AreEqual (typeof (ICloneable), tb.BaseType, "#C1");
@@ -1012,7 +919,6 @@ namespace MonoTests.System.Reflection.Emit
 				Assert.IsNull (ex.InnerException, "#D3");
 				Assert.IsNotNull (ex.Message, "#D4");
 			}
-#endif
 		}
 
 		[Test]
@@ -1039,7 +945,6 @@ namespace MonoTests.System.Reflection.Emit
 			tb.SetParent (typeof (IDisposable));
 			Assert.AreEqual (typeof (IDisposable), tb.BaseType, "#3");
 
-#if NET_2_0
 			tb = module.DefineType (genTypeName (), TypeAttributes.Interface |
 				TypeAttributes.Abstract, typeof (IDisposable));
 			tb.SetParent (typeof (ICloneable));
@@ -1049,7 +954,6 @@ namespace MonoTests.System.Reflection.Emit
 				TypeAttributes.Abstract, typeof (IDisposable));
 			tb.SetParent (typeof (ICloneable));
 			Assert.AreEqual (typeof (ICloneable), tb.BaseType, "#5");
-#endif
 		}
 
 		[Test]
@@ -1223,37 +1127,19 @@ namespace MonoTests.System.Reflection.Emit
 		}
 
 		[Test]
-#if ONLY_1_1
-		[Category ("NotWorking")] // we allow CreateType to be invoked multiple times
-#endif
 		public void TestCreateType_Created ()
 		{
 			TypeBuilder tb = module.DefineType (genTypeName ());
-#if NET_2_0
 			Assert.IsFalse (tb.IsCreated (), "#A1");
-#endif
+
 			Type emittedType1 = tb.CreateType ();
-#if NET_2_0
 			Assert.IsTrue (tb.IsCreated (), "#A2");
-#endif
 			Assert.IsNotNull (emittedType1, "#A3");
 
-#if NET_2_0
 			Type emittedType2 = tb.CreateType ();
 			Assert.IsNotNull (emittedType2, "#B1");
 			Assert.IsTrue (tb.IsCreated (), "#B2");
 			Assert.AreSame (emittedType1, emittedType2, "#B3");
-#else
-			try {
-				tb.CreateType ();
-				Assert.Fail ("#B1");
-			} catch (InvalidOperationException ex) {
-				// Unable to change after type has been created
-				Assert.AreEqual (typeof (InvalidOperationException), ex.GetType (), "#B2");
-				Assert.IsNull (ex.InnerException, "#B3");
-				Assert.IsNotNull (ex.Message, "#B4");
-			}
-#endif
 		}
 
 		[Test]
@@ -1532,7 +1418,6 @@ namespace MonoTests.System.Reflection.Emit
 			}
 		}
 
-#if NET_2_0
 		[Test] // DefineField (String, Type, Type [], Type [], FieldAttributes)
 		public void DefineField2_Type_Null ()
 		{
@@ -1549,7 +1434,6 @@ namespace MonoTests.System.Reflection.Emit
 				Assert.AreEqual ("type", ex.ParamName, "#5");
 			}
 		}
-#endif
 
 		[Test]
 		public void TestDefineInitializedData ()
@@ -2060,7 +1944,49 @@ namespace MonoTests.System.Reflection.Emit
 			tb.DefineProperty ("A", 0, null, Type.EmptyTypes);
 		}
 
-#if NET_2_0
+		[Test]
+		public void GetMethod_WorksWithTypeBuilderParameter () {
+			TypeBuilder tb = module.DefineType (genTypeName ());
+			var garg = tb.DefineGenericParameters ("T") [0];
+			MethodBuilder mb = tb.DefineMethod ("create", MethodAttributes.Public, typeof (void), Type.EmptyTypes);
+		
+			var mi = TypeBuilder.GetMethod (tb, mb);
+			var decl = mi.DeclaringType;
+
+			Assert.IsTrue (decl.IsGenericType, "#1");
+			Assert.IsFalse (decl.IsGenericTypeDefinition, "#2");
+			Assert.AreEqual (tb, decl.GetGenericTypeDefinition (), "#3");
+			Assert.AreEqual (garg, decl.GetGenericArguments () [0], "#4");
+		}
+
+		[Test]
+		public void GetConstructor_FailWithTypeBuilderParameter () {
+			TypeBuilder tb = module.DefineType (genTypeName ());
+			var garg = tb.DefineGenericParameters ("T") [0];
+			var cb = tb.DefineConstructor (MethodAttributes.Public, CallingConventions.Standard, Type.EmptyTypes);
+
+			try {
+				TypeBuilder.GetConstructor (tb, cb);
+				Assert.Fail ("#1");
+			} catch (ArgumentException ex) {
+				Assert.AreEqual ("type", ex.ParamName, "#2");
+			}
+		}
+
+		[Test]
+		public void GetField_FailWithTypeBuilderParameter () {
+			TypeBuilder tb = module.DefineType (genTypeName ());
+			var garg = tb.DefineGenericParameters ("T") [0];
+			var fb = tb.DefineField ("TestField", typeof (int), FieldAttributes.Public);
+
+			try {
+				TypeBuilder.GetField (tb, fb);
+				Assert.Fail ("#1");
+			} catch (ArgumentException ex) {
+				Assert.AreEqual ("type", ex.ParamName, "#2");
+			}
+		}
+
 		[Test]
 		public void GetMethod_RejectMethodFromInflatedTypeBuilder () {
 			TypeBuilder tb = module.DefineType (genTypeName ());
@@ -2218,7 +2144,6 @@ namespace MonoTests.System.Reflection.Emit
 			catch (NullReferenceException) {
 			}
 		}
-#endif
 
 		[Test] //#536243
 		public void CreateTypeThrowsForMethodsWithBadLabels ()
@@ -4885,7 +4810,6 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.AreEqual ("Sex", fields [0].Name, "#A2");
 			Assert.AreEqual ("MALE", fields [1].Name, "#A3");
 
-#if NET_2_0
 			tb = module.DefineType (genTypeName ());
 			GenericTypeParameterBuilder [] typeParams = tb.DefineGenericParameters ("K", "V");
 			tb.DefineField ("First", typeParams [0], FieldAttributes.Public);
@@ -4900,7 +4824,6 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.AreEqual ("Second", fields [1].Name, "#B3");
 			Assert.AreEqual ("Sex", fields [2].Name, "#B4");
 			Assert.AreEqual ("MALE", fields [3].Name, "#B5");
-#endif
 		}
 
 		[Test]
@@ -4928,7 +4851,6 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.AreEqual (4, dynamicFields [0].GetValue (value), "#B4");
 		}
 
-#if NET_2_0
 		[Test] // bug #82625 / 325292
 		public void TestGetFieldsComplete_Generic ()
 		{
@@ -4972,7 +4894,6 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.AreEqual ("Sex", emittedFields [2].Name, "#D8");
 			Assert.AreEqual ("MALE", emittedFields [3].Name, "#D9");
 		}
-#endif
 
 		[Test]
 		[Category ("NotWorking")] // mcs depends on this
@@ -6090,11 +6011,7 @@ namespace MonoTests.System.Reflection.Emit
 			flags = BindingFlags.Instance | BindingFlags.NonPublic;
 			props = greenType.GetProperties (flags);
 
-#if NET_2_0
 			Assert.AreEqual (13, props.Length, "#A1");
-#else
-			Assert.AreEqual (11, props.Length, "#A1");
-#endif
 			Assert.AreEqual ("PrivateInstanceGreen", props [0].Name, "#A2");
 			Assert.AreEqual ("FamilyInstanceGreen", props [1].Name, "#A3");
 			Assert.AreEqual ("FamANDAssemInstanceGreen", props [2].Name, "#A4");
@@ -6103,17 +6020,11 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.AreEqual ("FamilyInstanceRed", props [5].Name, "#A7");
 			Assert.AreEqual ("FamANDAssemInstanceRed", props [6].Name, "#A8");
 			Assert.AreEqual ("FamORAssemInstanceRed", props [7].Name, "#A9");
-#if NET_2_0
 			Assert.AreEqual ("AssemblyInstanceRed", props [8].Name, "#A10");
 			Assert.AreEqual ("FamilyInstanceBlue", props [9].Name, "#A11");
 			Assert.AreEqual ("FamANDAssemInstanceBlue", props [10].Name, "#A12");
 			Assert.AreEqual ("FamORAssemInstanceBlue", props [11].Name, "#A13");
 			Assert.AreEqual ("AssemblyInstanceBlue", props [12].Name, "#A15");
-#else
-			Assert.AreEqual ("FamilyInstanceBlue", props [8].Name, "#A10");
-			Assert.AreEqual ("FamANDAssemInstanceBlue", props [9].Name, "#A11");
-			Assert.AreEqual ("FamORAssemInstanceBlue", props [10].Name, "#A12");
-#endif
 
 			flags = BindingFlags.Instance | BindingFlags.Public;
 			props = greenType.GetProperties (flags);
@@ -6143,11 +6054,7 @@ namespace MonoTests.System.Reflection.Emit
 				BindingFlags.FlattenHierarchy;
 			props = greenType.GetProperties (flags);
 
-#if NET_2_0
 			Assert.AreEqual (13, props.Length, "#E1");
-#else
-			Assert.AreEqual (11, props.Length, "#E1");
-#endif
 			Assert.AreEqual ("PrivateInstanceGreen", props [0].Name, "#E2");
 			Assert.AreEqual ("FamilyInstanceGreen", props [1].Name, "#E3");
 			Assert.AreEqual ("FamANDAssemInstanceGreen", props [2].Name, "#E4");
@@ -6156,17 +6063,11 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.AreEqual ("FamilyInstanceRed", props [5].Name, "#E7");
 			Assert.AreEqual ("FamANDAssemInstanceRed", props [6].Name, "#E8");
 			Assert.AreEqual ("FamORAssemInstanceRed", props [7].Name, "#E9");
-#if NET_2_0
 			Assert.AreEqual ("AssemblyInstanceRed", props [8].Name, "#E10");
 			Assert.AreEqual ("FamilyInstanceBlue", props [9].Name, "#E11");
 			Assert.AreEqual ("FamANDAssemInstanceBlue", props [10].Name, "#E12");
 			Assert.AreEqual ("FamORAssemInstanceBlue", props [11].Name, "#E13");
 			Assert.AreEqual ("AssemblyInstanceBlue", props [12].Name, "#E14");
-#else
-			Assert.AreEqual ("FamilyInstanceBlue", props [8].Name, "#E10");
-			Assert.AreEqual ("FamANDAssemInstanceBlue", props [9].Name, "#E11");
-			Assert.AreEqual ("FamORAssemInstanceBlue", props [10].Name, "#E12");
-#endif
 
 			flags = BindingFlags.Instance | BindingFlags.Public |
 				BindingFlags.FlattenHierarchy;
@@ -6190,11 +6091,7 @@ namespace MonoTests.System.Reflection.Emit
 				BindingFlags.FlattenHierarchy;
 			props = greenType.GetProperties (flags);
 
-#if NET_2_0
 			Assert.AreEqual (13, props.Length, "#H1");
-#else
-			Assert.AreEqual (11, props.Length, "#H1");
-#endif
 			Assert.AreEqual ("PrivateStaticGreen", props [0].Name, "#H2");
 			Assert.AreEqual ("FamilyStaticGreen", props [1].Name, "#H3");
 			Assert.AreEqual ("FamANDAssemStaticGreen", props [2].Name, "#H4");
@@ -6203,17 +6100,11 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.AreEqual ("FamilyStaticRed", props [5].Name, "#H7");
 			Assert.AreEqual ("FamANDAssemStaticRed", props [6].Name, "#H8");
 			Assert.AreEqual ("FamORAssemStaticRed", props [7].Name, "#H9");
-#if NET_2_0
 			Assert.AreEqual ("AssemblyStaticRed", props [8].Name, "#H10");
 			Assert.AreEqual ("FamilyStaticBlue", props [9].Name, "#H11");
 			Assert.AreEqual ("FamANDAssemStaticBlue", props [10].Name, "#H12");
 			Assert.AreEqual ("FamORAssemStaticBlue", props [11].Name, "#H13");
 			Assert.AreEqual ("AssemblyStaticBlue", props [12].Name, "#H14");
-#else
-			Assert.AreEqual ("FamilyStaticBlue", props [8].Name, "#H10");
-			Assert.AreEqual ("FamANDAssemStaticBlue", props [9].Name, "#H11");
-			Assert.AreEqual ("FamORAssemStaticBlue", props [10].Name, "#H12");
-#endif
 
 			flags = BindingFlags.Instance | BindingFlags.NonPublic |
 				BindingFlags.DeclaredOnly;
@@ -6255,11 +6146,7 @@ namespace MonoTests.System.Reflection.Emit
 				BindingFlags.Public;
 			props = greenType.GetProperties (flags);
 
-#if NET_2_0
 			Assert.AreEqual (16, props.Length, "#M1");
-#else
-			Assert.AreEqual (14, props.Length, "#M1");
-#endif
 			Assert.AreEqual ("PrivateInstanceGreen", props [0].Name, "#M2");
 			Assert.AreEqual ("FamilyInstanceGreen", props [1].Name, "#M3");
 			Assert.AreEqual ("FamANDAssemInstanceGreen", props [2].Name, "#M4");
@@ -6270,19 +6157,12 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.AreEqual ("FamANDAssemInstanceRed", props [7].Name, "#M9");
 			Assert.AreEqual ("FamORAssemInstanceRed", props [8].Name, "#M10");
 			Assert.AreEqual ("PublicInstanceRed", props [9].Name, "#M11");
-#if NET_2_0
 			Assert.AreEqual ("AssemblyInstanceRed", props [10].Name, "#M12");
 			Assert.AreEqual ("FamilyInstanceBlue", props [11].Name, "#M13");
 			Assert.AreEqual ("FamANDAssemInstanceBlue", props [12].Name, "#M14");
 			Assert.AreEqual ("FamORAssemInstanceBlue", props [13].Name, "#M15");
 			Assert.AreEqual ("PublicInstanceBlue", props [14].Name, "#M16");
 			Assert.AreEqual ("AssemblyInstanceBlue", props [15].Name, "#M17");
-#else
-			Assert.AreEqual ("FamilyInstanceBlue", props [10].Name, "#M12");
-			Assert.AreEqual ("FamANDAssemInstanceBlue", props [11].Name, "#M13");
-			Assert.AreEqual ("FamORAssemInstanceBlue", props [12].Name, "#M14");
-			Assert.AreEqual ("PublicInstanceBlue", props [13].Name, "#M15");
-#endif
 
 			flags = BindingFlags.Static | BindingFlags.NonPublic |
 				BindingFlags.Public;
@@ -6403,21 +6283,13 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.IsNotNull (greenType.GetMethod ("GetFamANDAssemInstanceBlue", flags), "#A3");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamORAssemInstanceBlue", flags), "#A4");
 			Assert.IsNull (greenType.GetMethod ("GetPublicInstanceBlue", flags), "#A5");
-#if NET_2_0
 			Assert.IsNotNull (greenType.GetMethod ("GetAssemblyInstanceBlue", flags), "#A6");
-#else
-			Assert.IsNull (greenType.GetMethod ("GetAssemblyInstanceBlue", flags), "#A6");
-#endif
 			Assert.IsNull (greenType.GetMethod ("GetPrivateInstanceRed", flags), "#A7");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamilyInstanceRed", flags), "#A8");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamANDAssemInstanceRed", flags), "#A9");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamORAssemInstanceRed", flags), "#A10");
 			Assert.IsNull (greenType.GetMethod ("GetPublicInstanceRed", flags), "#A11");
-#if NET_2_0
 			Assert.IsNotNull (greenType.GetMethod ("GetAssemblyInstanceRed", flags), "#A12");
-#else
-			Assert.IsNull (greenType.GetMethod ("GetAssemblyInstanceRed", flags), "#A12");
-#endif
 			Assert.IsNotNull (greenType.GetMethod ("GetPrivateInstanceGreen", flags), "#A13");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamilyInstanceGreen", flags), "#A14");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamANDAssemInstanceGreen", flags), "#A15");
@@ -6568,21 +6440,13 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.IsNotNull (greenType.GetMethod ("GetFamANDAssemInstanceBlue", flags), "#E3");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamORAssemInstanceBlue", flags), "#E4");
 			Assert.IsNull (greenType.GetMethod ("GetPublicInstanceBlue", flags), "#E5");
-#if NET_2_0
 			Assert.IsNotNull (greenType.GetMethod ("GetAssemblyInstanceBlue", flags), "#E6");
-#else
-			Assert.IsNull (greenType.GetMethod ("GetAssemblyInstanceBlue", flags), "#E6");
-#endif
 			Assert.IsNull (greenType.GetMethod ("GetPrivateInstanceRed", flags), "#E7");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamilyInstanceRed", flags), "#E8");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamANDAssemInstanceRed", flags), "#E9");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamORAssemInstanceRed", flags), "#E10");
 			Assert.IsNull (greenType.GetMethod ("GetPublicInstanceRed", flags), "#E11");
-#if NET_2_0
 			Assert.IsNotNull (greenType.GetMethod ("GetAssemblyInstanceRed", flags), "#E12");
-#else
-			Assert.IsNull (greenType.GetMethod ("GetAssemblyInstanceRed", flags), "#E12");
-#endif
 			Assert.IsNotNull (greenType.GetMethod ("GetPrivateInstanceGreen", flags), "#E13");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamilyInstanceGreen", flags), "#E14");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamANDAssemInstanceGreen", flags), "#E15");
@@ -6714,21 +6578,13 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.IsNotNull (greenType.GetMethod ("GetFamANDAssemStaticBlue", flags), "#H21");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamORAssemStaticBlue", flags), "#H22");
 			Assert.IsNull (greenType.GetMethod ("GetPublicStaticBlue", flags), "#H23");
-#if NET_2_0
 			Assert.IsNotNull (greenType.GetMethod ("GetAssemblyStaticBlue", flags), "#H24");
-#else
-			Assert.IsNull (greenType.GetMethod ("GetAssemblyStaticBlue", flags), "#H24");
-#endif
 			Assert.IsNull (greenType.GetMethod ("GetPrivateStaticRed", flags), "#H25");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamilyStaticRed", flags), "#H26");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamANDAssemStaticRed", flags), "#H27");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamORAssemStaticRed", flags), "#H28");
 			Assert.IsNull (greenType.GetMethod ("GetPublicStaticRed", flags), "#H29");
-#if NET_2_0
 			Assert.IsNotNull (greenType.GetMethod ("GetAssemblyStaticRed", flags), "#H30");
-#else
-			Assert.IsNull (greenType.GetMethod ("GetAssemblyStaticRed", flags), "#H30");
-#endif
 			Assert.IsNotNull (greenType.GetMethod ("GetPrivateStaticGreen", flags), "#H31");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamilyStaticGreen", flags), "#H32");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamANDAssemStaticGreen", flags), "#H33");
@@ -6904,21 +6760,13 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.IsNotNull (greenType.GetMethod ("GetFamANDAssemInstanceBlue", flags), "#M3");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamORAssemInstanceBlue", flags), "#M4");
 			Assert.IsNotNull (greenType.GetMethod ("GetPublicInstanceBlue", flags), "#M5");
-#if NET_2_0
 			Assert.IsNotNull (greenType.GetMethod ("GetAssemblyInstanceBlue", flags), "#M6");
-#else
-			Assert.IsNull (greenType.GetMethod ("GetAssemblyInstanceBlue", flags), "#M6");
-#endif
 			Assert.IsNull (greenType.GetMethod ("GetPrivateInstanceRed", flags), "#M7");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamilyInstanceRed", flags), "#M8");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamANDAssemInstanceRed", flags), "#M9");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamORAssemInstanceRed", flags), "#M10");
 			Assert.IsNotNull (greenType.GetMethod ("GetPublicInstanceRed", flags), "#M11");
-#if NET_2_0
 			Assert.IsNotNull (greenType.GetMethod ("GetAssemblyInstanceRed", flags), "#M12");
-#else
-			Assert.IsNull (greenType.GetMethod ("GetAssemblyInstanceRed", flags), "#M12");
-#endif
 			Assert.IsNotNull (greenType.GetMethod ("GetPrivateInstanceGreen", flags), "#M13");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamilyInstanceGreen", flags), "#M14");
 			Assert.IsNotNull (greenType.GetMethod ("GetFamANDAssemInstanceGreen", flags), "#M15");
@@ -7188,21 +7036,13 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemInstanceBlue"), "#A3");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamORAssemInstanceBlue"), "#A4");
 			Assert.IsNull (GetMethodByName (methods, "GetPublicInstanceBlue"), "#A5");
-#if NET_2_0
 			Assert.IsNotNull (GetMethodByName (methods, "GetAssemblyInstanceBlue"), "#A6");
-#else
-			Assert.IsNull (GetMethodByName (methods, "GetAssemblyInstanceBlue"), "#A6");
-#endif
 			Assert.IsNull (GetMethodByName (methods, "GetPrivateInstanceRed"), "#A7");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamilyInstanceRed"), "#A8");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemInstanceRed"), "#A9");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamORAssemInstanceRed"), "#A10");
 			Assert.IsNull (GetMethodByName (methods, "GetPublicInstanceRed"), "#A11");
-#if NET_2_0
 			Assert.IsNotNull (GetMethodByName (methods, "GetAssemblyInstanceRed"), "#A12");
-#else
-			Assert.IsNull (GetMethodByName (methods, "GetAssemblyInstanceRed"), "#A12");
-#endif
 			Assert.IsNotNull (GetMethodByName (methods, "GetPrivateInstanceGreen"), "#A13");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamilyInstanceGreen"), "#A14");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemInstanceGreen"), "#A15");
@@ -7357,21 +7197,13 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemInstanceBlue"), "#E3");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamORAssemInstanceBlue"), "#E4");
 			Assert.IsNull (GetMethodByName (methods, "GetPublicInstanceBlue"), "#E5");
-#if NET_2_0
 			Assert.IsNotNull (GetMethodByName (methods, "GetAssemblyInstanceBlue"), "#E6");
-#else
-			Assert.IsNull (GetMethodByName (methods, "GetAssemblyInstanceBlue"), "#E6");
-#endif
 			Assert.IsNull (GetMethodByName (methods, "GetPrivateInstanceRed"), "#E7");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamilyInstanceRed"), "#E8");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemInstanceRed"), "#E9");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamORAssemInstanceRed"), "#E10");
 			Assert.IsNull (GetMethodByName (methods, "GetPublicInstanceRed"), "#E11");
-#if NET_2_0
 			Assert.IsNotNull (GetMethodByName (methods, "GetAssemblyInstanceRed"), "#E12");
-#else
-			Assert.IsNull (GetMethodByName (methods, "GetAssemblyInstanceRed"), "#E12");
-#endif
 			Assert.IsNotNull (GetMethodByName (methods, "GetPrivateInstanceGreen"), "#E13");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamilyInstanceGreen"), "#E14");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemInstanceGreen"), "#E15");
@@ -7506,21 +7338,13 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemStaticBlue"), "#H21");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamORAssemStaticBlue"), "#H22");
 			Assert.IsNull (GetMethodByName (methods, "GetPublicStaticBlue"), "#H23");
-#if NET_2_0
 			Assert.IsNotNull (GetMethodByName (methods, "GetAssemblyStaticBlue"), "#H24");
-#else
-			Assert.IsNull (GetMethodByName (methods, "GetAssemblyStaticBlue"), "#H24");
-#endif
 			Assert.IsNull (GetMethodByName (methods, "GetPrivateStaticRed"), "#H25");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamilyStaticRed"), "#H26");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemStaticRed"), "#H27");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamORAssemStaticRed"), "#H28");
 			Assert.IsNull (GetMethodByName (methods, "GetPublicStaticRed"), "#H29");
-#if NET_2_0
 			Assert.IsNotNull (GetMethodByName (methods, "GetAssemblyStaticRed"), "#H30");
-#else
-			Assert.IsNull (GetMethodByName (methods, "GetAssemblyStaticRed"), "#H30");
-#endif
 			Assert.IsNotNull (GetMethodByName (methods, "GetPrivateStaticGreen"), "#H31");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamilyStaticGreen"), "#H32");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemStaticGreen"), "#H33");
@@ -7701,21 +7525,13 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemInstanceBlue"), "#M3");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamORAssemInstanceBlue"), "#M4");
 			Assert.IsNotNull (GetMethodByName (methods, "GetPublicInstanceBlue"), "#M5");
-#if NET_2_0
 			Assert.IsNotNull (GetMethodByName (methods, "GetAssemblyInstanceBlue"), "#M6");
-#else
-			Assert.IsNull (GetMethodByName (methods, "GetAssemblyInstanceBlue"), "#M6");
-#endif
 			Assert.IsNull (GetMethodByName (methods, "GetPrivateInstanceRed"), "#M7");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamilyInstanceRed"), "#M8");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemInstanceRed"), "#M9");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamORAssemInstanceRed"), "#M10");
 			Assert.IsNotNull (GetMethodByName (methods, "GetPublicInstanceRed"), "#M11");
-#if NET_2_0
 			Assert.IsNotNull (GetMethodByName (methods, "GetAssemblyInstanceRed"), "#M12");
-#else
-			Assert.IsNull (GetMethodByName (methods, "GetAssemblyInstanceRed"), "#M12");
-#endif
 			Assert.IsNotNull (GetMethodByName (methods, "GetPrivateInstanceGreen"), "#M13");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamilyInstanceGreen"), "#M14");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemInstanceGreen"), "#M15");
@@ -7938,21 +7754,13 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemInstanceBlue"), "#A3");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamORAssemInstanceBlue"), "#A4");
 			Assert.IsNull (GetMethodByName (methods, "GetPublicInstanceBlue"), "#A5");
-#if NET_2_0
 			Assert.IsNotNull (GetMethodByName (methods, "GetAssemblyInstanceBlue"), "#A6");
-#else
-			Assert.IsNull (GetMethodByName (methods, "GetAssemblyInstanceBlue"), "#A6");
-#endif
 			Assert.IsNull (GetMethodByName (methods, "GetPrivateInstanceRed"), "#A7");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamilyInstanceRed"), "#A8");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemInstanceRed"), "#A9");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamORAssemInstanceRed"), "#A10");
 			Assert.IsNull (GetMethodByName (methods, "GetPublicInstanceRed"), "#A11");
-#if NET_2_0
 			Assert.IsNotNull (GetMethodByName (methods, "GetAssemblyInstanceRed"), "#A12");
-#else
-			Assert.IsNull (GetMethodByName (methods, "GetAssemblyInstanceRed"), "#A12");
-#endif
 			Assert.IsNotNull (GetMethodByName (methods, "GetPrivateInstanceGreen"), "#A13");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamilyInstanceGreen"), "#A14");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemInstanceGreen"), "#A15");
@@ -8107,21 +7915,13 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemInstanceBlue"), "#E3");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamORAssemInstanceBlue"), "#E4");
 			Assert.IsNull (GetMethodByName (methods, "GetPublicInstanceBlue"), "#E5");
-#if NET_2_0
 			Assert.IsNotNull (GetMethodByName (methods, "GetAssemblyInstanceBlue"), "#E6");
-#else
-			Assert.IsNull (GetMethodByName (methods, "GetAssemblyInstanceBlue"), "#E6");
-#endif
 			Assert.IsNull (GetMethodByName (methods, "GetPrivateInstanceRed"), "#E7");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamilyInstanceRed"), "#E8");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemInstanceRed"), "#E9");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamORAssemInstanceRed"), "#E10");
 			Assert.IsNull (GetMethodByName (methods, "GetPublicInstanceRed"), "#E11");
-#if NET_2_0
 			Assert.IsNotNull (GetMethodByName (methods, "GetAssemblyInstanceRed"), "#E12");
-#else
-			Assert.IsNull (GetMethodByName (methods, "GetAssemblyInstanceRed"), "#E12");
-#endif
 			Assert.IsNotNull (GetMethodByName (methods, "GetPrivateInstanceGreen"), "#E13");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamilyInstanceGreen"), "#E14");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemInstanceGreen"), "#E15");
@@ -8256,21 +8056,13 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemStaticBlue"), "#H21");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamORAssemStaticBlue"), "#H22");
 			Assert.IsNull (GetMethodByName (methods, "GetPublicStaticBlue"), "#H23");
-#if NET_2_0
 			Assert.IsNotNull (GetMethodByName (methods, "GetAssemblyStaticBlue"), "#H24");
-#else
-			Assert.IsNull (GetMethodByName (methods, "GetAssemblyStaticBlue"), "#H24");
-#endif
 			Assert.IsNull (GetMethodByName (methods, "GetPrivateStaticRed"), "#H25");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamilyStaticRed"), "#H26");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemStaticRed"), "#H27");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamORAssemStaticRed"), "#H28");
 			Assert.IsNull (GetMethodByName (methods, "GetPublicStaticRed"), "#H29");
-#if NET_2_0
 			Assert.IsNotNull (GetMethodByName (methods, "GetAssemblyStaticRed"), "#H30");
-#else
-			Assert.IsNull (GetMethodByName (methods, "GetAssemblyStaticRed"), "#H30");
-#endif
 			Assert.IsNotNull (GetMethodByName (methods, "GetPrivateStaticGreen"), "#H31");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamilyStaticGreen"), "#H32");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemStaticGreen"), "#H33");
@@ -8451,21 +8243,13 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemInstanceBlue"), "#M3");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamORAssemInstanceBlue"), "#M4");
 			Assert.IsNotNull (GetMethodByName (methods, "GetPublicInstanceBlue"), "#M5");
-#if NET_2_0
 			Assert.IsNotNull (GetMethodByName (methods, "GetAssemblyInstanceBlue"), "#M6");
-#else
-			Assert.IsNull (GetMethodByName (methods, "GetAssemblyInstanceBlue"), "#M6");
-#endif
 			Assert.IsNull (GetMethodByName (methods, "GetPrivateInstanceRed"), "#M7");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamilyInstanceRed"), "#M8");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemInstanceRed"), "#M9");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamORAssemInstanceRed"), "#M10");
 			Assert.IsNotNull (GetMethodByName (methods, "GetPublicInstanceRed"), "#M11");
-#if NET_2_0
 			Assert.IsNotNull (GetMethodByName (methods, "GetAssemblyInstanceRed"), "#M12");
-#else
-			Assert.IsNull (GetMethodByName (methods, "GetAssemblyInstanceRed"), "#M12");
-#endif
 			Assert.IsNotNull (GetMethodByName (methods, "GetPrivateInstanceGreen"), "#M13");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamilyInstanceGreen"), "#M14");
 			Assert.IsNotNull (GetMethodByName (methods, "GetFamANDAssemInstanceGreen"), "#M15");
@@ -8781,19 +8565,8 @@ namespace MonoTests.System.Reflection.Emit
 				// Could not load type '...' from assembly
 				// 'MonoTests.System.Reflection.Emit.TypeBuilderTest, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null'
 			}
-#if NET_2_0
 			Assert.IsTrue (typeBuilder.IsCreated (), "#2");
 			Assert.IsNull (typeBuilder.CreateType (), "#3");
-#else
-			try {
-				typeBuilder.CreateType ();
-			} catch (InvalidOperationException ex) {
-				// Unable to change after type has been created
-				Assert.AreEqual (typeof (InvalidOperationException), ex.GetType (), "#B2");
-				Assert.IsNull (ex.InnerException, "#B3");
-				Assert.IsNotNull (ex.Message, "#B4");
-			}
-#endif
 		}
 
 		[Test]
@@ -9144,7 +8917,6 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.IsFalse (typeof (Baz []).IsAssignableFrom (module.GetType (
 				tb3.FullName + "[]")), "#R3");
 
-#if NET_2_0
 			TypeBuilder tb4 = module.DefineType (genTypeName (),
 				TypeAttributes.Public, null,
 				new Type [] { typeof (IWater) });
@@ -9155,7 +8927,6 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.IsFalse (typeof (IComparable).IsAssignableFrom (inst));
 			// This returns True if CreateType () is called _before_ MakeGenericType...
 			//Assert.IsFalse (typeof (IWater).IsAssignableFrom (inst));
-#endif
 		}
 
 		[Test]
@@ -9398,9 +9169,6 @@ namespace MonoTests.System.Reflection.Emit
 		}
 
 		[Test]
-#if ONLY_1_1
-		[Category ("NotDotNet")] // Parent type was not extensible by the given type
-#endif
 		[Category ("NotWorking")]
 		public void CreateType_Interface_ParentInvalid ()
 		{
@@ -9496,7 +9264,6 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.IsNull (emitted_type.BaseType, "#B2");
 		}
 
-#if NET_2_0
 		[Test]
 		[Category ("NotWorking")]
 		public void DefineGenericParameters_AlreadyDefined ()
@@ -9972,7 +9739,6 @@ namespace MonoTests.System.Reflection.Emit
 			int[] res = (int[])t.GetMethod ("Test").Invoke (null, new object[0]);
 			//Console.WriteLine (res[0]);
 		}
-#endif
 
 		public interface IDelegateFactory
 		{
@@ -10034,7 +9800,6 @@ namespace MonoTests.System.Reflection.Emit
 			Assert.IsTrue (typeof (EmptyInterface).IsAssignableFrom (t2));
 		}
 
-#if NET_2_0
 
 		[Test] //bug #430508
 		public void MakeGenericTypeRespectBaseType ()
@@ -10210,7 +9975,6 @@ namespace MonoTests.System.Reflection.Emit
 
 			Assert.AreEqual (0, result, "#1");
 		}
-#endif
 
 		static MethodInfo GetMethodByName (MethodInfo [] methods, string name)
 		{
@@ -10626,7 +10390,6 @@ namespace MonoTests.System.Reflection.Emit
 			eb.SetAddOnMethod (mb);
 		}
 
-#if NET_2_0
 		static TypeBuilder Resolve1_Tb;
 		static bool Resolve1_Called;
 
@@ -10661,7 +10424,6 @@ namespace MonoTests.System.Reflection.Emit
 
 			Assert.IsTrue (Resolve1_Called);
 		}
-#endif
 
 		[Test]
 		public void CreateConcreteTypeWithAbstractMethod ()
@@ -10674,7 +10436,38 @@ namespace MonoTests.System.Reflection.Emit
 			} catch (InvalidOperationException) {}
 		}
 
-#if NET_2_0
+		[Test]
+		public void ConcreteTypeDontLeakGenericParamFromItSelf ()
+		{
+            var tb = module.DefineType (genTypeName ());
+			var gps = tb.DefineGenericParameters ("T");
+            var mb = tb.DefineMethod ("m", MethodAttributes.Public | MethodAttributes.Static);
+            mb.SetParameters (gps);
+            mb.GetILGenerator ().Emit (OpCodes.Ret);
+
+            var ti = tb.CreateType ();
+            var mi = ti.GetMethod ("m");
+			var arg0 = mi.GetParameters () [0].ParameterType;
+
+			Assert.AreNotSame (arg0, gps [0], "#1");
+		}
+
+		[Test]
+		public void ConcreteTypeDontLeakGenericParamFromMethods ()
+		{
+            var tb = module.DefineType (genTypeName ());
+            var mb = tb.DefineMethod("m", MethodAttributes.Public | MethodAttributes.Static);
+            var gps = mb.DefineGenericParameters ("T");
+            mb.SetParameters (gps);
+            mb.GetILGenerator ().Emit (OpCodes.Ret);
+
+            var ti = tb.CreateType ();
+            var mi = ti.GetMethod ("m");
+ 			var arg0 = mi.GetParameters () [0].ParameterType;
+
+			Assert.AreNotSame (arg0, gps [0], "#1");
+		}
+
 		[Test]
 		public void DeclaringMethodReturnsNull ()
 		{
@@ -10749,8 +10542,14 @@ namespace MonoTests.System.Reflection.Emit
 			tb.CreateType ();
 			ifaces = tb.GetInterfaces ();
 			Assert.AreEqual (2, ifaces.Length, "#3");
-			Assert.AreEqual (typeof (IFaceB), ifaces [0], "#4");
-			Assert.AreEqual (typeof (IFaceA), ifaces [1], "#5");
+			//Interfaces can come in any particular order
+			if (ifaces [0] == typeof (IFaceB)) {
+				Assert.AreEqual (typeof (IFaceB), ifaces [0], "#4");
+				Assert.AreEqual (typeof (IFaceA), ifaces [1], "#5");
+			} else {
+				Assert.AreEqual (typeof (IFaceB), ifaces [1], "#4");
+				Assert.AreEqual (typeof (IFaceA), ifaces [0], "#5");
+			}
 		}
 
 		public interface MB_Iface
@@ -10829,9 +10628,49 @@ namespace MonoTests.System.Reflection.Emit
 			tb.CreateType ();
 			Assert.IsNotNull (tb.IsDefined (typeof (string), true), "#2");
 		}
-#endif
-#if NET_2_0
-#if !WINDOWS
+
+		[Test] //Bug #594728
+		public void IsSubclassOfWorksIfSetParentIsCalledOnParent ()
+		{
+			var tb_a = module.DefineType ("A", TypeAttributes.Public);
+			var tb_b = module.DefineType ("B", TypeAttributes.Public);
+	
+			tb_b.SetParent (tb_a);
+			tb_a.SetParent (typeof (Attribute));
+	
+			Assert.IsTrue (tb_b.IsSubclassOf (tb_a), "#1");
+			Assert.IsTrue (tb_b.IsSubclassOf (typeof (Attribute)), "#2");
+			Assert.IsFalse (tb_a.IsSubclassOf (tb_b), "#3");
+	
+	
+			var a = tb_a.CreateType ();
+			var b = tb_b.CreateType ();
+	
+			Assert.IsTrue (b.IsSubclassOf (a), "#4");
+			Assert.IsTrue (b.IsSubclassOf (typeof (Attribute)), "#5");
+			Assert.IsFalse (a.IsSubclassOf (b), "#6");
+		}
+
+		[Test]
+		public void DefinedDefaultConstructorWorksWithGenericBaseType ()
+		{
+			AssemblyName assemblyName = new AssemblyName ("a");
+			AssemblyBuilder ass = AppDomain.CurrentDomain.DefineDynamicAssembly (assemblyName, AssemblyBuilderAccess.RunAndSave);
+			var mb = ass.DefineDynamicModule ("a.dll");
+
+			var tb = mb.DefineType ("Base");
+			tb.DefineGenericParameters ("F");
+
+			var inst = tb.MakeGenericType (typeof (int));
+			var tb2 = mb.DefineType ("Child", TypeAttributes.Public, inst);
+
+			tb.CreateType ();
+			var res = tb2.CreateType ();
+
+			Assert.IsNotNull (res, "#1");
+			Assert.AreEqual (1, res.GetConstructors ().Length, "#2");
+		}
+
 		/* 
 		 * Tests for passing user types to Ref.Emit. Currently these only test
 		 * whenever the runtime code can handle them without crashing, since we
@@ -10839,6 +10678,7 @@ namespace MonoTests.System.Reflection.Emit
 		 * These tests are disabled for windows since the MS runtime trips on them.
 		 */
 		[Test]
+		[Category ("NotDotNet")] //Proper UT handling is a mono extension to SRE bugginess
 		public void UserTypes () {
 			TypeDelegator t = new TypeDelegator (typeof (int));
 
@@ -10871,7 +10711,6 @@ namespace MonoTests.System.Reflection.Emit
 			} catch {
 			}
 
-#if !WINDOWS
 			try {
 				/* This is mono only */
 				UnmanagedMarshal m = UnmanagedMarshal.DefineCustom (t, "foo", "bar", Guid.Empty);
@@ -10881,7 +10720,6 @@ namespace MonoTests.System.Reflection.Emit
 				tb.CreateType ();
 			} catch {
 			}
-#endif
 
 			try {
 				/* Properties */
@@ -11033,7 +10871,78 @@ namespace MonoTests.System.Reflection.Emit
 			} catch {
 			}
 		}
-#endif
-#endif
+
+		//Test for #572660
+        [Test]
+        public void CircularArrayType()
+        {
+			var assemblyBuilder = AppDomain.CurrentDomain.DefineDynamicAssembly(new AssemblyName("Test"), AssemblyBuilderAccess.RunAndSave);
+			var moduleBuilder = assemblyBuilder.DefineDynamicModule("Test", "Test.dll", true);
+			var typeBuilder = moduleBuilder.DefineType("Foo", TypeAttributes.Public);
+			var fieldBuilder = typeBuilder.DefineField("Foos", typeBuilder.MakeArrayType(), FieldAttributes.Public);
+
+			var fooType = typeBuilder.CreateType();
+			Assert.AreSame(fooType.MakeArrayType(), fooType.GetField("Foos").FieldType);
+        }
+
+
+		[Test] //Test for #422113
+		[ExpectedException (typeof (TypeLoadException))]
+		public void CreateInstanceOfIncompleteType ()
+		{
+			TypeBuilder tb = module.DefineType (genTypeName (), TypeAttributes.Class, null, new Type[] { typeof (IComparable) });
+			Type proxyType = tb.CreateType();
+			Activator.CreateInstance(proxyType);
+		}
+
+		[Test] //Test for #640780
+		public void StaticMethodNotUsedInIfaceVtable ()
+		{
+			TypeBuilder tb1 = module.DefineType("Interface", TypeAttributes.Interface | TypeAttributes.Abstract);
+			tb1.DefineTypeInitializer().GetILGenerator().Emit(OpCodes.Ret);
+			tb1.DefineMethod("m", MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.Abstract);
+			tb1.CreateType();
+			
+			TypeBuilder tb2 = module.DefineType("Class", TypeAttributes.Sealed);
+			tb2.AddInterfaceImplementation(tb1);
+			tb2.DefineMethod("m", MethodAttributes.Public | MethodAttributes.Virtual)
+			    .GetILGenerator().Emit(OpCodes.Ret);
+			tb2.DefineDefaultConstructor(MethodAttributes.Public);
+			
+			Activator.CreateInstance(tb2.CreateType());
+		}
+
+		[Test] //Test for #648391
+		public void GetConstructorCheckCtorDeclaringType ()
+		{
+			TypeBuilder myType = module.DefineType ("Sample", TypeAttributes.Public);
+			string[] typeParamNames = { "TFirst" };
+			GenericTypeParameterBuilder[] typeParams = myType.DefineGenericParameters (typeParamNames);
+			var ctor = myType.DefineDefaultConstructor (MethodAttributes.Public);
+			var ctori = TypeBuilder.GetConstructor (myType.MakeGenericType (typeof (int)), ctor);
+			try {
+				TypeBuilder.GetConstructor (myType.MakeGenericType (typeof (bool)), ctori);
+				Assert.Fail ("#1");
+			} catch (ArgumentException) {
+				//OK
+			}
+		}
+
+		[Test] //Test for #649237
+		public void GetFieldCheckFieldDeclaringType () {
+			TypeBuilder myType = module.DefineType ("Sample", TypeAttributes.Public);
+			myType.DefineGenericParameters ( "TFirst");
+			TypeBuilder otherType = module.DefineType ("Sample2", TypeAttributes.Public);
+			otherType.DefineGenericParameters ( "TFirst");
+
+			var field = myType.DefineField ("field", typeof (object), FieldAttributes.Public);
+
+			try {
+				TypeBuilder.GetField (otherType.MakeGenericType (typeof (int)), field);
+				Assert.Fail ("#1");
+			} catch (ArgumentException) {
+				//OK
+			}
+		}
 	}
 }

@@ -50,9 +50,7 @@ namespace System.Net {
 		bool discard;
 		string domain;
 		DateTime expires;
-#if NET_2_0
 		bool httpOnly;
-#endif
 		string name;
 		string path;
 		string port;
@@ -114,7 +112,7 @@ namespace System.Net {
 		public string Domain {
 			get { return domain; }
 			set {
-				if (IsNullOrEmpty (value)) {
+				if (String.IsNullOrEmpty (value)) {
 					domain = String.Empty;
 					ExactDomain = true;
 				} else {
@@ -124,12 +122,7 @@ namespace System.Net {
 			}
 		}
 
-		private bool exact_domain;
-
-		internal bool ExactDomain { 
-			get { return exact_domain; }
-			set { exact_domain = value; }
-		}
+		internal bool ExactDomain { get; set; }
 
 		public bool Expired {
 			get { 
@@ -146,16 +139,16 @@ namespace System.Net {
 			get { return expires; }
 			set { expires = value; }
 		}
-#if NET_2_0
+
 		public bool HttpOnly {
 			get { return httpOnly; }
 			set { httpOnly = value; }
 		}
-#endif
+
 		public string Name {
 			get { return name; }
 			set { 
-				if (IsNullOrEmpty (value))
+				if (String.IsNullOrEmpty (value))
 					throw new CookieException ("Name cannot be empty");
 				
 				if (value [0] == '$' || value.IndexOfAny (reservedCharsName) != -1) {
@@ -177,7 +170,7 @@ namespace System.Net {
 		public string Port {
 			get { return port; }
 			set { 
-				if (IsNullOrEmpty (value)) {
+				if (String.IsNullOrEmpty (value)) {
 					port = String.Empty;
 					return;
 				}
@@ -294,13 +287,13 @@ namespace System.Net {
 			if (version == 0)
 				return result.ToString ();
 
-			if (!IsNullOrEmpty (path))
+			if (!String.IsNullOrEmpty (path))
 				result.Append ("; $Path=").Append (path);
 			else if (uri != null)
 				result.Append ("; $Path=/").Append (path);
 
 			bool append_domain = (uri == null) || (uri.Host != domain);
-			if (append_domain && !IsNullOrEmpty (domain))
+			if (append_domain && !String.IsNullOrEmpty (domain))
 				result.Append ("; $Domain=").Append (domain);			
 	
 			if (port != null && port.Length != 0)
@@ -352,11 +345,6 @@ namespace System.Net {
 			}
 			return true;
 	    	}	    
-
-		static bool IsNullOrEmpty (string s)
-		{
-			return ((s == null) || (s.Length == 0));
-		}
 	}
 }
 

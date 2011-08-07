@@ -35,10 +35,11 @@ using System.Runtime.InteropServices;
 
 namespace System
 {
-	[Serializable]
-#if NET_2_0
-	[ComVisible (true)]
+#if NET_4_0
+	[Obsolete]
 #endif
+	[Serializable]
+	[ComVisible (true)]
 	public sealed class ExecutionEngineException : SystemException
 	{
 		// Constructors

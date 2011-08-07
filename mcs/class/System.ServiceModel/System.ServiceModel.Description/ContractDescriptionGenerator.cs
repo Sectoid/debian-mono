@@ -40,14 +40,41 @@ namespace System.ServiceModel.Description
 {
 	internal static class ContractDescriptionGenerator
 	{
-		public static OperationContractAttribute
-			GetOperationContractAttribute (MethodBase method)
+		public delegate bool GetOperationContractAttributeExtender (MethodBase method, object[] customAttributes, ref OperationContractAttribute oca);
+
+		static List <GetOperationContractAttributeExtender> getOperationContractAttributeExtenders;
+
+		public static void RegisterGetOperationContractAttributeExtender (GetOperationContractAttributeExtender extender)
 		{
-			object [] matts = method.GetCustomAttributes (
-				typeof (OperationContractAttribute), false);
+			if (extender == null)
+				return;
+
+			if (getOperationContractAttributeExtenders == null)
+				getOperationContractAttributeExtenders = new List <GetOperationContractAttributeExtender> ();
+
+			if (getOperationContractAttributeExtenders.Contains (extender))
+				return;
+
+			getOperationContractAttributeExtenders.Add (extender);
+		}
+
+		public static OperationContractAttribute GetOperationContractAttribute (MethodBase method)
+		{
+			object [] matts = method.GetCustomAttributes (typeof (OperationContractAttribute), false);
+			OperationContractAttribute oca;
+			
 			if (matts.Length == 0)
-				return null;
-			return (OperationContractAttribute) matts [0];
+				oca = null;
+			else
+				oca = matts [0] as OperationContractAttribute;
+
+			if (getOperationContractAttributeExtenders != null && getOperationContractAttributeExtenders.Count > 0) {
+				foreach (var extender in getOperationContractAttributeExtenders)
+					if (extender (method, matts, ref oca))
+						break;
+			}
+
+			return oca;
 		}
 
 		static void GetServiceContractAttribute (Type type, Dictionary<Type,ServiceContractAttribute> table)
@@ -68,8 +95,7 @@ namespace System.ServiceModel.Description
 			return table;
 		}
 
-		public static ContractDescription GetContract (
-			Type contractType) {
+		public static ContractDescription GetContract (Type contractType) {
 			return GetContract (contractType, (Type) null);
 		}
 
@@ -105,13 +131,23 @@ namespace System.ServiceModel.Description
 
 		static ContractDescription GetContract (Type givenContractType, Type givenServiceType, Type serviceTypeForCallback)
 		{
+			var ret = GetContractInternal (givenContractType, givenServiceType, serviceTypeForCallback);
+			if (ret == null)
+				throw new InvalidOperationException (String.Format ("Attempted to get contract type from '{0}' which neither is a service contract nor does it inherit service contract.", serviceTypeForCallback ?? givenContractType));
+			return ret;
+		}
+
+		internal static ContractDescription GetContractInternal (Type givenContractType, Type givenServiceType, Type serviceTypeForCallback)
+		{
+			if (givenContractType == null)
+				throw new ArgumentNullException ("givenContractType");
 			// FIXME: serviceType should be used for specifying attributes like OperationBehavior.
 
 			Type exactContractType = null;
 			ServiceContractAttribute sca = null;
 			Dictionary<Type, ServiceContractAttribute> contracts = 
 				GetServiceContractAttributes (serviceTypeForCallback ?? givenServiceType ?? givenContractType);
-			if (contracts.ContainsKey(givenContractType)) {
+			if (contracts.ContainsKey (givenContractType)) {
 				exactContractType = givenContractType;
 				sca = contracts [givenContractType];
 			} else {
@@ -131,7 +167,7 @@ namespace System.ServiceModel.Description
 				if (serviceTypeForCallback != null)
 					sca = contracts.Values.First ();
 				else
-					throw new InvalidOperationException (String.Format ("Attempted to get contract type from '{0}' which neither is a service contract nor does it inherit service contract.", serviceTypeForCallback ?? givenContractType));
+					return null; // no contract
 			}
 			string name = sca.Name ?? exactContractType.Name;
 			string ns = sca.Namespace ?? "http://tempuri.org/";
@@ -148,8 +184,31 @@ namespace System.ServiceModel.Description
 			if (sca.HasProtectionLevel)
 				cd.ProtectionLevel = sca.ProtectionLevel;
 
+			foreach (var icd in cd.GetInheritedContracts ()) {
+				FillOperationsForInterface (icd, icd.ContractType, givenServiceType, false);
+				foreach (var od in icd.Operations)
+					if (!cd.Operations.Any(o => o.Name == od.Name && o.SyncMethod == od.SyncMethod && 
+							       o.BeginMethod == od.BeginMethod && o.InCallbackContract == od.InCallbackContract))
+						cd.Operations.Add (od);
+			}
+			
+			FillOperationsForInterface (cd, cd.ContractType, givenServiceType, false);
+			
+			if (cd.CallbackContractType != null)
+				FillOperationsForInterface (cd, cd.CallbackContractType, null, true);
+
+			// FIXME: enable this when I found where this check is needed.
+			/*
+			if (cd.Operations.Count == 0)
+				throw new InvalidOperationException (String.Format ("The service contract type {0} has no operation. At least one operation must exist.", contractType));
+			*/
+			return cd;
+		}
+		
+		static void FillOperationsForInterface (ContractDescription cd, Type exactContractType, Type givenServiceType, bool isCallback)
+		{
 			// FIXME: load Behaviors
-			MethodInfo [] contractMethods = exactContractType.IsInterface ? GetAllMethods (exactContractType) : exactContractType.GetMethods ();
+			MethodInfo [] contractMethods = /*exactContractType.IsInterface ? GetAllMethods (exactContractType) :*/ exactContractType.GetMethods (BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
 			MethodInfo [] serviceMethods = contractMethods;
 			if (givenServiceType != null && exactContractType.IsInterface) {
 				var l = new List<MethodInfo> ();
@@ -176,21 +235,10 @@ namespace System.ServiceModel.Description
 					if (GetOperationContractAttribute (end) != null)
 						throw new InvalidOperationException ("Async 'End' method must not have OperationContractAttribute. It is automatically treated as the EndMethod of the corresponding 'Begin' method.");
 				}
-				OperationDescription od = GetOrCreateOperation (cd, 
-																mi, 
-																serviceMethods [i], 
-																oca, 
-																end != null ? end.ReturnType : null);
+				OperationDescription od = GetOrCreateOperation (cd, mi, serviceMethods [i], oca, end != null ? end.ReturnType : null, isCallback, givenServiceType);
 				if (end != null)
 					od.EndMethod = end;
 			}
-
-			// FIXME: enable this when I found where this check is needed.
-			/*
-			if (cd.Operations.Count == 0)
-				throw new InvalidOperationException (String.Format ("The service contract type {0} has no operation. At least one operation must exist.", contractType));
-			*/
-			return cd;
 		}
 
 		static MethodInfo [] GetAllMethods (Type type)
@@ -220,38 +268,56 @@ namespace System.ServiceModel.Description
 		static OperationDescription GetOrCreateOperation (
 			ContractDescription cd, MethodInfo mi, MethodInfo serviceMethod,
 			OperationContractAttribute oca,
-			Type asyncReturnType)
+			Type asyncReturnType,
+			bool isCallback,
+			Type givenServiceType)
 		{
 			string name = oca.Name ?? (oca.AsyncPattern ? mi.Name.Substring (5) : mi.Name);
 
-			OperationDescription od = null;
-			foreach (OperationDescription iter in cd.Operations) {
-				if (iter.Name == name) {
-					od = iter;
-					break;
-				}
-			}
+			OperationDescription od = cd.Operations.FirstOrDefault (o => o.Name == name && o.InCallbackContract == isCallback);
 			if (od == null) {
 				od = new OperationDescription (name, cd);
 				od.IsOneWay = oca.IsOneWay;
 				if (oca.HasProtectionLevel)
 					od.ProtectionLevel = oca.ProtectionLevel;
-				od.Messages.Add (GetMessage (od, mi, oca, true, null));
+
+				if (HasInvalidMessageContract (mi, oca.AsyncPattern))
+					throw new InvalidOperationException (String.Format ("The operation {0} contains more than one parameters and one or more of them are marked with MessageContractAttribute, but the attribute must be used within an operation that has only one parameter.", od.Name));
+
+#if !MOONLIGHT
+				var xfa = serviceMethod.GetCustomAttribute<XmlSerializerFormatAttribute> (false);
+				if (xfa != null)
+					od.Behaviors.Add (new XmlSerializerOperationBehavior (od, xfa));
+#endif
+				var dfa = serviceMethod.GetCustomAttribute<DataContractFormatAttribute> (false);
+				if (dfa != null)
+					od.Behaviors.Add (new DataContractSerializerOperationBehavior (od, dfa));
+
+				od.Messages.Add (GetMessage (od, mi, oca, true, isCallback, null));
 				if (!od.IsOneWay)
-					od.Messages.Add (GetMessage (od, mi, oca, false, asyncReturnType));
-				foreach (ServiceKnownTypeAttribute a in cd.ContractType.GetCustomAttributes (typeof (ServiceKnownTypeAttribute), false))
-					foreach (Type t in a.GetTypes ())
+					od.Messages.Add (GetMessage (od, mi, oca, false, isCallback, asyncReturnType));
+				var knownTypeAtts =
+						    cd.ContractType.GetCustomAttributes (typeof (ServiceKnownTypeAttribute), false).Union (
+						    mi.GetCustomAttributes (typeof (ServiceKnownTypeAttribute), false)).Union (
+						    serviceMethod.GetCustomAttributes (typeof (ServiceKnownTypeAttribute), false));
+				foreach (ServiceKnownTypeAttribute a in knownTypeAtts)
+					foreach (Type t in a.GetTypes (givenServiceType))
 						od.KnownTypes.Add (t);
-				foreach (ServiceKnownTypeAttribute a in serviceMethod.GetCustomAttributes (typeof (ServiceKnownTypeAttribute), false))
-					foreach (Type t in a.GetTypes ())
-						od.KnownTypes.Add (t);
-				foreach (FaultContractAttribute a in serviceMethod.GetCustomAttributes (typeof (FaultContractAttribute), false))
-					od.Faults.Add (new FaultDescription (a.Action) { DetailType = a.DetailType, Name = a.Name, Namespace = a.Namespace });
+				foreach (FaultContractAttribute a in mi.GetCustomAttributes (typeof (FaultContractAttribute), false)) {
+					var fname = a.Name ?? a.DetailType.Name + "Fault";
+					var fns = a.Namespace ?? cd.Namespace;
+					var fd = new FaultDescription (a.Action ?? cd.Namespace + cd.Name + "/" + od.Name + fname) { DetailType = a.DetailType, Name = fname, Namespace = fns };
+#if !NET_2_1
+					if (a.HasProtectionLevel)
+						fd.ProtectionLevel = a.ProtectionLevel;
+#endif
+					od.Faults.Add (fd);
+				}
 				cd.Operations.Add (od);
 			}
-			else if (oca.AsyncPattern && od.BeginMethod != null ||
-				 !oca.AsyncPattern && od.SyncMethod != null)
-				throw new InvalidOperationException ("A contract cannot have two operations that have the identical names and different set of parameters.");
+			else if ((oca.AsyncPattern && od.BeginMethod != null && od.BeginMethod != mi ||
+				 !oca.AsyncPattern && od.SyncMethod != null && od.SyncMethod != mi) && od.InCallbackContract == isCallback)
+				throw new InvalidOperationException (String.Format ("contract '{1}' cannot have two operations for '{0}' that have the identical names and different set of parameters.", name, cd.Name));
 
 			if (oca.AsyncPattern)
 				od.BeginMethod = mi;
@@ -274,13 +340,35 @@ namespace System.ServiceModel.Description
 #endif
 			// FIXME: fill KnownTypes, Behaviors and Faults.
 
+			if (isCallback)
+				od.InCallbackContract = true;
+			else
+				od.InOrdinalContract = true;
+
 			return od;
+		}
+
+		static bool HasInvalidMessageContract (MethodInfo mi, bool async)
+		{
+			var pars = mi.GetParameters ();
+			if (async) {
+				if (pars.Length > 3) {
+					if (pars.Take (pars.Length - 2).Any (par => par.ParameterType.GetCustomAttribute<MessageContractAttribute> (true) != null))
+						return true;
+				}
+			} else {
+				if (pars.Length > 1) {
+					if (pars.Any (par => par.ParameterType.GetCustomAttribute<MessageContractAttribute> (true) != null))
+						return true;
+				}
+			}
+			return false;
 		}
 
 		static MessageDescription GetMessage (
 			OperationDescription od, MethodInfo mi,
 			OperationContractAttribute oca, bool isRequest,
-			Type asyncReturnType)
+			bool isCallback, Type asyncReturnType)
 		{
 			ContractDescription cd = od.DeclaringContract;
 			ParameterInfo [] plist = mi.GetParameters ();
@@ -313,16 +401,14 @@ namespace System.ServiceModel.Description
 					od.Name, isRequest ? String.Empty : "Response");
 
 			if (mca != null)
-				return CreateMessageDescription (messageType, cd.Namespace, action, isRequest, mca);
-			return CreateMessageDescription (oca, plist, od.Name, cd.Namespace, action, isRequest, retType, mi.ReturnTypeCustomAttributes);
+				return CreateMessageDescription (messageType, cd.Namespace, action, isRequest, isCallback, mca);
+			return CreateMessageDescription (oca, plist, od.Name, cd.Namespace, action, isRequest, isCallback, retType, mi.ReturnTypeCustomAttributes);
 		}
 
 		public static MessageDescription CreateMessageDescription (
-			Type messageType, string defaultNamespace, string action, bool isRequest, MessageContractAttribute mca)
+			Type messageType, string defaultNamespace, string action, bool isRequest, bool isCallback, MessageContractAttribute mca)
 		{
-			MessageDescription md = new MessageDescription (
-				action, isRequest ? MessageDirection.Input :
-				MessageDirection.Output);
+			MessageDescription md = new MessageDescription (action, isRequest ^ isCallback ? MessageDirection.Input : MessageDirection.Output) { IsRequest = isRequest };
 			md.MessageType = MessageFilterOutByRef (messageType);
 			if (mca.HasProtectionLevel)
 				md.ProtectionLevel = mca.ProtectionLevel;
@@ -350,15 +436,22 @@ namespace System.ServiceModel.Description
 				else
 					continue;
 
-				MessageBodyMemberAttribute mba = GetMessageBodyMemberAttribute (bmi);
-				if (mba == null)
-					continue;
-
-				MessagePartDescription pd = CreatePartCore (mba, mname, defaultNamespace);
-				pd.Index = index++;
-				pd.Type = MessageFilterOutByRef (mtype);
-				pd.MemberInfo = bmi;
-				mb.Parts.Add (pd);
+				var mha = bmi.GetCustomAttribute<MessageHeaderAttribute> (false);
+				if (mha != null) {
+					var pd = CreateHeaderDescription (mha, mname, defaultNamespace);
+					pd.Type = MessageFilterOutByRef (mtype);
+					pd.MemberInfo = bmi;
+					md.Headers.Add (pd);
+				}
+				var mba = GetMessageBodyMemberAttribute (bmi);
+				if (mba != null) {
+					var pd = CreatePartCore (mba, mname, defaultNamespace);
+					if (pd.Index <= 0)
+						pd.Index = index++;
+					pd.Type = MessageFilterOutByRef (mtype);
+					pd.MemberInfo = bmi;
+					mb.Parts.Add (pd);
+				}
 			}
 
 			// FIXME: fill headers and properties.
@@ -366,11 +459,10 @@ namespace System.ServiceModel.Description
 		}
 
 		public static MessageDescription CreateMessageDescription (
-			OperationContractAttribute oca, ParameterInfo[] plist, string name, string defaultNamespace, string action, bool isRequest, Type retType, ICustomAttributeProvider retTypeAttributes)
+			OperationContractAttribute oca, ParameterInfo[] plist, string name, string defaultNamespace, string action, bool isRequest, bool isCallback, Type retType, ICustomAttributeProvider retTypeAttributes)
 		{
-			MessageDescription md = new MessageDescription (
-				action, isRequest ? MessageDirection.Input :
-				MessageDirection.Output);
+			var dir = isRequest ^ isCallback ? MessageDirection.Input : MessageDirection.Output;
+			MessageDescription md = new MessageDescription (action, dir) { IsRequest = isRequest };
 
 			MessageBodyDescription mb = md.Body;
 			mb.WrapperName = name + (isRequest ? String.Empty : "Response");
@@ -413,9 +505,18 @@ namespace System.ServiceModel.Description
 			return md;
 		}
 
-		public static void FillMessageBodyDescriptionByContract (
-			Type messageType, MessageBodyDescription mb)
+//		public static void FillMessageBodyDescriptionByContract (
+//			Type messageType, MessageBodyDescription mb)
+//		{
+//		}
+
+		static MessageHeaderDescription CreateHeaderDescription (MessageHeaderAttribute mha, string defaultName, string defaultNamespace)
 		{
+			var ret = CreatePartCore<MessageHeaderDescription> (mha, defaultName, defaultNamespace, delegate (string n, string ns) { return new MessageHeaderDescription (n, ns); });
+			ret.Actor = mha.Actor;
+			ret.MustUnderstand = mha.MustUnderstand;
+			ret.Relay = mha.Relay;
+			return ret;
 		}
 
 		static MessagePartDescription CreatePartCore (
@@ -430,9 +531,14 @@ namespace System.ServiceModel.Description
 			return new MessagePartDescription (pname, defaultNamespace);
 		}
 
-		static MessagePartDescription CreatePartCore (
-			MessageBodyMemberAttribute mba, string defaultName,
-			string defaultNamespace)
+		static MessagePartDescription CreatePartCore (MessageBodyMemberAttribute mba, string defaultName, string defaultNamespace)
+		{
+			var ret = CreatePartCore<MessagePartDescription> (mba, defaultName, defaultNamespace, delegate (string n, string ns) { return new MessagePartDescription (n, ns); });
+			ret.Index = mba.Order;
+			return ret;
+		}
+
+		static T CreatePartCore<T> (MessageContractMemberAttribute mba, string defaultName, string defaultNamespace, Func<string,string,T> creator)
 		{
 			string pname = null, pns = null;
 			if (mba != null) {
@@ -446,7 +552,7 @@ namespace System.ServiceModel.Description
 			if (pns == null)
 				pns = defaultNamespace;
 
-			return new MessagePartDescription (pname, pns);
+			return creator (pname, pns);
 		}
 
 		static Type MessageFilterOutByRef (Type type)

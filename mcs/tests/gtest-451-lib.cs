@@ -1,39 +1,20 @@
-// Compiler options: -t:library -langversion:future
+// Compiler options: -t:library
 
-public struct S
+using System;
+
+public class A<T> where T : new ()
 {
-}
-
-public class B
-{
-	public static string TestString (string s = "mono")
+	public T Value = new T ();
+	
+	public class N1 : A<N2>
 	{
-		return s;
-	}
-
-	public static B TestB (B b = null)
-	{
-		return b;
-	}
-
-	public static T Test<T> (T t = default (T))
-	{
-		return t;
-	}
-
-	public static S TestNew (S s = new S ())
-	{
-		return s;
-	}
-
-	public static decimal TestDecimal (int i, decimal d = decimal.MinValue)
-	{
-		return d;
 	}
 	
-	char ch;
-	public char this [int id, char v = 'h'] {
-		get { return v; }
-		set { ch = value; } 
+	public class N2
+	{
+		public int Foo ()
+		{
+			return 0;
+		}
 	}
 }

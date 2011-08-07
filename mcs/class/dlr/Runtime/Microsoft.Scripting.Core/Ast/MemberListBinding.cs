@@ -2,37 +2,32 @@
  *
  * Copyright (c) Microsoft Corporation. 
  *
- * This source code is subject to terms and conditions of the Microsoft Public License. A 
+ * This source code is subject to terms and conditions of the Apache License, Version 2.0. A 
  * copy of the license can be found in the License.html file at the root of this distribution. If 
- * you cannot locate the  Microsoft Public License, please send an email to 
+ * you cannot locate the  Apache License, Version 2.0, please send an email to 
  * dlr@microsoft.com. By using this source code in any fashion, you are agreeing to be bound 
- * by the terms of the Microsoft Public License.
+ * by the terms of the Apache License, Version 2.0.
  *
  * You must not remove this notice, or any other, from this software.
  *
  *
  * ***************************************************************************/
-using System; using Microsoft;
 
-
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-#if CODEPLEX_40
 using System.Dynamic.Utils;
-#else
-using Microsoft.Scripting.Utils;
-#endif
 using System.Reflection;
 
 #if SILVERLIGHT
 using System.Core;
 #endif
 
-#if CODEPLEX_40
-namespace System.Linq.Expressions {
+#if CLR2
+namespace Microsoft.Scripting.Ast {
 #else
-namespace Microsoft.Linq.Expressions {
+namespace System.Linq.Expressions {
 #endif
 
     /// <summary>
@@ -72,10 +67,10 @@ namespace Microsoft.Linq.Expressions {
 
     public partial class Expression {
 
-        ///<summary>Creates a <see cref="T:Microsoft.Linq.Expressions.MemberListBinding" /> where the member is a field or property.</summary>
-        ///<returns>A <see cref="T:Microsoft.Linq.Expressions.MemberListBinding" /> that has the <see cref="P:Microsoft.Linq.Expressions.MemberBinding.BindingType" /> property equal to <see cref="F:Microsoft.Linq.Expressions.MemberBindingType.ListBinding" /> and the <see cref="P:Microsoft.Linq.Expressions.MemberBinding.Member" /> and <see cref="P:Microsoft.Linq.Expressions.MemberListBinding.Initializers" /> properties set to the specified values.</returns>
-        ///<param name="member">A <see cref="T:System.Reflection.MemberInfo" /> that represents a field or property to set the <see cref="P:Microsoft.Linq.Expressions.MemberBinding.Member" /> property equal to.</param>
-        ///<param name="initializers">An array of <see cref="T:Microsoft.Linq.Expressions.ElementInit" /> objects to use to populate the <see cref="P:Microsoft.Linq.Expressions.MemberListBinding.Initializers" /> collection.</param>
+        ///<summary>Creates a <see cref="T:System.Linq.Expressions.MemberListBinding" /> where the member is a field or property.</summary>
+        ///<returns>A <see cref="T:System.Linq.Expressions.MemberListBinding" /> that has the <see cref="P:System.Linq.Expressions.MemberBinding.BindingType" /> property equal to <see cref="F:System.Linq.Expressions.MemberBindingType.ListBinding" /> and the <see cref="P:System.Linq.Expressions.MemberBinding.Member" /> and <see cref="P:System.Linq.Expressions.MemberListBinding.Initializers" /> properties set to the specified values.</returns>
+        ///<param name="member">A <see cref="T:System.Reflection.MemberInfo" /> that represents a field or property to set the <see cref="P:System.Linq.Expressions.MemberBinding.Member" /> property equal to.</param>
+        ///<param name="initializers">An array of <see cref="T:System.Linq.Expressions.ElementInit" /> objects to use to populate the <see cref="P:System.Linq.Expressions.MemberListBinding.Initializers" /> collection.</param>
         ///<exception cref="T:System.ArgumentNullException">
         ///<paramref name="member" /> is null. -or-One or more elements of <paramref name="initializers" /> is null.</exception>
         ///<exception cref="T:System.ArgumentException">
@@ -86,10 +81,10 @@ namespace Microsoft.Linq.Expressions {
             return ListBind(member, (IEnumerable<ElementInit>)initializers);
         }
 
-        ///<summary>Creates a <see cref="T:Microsoft.Linq.Expressions.MemberListBinding" /> where the member is a field or property.</summary>
-        ///<returns>A <see cref="T:Microsoft.Linq.Expressions.MemberListBinding" /> that has the <see cref="P:Microsoft.Linq.Expressions.MemberBinding.BindingType" /> property equal to <see cref="F:Microsoft.Linq.Expressions.MemberBindingType.ListBinding" /> and the <see cref="P:Microsoft.Linq.Expressions.MemberBinding.Member" /> and <see cref="P:Microsoft.Linq.Expressions.MemberListBinding.Initializers" /> properties set to the specified values.</returns>
-        ///<param name="member">A <see cref="T:System.Reflection.MemberInfo" /> that represents a field or property to set the <see cref="P:Microsoft.Linq.Expressions.MemberBinding.Member" /> property equal to.</param>
-        ///<param name="initializers">An <see cref="T:System.Collections.Generic.IEnumerable`1" /> that contains <see cref="T:Microsoft.Linq.Expressions.ElementInit" /> objects to use to populate the <see cref="P:Microsoft.Linq.Expressions.MemberListBinding.Initializers" /> collection.</param>
+        ///<summary>Creates a <see cref="T:System.Linq.Expressions.MemberListBinding" /> where the member is a field or property.</summary>
+        ///<returns>A <see cref="T:System.Linq.Expressions.MemberListBinding" /> that has the <see cref="P:System.Linq.Expressions.MemberBinding.BindingType" /> property equal to <see cref="F:System.Linq.Expressions.MemberBindingType.ListBinding" /> and the <see cref="P:System.Linq.Expressions.MemberBinding.Member" /> and <see cref="P:System.Linq.Expressions.MemberListBinding.Initializers" /> properties set to the specified values.</returns>
+        ///<param name="member">A <see cref="T:System.Reflection.MemberInfo" /> that represents a field or property to set the <see cref="P:System.Linq.Expressions.MemberBinding.Member" /> property equal to.</param>
+        ///<param name="initializers">An <see cref="T:System.Collections.Generic.IEnumerable`1" /> that contains <see cref="T:System.Linq.Expressions.ElementInit" /> objects to use to populate the <see cref="P:System.Linq.Expressions.MemberListBinding.Initializers" /> collection.</param>
         ///<exception cref="T:System.ArgumentNullException">
         ///<paramref name="member" /> is null. -or-One or more elements of <paramref name="initializers" /> is null.</exception>
         ///<exception cref="T:System.ArgumentException">
@@ -104,10 +99,10 @@ namespace Microsoft.Linq.Expressions {
             return new MemberListBinding(member, initList);
         }
 
-        ///<summary>Creates a <see cref="T:Microsoft.Linq.Expressions.MemberListBinding" /> object based on a specified property accessor method.</summary>
-        ///<returns>A <see cref="T:Microsoft.Linq.Expressions.MemberListBinding" /> that has the <see cref="P:Microsoft.Linq.Expressions.MemberBinding.BindingType" /> property equal to <see cref="F:Microsoft.Linq.Expressions.MemberBindingType.ListBinding" />, the <see cref="P:Microsoft.Linq.Expressions.MemberBinding.Member" /> property set to the <see cref="T:System.Reflection.MemberInfo" /> that represents the property accessed in <paramref name="propertyAccessor" />, and <see cref="P:Microsoft.Linq.Expressions.MemberListBinding.Initializers" /> populated with the elements of <paramref name="initializers" />.</returns>
+        ///<summary>Creates a <see cref="T:System.Linq.Expressions.MemberListBinding" /> object based on a specified property accessor method.</summary>
+        ///<returns>A <see cref="T:System.Linq.Expressions.MemberListBinding" /> that has the <see cref="P:System.Linq.Expressions.MemberBinding.BindingType" /> property equal to <see cref="F:System.Linq.Expressions.MemberBindingType.ListBinding" />, the <see cref="P:System.Linq.Expressions.MemberBinding.Member" /> property set to the <see cref="T:System.Reflection.MemberInfo" /> that represents the property accessed in <paramref name="propertyAccessor" />, and <see cref="P:System.Linq.Expressions.MemberListBinding.Initializers" /> populated with the elements of <paramref name="initializers" />.</returns>
         ///<param name="propertyAccessor">A <see cref="T:System.Reflection.MethodInfo" /> that represents a property accessor method.</param>
-        ///<param name="initializers">An array of <see cref="T:Microsoft.Linq.Expressions.ElementInit" /> objects to use to populate the <see cref="P:Microsoft.Linq.Expressions.MemberListBinding.Initializers" /> collection.</param>
+        ///<param name="initializers">An array of <see cref="T:System.Linq.Expressions.ElementInit" /> objects to use to populate the <see cref="P:System.Linq.Expressions.MemberListBinding.Initializers" /> collection.</param>
         ///<exception cref="T:System.ArgumentNullException">
         ///<paramref name="propertyAccessor" /> is null. -or-One or more elements of <paramref name="initializers" /> is null.</exception>
         ///<exception cref="T:System.ArgumentException">
@@ -118,10 +113,10 @@ namespace Microsoft.Linq.Expressions {
             return ListBind(propertyAccessor, (IEnumerable<ElementInit>)initializers);
         }
 
-        ///<summary>Creates a <see cref="T:Microsoft.Linq.Expressions.MemberListBinding" /> based on a specified property accessor method.</summary>
-        ///<returns>A <see cref="T:Microsoft.Linq.Expressions.MemberListBinding" /> that has the <see cref="P:Microsoft.Linq.Expressions.MemberBinding.BindingType" /> property equal to <see cref="F:Microsoft.Linq.Expressions.MemberBindingType.ListBinding" />, the <see cref="P:Microsoft.Linq.Expressions.MemberBinding.Member" /> property set to the <see cref="T:System.Reflection.MemberInfo" /> that represents the property accessed in <paramref name="propertyAccessor" />, and <see cref="P:Microsoft.Linq.Expressions.MemberListBinding.Initializers" /> populated with the elements of <paramref name="initializers" />.</returns>
+        ///<summary>Creates a <see cref="T:System.Linq.Expressions.MemberListBinding" /> based on a specified property accessor method.</summary>
+        ///<returns>A <see cref="T:System.Linq.Expressions.MemberListBinding" /> that has the <see cref="P:System.Linq.Expressions.MemberBinding.BindingType" /> property equal to <see cref="F:System.Linq.Expressions.MemberBindingType.ListBinding" />, the <see cref="P:System.Linq.Expressions.MemberBinding.Member" /> property set to the <see cref="T:System.Reflection.MemberInfo" /> that represents the property accessed in <paramref name="propertyAccessor" />, and <see cref="P:System.Linq.Expressions.MemberListBinding.Initializers" /> populated with the elements of <paramref name="initializers" />.</returns>
         ///<param name="propertyAccessor">A <see cref="T:System.Reflection.MethodInfo" /> that represents a property accessor method.</param>
-        ///<param name="initializers">An <see cref="T:System.Collections.Generic.IEnumerable`1" /> that contains <see cref="T:Microsoft.Linq.Expressions.ElementInit" /> objects to use to populate the <see cref="P:Microsoft.Linq.Expressions.MemberListBinding.Initializers" /> collection.</param>
+        ///<param name="initializers">An <see cref="T:System.Collections.Generic.IEnumerable`1" /> that contains <see cref="T:System.Linq.Expressions.ElementInit" /> objects to use to populate the <see cref="P:System.Linq.Expressions.MemberListBinding.Initializers" /> collection.</param>
         ///<exception cref="T:System.ArgumentNullException">
         ///<paramref name="propertyAccessor" /> is null. -or-One or more elements of <paramref name="initializers" /> are null.</exception>
         ///<exception cref="T:System.ArgumentException">

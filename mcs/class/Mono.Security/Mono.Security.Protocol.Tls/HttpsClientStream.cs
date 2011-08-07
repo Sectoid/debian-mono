@@ -32,10 +32,8 @@ using System.IO;
 using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-#if NET_2_0
 using SNS = System.Net.Security;
 using SNCX = System.Security.Cryptography.X509Certificates;
-#endif
 
 namespace Mono.Security.Protocol.Tls {
 
@@ -57,11 +55,10 @@ namespace Mono.Security.Protocol.Tls {
 			_status = 0;
 			if (buffer != null)
 				InputBuffer.Write (buffer, 0, buffer.Length);
-#if !NET_1_0
+#if !MOONLIGHT
                         // also saved from reflection
                         base.CheckCertRevocationStatus = ServicePointManager.CheckCertificateRevocationList;
-#endif
-#if NET_2_0
+
 			ClientCertSelection += delegate (X509CertificateCollection clientCerts, X509Certificate serverCertificate,
 				string targetHost, X509CertificateCollection serverRequestedCertificates) {
 				return ((clientCerts == null) || (clientCerts.Count == 0)) ? null : clientCerts [0];
@@ -85,15 +82,19 @@ namespace Mono.Security.Protocol.Tls {
 			}
 		}
 
+#if MOONLIGHT
+                internal override bool RaiseServerCertificateValidation (X509Certificate certificate, int[] certificateErrors)
+		{
+			return true;
+		}
+#else
                 internal override bool RaiseServerCertificateValidation (X509Certificate certificate, int[] certificateErrors)
                 {
 			bool failed = (certificateErrors.Length > 0);
 			// only one problem can be reported by this interface
 			_status = ((failed) ? certificateErrors [0] : 0);
 
-#if NET_2_0
 #pragma warning disable 618
-#endif
 			if (ServicePointManager.CertificatePolicy != null) {
 				ServicePoint sp = _request.ServicePoint;
 				bool res = ServicePointManager.CertificatePolicy.CheckValidationResult (sp, certificate, _request, _status);
@@ -101,13 +102,10 @@ namespace Mono.Security.Protocol.Tls {
 					return false;
 				failed = true;
 			}
-#if NET_2_0
 #pragma warning restore 618
-#endif
-#if NET_2_0
-			if (HaveRemoteValidation2Callback)
-				return failed; // The validation already tried the 2.0 callback 
-
+ 			if (HaveRemoteValidation2Callback)
+ 				return failed; // The validation already tried the 2.0 callback 
+ 
 			SNS.RemoteCertificateValidationCallback cb = ServicePointManager.ServerCertificateValidationCallback;
 			if (cb != null) {
 				SNS.SslPolicyErrors ssl_errors = 0;
@@ -125,8 +123,8 @@ namespace Mono.Security.Protocol.Tls {
 					ssl_errors |= SNS.SslPolicyErrors.RemoteCertificateChainErrors;
 				return cb (_request, cert2, chain, ssl_errors);
 			}
-#endif
 			return failed;
 		}
+#endif
         }
 }

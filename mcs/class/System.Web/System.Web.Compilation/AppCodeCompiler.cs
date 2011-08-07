@@ -27,13 +27,14 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-#if NET_2_0
+
 using System;
 using System.CodeDom;
 using System.CodeDom.Compiler;
 using System.Configuration;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
@@ -80,8 +81,9 @@ namespace System.Web.Compilation
 				if (asm == null)
 					throw new HttpException (String.Format ("Unable to find assembly {0}", assemblyName), error);
 
-				assemblyCache.Add (assemblyName, asm.Location);
-				return asm.Location;
+				string path = new Uri (asm.CodeBase).LocalPath;
+				assemblyCache.Add (assemblyName, path);
+				return path;
 			}
 		}
 	}
@@ -221,8 +223,15 @@ namespace System.Web.Compilation
 			CompilerParameters parameters = compilerInfo.CreateDefaultCompilerParameters ();
 			parameters.IncludeDebugInformation = compilationSection.Debug;
 			
-			if (binAssemblies != null && binAssemblies.Length > 0)
-				parameters.ReferencedAssemblies.AddRange (binAssemblies);
+			if (binAssemblies != null && binAssemblies.Length > 0) {
+				StringCollection parmRefAsm = parameters.ReferencedAssemblies;
+				foreach (string binAsm in binAssemblies) {
+					if (parmRefAsm.Contains (binAsm))
+						continue;
+					
+					parmRefAsm.Add (binAsm);
+				}
+			}
 			
 			if (compilationSection != null) {
 				foreach (AssemblyInfo ai in compilationSection.Assemblies)
@@ -273,7 +282,7 @@ namespace System.Web.Compilation
 		
 		VirtualPath PhysicalToVirtual (string file)
 		{
-			return new VirtualPath (file.Replace (HttpRuntime.AppDomainAppPath, "/").Replace (Path.DirectorySeparatorChar, '/'));
+			return new VirtualPath (file.Replace (HttpRuntime.AppDomainAppPath, "~/").Replace (Path.DirectorySeparatorChar, '/'));
 		}
 		
 		BuildProvider GetBuildProviderFor (string file, BuildProviderCollection buildProviders)
@@ -281,7 +290,7 @@ namespace System.Web.Compilation
 			if (file == null || file.Length == 0 || buildProviders == null || buildProviders.Count == 0)
 				return null;
 
-			BuildProvider ret = buildProviders.GetProviderForExtension (Path.GetExtension (file));
+			BuildProvider ret = buildProviders.GetProviderInstanceForExtension (Path.GetExtension (file));
 			if (ret != null && IsCorrectBuilderType (ret)) {
 				ret.SetVirtualPath (PhysicalToVirtual (file));
 				return ret;
@@ -746,4 +755,4 @@ namespace System.Web.Compilation
 		}
 	}
 }
-#endif
+

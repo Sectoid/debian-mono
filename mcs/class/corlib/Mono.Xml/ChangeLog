@@ -1,3 +1,8 @@
+2011-01-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Change some usages of ArrayList to List<T> to avoid calls to the
+	slow ArrayList.ToArray(Type) method.
+
 2008-08-07  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* MiniParser.cs: Remove. It is not used anymore inside corlib

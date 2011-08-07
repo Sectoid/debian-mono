@@ -59,7 +59,11 @@ namespace System.Linq {
 			if (qe == null)
 				return constant;
 
-			return Expression.Constant (qe.GetEnumerable ());
+			var enumerable = qe.GetEnumerable ();
+			if (enumerable != null)
+				return Expression.Constant (enumerable);
+
+			return Visit (qe.Expression);
 		}
 
 		static bool IsQueryableExtension (MethodInfo method)
@@ -89,7 +93,7 @@ namespace System.Linq {
 					parameters [i].ParameterType);
 			}
 
-			return new MethodCallExpression (target, method, arguments.ToReadOnlyCollection ());
+			return Expression.Call (target, method, arguments);
 		}
 
 		static Expression UnquoteIfNeeded (Expression expression, Type delegateType)
@@ -111,7 +115,8 @@ namespace System.Linq {
 
 		static MethodInfo ReplaceQueryableMethod (MethodInfo method)
 		{
-			var result = GetMatchingMethod (method, GetTargetDeclaringType (method));
+			var target_type = GetTargetDeclaringType (method);
+			var result = GetMatchingMethod (method, target_type);
 
 			if (result != null)
 				return result;
@@ -120,7 +125,7 @@ namespace System.Linq {
 				string.Format (
 					"There is no method {0} on type {1} that matches the specified arguments",
 					method.Name,
-					method.DeclaringType.FullName));
+					target_type.FullName));
 		}
 
 		static MethodInfo GetMatchingMethod (MethodInfo method, Type declaring)

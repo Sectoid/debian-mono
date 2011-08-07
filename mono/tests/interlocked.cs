@@ -30,6 +30,13 @@ public class InterlockTest
 		if (it.test != 1)
 			return 4;
 
+		a = 10;
+		c = Interlocked.Exchange (ref a, 5);
+		if (c != 10)
+			return 5;
+		if (a != 5)
+			return 5;
+
 		a = 1;
 		b = Interlocked.Increment (ref a);
 		if (a != 2)
@@ -54,9 +61,25 @@ public class InterlockTest
 
 		Thread.MemoryBarrier ();
 
+		interlocked_regalloc1 ();
+
 		Console.WriteLine ("done!");
 
 		return 0;
+	}
+
+	public static object[] buckets;
+	public static object segmentCache;
+
+	public static int interlocked_regalloc1 () {
+	   int segment = 0;
+	   buckets = new object [10];
+
+	   if (buckets[segment] == null) {
+		   object newSegment = new Object ();
+		   segmentCache = Interlocked.CompareExchange (ref buckets[segment], newSegment, null) == null ? null : newSegment;
+	   }
+	   return 0;
 	}
 
 	public static string IncTest () {

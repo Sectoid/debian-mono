@@ -2,7 +2,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Text;
 using Mono.Options;
 
 namespace Mono.Documentation {
@@ -43,6 +45,7 @@ namespace Mono.Documentation {
 				{ "export-msxdoc",    new MDocToMSXDocConverter () },
 				{ "help",             new MDocHelpCommand (this) },
 				{ "update",           new MDocUpdater () },
+				{ "update-ecma-xml",  new MDocUpdateEcmaXml () },
 				{ "validate",         new MDocValidator () },
 			};
 
@@ -53,9 +56,10 @@ namespace Mono.Documentation {
 				{ "v:",       (int? v) => verbosity = v.HasValue ? v.Value : verbosity+1 },
 				{ "debug",    v => debug = v != null },
 				{ "h|?|help", v => showHelp = v != null },
+				new ResponseFileSource (),
 			};
 
-			List<string> extra = p.Parse (args);
+			var extra = p.Parse (args);
 
 			if (showVersion) {
 				Console.WriteLine ("mdoc {0}", Consts.MonoVersion);
@@ -68,7 +72,14 @@ namespace Mono.Documentation {
 			if (showHelp) {
 				extra.Add ("--help");
 			}
-			GetCommand (extra [0]).Run (extra);
+			switch (extra [0]) {
+				case "x-msitomsx":
+					new MsidocToMsxdocConverter ().Run (extra);
+					break;
+				default: 
+					GetCommand (extra [0]).Run (extra);
+					break;
+			}
 		}
 
 		internal MDocCommand GetCommand (string command)

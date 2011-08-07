@@ -1,5 +1,5 @@
 /* -*- mode: c -*-
- * $Id: sieve.cs 64936 2006-09-05 13:40:47Z raja $
+ * $Id$
  * http://www.bagley.org/~doug/shootout/
  */
 

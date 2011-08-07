@@ -631,6 +631,53 @@ namespace MonoTests.System.Reflection.Emit
 				null // <-- here is the error
 				);
 		}
+
+		class C {
+			public C (object i) {
+			}
+		}
+
+		[Test]
+		[ExpectedException (typeof (ArgumentException))]
+		public void ObjectParam_UserDefinedClass ()
+		{
+			var cab = new CustomAttributeBuilder(
+						 typeof (C).GetConstructors ()[0],
+						 new object[] { new C (1) });
+		}
+
+
+		[Test]
+		[ExpectedException (typeof (ArgumentException))]
+		public void ValueTypeParam_Null ()
+		{
+	        ConstructorInfo classCtorInfo = 
+	            typeof (CattrD).GetConstructors ()[0];
+	
+	        CustomAttributeBuilder typeCABuilder = new CustomAttributeBuilder (
+	            classCtorInfo, new object [] { null });
+		}
+
+		[Test]
+		[ExpectedException (typeof (ArgumentException))]
+		public void ValueTypeArrayParam_Null ()
+		{
+	        ConstructorInfo classCtorInfo = 
+	            typeof (CattrE).GetConstructors ()[0];
+	
+	        CustomAttributeBuilder typeCABuilder = new CustomAttributeBuilder (
+	            classCtorInfo, new object [] { new object[] { null } });
+		}
+		
+		public class CattrD : Attribute
+		{
+		    public CattrD (bool b) {}
+		}
+		
+		public class CattrE : Attribute
+		{
+		    public CattrE (bool[] b) {}
+		}
 	}
 }
 

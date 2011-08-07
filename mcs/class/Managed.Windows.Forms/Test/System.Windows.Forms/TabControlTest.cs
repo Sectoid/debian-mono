@@ -108,6 +108,90 @@ namespace MonoTests.System.Windows.Forms
 		}
 
 		[Test]
+		public void ItemSizeTestPadding ()
+		{
+			TabControl tc = new TabControl ();
+			tc.TabPages.Add ("One"); // Need to add a page to force to calc the width
+			tc.CreateControl (); // And create the control as well
+
+			Assert.IsTrue (tc.ItemSize != Size.Empty, "#A0");
+
+			Size item_size = tc.ItemSize;
+			tc.Padding = new Point (tc.Padding.X * 2, tc.Padding.Y * 2);
+
+			Assert.IsTrue (tc.ItemSize.Height > item_size.Height, "#B0");
+			Assert.IsTrue (tc.ItemSize.Width > item_size.Width, "#B1");
+		}
+
+		[Test]
+		public void ItemSizeTest ()
+		{
+			TabControl tc = new TabControl ();
+			Assert.AreEqual (Size.Empty, tc.ItemSize, "#A0");
+
+			tc.CreateControl ();
+			Assert.IsTrue (tc.ItemSize.Width == 0, "#B0");
+			Assert.IsTrue (tc.ItemSize.Height > 0, "#B1");
+
+			tc.TabPages.Add ("A");
+			Assert.IsTrue (tc.ItemSize.Width > 0, "#C0");
+			Assert.IsTrue (tc.ItemSize.Height > 0, "#C1");
+
+			// ItemSize.Height can change, depending on Font
+			Size prev_size = tc.ItemSize;
+			tc.Font = new Font (tc.Font.FontFamily, tc.Font.Height * 2);
+			Assert.IsTrue (tc.ItemSize.Height > prev_size.Height, "#D0");
+
+			// Images can cause a change as well
+			prev_size = tc.ItemSize;
+			ImageList image_list = new ImageList ();
+			image_list.ImageSize = new Size (image_list.ImageSize.Width, tc.Font.Height * 2);
+			tc.ImageList = image_list;
+			Assert.IsTrue (tc.ItemSize.Height > prev_size.Height, "#E0");
+		}
+
+		[Test]
+		public void ItemSizeFixedTest ()
+		{
+			TabControl tc = new TabControl ();
+			tc.SizeMode = TabSizeMode.Fixed;
+			Assert.AreEqual (Size.Empty, tc.ItemSize, "#A0");
+
+			tc.CreateControl ();
+			Assert.IsTrue (tc.ItemSize.Width == 0, "#B0");
+			Assert.IsTrue (tc.ItemSize.Height > 0, "#B1");
+
+			tc.TabPages.Add ("A");
+			Assert.IsTrue (tc.ItemSize.Width == 96, "#C0");
+			Assert.IsTrue (tc.ItemSize.Width > 0, "#C1");
+
+			// Height can change automatically depending on Font,
+			// but not Width
+			Size prev_size = tc.ItemSize;
+			tc.Font = new Font (tc.Font.FontFamily, tc.Font.Height * 2);
+			Assert.IsTrue (tc.ItemSize.Width == 96, "#D0");
+			Assert.IsTrue (tc.ItemSize.Height > prev_size.Height, "#D1");
+
+			// Manually set ItemSize
+			tc.ItemSize = new Size (100, 35);
+			Assert.AreEqual (100, tc.ItemSize.Width, "#E0");
+			Assert.AreEqual (35, tc.ItemSize.Height, "#E1");
+
+			// Font size is decreased, but since we manually set
+			// the size we can't automatically update it.
+			tc.Font = new Font (tc.Font.FontFamily, tc.Font.Height / 2);
+			Assert.AreEqual (100, tc.ItemSize.Width, "#F0");
+			Assert.AreEqual (35, tc.ItemSize.Height, "#F1");
+
+			// Manually set even if control has not been created.
+			tc = new TabControl ();
+			tc.SizeMode = TabSizeMode.Fixed;
+			tc.ItemSize = new Size (100, 35);
+			Assert.AreEqual (100, tc.ItemSize.Width, "#G0");
+			Assert.AreEqual (35, tc.ItemSize.Height, "#G1");
+		}
+
+		[Test]
 		public void ClearTabPagesTest ()
 		{
 			// no tab pages
@@ -789,6 +873,30 @@ namespace MonoTests.System.Windows.Forms
 			Assert.IsTrue (tc.Focused, "A2");
 		}
 
+        	// Make sure that setting focus for TabControl is *not* resetting SelectedIndex when
+        	// the value is -1
+		[Test]
+		public void GotFocusSelectedIndex ()
+		{
+			TabControl tc = new TabControl ();
+			tc.TabPages.Add ("A");
+			tc.TabPages.Add ("B");
+
+			Button b = new Button (); // Dummy button to receive focus by default
+			Form f = new Form ();
+			f.Controls.AddRange (new Control [] { b, tc });
+			f.Show ();
+
+			tc.SelectedIndex = -1;
+
+			// Make sure focus goes back to button
+			b.Focus ();
+
+			// Finally give focus back to TabControl
+			tc.Focus ();
+
+			Assert.AreEqual (-1, tc.SelectedIndex, "#A0");
+		}
 #endif
 	}
 

@@ -32,14 +32,13 @@
 //
 
 using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.Serialization;
 
 namespace System
 {
-#if NET_2_0
 	[System.Runtime.InteropServices.ComVisible (true)]
 	[Serializable]
-#endif
 	public abstract class MulticastDelegate : Delegate
 	{
 		private MulticastDelegate prev;
@@ -71,6 +70,9 @@ namespace System
 			return base.DynamicInvokeImpl (args);
 		}
 
+		internal bool HasSingleTarget {
+			get { return prev == null; }
+		}
 		// <remarks>
 		//   Equals: two multicast delegates are equal if their base is equal
 		//   and their invocations list is equal.
@@ -120,7 +122,7 @@ namespace System
 				return new Delegate [1] { other };
 			}
 
-			ArrayList list = new ArrayList ();
+			var list = new List<Delegate> ();
 			for (; d != null; d = d.kpm_next) {
 				MulticastDelegate other = (MulticastDelegate) d.Clone ();
 				other.prev = null;
@@ -128,7 +130,7 @@ namespace System
 				list.Add (other);
 			}
 
-			return (Delegate []) list.ToArray (typeof (Delegate));
+			return list.ToArray ();
 		}
 
 		// <summary>

@@ -1,8 +1,55 @@
+2011-02-08  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[SmtpClient] Don't send empty display name.
+
+	If there's no display name, don't send '""'. Fixes bug #670475.
+
+2011-01-25  Marek Habersack  <grendel@twistedcode.net>
+
+	[system] SmtpClient implements IDisposable on 4.0 (a no-op for
+	now)
+
+2010-10-31  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Check that the default from is not empty
+
+	This should fix a bunch of tests failing since MailAddress parsing
+	was fixed.
+
+2010-10-13  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Misc. fixes
+
+	-Fix validation of display name and email. -Cache user, host and
+	ToString() values. -Fix Equals and GetHashCode.
+
+	Fixes bug 645871.
+
+2010-10-08  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Add support for EnableSsl in smtp config.
+
+	Ditto. Fixes bug #644816.
+
+2010-08-04  Raja R Harinath  <harinath@hurrynot.org>
+
+	* System.Net.Mail/SmtpClient.cs (SendCore): Compute envelope
+	sender separately from the 'From: ' header. *
+	Test/System.Net.Mail/SmtpClientTest.cs (Deliver_Envelope): New.
+
+2010-06-28 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* SmtpClient.cs: support PLAIN authentication and throw if LOGIN and
+	PLAIN are not supported. Fixes bug #607249.
+
+2010-05-04  Miguel de Icaza  <miguel@novell.com>
+
+	* Apply patch from Ted Unangst to fix bug 574049
+
 2010-03-06 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* SmtpClient.cs: typo in reply-to header. Thanks to Chris Tomlinson.
 	Fixes bug #578271.
-	Re-enabled code that seems to compile now.
 
 2010-02-15 Gonzalo Paniagua Javier <gonzalo@novell.com>
 

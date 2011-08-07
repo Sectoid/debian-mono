@@ -208,6 +208,8 @@ namespace Mono.Math {
 		
 		public BigInteger (byte [] inData)
 		{
+			if (inData.Length == 0)
+				inData = new byte [1];
 			length = (uint)inData.Length >> 2;
 			int leftOver = inData.Length & 0x3;
 
@@ -239,6 +241,8 @@ namespace Mono.Math {
 #endif 
 		public BigInteger (uint [] inData)
 		{
+			if (inData.Length == 0)
+				inData = new uint [1];
 			length = (uint)inData.Length;
 
 			data = new uint [length];
@@ -1556,92 +1560,6 @@ namespace Mono.Math {
 			}
 #endif
 			#endregion
-		}
-
-		internal sealed class Montgomery {
-
-			private Montgomery () 
-			{
-			}
-
-			public static uint Inverse (uint n)
-			{
-				uint y = n, z;
-
-				while ((z = n * y) != 1)
-					y *= 2 - z;
-
-				return (uint)-y;
-			}
-
-			public static BigInteger ToMont (BigInteger n, BigInteger m)
-			{
-				n.Normalize (); m.Normalize ();
-
-				n <<= (int)m.length * 32;
-				n %= m;
-				return n;
-			}
-
-			public static unsafe BigInteger Reduce (BigInteger n, BigInteger m, uint mPrime)
-			{
-				BigInteger A = n;
-				fixed (uint* a = A.data, mm = m.data) {
-					for (uint i = 0; i < m.length; i++) {
-						// The mod here is taken care of by the CPU,
-						// since the multiply will overflow.
-						uint u_i = a [0] * mPrime /* % 2^32 */;
-
-						//
-						// A += u_i * m;
-						// A >>= 32
-						//
-
-						// mP = Position in mod
-						// aSP = the source of bits from a
-						// aDP = destination for bits
-						uint* mP = mm, aSP = a, aDP = a;
-
-						ulong c = (ulong)u_i * ((ulong)*(mP++)) + *(aSP++);
-						c >>= 32;
-						uint j = 1;
-
-						// Multiply and add
-						for (; j < m.length; j++) {
-							c += (ulong)u_i * (ulong)*(mP++) + *(aSP++);
-							*(aDP++) = (uint)c;
-							c >>= 32;
-						}
-
-						// Account for carry
-						// TODO: use a better loop here, we dont need the ulong stuff
-						for (; j < A.length; j++) {
-							c += *(aSP++);
-							*(aDP++) = (uint)c;
-							c >>= 32;
-							if (c == 0) {j++; break;}
-						}
-						// Copy the rest
-						for (; j < A.length; j++) {
-							*(aDP++) = *(aSP++);
-						}
-
-						*(aDP++) = (uint)c;
-					}
-
-					while (A.length > 1 && a [A.length-1] == 0) A.length--;
-
-				}
-				if (A >= m) Kernel.MinusEq (A, m);
-
-				return A;
-			}
-#if _NOT_USED_
-			public static BigInteger Reduce (BigInteger n, BigInteger m)
-			{
-				return Reduce (n, m, Inverse (m.data [0]));
-			}
-#endif
 		}
 
 		/// <summary>

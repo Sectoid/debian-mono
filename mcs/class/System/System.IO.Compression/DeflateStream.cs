@@ -42,6 +42,7 @@ namespace System.IO.Compression {
 	public class DeflateStream : Stream
 	{
 		const int BufferSize = 4096;
+		[UnmanagedFunctionPointer (CallingConvention.Cdecl)]
 		delegate int UnmanagedReadOrWrite (IntPtr buffer, int length, IntPtr data);
 		delegate int ReadMethod (byte[] array, int offset, int count);
 		delegate void WriteMethod (byte[] array, int offset, int count);
@@ -415,25 +416,25 @@ namespace System.IO.Compression {
 			set { throw new NotSupportedException(); }
 		}
 
-#if MONOTOUCH
+#if MONOTOUCH || MONODROID
 		const string LIBNAME = "__Internal";
 #else
 		const string LIBNAME = "MonoPosixHelper";
 #endif
 
-		[DllImport (LIBNAME)]
+		[DllImport (LIBNAME, CallingConvention=CallingConvention.Cdecl)]
 		static extern IntPtr CreateZStream (CompressionMode compress, bool gzip, UnmanagedReadOrWrite feeder, IntPtr data);
 
-		[DllImport (LIBNAME)]
+		[DllImport (LIBNAME, CallingConvention=CallingConvention.Cdecl)]
 		static extern int CloseZStream (IntPtr stream);
 
-		[DllImport (LIBNAME)]
+		[DllImport (LIBNAME, CallingConvention=CallingConvention.Cdecl)]
 		static extern int Flush (IntPtr stream);
 
-		[DllImport (LIBNAME)]
+		[DllImport (LIBNAME, CallingConvention=CallingConvention.Cdecl)]
 		static extern int ReadZStream (IntPtr stream, IntPtr buffer, int length);
 
-		[DllImport (LIBNAME)]
+		[DllImport (LIBNAME, CallingConvention=CallingConvention.Cdecl)]
 		static extern int WriteZStream (IntPtr stream, IntPtr buffer, int length);
 	}
 }

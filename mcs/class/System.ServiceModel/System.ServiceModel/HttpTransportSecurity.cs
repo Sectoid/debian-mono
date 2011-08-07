@@ -26,11 +26,13 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 using System;
+#if NET_4_0
+using System.Security.Authentication.ExtendedProtection;
+#endif
 using System.ServiceModel.Security;
 
 namespace System.ServiceModel
 {
-	[MonoTODO]
 	public sealed class HttpTransportSecurity
 	{
 		HttpClientCredentialType client;
@@ -41,22 +43,24 @@ namespace System.ServiceModel
 		{
 		}
 
-		[MonoTODO]
 		public HttpClientCredentialType ClientCredentialType {
 			get { return client; }
 			set { client = value; }
 		}
 
-		[MonoTODO]
 		public HttpProxyCredentialType ProxyCredentialType {
 			get { return proxy; }
 			set { proxy = value; }
 		}
 
-		[MonoTODO]
 		public string Realm {
 			get { return realm; }
 			set { realm = value; }
 		}
+
+#if NET_4_0
+		[MonoTODO]
+		public ExtendedProtectionPolicy ExtendedProtectionPolicy { get; set; }
+#endif
 	}
 }

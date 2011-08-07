@@ -26,7 +26,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
+#if NET_2_0 && !TARGET_DOTNET
 using NUnit.Framework;
 using System;
 using System.Collections;
@@ -76,7 +76,7 @@ namespace MonoTests.System.Web.UI.WebControls.Adapters
 		{
 			internal IEnumerable data;
 			
-			protected override void PerformDataBinding (IEnumerable data)
+			protected internal override void PerformDataBinding (IEnumerable data)
 			{
 				this.data = data;
 			}

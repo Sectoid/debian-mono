@@ -282,13 +282,11 @@ namespace System.Configuration
 				assembly = Assembly.GetCallingAssembly ();
 
 #if !TARGET_JVM
-
 			byte [] pkt = assembly.GetName ().GetPublicKeyToken ();
 			return String.Format ("{0}_{1}_{2}",
 				AppDomain.CurrentDomain.FriendlyName,
-				pkt != null ? "StrongName" : "Url",
+				pkt != null && pkt.Length > 0 ? "StrongName" : "Url",
 				GetEvidenceHash());
-
 #else // AssemblyProductAttribute-based code
 			AssemblyProductAttribute [] attrs = (AssemblyProductAttribute[]) assembly.GetCustomAttributes (typeof (AssemblyProductAttribute), true);
 		
@@ -299,8 +297,10 @@ namespace System.Configuration
 #endif
 		}
 
-		// FIXME: it seems that something else is used
-		// here, to convert hash bytes to string.
+		// Note: Changed from base64() to hex output to avoid unexpected chars like '\' or '/' with filesystem meaning.
+		//       Otherwise eventually filenames, which are invalid on linux or windows, might be created.
+		// Signed-off-by:  Carsten Schlote <schlote@vahanus.net>
+		// TODO: Compare with .NET. It might be also, that their way isn't suitable for Unix OS derivates (slahes in output)
 		private static string GetEvidenceHash ()
 		{
 			Assembly assembly = Assembly.GetEntryAssembly ();
@@ -308,9 +308,11 @@ namespace System.Configuration
 				assembly = Assembly.GetCallingAssembly ();
 
 			byte [] pkt = assembly.GetName ().GetPublicKeyToken ();
-			byte [] hash = SHA1.Create ().ComputeHash (pkt != null ? pkt : Encoding.UTF8.GetBytes (assembly.EscapedCodeBase));
-
-			return Convert.ToBase64String (hash);
+			byte [] hash = SHA1.Create ().ComputeHash (pkt != null && pkt.Length >0 ? pkt : Encoding.UTF8.GetBytes (assembly.EscapedCodeBase));
+			System.Text.StringBuilder evidence_string = new System.Text.StringBuilder();
+			foreach (byte b in hash)
+				evidence_string.AppendFormat("{0:x2}",b);
+			return evidence_string.ToString ();
 		}
 
 		private static string GetProductVersion ()
@@ -613,7 +615,8 @@ namespace System.Configuration
 				config.SectionGroups.Add ("userSettings", userGroup);
 				ApplicationSettingsBase asb = context.CurrentSettings;
 				ClientSettingsSection cs = new ClientSettingsSection ();
-				userGroup.Sections.Add ((asb != null ? asb.GetType () : typeof (ApplicationSettingsBase)).FullName, cs);
+				string class_name = NormalizeInvalidXmlChars ((asb != null ? asb.GetType () : typeof (ApplicationSettingsBase)).FullName);
+				userGroup.Sections.Add (class_name, cs);
 			}
 
 			bool hasChanges = false;
@@ -626,6 +629,10 @@ namespace System.Configuration
 				foreach (SettingsPropertyValue value in collection) {
 					if (checkUserLevel && value.Property.Attributes.Contains (typeof (SettingsManageabilityAttribute)) != isRoaming)
 						continue;
+					// The default impl does not save the ApplicationScopedSetting properties
+					if (value.Property.Attributes.Contains (typeof (ApplicationScopedSettingAttribute)))
+						continue;
+
 					hasChanges = true;
 					SettingElement element = userSection.Settings.Get (value.Name);
 					if (element == null) {
@@ -688,6 +695,20 @@ namespace System.Configuration
 			}
 			config.Save (ConfigurationSaveMode.Minimal, true);
 #endif
+		}
+
+		// NOTE: We should add here all the chars that are valid in a name of a class (Ecma-wise),
+		// but invalid in an xml element name, and provide a better impl if we get too many of them.
+		string NormalizeInvalidXmlChars (string str)
+		{
+			char [] invalid_chars = new char [] { '+' };
+
+			if (str == null || str.IndexOfAny (invalid_chars) == -1)
+				return str;
+
+			// Replace with its hexadecimal values.
+			str = str.Replace ("+", "_x002B_");
+			return str;
 		}
 
 		private void LoadPropertyValue (SettingsPropertyCollection collection, SettingElement element, bool allowOverwrite)
@@ -772,6 +793,7 @@ namespace System.Configuration
 			if (values == null) {
 				values = new SettingsPropertyValueCollection ();
 				string groupName = context ["GroupName"] as string;
+				groupName = NormalizeInvalidXmlChars (groupName); // we likely saved the element removing the non valid xml chars.
 				LoadProperties (exeMapCurrent, collection, ConfigurationUserLevel.None, "applicationSettings", false, groupName);
 				LoadProperties (exeMapCurrent, collection, ConfigurationUserLevel.None, "userSettings", false, groupName);
 

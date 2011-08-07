@@ -41,11 +41,10 @@ using System.IO;
 namespace System.Resources
 {
 	[Serializable]
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public class ResourceManager
 	{
+		static readonly object thisLock = new object ();
 		static Hashtable ResourceCache = new Hashtable (); 
 		static Hashtable NonExistent = Hashtable.Synchronized (new Hashtable ());
 		public static readonly int HeaderVersionNumber = 1;
@@ -54,6 +53,9 @@ namespace System.Resources
 		protected string BaseNameField;
 		protected Assembly MainAssembly;
 		// Maps cultures to ResourceSet objects
+#if NET_4_0
+		[Obsolete ("Use InternalGetResourceSet instead.")]
+#endif
 		protected Hashtable ResourceSets;
 		
 		private bool ignoreCase;
@@ -66,9 +68,7 @@ namespace System.Resources
 		/* Recursing through culture parents stops here */
 		private CultureInfo neutral_culture;
 
-#if NET_2_0
 		private UltimateResourceFallbackLocation fallbackLocation;
-#endif
 		
 		static Hashtable GetResourceSets (Assembly assembly, string basename)
 		{
@@ -120,9 +120,6 @@ namespace System.Resources
 			BaseNameField = baseName;
 			MainAssembly = assembly;
 			ResourceSets = GetResourceSets (MainAssembly, BaseNameField);
-#if ONLY_1_1
-			CheckBaseName ();
-#endif
 			neutral_culture = GetNeutralResourcesLanguage (MainAssembly);
 		}
 
@@ -148,9 +145,6 @@ namespace System.Resources
 			BaseNameField = baseName;
 			MainAssembly = assembly;
 			ResourceSets = GetResourceSets (MainAssembly, BaseNameField);
-#if ONLY_1_1
-			CheckBaseName ();
-#endif
 			resourceSetType = CheckResourceSetType (usingResourceSet, true);
 			neutral_culture = GetNeutralResourcesLanguage (MainAssembly);
 		}
@@ -165,9 +159,6 @@ namespace System.Resources
 
 			BaseNameField = baseName;
 			this.resourceDir = resourceDir;
-#if ONLY_1_1
-			CheckBaseName ();
-#endif
 			resourceSetType = CheckResourceSetType (usingResourceSet, false);
 			ResourceSets = GetResourceSets (MainAssembly, BaseNameField);
 		}
@@ -204,7 +195,7 @@ namespace System.Resources
 			if (culture == null)
 				culture = CultureInfo.CurrentUICulture;
 
-			lock (this) {
+			lock (thisLock) {
 				ResourceSet set = InternalGetResourceSet(culture, true, true);
 				object obj = null;
 				
@@ -239,7 +230,7 @@ namespace System.Resources
 			if (culture == null)
 				throw new ArgumentNullException ("culture");
 
-			lock (this) {
+			lock (thisLock) {
 				return InternalGetResourceSet (culture, createIfNotExists, tryParents);
 			}
 		}
@@ -257,7 +248,7 @@ namespace System.Resources
 			if (culture == null)
 				culture = CultureInfo.CurrentUICulture;
 
-			lock (this) {
+			lock (thisLock) {
 				ResourceSet set = InternalGetResourceSet (culture, true, true);
 				string str = null;
 
@@ -294,7 +285,7 @@ namespace System.Resources
 
 		private string GetResourceFilePath (CultureInfo culture)
 		{
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 			if (resourceDir != null)
 				return Path.Combine (resourceDir, GetResourceFileName (culture));
 			else
@@ -312,15 +303,12 @@ namespace System.Resources
 			return null;
 		}
 
-#if NET_2_0
-		[CLSCompliant (false)]
 		[ComVisible (false)]
 		public UnmanagedMemoryStream GetStream (string name)
 		{
 			return GetStream (name, (CultureInfo) null);
 		}
 
-		[CLSCompliant (false)]
 		[ComVisible (false)]
 		public UnmanagedMemoryStream GetStream (string name, CultureInfo culture)
 		{
@@ -328,22 +316,38 @@ namespace System.Resources
 				throw new ArgumentNullException ("name");
 			if (culture == null)
 				culture = CultureInfo.CurrentUICulture;
-			ResourceSet set = InternalGetResourceSet (culture, true, true);
+			ResourceSet set;
+
+			lock (thisLock) {
+				set = InternalGetResourceSet (culture, true, true);
+			}
+			
 			return set.GetStream (name, ignoreCase);
 		}
-#endif
+
 		protected virtual ResourceSet InternalGetResourceSet (CultureInfo culture, bool createIfNotExists, bool tryParents)
 		{
 			if (culture == null)
 				throw new ArgumentNullException ("key"); // 'key' instead of 'culture' to make a test pass
 
-			ResourceSet set;
+			ResourceSet set = null;
 			
 			/* if we already have this resource set, return it */
 			set = (ResourceSet) ResourceSets [culture];
-			if (set != null)
-				return set;
+			if (set != null) {
+				try {
+					if (!set.IsDisposed)
+						return set;
+				} catch {
+					// ignore
+				}
 
+				ResourceSets.Remove (culture);
+				if (NonExistent.Contains (culture))
+					NonExistent.Remove (culture);
+				set = null;
+			}
+			
 			if (NonExistent.Contains (culture))
 				return null;
 
@@ -478,53 +482,18 @@ namespace System.Resources
 			}
 		}
 
-#if NET_2_0
 		[MonoTODO ("the property exists but is not respected")]
 		protected UltimateResourceFallbackLocation FallbackLocation {
 			get { return fallbackLocation; }
 			set { fallbackLocation = value; }
 		}
-#endif
 
-#if ONLY_1_1
-		void CheckBaseName ()
-		{
-			if (BaseNameField.Length <= 10)
-				return;
-
-			CompareInfo c = CultureInfo.InvariantCulture.CompareInfo;
-			if (!c.IsSuffix (BaseNameField, ".resources", CompareOptions.IgnoreCase))
-				return;
-
-			if (MainAssembly != null) {
-				string resourceFileName = GetResourceFileName (
-					CultureInfo.InvariantCulture);
-				Stream s = GetManifestResourceStreamNoCase (
-					MainAssembly, resourceFileName);
-				if (s != null)
-					return;
-			} else {
-				string resourceFile = GetResourceFilePath (
-					CultureInfo.InvariantCulture);
-				if (File.Exists (resourceFile))
-					return;
-			}
-
-			throw new ArgumentException ("ResourceManager base"
-				+ " name should not end in .resources. It"
-				+ " should be similar to MyResources,"
-				+ " which the ResourceManager can convert"
-				+ " into MyResources.<culture>.resources;"
-				+ " for example, MyResources.en-US.resources.");
-		}
-#endif
 
 		MissingManifestResourceException AssemblyResourceMissing (string fileName)
 		{
 			AssemblyName aname = MainAssembly != null ? MainAssembly.GetName ()
 				: null;
 
-#if NET_2_0
 			string manifestName = GetManifestResourceName (fileName);
 			string msg = string.Format ("Could not find any resources " +
 				"appropriate for the specified culture or the " +
@@ -533,20 +502,6 @@ namespace System.Resources
 				"compile time, or that all the satellite assemblies " +
 				"required are loadable and fully signed.",
 				manifestName, aname != null ? aname.Name : string.Empty);
-#else
-			string location = resourceSource != null ? resourceSource.FullName
-				: "<null>";
-			string msg = String.Format ("Could not find any resources " +
-				"appropriate for the specified culture (or " +
-				"the neutral culture) in the given assembly.  " +
-				"Make sure \"{0}\" was correctly embedded or " +
-				"linked into assembly \"{1}\".{2}" +
-				"baseName: {3}  locationInfo: {4}  resource " +
-				"file name: {0}  assembly: {5}", fileName,
-				aname != null ? aname.Name : "", Environment.NewLine,
-				BaseNameField, location, aname != null ? aname.FullName :
-				"");
-#endif
 			throw new MissingManifestResourceException (msg);
 		}
 

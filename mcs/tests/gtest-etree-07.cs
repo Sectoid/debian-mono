@@ -20,6 +20,26 @@ class C
 		return (int*)1;
 	}
 	
+	void M ()
+	{
+	}
+	
+	int TestInstance ()
+	{
+		Expression<Func<EmptyDelegate>> e = () => M;
+		if (e.Body.ToString () != "Convert(CreateDelegate(EmptyDelegate, value(C), Void M()))")
+			return 1;
+		
+		e.Compile () ();
+		
+		Expression<Func<C, EmptyDelegate>> e2 = (l) => l.M;
+		if (e2.Body.ToString () != "Convert(CreateDelegate(EmptyDelegate, l, Void M()))")
+			return 2;
+		
+		e2.Compile () (this);
+		return 0;
+	}
+	
 	public static int Main ()
 	{
 		Expression<Func<EmptyDelegate>> e = () => new EmptyDelegate (Test);
@@ -52,6 +72,9 @@ class C
 			if (v3.Invoke ()() != (int*)1)
 				return 6;
 		}
+		
+		if (new C ().TestInstance () != 0)
+			return 7;
 
 		Console.WriteLine ("OK");
 		return 0;

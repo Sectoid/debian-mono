@@ -38,19 +38,29 @@ namespace System.Security.Permissions {
 #if NET_2_1
 	[Obsolete ("CAS support is not available with Silverlight applications.")]
 #endif
-#if NET_2_0 || BOOTSTRAP_NET_2_0
 	[ComVisible (true)]
 	[Serializable]
-#endif
 	public enum SecurityAction {
 		Demand = 2,
 		Assert = 3,
+#if NET_4_0
+		[Obsolete ("This requests should not be used")]
+#endif
 		Deny = 4,
 		PermitOnly = 5,
 		LinkDemand = 6,
 		InheritanceDemand = 7,
+#if NET_4_0
+		[Obsolete ("This requests should not be used")]
+#endif
 		RequestMinimum = 8,
+#if NET_4_0
+		[Obsolete ("This requests should not be used")]
+#endif
 		RequestOptional = 9,
+#if NET_4_0
+		[Obsolete ("This requests should not be used")]
+#endif
 		RequestRefuse = 10,
 	}
 }

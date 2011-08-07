@@ -1,3 +1,101 @@
+2011-05-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix common issue in MetadataSet - call MoveToContent() while
+	iterating nodes.
+
+2011-05-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Add new MetadataSetTest and fix couple of minor issues.
+
+2011-05-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Revive this test by implementing mock web server.
+
+2011-05-09  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing XmlSerializerMessageContractImporter work.
+
+	It is part of bugfix #670945.
+
+2011-04-07  Atsushi Eno  <atsushi@ximian.com>
+
+	DataContractSerializerOperationBehavior is done too. Fix
+	moonlight_raw build.
+
+2011-04-01  Peter Gerbrandt  <pg@viadux.de>
+
+	Fix contract description for contracts with deep inheritance
+	hierarchy.
+
+2011-03-07  Peter Gerbrandt  <pg@viadux.de>
+
+	Support for the same interface as service contract and as callback
+	contract.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Message headers are now serialized and deserialized for
+	MessageHeaderDescription.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	MessageHeaderDescription were not filled in message contract.
+	Reject wrong contracts.
+
+2011-02-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Now operations are collected per corresponding
+	ContractDescription.
+
+	This fixes naming of MessageDescription Action URI from its type.
+
+2011-02-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement GetInheritedContracts(), towards bugfix #668089.
+
+2010-10-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not reject contract from the same method, could happen by a
+	type with multiple service contracts within the typie hierarchy.
+
+	For details, see:
+	http://lists.ximian.com/pipermail/mono-devel-list/2010-September/035940.html
+
+2010-09-13  Atsushi Eno  <atsushi@ximian.com>
+
+	implemented large parts of WCF standard endpoints and
+	configuration support.
+
+2010-09-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Add another roundtrip case.
+
+2010-06-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MetadataExchangeBindingsTest.cs : make sure that the target port
+	  of the Uri is available (as some other tests do).
+
+2010-06-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MetadataExchangeBindingsTest.cs : make sure that special casing of
+	  MessageVersion does not happen at this layer.
+
+2010-04-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WsdlExporterTest.cs : fixed and enabled some working tests.
+
+2010-04-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* FaultDescriptionTest.cs : add new test.
+
+2010-03-29  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MetadataResolverTest.cs : enable working tests.
+
+2010-03-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MetadataExchangeBindingsTest.cs : new test.
+
 2010-02-10  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* WsdlImporterTest.cs : ignore whatever make dist broke.
@@ -8,6 +106,11 @@
 2010-02-09  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* WsdlImporterTest.cs : added test for processing ArrayOfXxx types.
+
+2010-01-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceContractGeneratorTest.cs : add test for async method
+	  generation option to generate sync methods as well.
 
 2010-01-22  Atsushi Enomoto  <atsushi@ximian.com>
 

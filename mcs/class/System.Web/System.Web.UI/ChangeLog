@@ -1,3 +1,371 @@
+2011-04-16  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] MinimizableAttributeTypeConverter only converts from
+	strings.
+
+	It returns a boolean 'false' when the passed string matches
+	(case-insensitively) 'false' or is empty, returns 'true'
+	otherwise. All the other types (and a null value) cause it to
+	throw the NotSupportedException.
+
+2011-04-14  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #685267. ClientScriptManager generates
+	correct post-back event reference for cross-page post-backs.
+
+2011-03-25  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] HtmlForum.Name rendering updates + test updates
+
+2011-03-25  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #681553. Look for direct child controls
+	before calling up on the NamingContainer
+
+2011-03-24  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #681164. Page.InitOutputCache ignores calls
+	with duration <= 0
+
+	It is ok to ignore such calls for two reasons - the cache with
+	duration <= 0 will not be effective anyway and the @OutputCache
+	directive throws an exception for duration <= 0
+
+2011-03-22  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #681421. Use
+	VirtualPathProvider.CombineVirtualPaths
+
+	The method is used by the parsers to look up dependencies,
+	sources, controls and master pages.
+
+2011-03-22  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Use List <string> instead of ArrayList to keep assembly
+	locations in TemplateParser
+
+2011-03-22  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Use List <string> instead of ArrayList to keep file
+	dependencies
+
+2011-01-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented the 4.0 type,
+	FileLevelMasterPageControlBuilder
+
+2010-12-16  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add support for storing elements with the same hashcode in
+	ConcurrentDictionary. Add corresponding unit test.
+
+2010-11-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Plug SplitOrderedList inside TemplateControl.
+
+2010-11-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Part of fix for bug #653013. StateManagedCollection must
+	perform a full clear in LoadViewState
+
+	If all the items in the collections were saved to the view state,
+	the collection must call the Clear () method in order for the
+	OnClear and OnClearComplete methods to be invoked. Telerik
+	RadComboBox depends on it to remove dynamically added entries
+	before they are recreated when the view state is loaded by the
+	control.
+
+2010-11-11  Daniel J Sell  <dredd422@gmail.com>
+
+	[asp.net] Fix for bug #653192. making MasterPageFile handle
+	relative paths
+
+	MasterPageFile should be relative to the file being parsed, not
+	the request path
+
+2010-11-09  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] A micro-optimization to not call String.Format too much
+	in a loop.
+
+2010-11-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Avoid locking in WireupAutomaticEvents
+
+	Replace a big lock with a ReaderWriterLockSlim.
+
+2010-10-29  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #649551. The LosFormatter (bool, string)
+	constructor does not expect a base64-encoded string.
+
+	Telerik controls pass the string "string" as the macKeyModifier
+	parameter to the constructor. Tests show that .NET accepts such
+	input without throwing an error. The passed string is now
+	converted into a byte array and passed to the LosFormatter (bool,
+	byte[]) constructor.
+
+2010-10-29  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #649034. Control.FindControl continues to
+	search for controls above itself if it's a naming container.
+
+	When a control is a naming container and an attempt to find a
+	control with non-segmented id (e.g. 'myControl') is made, the
+	search continues to the control's naming container if pathOffset
+	is 0, that is we're at the start of the search.
+
+2010-10-28  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #646479. Do not call control's OnLoad twice
+	when it is dynamically added.
+
+	Control.AddedControl will call the new control's LoadRecursive
+	which would trigger its OnLoad handler. OnLoad must be called only
+	if control hasn't already been loaded.
+
+2010-10-27  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #646984. Theme stylesheets must be output in
+	correct order.
+
+	This patch changes the way we output theme stylesheets to match
+	.NET behavior. Theme .css files are sorted using an ordinal and
+	case-insensitive comparer and are output to the page at the top of
+	the <head> element's contents instead of at the end.
+
+2010-10-27  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Added encryption notes to
+	ObjectStateFormatter.{Serialize,Deserialize}
+
+2010-10-26  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #649198. Implement
+	MasterPage.InstantiateInContentPlaceHolder
+
+	Code based on patch from Rikard Johansson <rajoo@mail.com>,
+	thanks!
+
+2010-10-21  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] ObjectStateFormatter.{De}serialize methods taking stream
+	use a magic value to mark the stream.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
+2010-10-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	A few moves/changes following previous patch review
+
+2010-10-08  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Web.UI/LosFormatter.cs: Adapt code for internal API
+	change. Fix some small behaviro changes wrt NET_4_0
+
+	* System.Web.UI/ObjectStateFormatter.cs: Use the new common
+	cryptographic code.
+
+	* System.Web.UI/Page.cs: Remove code that is now unneeded (with
+	the new common cryptogrraphic code).
+
+2010-10-12  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] HiddenFieldPageStatePersister must not attempt to
+	deserialize an empty/null string
+
+2010-10-05  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #643298. A typo prevented the
+	EnableViewStateMac from being recognized in the Page directive.
+
+2010-09-07  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #636709. ClientID must be reset when ID is
+	assigned.
+
+2010-08-24  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #633756. Children processed as properties
+	must be instantiated before using.
+
+	When a server-side control processes its children (in the markup)
+	as properties, it needs to instantiate an object of the property
+	type and assign it to the appropriate property of the control.
+	Failing to do so will cause markup which references properties to
+	fail in certain cases (for instance when the control's property
+	type is a class and it is not instantiated by the control's
+	constructor).
+
+2010-08-06  Marek Habersack  <grendel@twistedcode.net>
+
+	* ApplicationFileParser.cs: added override of DefaultBaseType
+	property which checks whether
+	PageParser.DefaultApplicationBaseType is set and, if yes, uses it
+	to set application base type if there's no custom Global.asax *
+	PageParser.cs: implemented the EnableLongStringsAsResources,
+	DefaultPageBaseType, DefaultApplicationBaseType,
+	DefaultPageParserFilterType and DefaultUserControlBaseType
+	properties. * TemplateParser.cs: if
+	PageParser.DefaultPageParserFilterType is set, use it as the
+	default type to create instance of the page parser filter * Added
+	tests for the new properties. * Added support in standalone runner
+	for setting custom application domain data on domain creation,
+	just before the test is ran.
+
+2010-08-06  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Made TemplateParser.CompileIntoType internal
+
+	This method was present only in 1.0 and 1.1 profiles. It's made
+	internal because we use it throughout our code.
+
+2010-08-06  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,4.0] Added support for declarative per-user control
+	output cache provider selection
+
+	This adds support for the ProviderName attribute of the
+	OutputCache directive in user controls. Also implemented missing
+	support for SqlDependency attribute.
+
+2010-08-05  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,4.0] added ability to store cached user controls in
+	specified output cache provider
+
+	This commit implements the ability to programmatically set the
+	name of the output cache provider to hold cached control data.
+
+2010-08-05  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] use auto-generated backing fields for all properties
+
+2010-08-05  Marek Habersack  <grendel@twistedcode.net>
+
+	* BoundPropertyEntry.cs: implemented the ControlID, ControlType,
+	ExpressionBuilder, FieldName, FormatString, ParsedExpressionData,
+	ReadOnlyProperty and TwoWayBound properties (2.0+)
+
+2010-08-04  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] implemented
+	BaseTemplateParser.{GetReferencedType,GetUserControlType} methods
+
+2010-07-23  Marek Habersack  <mhabersack@novell.com>
+
+	* ClientScriptManager.cs: 4.0 adds a class="aspNetHidden"
+	attribute to the div element surrounding the hidden elements.
+
+2010-07-14  Marek Habersack  <mhabersack@novell.com>
+
+	* DataKeyPropertyAttribute.cs: added (4.0)
+
+2010-07-13  Marek Habersack  <mhabersack@novell.com>
+
+	* Control.cs: moved 4.0 ClientID code to a separate method, so
+	that the ID_SET flag isn't set when necessary.
+
+2010-07-10  Marek Habersack  <mhabersack@novell.com>
+
+	* Control.cs: when setting ClientIDMode remember the value when
+	setting the property for the first time.
+
+2010-07-08  Marek Habersack  <mhabersack@novell.com>
+
+	* Control.cs: if generating a predictable ID and the current
+	control is a naming container, ensure that an ID is generated if
+	not specified by user.
+
+2010-07-02  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControlParser.cs: added support for ClientIDMode
+	property
+
+	* Control.cs: implemented 4.0 features - ClientIDMode and
+	RenderingCompatibility.
+
+	* ClientIDMode.cs, IDataKeysControl.cs: added
+
+2010-06-17  Marek Habersack  <mhabersack@novell.com>
+
+	* RootBuilder.cs: both LINK and META HTML tags must be represented
+	as instances of HtmlGenericControl. Fixes bug #603541
+
+2010-06-02  Marek Habersack  <mhabersack@novell.com>
+
+	* ViewStateMode.cs: added
+
+	* Control.cs: implemented 4.0 ViewStateMode
+
+	* Page.cs: implemented 4.0 properties AutoPostBackControl and
+	RouteData
+
+2010-06-01  Marek Habersack  <mhabersack@novell.com>
+
+	* PageParser.cs: added support for MetaDescription and
+	MetaKeywords main directive attributes
+
+	* Page.cs: implemented MetaDescription and MetaKeywords
+	4.0 properties. 
+
+2010-05-19  Marek Habersack  <mhabersack@novell.com>
+
+	* DataSourceCacheDurationConverter.cs: implemented. Fixes bug
+	#603083
+
+	* PageParser.cs: handle several main directive attributes
+	specially, as they can have expressions as their values. Fixes bug
+	#603532
+
+	* MainDirectiveAttribute.cs: added - helper class to handle
+	directive attributes which can take either a value or an
+	expression.
+
+	* BaseParser.cs: IsDirective, IsExpression and IsDataBound methods
+	moved to here from TemplateControlCompiler.
+
+2010-05-15  Marek Habersack  <mhabersack@novell.com>
+
+	* Control.cs: implemented 4.0 GetRouteUrl overloads and
+	GetUniqueIDRelativeTo
+
+2010-05-05  Marek Habersack  <mhabersack@novell.com>
+
+	* CollectionBuilder.cs: if a type has more than on indexer, check
+	all of them for type compliance in GetChildControlType. Fixes bug
+	#601290. Patch from Kalyanov Dmitry <Kalyanov.Dmitry@gmail.com>,
+	thanks!
+
+2010-04-28  Marek Habersack  <mhabersack@novell.com>
+
+	* KeyedList.cs: do not implement IStateManager in 4.0
+
+2010-04-12  Marek Habersack  <mhabersack@novell.com>
+
+	* PageParser.cs: if EnableViewStateMac option is present in the
+	directive, remember it for later use by the compiler.
+
+	* Page.cs: initialize EnableViewStateMac with the default read
+	from the config.
+
+	The above fix cross-site scripting vulnerability (CVE: CVE-2010-1459)
+	Credits: Web Security Research Group (WSRG) of Hewlett Packard
+	(HP)
+
+2010-04-07  Marek Habersack  <mhabersack@novell.com>
+
+	* Control.cs: control cache must be filled using the local
+	_controls collection instead of the virtual Controls
+	property. Fixes bug #594238
+	Check if _controls isn't null before using it.
+
+2010-04-06  Marek Safar  <marek.safar@gmail.com>
+
+	* FileLevelControlBuilderAttribute.cs: Use reference comparison.
+
 2010-01-20  Marek Habersack  <mhabersack@novell.com>
 
 	* ObjectStateFormatter.cs: implemented support for IndexedString
@@ -58,6 +426,11 @@
 	* ObjectStateFormatter.cs: if a type is associated with a type
 	converter, do not check if the converter can convert FROM the type
 	in question, as this is implied. Fixes bug #545979
+
+2009-10-09  Marek Habersack  <mhabersack@novell.com>
+
+	* Control.cs: implemented the LoadViewStateByID property as well
+	as saving/restoring the view state by control's ID.
 
 2009-09-22  Marek Habersack  <mhabersack@novell.com>
 

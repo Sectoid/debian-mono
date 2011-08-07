@@ -44,9 +44,8 @@ using System.Text;
 using Mono.Xml;
 #if NET_2_1
 using XmlSchemaException = System.Xml.XmlException;
-#else
-using System.Xml.Schema;
 #endif
+using System.Xml.Schema;
 
 namespace System.Xml
 {
@@ -936,7 +935,7 @@ namespace System.Xml
 
 		private DTDAttributeDefinition ReadAttributeDefinition ()
 		{
-#if NET_2_1_HACK
+#if MOONLIGHT
 			throw new NotImplementedException ();
 #else
 			DTDAttributeDefinition def = new DTDAttributeDefinition (DTD);
@@ -1508,7 +1507,7 @@ namespace System.Xml
 		private void AppendNameChar (int ch)
 		{
 			CheckNameCapacity ();
-			if (ch < Char.MaxValue)
+			if (ch <= Char.MaxValue)
 				nameBuffer [nameLength++] = (char) ch;
 			else {
 				nameBuffer [nameLength++] = (char) (ch / 0x10000 + 0xD800 - 1);

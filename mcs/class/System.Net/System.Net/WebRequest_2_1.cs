@@ -31,22 +31,33 @@
 
 #if NET_2_1
 
-using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 
 namespace System.Net {
 
 	public abstract class WebRequest {
 
+		const string SystemWindows = "System.Windows, PublicKey=00240000048000009400000006020000002400005253413100040000010001008D56C76F9E8649383049F383C44BE0EC204181822A6C31CF5EB7EF486944D032188EA1D3920763712CCB12D75FB77E9811149E6148E5D32FBAAB37611C1878DDC19E20EF135D0CB2CFF2BFEC3D115810C3D9069638FE4BE215DBF795861920E5AB6F7DB2E2CEEF136AC23D5DD2BF031700AEC232F6C6B1C785B4305C123B37AB";
+		const string BrowserStack = "System.Net.Browser.BrowserHttpWebRequestCreator, " + SystemWindows;
+		const string ClientStack = "System.Net.Browser.ClientHttpWebRequestCreator, " + SystemWindows;
+
 		static IWebRequestCreate default_creator;
+		static IWebRequestCreate browser_creator;
+		static IWebRequestCreate client_creator;
 		static Dictionary<string, IWebRequestCreate> registred_prefixes;
+
+		internal Action<long,long> progress;
 
 		public abstract string ContentType { get; set; }
 		public abstract WebHeaderCollection Headers { get; set; }
 		public abstract string Method { get; set; }
 		public abstract Uri RequestUri { get; }
+
+		public virtual long ContentLength {
+			get { throw NotImplemented (); }
+			set { throw NotImplemented (); }
+		}
 
 		// custom registered prefixes return null (unless they override this)
 		public virtual IWebRequestCreate CreatorInstance { 
@@ -58,9 +69,17 @@ namespace System.Net {
 			set { throw NotImplemented (); }
 		}
 
+		public virtual bool UseDefaultCredentials {
+			get { throw NotImplemented (); }
+			set { throw NotImplemented (); }
+		}
+
 		static WebRequest ()
 		{
 			registred_prefixes = new Dictionary<string, IWebRequestCreate> (StringComparer.OrdinalIgnoreCase);
+			browser_creator = (IWebRequestCreate) Activator.CreateInstance (Type.GetType (BrowserStack));
+			client_creator = (IWebRequestCreate) Activator.CreateInstance (Type.GetType (ClientStack));
+			default_creator = browser_creator;
 		}
 
 		protected WebRequest ()
@@ -88,29 +107,24 @@ namespace System.Net {
 			if (uri == null)
 				throw new ArgumentNullException ("uri");
 			if (!uri.IsAbsoluteUri)
-				throw new InvalidOperationException ("Uri is not absolute.");
+				throw new InvalidOperationException ("This operation is not supported for a relative URI.");
 
 			IWebRequestCreate creator = null;
-
-			// first we look if a domain is registred
-			string scheme = uri.Scheme + Uri.SchemeDelimiter;
-			string domain = scheme + uri.DnsSafeHost;
-			if (!registred_prefixes.TryGetValue (domain, out creator)) {
-				// next we look if the protocol is registred (the delimiter '://' is important)
-				if (!registred_prefixes.TryGetValue (scheme, out creator)) {
-					scheme = uri.Scheme; // without the delimiter
-					// then we default to SL
-					switch (scheme) {
-					case "http":
-					case "https":
-						creator = default_creator;
-						break;
-					default:
-						registred_prefixes.TryGetValue (scheme, out creator);
-						break;
-					}
+			int n = -1;
+			// look for the most promising match in the registred prefixes
+			foreach (KeyValuePair<string, IWebRequestCreate> kvp in registred_prefixes) {
+				string key = kvp.Key;
+				if ((key.Length > n) && uri.AbsoluteUri.StartsWith (key)) {
+					creator = kvp.Value;
+					n = key.Length;
 				}
 			}
+
+			// 'http:/[/]' or 'https:/[/]' needs to be registred otherwise it gets ignored
+			// note that this is unlike other protocols (e.g. 'ftp') - see unit tests
+			string scheme = uri.Scheme;
+			if ((scheme == "http" && n <= 5) || (scheme == "https" && n <= 6))
+				creator = default_creator;
 
 			if (creator == null)
 				throw new NotSupportedException (string.Format ("Scheme {0} not supported", scheme));
@@ -118,9 +132,26 @@ namespace System.Net {
 			return creator.Create (uri);
 		}
 
-		internal static void RegisterDefaultStack (IWebRequestCreate creator)
+		public static HttpWebRequest CreateHttp (string requestUriString)
 		{
-			default_creator = creator;
+			return CreateHttp (new Uri (requestUriString));
+		}
+
+		public static HttpWebRequest CreateHttp (Uri uri)
+		{
+			if (uri == null)
+				throw new ArgumentNullException ("uri");
+			if (!uri.IsAbsoluteUri)
+				throw new InvalidOperationException ("Uri is not absolute.");
+
+			// we do not check the registred prefixes from CreateHttp and *always* use the client HTTP stack
+			switch (uri.Scheme) {
+			case "http":
+			case "https":
+				return (HttpWebRequest) client_creator.Create (uri);
+			default:
+				throw new NotSupportedException (string.Format ("Scheme {0} not supported", uri.Scheme));
+			}
 		}
 
 		// We can register for
@@ -143,18 +174,16 @@ namespace System.Net {
 				prefix = uri.Scheme + Uri.SchemeDelimiter + uri.DnsSafeHost;
 			}
 
+			// registering 'http', 'http://' or even 'http:/' are all ok - but *never* would 'http:' be correct!
+			if ((String.Compare (prefix, "http:", StringComparison.OrdinalIgnoreCase) == 0) ||
+			    (String.Compare (prefix, "https:", StringComparison.OrdinalIgnoreCase) == 0))
+				return false;
+
 			if (registred_prefixes.ContainsKey (prefix))
 				return false;
 
 			registred_prefixes.Add (prefix, creator);
 			return true;
-		}
-
-		internal void SetupProgressDelegate (Action<long,long> progress)
-		{
-			FieldInfo fi = GetType ().GetField ("progress", BindingFlags.Instance | BindingFlags.NonPublic);
-			if (fi != null)
-				fi.SetValue (this, progress);
 		}
 
 		static Exception NotImplemented ()

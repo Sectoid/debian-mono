@@ -62,17 +62,16 @@ namespace System.ServiceModel.Description
 		{
 		}
 
+		internal HttpGetWsdl Instance {
+			get { return instance; }
+		}
+
 		[MonoTODO]
 		public MetadataSet Metadata {
 			get {
 				if (metadata == null) {
-					MetadataExporter exporter = new WsdlExporter ();
-					foreach (ServiceEndpoint ep in owner.Description.Endpoints) {
-						if (ep.Contract.Name == ServiceMetadataBehavior.MexContractName)
-							continue;
-
-						exporter.ExportEndpoint (ep);
-					}
+					var exporter = new WsdlExporter ();
+					exporter.ExportEndpoints (owner.Description.Endpoints, new XmlQualifiedName (owner.Description.Name, owner.Description.Namespace));
 					metadata = exporter.GetGeneratedMetadata ();
 				}
 				return metadata;
@@ -92,9 +91,6 @@ namespace System.ServiceModel.Description
 			return sme;
 		}
 
-		// FIXME: distinguish HTTP and HTTPS in the Url properties.
-		// FIXME: reject such ServiceDescription that has no HTTP(S) binding.
-		// FIXME: it should not use the binding that is used in the ServiceEndpoint. For example, WSDL results have to be given as text, not binary.
 		// FIXME: if the ServiceDescription has a base address (e.g. http://localhost:8080) and HttpGetUrl is empty, it returns UnknownDestination while it is expected to return the HTTP help page.
 		internal void EnsureChannelDispatcher (bool isMex, string scheme, Uri uri, WCFBinding binding)
 		{
@@ -105,14 +101,8 @@ namespace System.ServiceModel.Description
 
 			if (dispatchers == null)
 				dispatchers = new Dictionary<Uri, ChannelDispatcher> ();
-			else if (dispatchers.ContainsKey (uri)) {
-				var info = dispatchers [uri].Listener.GetProperty<MetadataPublishingInfo> ();
-				if (isMex)
-					info.SupportsMex = true;
-				else
-					info.SupportsHelp = true;
-				return;
-			}
+			else if (dispatchers.ContainsKey (uri))
+				return; // already exists (e.g. reached here for wsdl while help is already filled on the same URI.)
 
 			if (binding == null) {
 				switch (scheme) {
@@ -139,11 +129,9 @@ namespace System.ServiceModel.Description
 				ListenUri = uri,
 			};
 
-			var channelDispatcher = new DispatcherBuilder ().BuildChannelDispatcher (owner.Description.ServiceType, se, new BindingParameterCollection ());
-			// add HttpGetWsdl to indicate that the ChannelDispatcher is for mex or help.
-			var listener = channelDispatcher.Listener as ChannelListenerBase;
-			if (listener != null)
-				listener.Properties.Add (new MetadataPublishingInfo () { SupportsMex = isMex, SupportsHelp = !isMex, Instance = instance });
+			var channelDispatcher = new DispatcherBuilder (Owner).BuildChannelDispatcher (owner.Description.ServiceType, se, new BindingParameterCollection ());
+			channelDispatcher.MessageVersion = MessageVersion.None; // it has no MessageVersion.
+			channelDispatcher.IsMex = true;
 			channelDispatcher.Endpoints [0].DispatchRuntime.InstanceContextProvider = new SingletonInstanceContextProvider (new InstanceContext (owner, instance));
 
 			dispatchers.Add (uri, channelDispatcher);
@@ -167,18 +155,6 @@ namespace System.ServiceModel.Description
 	{
 		[OperationContract (Action = "*", ReplyAction = "*")]
 		SMMessage Get (SMMessage req);
-	}
-
-	// It is used to identify which page to serve when a channel dispatcher 
-	// has a listener to an relatively empty URI (conflicting with the 
-	// target service endpoint)
-	//
-	// Can't be enum as it is for GetProperty<T> ().
-	internal class MetadataPublishingInfo
-	{
-		public bool SupportsMex { get; set; }
-		public bool SupportsHelp { get; set; }
-		public HttpGetWsdl Instance { get; set; }
 	}
 
 	class HttpGetWsdl : IHttpGetHelpPageAndMetadataContract
@@ -222,7 +198,7 @@ namespace System.ServiceModel.Description
 					return CreateWsdlMessage (w);
 			}
 
-			if (query_string [null] == "wsdl") {
+			if (String.Compare (query_string [null], "wsdl", StringComparison.OrdinalIgnoreCase) == 0) {
 				WSServiceDescription wsdl = GetWsdl ("wsdl");
 				if (wsdl != null)
 					return CreateWsdlMessage (wsdl);

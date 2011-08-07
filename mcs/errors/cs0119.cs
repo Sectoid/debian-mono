@@ -1,16 +1,10 @@
-// cs0119.cs: Expression denotes a `method group', where a `variable', `value' or `type' was expected
-// Line: 14
+// CS0119: Expression denotes a `type parameter', where a `variable', `value' or `type' was expected
+// Line: 8
 
-using System;
-
-public class Test
+class C
 {
-    public static void E () 
-    { 
-    }
-
-    public static void Main () 
-    {
-        Console.WriteLine(E.x);
-    }
+	static void Foo<T> ()
+	{
+		T.ToString ();
+	}
 }

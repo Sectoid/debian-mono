@@ -1,0 +1,12 @@
+2010-11-30  Atsushi Eno  <atsushi@ximian.com>
+
+	Support attribute validation.
+
+2010-11-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Implemented XDocument.Validate().
+
+2010-05-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ExtensionsTest.cs :
+	  New tests (not working yet), by Stefan Prutianu.

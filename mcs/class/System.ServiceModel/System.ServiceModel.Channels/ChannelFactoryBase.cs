@@ -34,7 +34,12 @@ using System.ServiceModel.Dispatcher;
 
 namespace System.ServiceModel.Channels
 {
-	internal abstract class TransportChannelFactoryBase<TChannel> : ChannelFactoryBase<TChannel>
+	internal interface IHasMessageEncoder
+	{
+		MessageEncoder MessageEncoder { get; }
+	}
+
+	internal abstract class TransportChannelFactoryBase<TChannel> : ChannelFactoryBase<TChannel>, IHasMessageEncoder
 	{
 		protected TransportChannelFactoryBase (TransportBindingElement source, BindingContext ctx)
 		{
@@ -42,6 +47,8 @@ namespace System.ServiceModel.Channels
 		}
 
 		public TransportBindingElement Transport { get; private set; }
+
+		public MessageEncoder MessageEncoder { get; internal set; }
 
 		Action<TimeSpan> open_delegate;
 
@@ -63,6 +70,15 @@ namespace System.ServiceModel.Channels
 		protected override void OnOpen (TimeSpan timeout)
 		{
 		}
+
+		/* commented out as it is in doubt.
+		public override T GetProperty<T> ()
+		{
+			if (typeof (T) == typeof (MessageVersion))
+				return (T) (object) MessageEncoder.MessageVersion;
+			return base.GetProperty<T> ();
+		}
+		*/
 	}
 
 	public abstract class ChannelFactoryBase<TChannel>
@@ -84,7 +100,9 @@ namespace System.ServiceModel.Channels
 		public TChannel CreateChannel (
 			EndpointAddress remoteAddress)
 		{
-			return CreateChannel (remoteAddress, null);
+			if (remoteAddress == null)
+				throw new ArgumentNullException ("remoteAddress");
+			return CreateChannel (remoteAddress, remoteAddress.Uri);
 		}
 
 		public TChannel CreateChannel (
@@ -92,6 +110,9 @@ namespace System.ServiceModel.Channels
 		{
 			if (remoteAddress == null)
 				throw new ArgumentNullException ("remoteAddress");
+			if (via == null)
+				throw new ArgumentNullException ("via");
+
 			ValidateCreateChannel ();
 			var ch = OnCreateChannel (remoteAddress, via);
 			channels.Add (ch);

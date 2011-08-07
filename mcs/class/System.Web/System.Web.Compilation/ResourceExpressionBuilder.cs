@@ -4,7 +4,7 @@
 // Authors:
 //	Chris Toshok (toshok@ximian.com)
 //
-// (C) 2006 Novell, Inc (http://www.novell.com)
+// (C) 2006-2010 Novell, Inc (http://www.novell.com)
 //
 
 //
@@ -28,7 +28,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 
 using System;
 using System.CodeDom;
@@ -37,12 +36,12 @@ using System.Reflection;
 using System.Web;
 using System.Web.UI;
 
-namespace System.Web.Compilation {
-
+namespace System.Web.Compilation
+{
 	[ExpressionEditor("System.Web.UI.Design.ResourceExpressionEditor, " + Consts.AssemblySystem_Design)]
 	[ExpressionPrefix("Resources")]
-	public class ResourceExpressionBuilder : ExpressionBuilder {
-
+	public class ResourceExpressionBuilder : ExpressionBuilder
+	{
 		public ResourceExpressionBuilder ()
 		{
 		}
@@ -138,18 +137,8 @@ namespace System.Web.Compilation {
 					new CodeThisReferenceExpression (),
 					"GetLocalResourceObject",
 					new CodeExpression [] { new CodePrimitiveExpression (resname) });
-			
-				CodeMethodInvokeExpression convert = new CodeMethodInvokeExpression ();
-				convert.Method = new CodeMethodReferenceExpression (
-					new CodeTypeReferenceExpression (typeof (System.Convert)),
-					"ToString");
-				convert.Parameters.Add (getlro);
-				convert.Parameters.Add (new CodePropertyReferenceExpression (
-								new CodeTypeReferenceExpression (typeof (System.Globalization.CultureInfo)),
-								"CurrentCulture")
-				);
 				
-				return convert;
+				return TemplateControlCompiler.CreateConvertToCall (Type.GetTypeCode (member_type), getlro);
 			} else if (!String.IsNullOrEmpty (memberName)) {
 				CodeMethodInvokeExpression getlro = new CodeMethodInvokeExpression (
 					new CodeThisReferenceExpression (),
@@ -169,6 +158,6 @@ namespace System.Web.Compilation {
 
 }
 
-#endif
+
 
 

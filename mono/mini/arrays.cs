@@ -434,6 +434,14 @@ class Tests {
 		if (sum != 1800)
 			return 12;
 
+		/* Null check */
+		object[,] a13 = null;
+		try {
+			a13 [0, 0] = new Object ();
+			return 13;
+		} catch (NullReferenceException) {
+		}
+
 		return 0;
 	}
 
@@ -614,6 +622,108 @@ class Tests {
 		if (res != null)
 			return 4;
 
+		return 0;
+	}
+
+	public enum IntEnum {
+		A,B,C
+	}
+
+	public enum UintEnum : uint {
+		A,B,C
+	}
+
+	static bool TryCast<T> (object o) {
+		return o is T[];
+	}
+
+	public static int test_0_primitive_array_cast () {
+		object a = new int[1];
+		object b = new uint[1];
+		object c = new IntEnum[1];
+		object d = new UintEnum[1];
+
+		object[] arr = new object[] { a, b, c, d };
+		int err = 1;
+
+		foreach (var v in arr) {
+			if (!TryCast<int> (v))
+				return err;
+			if (!TryCast<uint> (v))
+				return err + 1;
+			if (!TryCast<IntEnum> (v))
+				return err + 2;
+			if (!TryCast<UintEnum> (v))
+				return err + 3;
+			err += 4;
+		}
+
+		foreach (var v in arr) {
+			if (!(v is int[]))
+				return err;
+			if (!(v is uint[]))
+				return err;
+			if (!(v is IntEnum[]))
+				return err;
+			if (!(v is UintEnum[]))
+				return err;
+			err += 4;
+		}
+		return 0;
+	}
+
+	public static int test_0_intptr_array_cast () {
+		object[] a = new object[] { new int[1], new uint[1] };
+		object[] b = new object[] { new long[1], new ulong[1] };
+		object[] c = new object[] { new IntPtr[1], new UIntPtr[1] };
+
+		int err = 1;
+		if (IntPtr.Size == 4) {
+			foreach (var v in a) {
+				if (!(v is IntPtr[]))
+					return err;
+				if (!(v is IntPtr[]))
+					return err;
+				err += 2;
+			}
+			foreach (var v in b) {
+				if (v is IntPtr[])
+					return err;
+				if (v is IntPtr[])
+					return err;
+				err += 2;
+			}
+
+			foreach (var v in c) {
+				if (!(v is int[]))
+					return err;
+				if (!(v is uint[]))
+					return err;
+				err += 2;
+			}
+		} else {
+			foreach (var v in a) {
+				if (v is IntPtr[])
+					return err;
+				if (v is IntPtr[])
+					return err;
+				err += 2;
+			}
+			foreach (var v in b) {
+				if (!(v is IntPtr[]))
+					return err;
+				if (!(v is IntPtr[]))
+					return err;
+				err += 2;
+			}
+			foreach (var v in c) {
+				if (!(v is long[]))
+					return err;
+				if (!(v is ulong[]))
+					return err;
+				err += 2;
+			}
+		}
 		return 0;
 	}
 

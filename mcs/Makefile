@@ -2,18 +2,14 @@ thisdir := .
 
 SUBDIRS := build jay mcs class nunit24 ilasm tools tests errors docs
 
-basic_SUBDIRS := build jay mcs class
-net_1_1_bootstrap_SUBDIRS := build jay mcs class ilasm tools
-net_2_0_bootstrap_SUBDIRS := build jay mcs class ilasm tools
-net_2_0_SUBDIRS := build jay mcs class nunit24 ilasm tools tests errors docs
-net_2_1_bootstrap_SUBDIRS := build mcs class
-net_2_1_raw_SUBDIRS := build mcs class tools
-net_2_1_SUBDIRS := tools tests errors
-monotouch_SUBDIRS := build mcs class
-monotouch_bootstrap_SUBDIRS := build mcs class
-net_3_5_SUBDIRS := build class
-net_4_0_bootstrap_SUBDIRS := build mcs class tools
-net_4_0_SUBDIRS := build mcs class nunit24 ilasm tools tests errors
+basic_SUBDIRS := build jay mcs class tools
+net_2_0_SUBDIRS := build class nunit24 ilasm tools tests errors mcs
+moonlight_raw_SUBDIRS := build class tools mcs
+moonlight_SUBDIRS := tools
+monodroid_SUBDIRS := build class mcs
+monotouch_SUBDIRS := build class mcs
+net_3_5_SUBDIRS := build class tools/xbuild
+net_4_0_SUBDIRS := build class nunit24 ilasm tools tests errors mcs docs
 
 # List of test subdirs that should pass 100%
 centum_tests := \
@@ -53,6 +49,7 @@ net_2_0_centum_tests := \
 	class/Microsoft.Build.Engine		\
 	class/System.Runtime.Serialization	\
 	class/System.IdentityModel		\
+	class/System.ServiceModel		\
 	class/System.ServiceModel.Web		\
 	class/Mono.C5
 
@@ -80,11 +77,11 @@ all-local $(STD_TARGETS:=-local):
 	@:
 
 dir-check:
-	@if [ "$(NO_DIR_CHECK)" = "" -a "$(PROFILE)" != "basic" ]; then echo "Running make from the mcs directory is not supported. Run make from the parent directory (if using a tarball), or from the directory where the runtime is checked out (if using an SVN checkout)."; exit 1; fi
+	@if [ "$(NO_DIR_CHECK)" = "" -a "$(PROFILE)" != "basic" ]; then echo "Running make from the mcs directory is not supported. Run make from the parent directory."; exit 1; fi
 
 # fun specialty targets
 
-PROFILES = net_1_1 net_2_0 net_3_5 net_4_0
+PROFILES = net_2_0 net_3_5 net_4_0
 
 .PHONY: all-profiles $(STD_TARGETS:=-profiles)
 all-profiles $(STD_TARGETS:=-profiles): %-profiles: profiles-do--%
@@ -103,28 +100,19 @@ profiles-do--run-test:
 
 # Orchestrate the bootstrap here.
 _boot_ = all clean install
-$(_boot_:%=profile-do--net_4_0--%):           profile-do--net_4_0--%:           profile-do--net_4_0_bootstrap--%
-$(_boot_:%=profile-do--net_4_0_bootstrap--%): profile-do--net_4_0_bootstrap--%: profile-do--net_2_0--%
+$(_boot_:%=profile-do--net_4_0--%):           profile-do--net_4_0--%:           profile-do--basic--%
 $(_boot_:%=profile-do--net_3_5--%):           profile-do--net_3_5--%:           profile-do--net_2_0--%
-$(_boot_:%=profile-do--net_2_1--%):           profile-do--net_2_1--%:           profile-do--net_2_1_raw--%
-$(_boot_:%=profile-do--monotouch--%):         profile-do--monotouch--%:         profile-do--monotouch_bootstrap--%
-$(_boot_:%=profile-do--monotouch_bootstrap--%): profile-do--monotouch_bootstrap--%: profile-do--net_2_0--%
-$(_boot_:%=profile-do--net_2_1_raw--%):       profile-do--net_2_1_raw--%:       profile-do--net_2_1_bootstrap--%
-$(_boot_:%=profile-do--net_2_1_bootstrap--%): profile-do--net_2_1_bootstrap--%: profile-do--net_2_0--%
-$(_boot_:%=profile-do--net_2_0--%):           profile-do--net_2_0--%:           profile-do--net_2_0_bootstrap--%
-$(_boot_:%=profile-do--net_2_0_bootstrap--%): profile-do--net_2_0_bootstrap--%: profile-do--net_1_1_bootstrap--%
-$(_boot_:%=profile-do--net_1_1--%):           profile-do--net_1_1--%:           profile-do--net_1_1_bootstrap--%
-$(_boot_:%=profile-do--net_1_1_bootstrap--%): profile-do--net_1_1_bootstrap--%: profile-do--basic--%
+$(_boot_:%=profile-do--moonlight--%):         profile-do--moonlight--%:         profile-do--moonlight_raw--%
+$(_boot_:%=profile-do--monodroid--%):         profile-do--monodroid--%:         profile-do--basic--%
+$(_boot_:%=profile-do--monotouch--%):         profile-do--monotouch--%:         profile-do--basic--%
+$(_boot_:%=profile-do--moonlight_raw--%):     profile-do--moonlight_raw--%:     profile-do--basic--%
+$(_boot_:%=profile-do--net_2_0--%):           profile-do--net_2_0--%:           profile-do--basic--%
 
 testcorlib:
 	@cd class/corlib && $(MAKE) test run-test
 
 compiler-tests:
 	$(MAKE) TEST_SUBDIRS="tests errors" run-test-profiles
-
-test-installed-compiler:
-	$(MAKE) TEST_SUBDIRS="tests errors" PROFILE=net_1_1 TEST_RUNTIME=mono MCS=mcs run-test
-	$(MAKE) TEST_SUBDIRS="tests errors" PROFILE=net_2_0 TEST_RUNTIME=mono MCS=gmcs run-test
 
 package := mcs-$(VERSION)
 
@@ -144,10 +132,11 @@ DISTFILES = \
 	MonoIcon.png		\
 	README			\
 	ScalableMonoIcon.svg	\
-	winexe.in		\
-	nunit.key
+	winexe.in
 
 dist-local: dist-default
+
+csproj-local:
 
 dist-pre:
 	rm -rf $(package)

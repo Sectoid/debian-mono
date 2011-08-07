@@ -26,8 +26,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System;
 using System.Diagnostics;
 
@@ -36,7 +34,7 @@ namespace System.Collections
 	//
 	// Custom debugger type proxy to display collections as arrays
 	//
-	sealed class CollectionDebuggerView
+	internal sealed class CollectionDebuggerView
 	{
 		readonly ICollection c;
 
@@ -48,9 +46,7 @@ namespace System.Collections
 		[DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
 		public object[] Items {
 			get {
-				// It does not make much sense to browse more than 1k
-				// of items in debug view
-				var o = new object [Math.Min (c.Count, 1024)];
+				var o = new object [c.Count];
 				c.CopyTo (o, 0);
 				return o;
 			}
@@ -58,4 +54,3 @@ namespace System.Collections
 	}
 }
 
-#endif

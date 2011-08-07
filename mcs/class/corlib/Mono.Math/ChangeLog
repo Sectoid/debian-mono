@@ -1,3 +1,10 @@
+2010-10-18  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* corlib/Mono.Math/BigInteger.cs: *
+	Mono.Security/Mono.Math/BigInteger.cs: Remove Montgomery internal
+	inner class since it's buggy, has not been used for years and
+	confuse some people (seeing ghosts of CVE-2007-5197)
+
 2007-05-31  Alan McGovern  <alan.mcgovern@gmail.com>
 
 	* BigInteger.cs: Don't instantiate a new BigInteger after

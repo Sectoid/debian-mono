@@ -26,6 +26,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 using System;
+using System.Net;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Dispatcher;
@@ -38,16 +39,6 @@ namespace System.ServiceModel.Description
 	{
 		public static WebAttributeInfo GetWebAttributeInfo (this OperationDescription od)
 		{
-#if NET_2_1
-			var mi = od.BeginMethod ?? od.SyncMethod;
-			var atts = mi.GetCustomAttributes (typeof (WebGetAttribute), true);
-			if (atts.Length == 1)
-				return ((WebGetAttribute) atts [0]).Info;
-			atts = mi.GetCustomAttributes (typeof (WebInvokeAttribute), true);
-			if (atts.Length == 1)
-				return ((WebInvokeAttribute) atts [0]).Info;
-			return null;
-#else
 			foreach (IOperationBehavior ob in od.Behaviors) {
 				WebAttributeInfo info = null;
 				var wg = ob as WebGetAttribute;
@@ -58,14 +49,10 @@ namespace System.ServiceModel.Description
 					return wi.Info;
 			}
 			return new WebGetAttribute ().Info; // blank one
-#endif
 		}
 	}
 
-	public class WebHttpBehavior
-#if !NET_2_1
-	 : IEndpointBehavior
-#endif
+	public class WebHttpBehavior : IEndpointBehavior
 	{
 		public WebHttpBehavior ()
 		{
@@ -73,6 +60,14 @@ namespace System.ServiceModel.Description
 			DefaultOutgoingRequestFormat = WebMessageFormat.Xml;
 			DefaultOutgoingResponseFormat = WebMessageFormat.Xml;
 		}
+
+#if NET_4_0
+		public virtual bool AutomaticFormatSelectionEnabled { get; set; }
+
+		public virtual bool FaultExceptionEnabled { get; set; }
+
+		public virtual bool HelpEnabled { get; set; }
+#endif
 
 		public virtual WebMessageBodyStyle DefaultBodyStyle { get; set; }
 
@@ -92,32 +87,30 @@ namespace System.ServiceModel.Description
 		}
 
 #if !NET_2_1
-		[MonoTODO]
 		protected virtual void AddServerErrorHandlers (ServiceEndpoint endpoint, EndpointDispatcher endpointDispatcher)
 		{
-			// endpointDispatcher.ChannelDispatcher.ErrorHandlers.Add (something);
+			endpointDispatcher.ChannelDispatcher.ErrorHandlers.Add (new WebHttpErrorHandler ());
 		}
 #endif
 
 		public virtual void ApplyClientBehavior (ServiceEndpoint endpoint, ClientRuntime clientRuntime)
 		{
 			AddClientErrorInspector (endpoint, clientRuntime);
-#if NET_2_1 && !MONOTOUCH
-			throw new NotSupportedException ("Due to the lack of ClientRuntime.Operations, Silverlight cannot support this binding.");
-#else
 			foreach (ClientOperation oper in clientRuntime.Operations) {
 				var req = GetRequestClientFormatter (endpoint.Contract.Operations.Find (oper.Name), endpoint);
 				var res = GetReplyClientFormatter (endpoint.Contract.Operations.Find (oper.Name), endpoint);
 				oper.Formatter = new ClientPairFormatter (req, res);
 			}
-#endif
 		}
 
-#if !NET_2_1
 		public virtual void ApplyDispatchBehavior (ServiceEndpoint endpoint, EndpointDispatcher endpointDispatcher)
 		{
+#if NET_2_1
+			throw new NotImplementedException ();
+#else
 			endpointDispatcher.DispatchRuntime.OperationSelector = GetOperationSelector (endpoint);
 			// FIXME: get HostNameComparisonMode from WebHttpBinding by some means.
+			endpointDispatcher.FilterPriority = 1; // It is to take higher priority than that of ServiceMetadataExtension (whose URL likely conflicts with this one).
 			endpointDispatcher.AddressFilter = new PrefixEndpointAddressMessageFilter (endpoint.Address);
 			endpointDispatcher.ContractFilter = new MatchAllMessageFilter ();
 			AddServerErrorHandlers (endpoint, endpointDispatcher);
@@ -127,8 +120,12 @@ namespace System.ServiceModel.Description
 				var res = GetReplyDispatchFormatter (endpoint.Contract.Operations.Find (oper.Name), endpoint);
 				oper.Formatter = new DispatchPairFormatter (req, res);
 			}
-		}
+			endpointDispatcher.DispatchRuntime.UnhandledDispatchOperation = new DispatchOperation (endpointDispatcher.DispatchRuntime, "*", "*", "*") {
+				Invoker = new EndpointNotFoundOperationInvoker (),
+				DeserializeRequest = false,
+				SerializeReply = false};
 #endif
+		}
 
 		internal class ClientPairFormatter : IClientMessageFormatter
 		{
@@ -209,6 +206,61 @@ namespace System.ServiceModel.Description
 		}
 #endif
 
+		WebMessageBodyStyle GetBodyStyle (WebAttributeInfo wai)
+		{
+			return wai != null && wai.IsBodyStyleSetExplicitly ? wai.BodyStyle : DefaultBodyStyle;
+		}
+
+		protected void ValidateOperation (OperationDescription operation)
+		{
+			var wai = operation.GetWebAttributeInfo ();
+			if (wai.Method == "GET")
+				return;
+			var style = GetBodyStyle (wai);
+
+			// if the style is wrapped there won't be problems
+			if (style == WebMessageBodyStyle.Wrapped)
+				return;
+
+			string [] parameters;
+			if (wai.UriTemplate != null) {
+				// find all variables in the URI
+				var uri = new UriTemplate (wai.UriTemplate);
+				parameters = new string [uri.PathSegmentVariableNames.Count + uri.QueryValueVariableNames.Count];
+				uri.PathSegmentVariableNames.CopyTo (parameters, 0);
+				uri.QueryValueVariableNames.CopyTo (parameters, uri.PathSegmentVariableNames.Count);
+
+				// sort because Array.BinarySearch is the easiest way for case-insensitive search
+				Array.Sort (parameters, StringComparer.InvariantCultureIgnoreCase);
+			} else
+				parameters = new string [0];
+
+			bool hasBody = false;
+
+			foreach (var msg in operation.Messages) {
+				if (msg.Direction == MessageDirection.Input) {
+					// the message is for a request
+					// if requests are wrapped there is nothing to check
+					if (style == WebMessageBodyStyle.WrappedRequest)
+						continue;
+
+					foreach (var part in msg.Body.Parts) {
+						if (Array.BinarySearch (parameters, part.Name, StringComparer.InvariantCultureIgnoreCase) < 0) {
+							// this part of the message is not covered by a variable in the URI
+							// so it must be passed in the body
+							if (hasBody)
+								throw new InvalidOperationException (String.Format ("Operation '{0}' has multiple message body parts. Add parameters to the UriTemplate or change the BodyStyle to 'Wrapped' or 'WrappedRequest' on the WebInvoke/WebGet attribute.", operation.Name));
+							hasBody = true;
+						}
+					}
+				} else {
+					// the message is for a response
+					if (style != WebMessageBodyStyle.WrappedResponse && msg.Body.Parts.Count > 0)
+						throw new InvalidOperationException (String.Format ("Operation '{0}' has output parameters. BodyStyle must be 'Wrapped' or 'WrappedResponse' on the operation WebInvoke/WebGet attribute.", operation.Name));
+				}
+			}
+		}
+		
 		[MonoTODO ("check UriTemplate validity")]
 		public virtual void Validate (ServiceEndpoint endpoint)
 		{
@@ -216,28 +268,7 @@ namespace System.ServiceModel.Description
 				throw new ArgumentNullException ("endpoint");
 
 			foreach (var oper in endpoint.Contract.Operations) {
-				var wai = oper.GetWebAttributeInfo ();
-				if (wai.Method == "GET")
-					continue;
-				var style = wai != null && wai.IsBodyStyleSetExplicitly ? wai.BodyStyle : DefaultBodyStyle;
-				foreach (var msg in oper.Messages)
-					switch (style) {
-					case WebMessageBodyStyle.Wrapped:
-						continue;
-					case WebMessageBodyStyle.WrappedRequest:
-						if (msg.Direction == MessageDirection.Output)
-							continue;
-						goto case WebMessageBodyStyle.Bare;
-					case WebMessageBodyStyle.WrappedResponse:
-						if (msg.Direction == MessageDirection.Input)
-							continue;
-						goto case WebMessageBodyStyle.Bare;
-					case WebMessageBodyStyle.Bare:
-					default:
-						if (msg.Body.Parts.Count > 1)
-							throw new InvalidOperationException (String.Format ("{0} message on operation '{1}' has multiple parameters which is not allowed when the operation indicates no wrapper element. BodyStyle must be 'wrapped' on the operation WebInvoke/WebGet attribute.", msg.Direction, oper.Name));
-						break;
-					}
+				ValidateOperation (oper);
 			}
 
 			ValidateBinding (endpoint);
@@ -257,5 +288,52 @@ namespace System.ServiceModel.Description
 			if (!endpoint.Binding.CreateBindingElements ().Find<TransportBindingElement> ().ManualAddressing)
 				throw new InvalidOperationException ("ManualAddressing in the transport binding element in the binding must be true for WebHttpBehavior");
 		}
+
+#if !NET_2_1
+		internal class WebHttpErrorHandler : IErrorHandler
+		{
+			public void ProvideFault (Exception error, MessageVersion version, ref Message fault)
+			{
+				if (!(error is EndpointNotFoundException))
+					return;
+				fault = Message.CreateMessage (version, null);
+				var prop = new HttpResponseMessageProperty ();
+				prop.StatusCode = HttpStatusCode.NotFound;
+				fault.Properties.Add (HttpResponseMessageProperty.Name, prop);
+			}
+			
+			public bool HandleError (Exception error)
+			{
+				return false;
+			}
+		}
+
+		class EndpointNotFoundOperationInvoker : IOperationInvoker
+		{
+			public bool IsSynchronous {
+				get { return true; }
+			}
+
+			public object [] AllocateInputs ()
+			{
+				return new object [1];
+			}
+			
+			public object Invoke (object instance, object [] inputs, out object [] outputs)
+			{
+				throw new EndpointNotFoundException ();
+			}
+			
+			public IAsyncResult InvokeBegin (object instance, object [] inputs, AsyncCallback callback, object state)
+			{
+				throw new EndpointNotFoundException ();
+			}
+
+			public object InvokeEnd (object instance, out object [] outputs, IAsyncResult result)
+			{
+				throw new InvalidOperationException ();
+			}
+		}
+#endif
 	}
 }

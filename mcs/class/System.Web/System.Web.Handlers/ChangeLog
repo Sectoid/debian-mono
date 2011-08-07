@@ -1,3 +1,56 @@
+2011-04-21  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented composite scripts support in
+	System.Web.Extensions
+
+2011-01-03  Marek Habersack  <grendel@twistedcode.net>
+
+	Fix for bug #659064. Resource URLs must always be the same.
+	UpdatePanel triggers must always be initialized.
+
+	String hash cache must not be thread-local. Hashes computed for a
+	string once must be shared by all the threads or different URLs
+	may be generated for the same assembly+resource pair. UpdatePanel
+	triggers must be initialized not only during the Load event but
+	also when they are inserted after that point.
+
+2010-11-09  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Don't instantiate the hash algorithm used to encrypt
+	resource URLs on each request if it can be reused.
+
+	The algorithm instance is kept in a thread-local variable.
+
+2010-11-08  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Optimize memory usage a bit. String hashes are cached in
+	thread-local storage.
+
+2010-11-03  Marek Habersack  <grendel@twistedcode.net>
+
+	* System.Web/System.Web.Handlers/AssemblyResourceLoader.cs:
+	AssemblyResourceLoader/ScriptResourceHandler must always generate
+	the same URL for every assembly+resource pair, or otherwise the
+	browser would re-fetch the resource in situations where it is not
+	desired (e.g. during an async request to the server to update a
+	panel). The generated URLs are not encrypted using real
+	encryption, just hashed. In addition, the handler code got
+	modernized a bit.
+
+2010-10-18  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] make sure the string we pass to DecryptAssemblyResource
+	is a valid Base64 string
+
+2010-10-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	A few moves/changes following previous patch review
+
+2010-10-08  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Web.Handlers/AssemblyResourceLoader.cs: Use the new
+	common cryptographic code and base64 the encrypted data.
+
 2009-07-08 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* AssemblyResourceLoader.cs: send minimal headers set and don't call

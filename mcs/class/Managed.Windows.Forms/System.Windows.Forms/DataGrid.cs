@@ -111,17 +111,12 @@ namespace System.Windows.Forms
 	[DefaultEvent("Navigate")]
 	[DefaultProperty("DataSource")]
 	[Designer("System.Windows.Forms.Design.DataGridDesigner, " + Consts.AssemblySystem_Design, "System.ComponentModel.Design.IDesigner")]
-#if NET_2_0
 	[ComplexBindingProperties ("DataSource", "DataMember")]
 	[ClassInterface (ClassInterfaceType.AutoDispatch)]
 	[ComVisible (true)]
-#endif
 	public class DataGrid : Control, ISupportInitialize, IDataGridEditingService
 	{
 		[Flags]
-#if !NET_2_0
-		[Serializable]
-#endif
 		public enum HitTestType
 		{
 			None		= 0,
@@ -375,14 +370,12 @@ namespace System.Windows.Forms
 			}
 		}
 
-#if NET_2_0
 		[Browsable (false)]
 		[EditorBrowsable (EditorBrowsableState.Never)]
 		public override ImageLayout BackgroundImageLayout {
 			get { return base.BackgroundImageLayout; }
 			set { base.BackgroundImageLayout = value; }
 		}
-#endif
 
 		[DispId(-504)]
 		[DefaultValue(BorderStyle.Fixed3D)]
@@ -465,10 +458,8 @@ namespace System.Windows.Forms
 				if (grid_style.ColumnHeadersVisible != value) {
 					grid_style.ColumnHeadersVisible = value; 
 
-#if NET_2_0
 					// UIA Framework: To keep track of header
 					OnUIAColumnHeadersVisibleChanged ();
-#endif
 				}
 			}
 		}
@@ -489,7 +480,8 @@ namespace System.Windows.Forms
 					throw new Exception ("CurrentCell cannot be set at this time.");
 				}
 
-				if (current_cell.Equals (value)) {
+				/* Even if we are on the same cell, we could need to actually start edition */
+				if (current_cell.Equals (value) && is_editing) {
 					setting_current_cell = false;
 					return;
 				}
@@ -634,11 +626,7 @@ namespace System.Windows.Forms
 
 		[DefaultValue(null)]
 		[RefreshProperties(RefreshProperties.Repaint)]
-#if NET_2_0
 		[AttributeProvider (typeof (IListSource))]
-#else
-		[TypeConverter("System.Windows.Forms.Design.DataSourceConverter, " + Consts.AssemblySystem_Design)]
-#endif
 		public object DataSource {
 			get { return datasource; }
 			set {
@@ -746,12 +734,10 @@ namespace System.Windows.Forms
 				CurrentTableStyle.GridColumnStyles[columnIndex].SetColumnValueAtRow (ListManager,
 												     rowIndex, value); 
 
-#if NET_2_0
 				// UIA Framework: Raising changes in datasource.
 				OnUIAGridCellChanged (new CollectionChangeEventArgs (CollectionChangeAction.Refresh,
 				                                                     new DataGridCell (rowIndex,
  				                                                                       columnIndex)));
-#endif
 			}
 		}
 
@@ -764,9 +750,6 @@ namespace System.Windows.Forms
 			get { return new Font (Font, FontStyle.Underline); }
 		}
 
-#if !NET_2_0
-		[ComVisible(false)]
-#endif
 		[Browsable(false)]
 		[EditorBrowsable(EditorBrowsableState.Never)]
 		public Color LinkHoverColor {
@@ -954,6 +937,14 @@ namespace System.Windows.Forms
 
 		internal int FirstVisibleRow {
 			get { return first_visible_row; }
+		}
+
+		// As opposed to VisibleRowCount, this value is the maximum
+		// *possible* number of visible rows given our area.
+		internal int MaxVisibleRowCount {
+			get {
+				return cells_area.Height / RowHeight;
+			}
 		}
 		
 		internal int RowsCount {
@@ -1476,9 +1467,10 @@ namespace System.Windows.Forms
 			base.OnLeave (e);
 
 			EndEdit ();
-			if (cursor_in_add_row) {
+			if (commit_row_changes)
+				ListManager.EndCurrentEdit ();
+			else
 				ListManager.CancelCurrentEdit ();
-			}
 		}
 
 		protected override void OnMouseDown (MouseEventArgs e)
@@ -2037,8 +2029,10 @@ namespace System.Windows.Forms
 					selected_rows.Keys.CopyTo (rows, 0);
 
 					// reverse order to keep index sanity
+					int edit_row_index = ShowEditRow ? RowsCount : -1; // new cell is +1
 					for (int i = rows.Length - 1; i >= 0; i--)
-						ListManager.RemoveAt (rows [i]);
+						if (rows [i] != edit_row_index)
+							ListManager.RemoveAt (rows [i]);
 
 					CalcAreasAndInvalidate ();
 				}
@@ -2151,21 +2145,17 @@ namespace System.Windows.Forms
 			if (selected_rows.Count == 0)
 				selection_start = row;
 
-#if NET_2_0
 			// UIA Framework: To raise event only when selecting
 			bool wasSelected = rows [row].IsSelected;
-#endif
 
 			selected_rows[row] = true;
 			rows[row].IsSelected = true;
 
 			InvalidateRow (row);
 
-#if NET_2_0
 			// UIA Framework:
 			if (!wasSelected)
 				OnUIASelectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Add, row));
-#endif
 
 		}
 
@@ -2250,20 +2240,16 @@ namespace System.Windows.Forms
 
 		public void UnSelect (int row)
 		{
-#if NET_2_0
 			// UIA Framework: To raise event only when unselecting 
 			bool wasSelected = rows  [row].IsSelected;
 
-#endif
 			rows[row].IsSelected = false;
 			selected_rows.Remove (row);
 			InvalidateRow (row);
 
-#if NET_2_0
 			// UIA Framework: Raises selection event
 			if (!wasSelected)
 				OnUIASelectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Remove, row));
-#endif
 		}
 		#endregion	// Public Instance Methods
 
@@ -2458,7 +2444,6 @@ namespace System.Windows.Forms
 					new_rows[i].VerticalOffset = new_rows[i-1].VerticalOffset + new_rows[i-1].Height;
 			}
 
-#if NET_2_0
 			// UIA Framework event: Updates collection list depending on binding
 			CollectionChangeAction action = CollectionChangeAction.Refresh;
 			if (rows != null) {
@@ -2467,15 +2452,12 @@ namespace System.Windows.Forms
 				else
 					action = CollectionChangeAction.Remove;
 			}
-#endif
 			rows = new_rows;
 
 			if (recalc)
 				CalcAreasAndInvalidate ();
-#if NET_2_0
 			// UIA Framework event: Row added/removed 
 			OnUIACollectionChangedEvent (new CollectionChangeEventArgs (action, -1));
-#endif 
 		}
 
 		internal void UpdateRowsFrom (DataGridRelationshipRow row)
@@ -2520,6 +2502,13 @@ namespace System.Windows.Forms
 
 		private void OnListManagerPositionChanged (object sender, EventArgs e)
 		{
+			// Set the field directly, as we are empty now and using CurrentRow
+			// directly would add a new row in this case.
+			if (list_manager.Count == 0) {
+				current_cell = new DataGridCell (0, 0);
+				return;
+			}
+
 			from_positionchanged_handler = true;
 			CurrentRow = list_manager.Position;
 			from_positionchanged_handler = false;
@@ -2593,7 +2582,8 @@ namespace System.Windows.Forms
 			if (!CurrentTableStyle.GridColumnStyles[CurrentColumn].bound)
 				return;
 
-			if (ListManager != null && ListManager.Count == 0)
+			// if we don't have any rows nor the "new" cell, there's nothing to do
+			if (ListManager != null && (ListManager.Count == 0 && !ListManager.AllowNew))
 				return;
 
 			is_editing = true;
@@ -2779,14 +2769,12 @@ namespace System.Windows.Forms
 			remove { base.BackgroundImageChanged -= value; }
 		}
 
-#if NET_2_0
 		[Browsable(false)]
 		[EditorBrowsable(EditorBrowsableState.Never)]
 		public new event EventHandler BackgroundImageLayoutChanged {
 			add { base.BackgroundImageLayoutChanged += value; }
 			remove { base.BackgroundImageLayoutChanged -= value; }
 		}
-#endif
 
 		[Browsable(false)]
 		[EditorBrowsable(EditorBrowsableState.Never)]
@@ -3013,7 +3001,7 @@ namespace System.Windows.Forms
 				UpdateVisibleRowCount ();
 
 				needHoriz = (width_of_all_columns > visible_cells_width);
-				needVert = (allrows > visible_row_count);
+				needVert = (allrows > MaxVisibleRowCount);
 			}
 
 			int horiz_scrollbar_width = ClientRectangle.Width;
@@ -3345,8 +3333,7 @@ namespace System.Windows.Forms
 
 		int VLargeChange {
 			get { 
-				// the possible number of visible rows
-				return cells_area.Height / RowHeight;
+				return MaxVisibleRowCount;
 			}
 		}
 
@@ -3354,8 +3341,6 @@ namespace System.Windows.Forms
 
 		#endregion // Code originally in DataGridDrawingLogic.cs
 
-#if NET_2_0
-		
 		#region UIA Framework: Methods, Properties and Events
 		
 		static object UIACollectionChangedEvent = new object ();
@@ -3447,8 +3432,6 @@ namespace System.Windows.Forms
 		}
 
 		#endregion // UIA Framework: Methods, Properties and Events
-
-#endif
 
 	}
 }

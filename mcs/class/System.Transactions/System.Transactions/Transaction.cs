@@ -30,14 +30,14 @@ namespace System.Transactions
 		ArrayList dependents = new ArrayList ();
 
 		/* Volatile enlistments */
-		List <IEnlistmentNotification> volatiles = new List <IEnlistmentNotification> ();
+		List <IEnlistmentNotification> volatiles;
 
 		/* Durable enlistments 
 		   Durable RMs can also have 2 Phase commit but
 		   not in LTM, and that is what we are supporting
 		   right now   
 		 */
-		List <ISinglePhaseNotification> durables = new List <ISinglePhaseNotification> ();
+		List <ISinglePhaseNotification> durables;
 
 		delegate void AsyncCommit ();
 		
@@ -48,7 +48,24 @@ namespace System.Transactions
 		TransactionScope scope = null;
 		
 		Exception innerException;
+		Guid tag = Guid.NewGuid ();
 
+		List <IEnlistmentNotification> Volatiles {
+			get {
+				if (volatiles == null)
+					volatiles = new List <IEnlistmentNotification> ();
+				return volatiles;
+			}
+		}
+
+		List <ISinglePhaseNotification> Durables {
+			get {
+				if (durables == null)
+					durables = new List <ISinglePhaseNotification> ();
+				return durables;
+			}
+		}
+		
 		internal Transaction ()
 		{
 			info = new TransactionInformation ();
@@ -60,6 +77,8 @@ namespace System.Transactions
 			level = other.level;
 			info = other.info;
 			dependents = other.dependents;
+			volatiles = other.Volatiles;
+			durables = other.Durables;
 		}
 
 		[MonoTODO]
@@ -137,6 +156,7 @@ namespace System.Transactions
 			ISinglePhaseNotification notification,
 			EnlistmentOptions options)
 		{
+			var durables = Durables;
 			if (durables.Count == 1)
 				throw new NotImplementedException ("Only LTM supported. Cannot have more than 1 durable resource per transaction.");
 
@@ -181,7 +201,7 @@ namespace System.Transactions
 		{
 			EnsureIncompleteCurrentScope (); 
 			/* FIXME: Handle options.EnlistDuringPrepareRequired */
-			volatiles.Add (notification);
+			Volatiles.Add (notification);
 
 			/* FIXME: Enlistment.. ? */
 			return new Enlistment ();
@@ -234,7 +254,10 @@ namespace System.Transactions
 		internal void Rollback (Exception ex, IEnlistmentNotification enlisted)
 		{
 			if (aborted)
+			{
+				FireCompleted ();
 				return;
+			}
 
 			/* See test ExplicitTransaction7 */
 			if (info.Status == TransactionStatus.Committed)
@@ -242,14 +265,17 @@ namespace System.Transactions
 
 			innerException = ex;
 			Enlistment e = new Enlistment ();
-			foreach (IEnlistmentNotification prep in volatiles)
+			foreach (IEnlistmentNotification prep in Volatiles)
 				if (prep != enlisted)
 					prep.Rollback (e);
 
+			var durables = Durables;
 			if (durables.Count > 0 && durables [0] != enlisted)
 				durables [0].Rollback (e);
 
 			Aborted = true;
+
+			FireCompleted ();
 		}
 
 		bool Aborted {
@@ -289,7 +315,17 @@ namespace System.Transactions
 
 			this.committing = true;
 
-			DoCommit ();		
+			try {
+				DoCommit ();	
+			}
+			catch (TransactionException)
+			{
+				throw;
+			}
+			catch (Exception ex)
+			{
+				throw new TransactionAbortedException("Transaction failed", ex);
+			}
 		}
 		
 		private void DoCommit ()
@@ -301,26 +337,30 @@ namespace System.Transactions
 				CheckAborted ();
 			}
 
-			if (volatiles.Count == 1 && durables.Count == 0) {
+			var volatiles = Volatiles;
+			var durables = Durables;
+			if (volatiles.Count == 1 && durables.Count == 0)
+			{
 				/* Special case */
-				ISinglePhaseNotification single = volatiles [0] as ISinglePhaseNotification;
-				if (single != null) {
-					DoSingleCommit (single);
-					Complete ();
+				ISinglePhaseNotification single = volatiles[0] as ISinglePhaseNotification;
+				if (single != null)
+				{
+					DoSingleCommit(single);
+					Complete();
 					return;
 				}
-			} 
+			}
 
 			if (volatiles.Count > 0)
-				DoPreparePhase ();
+				DoPreparePhase();
 
 			if (durables.Count > 0)
-				DoSingleCommit (durables [0]);
+				DoSingleCommit(durables[0]);
 
 			if (volatiles.Count > 0)
-				DoCommitPhase ();
-
-			Complete ();
+				DoCommitPhase();
+			
+			Complete();
 		}
 
 		private void Complete ()
@@ -330,6 +370,8 @@ namespace System.Transactions
 
 			if (!aborted)
 				info.Status = TransactionStatus.Committed;
+
+			FireCompleted ();
 		}
 
 		internal void InitScope (TransactionScope scope)
@@ -344,26 +386,38 @@ namespace System.Transactions
 			Scope = scope;	
 		}
 
+		static void PrepareCallbackWrapper(object state)
+		{
+			PreparingEnlistment enlist = state as PreparingEnlistment;
+			enlist.EnlistmentNotification.Prepare(enlist);
+		}
+
 		void DoPreparePhase ()
 		{
-			PreparingEnlistment pe;
-			foreach (IEnlistmentNotification enlisted in volatiles) {
-				pe = new PreparingEnlistment (this, enlisted);
+			// Call prepare on all volatile managers.
+			foreach (IEnlistmentNotification enlist in Volatiles)
+			{
+				PreparingEnlistment pe = new PreparingEnlistment (this, enlist);
+				ThreadPool.QueueUserWorkItem (new WaitCallback(PrepareCallbackWrapper), pe);
 
-				enlisted.Prepare (pe);
+				/* Wait (with timeout) for manager to prepare */
+				TimeSpan timeout = Scope != null ? Scope.Timeout : TransactionManager.DefaultTimeout;
 
-				/* FIXME: Where should this timeout value come from? 
-				   current scope?
-				   Wait after all Prepare()'s are sent
-				pe.WaitHandle.WaitOne (new TimeSpan (0,0,5), true); */
+				// FIXME: Should we managers in parallel or on-by-one?
+				if (!pe.WaitHandle.WaitOne(timeout, true))
+				{
+					this.Aborted = true;
+					throw new TimeoutException("Transaction timedout");
+				}
 
-				if (!pe.IsPrepared) {
+				if (!pe.IsPrepared)
+				{
 					/* FIXME: if not prepared & !aborted as yet, then 
-					   this is inDoubt ? . For now, setting aborted = true */
+						this is inDoubt ? . For now, setting aborted = true */
 					Aborted = true;
 					break;
 				}
-			}
+			}			
 			
 			/* Either InDoubt(tmp) or Prepare failed and
 			   Tx has rolledback */
@@ -372,7 +426,7 @@ namespace System.Transactions
 
 		void DoCommitPhase ()
 		{
-			foreach (IEnlistmentNotification enlisted in volatiles) {
+			foreach (IEnlistmentNotification enlisted in Volatiles) {
 				Enlistment e = new Enlistment ();
 				enlisted.Commit (e);
 				/* Note: e.Done doesn't matter for volatile RMs */
@@ -393,6 +447,12 @@ namespace System.Transactions
 		{
 			if (aborted)
 				throw new TransactionAbortedException ("Transaction has aborted", innerException);
+		}
+
+		void FireCompleted ()
+		{
+			if (TransactionCompleted != null)
+				TransactionCompleted (this, new TransactionEventArgs(this));
 		}
 
 		static void EnsureIncompleteCurrentScope ()

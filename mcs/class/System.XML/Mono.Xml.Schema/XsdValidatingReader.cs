@@ -523,6 +523,16 @@ namespace Mono.Xml.Schema
 					dt = st.Datatype;
 				} else {
 					ComplexType ct = Context.ActualType as ComplexType;
+					var ctsm = ct.ContentModel as XmlSchemaSimpleContent;
+					if (ctsm != null) {
+						var scr = ctsm.Content as XmlSchemaSimpleContentRestriction;
+						if (scr != null)
+							st = FindSimpleBaseType (scr.BaseType ?? FindType (scr.BaseTypeName));
+						var sce = ctsm.Content as XmlSchemaSimpleContentExtension;
+						if (sce != null)
+							st = FindSimpleBaseType (FindType (sce.BaseTypeName));
+					}
+
 					dt = ct.Datatype;
 					switch (ct.ContentType) {
 					case XmlSchemaContentType.ElementOnly:
@@ -550,6 +560,16 @@ namespace Mono.Xml.Schema
 #endregion
 
 			shouldValidateCharacters = false;
+		}
+
+		SimpleType FindSimpleBaseType (XmlSchemaType xt)
+		{
+			var st = xt as SimpleType;
+			if (st != null)
+				return st;
+			if (xt == null)
+				return null;
+			return FindSimpleBaseType (xt.BaseXmlSchemaType);
 		}
 
 		// 3.14.4 String Valid 
@@ -1809,14 +1829,14 @@ namespace Mono.Xml.Schema
 					MissingIDReferences.Remove (str);
 				break;
 			case XmlTokenizedType.IDREF:
-				if (!idList.Contains (str))
+				if (!idList.Contains (str) && !MissingIDReferences.Contains (str))
 					MissingIDReferences.Add (str);
 				break;
 			case XmlTokenizedType.IDREFS:
 				string [] idrefs = (string []) parsedValue;
 				for (int i = 0; i < idrefs.Length; i++) {
 					string id = idrefs [i];
-					if (!idList.Contains (id))
+					if (!idList.Contains (id) && !MissingIDReferences.Contains (str))
 						MissingIDReferences.Add (id);
 				}
 				break;

@@ -38,11 +38,9 @@ using System.Collections;
 
 namespace System.Windows.Forms
 {
-#if NET_2_0
 	[ComVisible (true)]
 	[DefaultBindingProperty ("Text")]
 	[ClassInterface (ClassInterfaceType.AutoDispatch)]
-#endif
 	[DefaultEvent("TextChanged")]
 	[Designer("System.Windows.Forms.Design.TextBoxBaseDesigner, " + Consts.AssemblySystem_Design)]
 	public abstract class TextBoxBase : Control
@@ -154,11 +152,9 @@ namespace System.Windows.Forms
 			ResumeLayout ();
 			
 			SetStyle(ControlStyles.UserPaint | ControlStyles.StandardClick, false);
-#if NET_2_0
 			SetStyle(ControlStyles.UseTextForAccessibility, false);
 			
 			base.SetAutoSizeMode (AutoSizeMode.GrowAndShrink);
-#endif
 
 			canvas_width = ClientSize.Width;
 			canvas_height = ClientSize.Height;
@@ -179,12 +175,10 @@ namespace System.Windows.Forms
 			return s.ToUpper();
 		}
 
-#if NET_2_0
 		internal override Size GetPreferredSizeCore (Size proposedSize)
 		{
 			return new Size (Width, Height);
 		}
-#endif
 
 		internal override void HandleClick (int clicks, MouseEventArgs me)
 		{
@@ -228,21 +222,13 @@ namespace System.Windows.Forms
 			}
 		}
 
-#if NET_2_0
 		[Browsable (false)]
 		[EditorBrowsable (EditorBrowsableState.Never)]
-#endif
 		[DefaultValue(true)]
 		[Localizable(true)]
 		[RefreshProperties(RefreshProperties.Repaint)]
 		[MWFCategory("Behavior")]
-		public
-#if NET_2_0
-		override
-#else
-		virtual
-#endif
-		bool AutoSize {
+		public override bool AutoSize {
 			get {
 				return auto_size;
 			}
@@ -255,9 +241,6 @@ namespace System.Windows.Forms
 							ClientSize = new Size(ClientSize.Width, PreferredHeight);
 						}
 					}
-#if NET_1_1
-					OnAutoSizeChanged(EventArgs.Empty);
-#endif
 				}
 			}
 		}
@@ -342,9 +325,7 @@ namespace System.Windows.Forms
 			}
 		}
 
-#if NET_2_0
 		[MergableProperty (false)]
-#endif
 		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		[Editor("System.Windows.Forms.Design.StringArrayEditor, " + Consts.AssemblySystem_Design, typeof(System.Drawing.Design.UITypeEditor))]
 		[Localizable(true)]
@@ -496,9 +477,7 @@ namespace System.Windows.Forms
 			}
 		}
 
-#if NET_2_0
 		[RefreshProperties (RefreshProperties.Repaint)]	
-#endif
 		[DefaultValue(false)]
 		[MWFCategory("Behavior")]
 		public bool ReadOnly {
@@ -509,14 +488,12 @@ namespace System.Windows.Forms
 			set {
 				if (value != read_only) {
 					read_only = value;
-#if NET_2_0
 					if (!backcolor_set) {
 						if (read_only)
 							background_color = SystemColors.Control;
 						else
 							background_color = SystemColors.Window;
 					}
-#endif
 					OnReadOnlyChanged(EventArgs.Empty);
 					Invalidate ();
 				}
@@ -529,14 +506,13 @@ namespace System.Windows.Forms
 			get {
 				string retval = document.GetSelection ();
 
-#if ONLY_1_1
-				if (!IsHandleCreated && retval == string.Empty)
-					return null;
-#endif
 				return retval;
 			}
 
 			set {
+				if (value == null)
+					value = String.Empty;
+
 				document.ReplaceSelection(CaseAdjust(value), false);
 
 				ScrollToCaret();
@@ -550,22 +526,13 @@ namespace System.Windows.Forms
 			get {
 				int res = document.SelectionLength ();
 
-#if !NET_2_0
-				if (res == 0 && !IsHandleCreated)
-					res = -1;
-#endif
-
 				return res;
 			}
 
 			set {
 				if (value < 0) {
 					string msg = String.Format ("'{0}' is not a valid value for 'SelectionLength'", value);
-#if NET_2_0
 					throw new ArgumentOutOfRangeException ("SelectionLength", msg);
-#else
-					throw new ArgumentException (msg);
-#endif
 				}
 
 				document.InvalidateSelectionArea ();
@@ -599,11 +566,7 @@ namespace System.Windows.Forms
 			set {
 				if (value < 0) {
 					string msg = String.Format ("'{0}' is not a valid value for 'SelectionStart'", value);
-#if NET_2_0
 					throw new ArgumentOutOfRangeException ("SelectionStart", msg);
-#else
-					throw new ArgumentException (msg);
-#endif
 				}
 
 				// If SelectionStart has been used, we don't highlight on focus
@@ -620,7 +583,6 @@ namespace System.Windows.Forms
 			}
 		}
 
-#if NET_2_0
 		[DefaultValue (true)]
 		public virtual bool ShortcutsEnabled {
 			get { return shortcuts_enabled; }
@@ -629,7 +591,6 @@ namespace System.Windows.Forms
 
 		[Editor ("System.ComponentModel.Design.MultilineStringEditor, " + Consts.AssemblySystem_Design,
 			 "System.Drawing.Design.UITypeEditor, " + Consts.AssemblySystem_Drawing)]
-#endif
 		[Localizable(true)]
 		public override string Text {
 			get {
@@ -654,21 +615,20 @@ namespace System.Windows.Forms
 				if (value == Text)
 					return;
 
+				document.Empty ();
 				if ((value != null) && (value != "")) {
-
-					document.Empty ();
-
 					document.Insert (document.GetLine (1), 0, false, value);
-							
-					document.PositionCaret (document.GetLine (1), 0);
-					document.SetSelectionToCaret (true);
-
-					ScrollToCaret ();
 				} else {
-					document.Empty();
-					if (IsHandleCreated)
+					if (IsHandleCreated) {
+						document.SetSelectionToCaret (true);
 						CalculateDocument ();
+					}
 				}
+							
+				document.PositionCaret (document.GetLine (1), 0);
+				document.SetSelectionToCaret (true);
+
+				ScrollToCaret ();
 
 				OnTextChanged(EventArgs.Empty);
 			}
@@ -702,7 +662,6 @@ namespace System.Windows.Forms
 			}
 		}
 
-#if NET_2_0
 		[Browsable (false)]
 		[EditorBrowsable (EditorBrowsableState.Never)]
 		public override ImageLayout BackgroundImageLayout {
@@ -721,11 +680,9 @@ namespace System.Windows.Forms
 		protected override Cursor DefaultCursor {
 			get { return Cursors.IBeam; }
 		}
-#endif
 		#endregion	// Public Instance Properties
 
 		#region Protected Instance Properties
-#if NET_2_0
 		protected override bool CanEnableIme {
 			get {
 				if (ReadOnly || password_char != '\0')
@@ -734,7 +691,6 @@ namespace System.Windows.Forms
 				return true;
 			}
 		}
-#endif
 
 		protected override CreateParams CreateParams {
 			get {
@@ -748,14 +704,12 @@ namespace System.Windows.Forms
 			}
 		}
 
-#if NET_2_0
 		// Currently our double buffering breaks our scrolling, so don't let people enable this
 		[EditorBrowsable (EditorBrowsableState.Never)]
 		protected override bool DoubleBuffered {
 			get { return false; }
 			set { }
 		}
-#endif
 
 		#endregion	// Protected Instance Properties
 
@@ -883,7 +837,6 @@ namespace System.Windows.Forms
 			}
 		}
 
-#if NET_2_0
 		public void DeselectAll ()
 		{
 			SelectionLength = 0;
@@ -975,7 +928,6 @@ namespace System.Windows.Forms
 		{
 			return document.LineTagToCharIndex (document.caret.line, 0);
 		}
-#endif
 		#endregion	// Public Instance Methods
 
 		#region Protected Instance Methods
@@ -1029,15 +981,6 @@ namespace System.Windows.Forms
 				eh (this, e);
 		}
 
-#if ONLY_1_1
-		protected virtual void OnAutoSizeChanged (EventArgs e)
-		{
-			EventHandler eh = (EventHandler)(Events [AutoSizeChangedEvent]);
-			if (eh != null)
-				eh (this, e);
-		}
-#endif
-
 		protected virtual void OnBorderStyleChanged (EventArgs e)
 		{
 			EventHandler eh = (EventHandler)(Events [BorderStyleChangedEvent]);
@@ -1088,12 +1031,10 @@ namespace System.Windows.Forms
 				eh (this, e);
 		}
 
-#if NET_2_0
 		protected override void OnPaddingChanged (EventArgs e)
 		{
 			base.OnPaddingChanged (e);
 		}
-#endif
 
 		protected virtual void OnReadOnlyChanged (EventArgs e)
 		{
@@ -1102,12 +1043,10 @@ namespace System.Windows.Forms
 				eh (this, e);
 		}
 
-#if NET_2_0
 		protected override bool ProcessCmdKey (ref Message msg, Keys keyData)
 		{
 			return base.ProcessCmdKey (ref msg, keyData);
 		}
-#endif
 		protected override bool ProcessDialogKey (Keys keyData)
 		{
 			// The user can use Ctrl-Tab or Ctrl-Shift-Tab to move control focus
@@ -1589,9 +1528,7 @@ namespace System.Windows.Forms
 
 					if (document.Length < max_length) {
 						document.InsertCharAtCaret(c, true);
-#if NET_2_0
 						OnTextUpdate ();
-#endif
 						CaretMoved (this, null);
 						Modified = true;
 						OnTextChanged(EventArgs.Empty);
@@ -1647,15 +1584,9 @@ namespace System.Windows.Forms
 			remove { Events.RemoveHandler (AcceptsTabChangedEvent, value); }
 		}
 
-#if NET_2_0
 		[Browsable (false)]
 		[EditorBrowsable (EditorBrowsableState.Never)]
-#endif
-		public
-#if NET_2_0
-		new
-#endif
-		event EventHandler AutoSizeChanged {
+		public new event EventHandler AutoSizeChanged {
 			add { Events.AddHandler (AutoSizeChangedEvent, value); }
 			remove { Events.RemoveHandler (AutoSizeChangedEvent, value); }
 		}
@@ -1702,7 +1633,6 @@ namespace System.Windows.Forms
 			remove { base.BackgroundImageChanged -= value; }
 		}
 
-#if NET_2_0
 		[Browsable (false)]
 		[EditorBrowsable (EditorBrowsableState.Never)]
 		public new event EventHandler BackgroundImageLayoutChanged {
@@ -1727,10 +1657,6 @@ namespace System.Windows.Forms
 
 		[Browsable (true)]
 		[EditorBrowsable (EditorBrowsableState.Always)]
-#else
-		[Browsable(false)]
-		[EditorBrowsable(EditorBrowsableState.Advanced)]
-#endif
 		public new event EventHandler Click {
 			add { base.Click += value; }
 			remove { base.Click -= value; }
@@ -2298,11 +2224,7 @@ namespace System.Windows.Forms
 			}
 
 			if (found_link == false) {
-#if NET_2_0
 				XplatUI.SetCursor (window.Handle, DefaultCursor.handle);
-#else
-				XplatUI.SetCursor(window.Handle, Cursors.IBeam.handle);
-#endif
 				current_link = null;
 			}
 		}
@@ -2533,7 +2455,6 @@ namespace System.Windows.Forms
 		}
 		#endregion
 
-#if NET_2_0
 		// This is called just before OnTextChanged is called.
 		internal virtual void OnTextUpdate ()
 		{
@@ -2559,6 +2480,5 @@ namespace System.Windows.Forms
 		{
 			base.OnMouseUp (mevent);
 		}
-#endif
 	}
 }

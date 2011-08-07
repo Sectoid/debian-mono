@@ -71,7 +71,6 @@ namespace System.ServiceModel.Security.Tokens
 			set { cancel = value; }
 		}
 
-		[MonoTODO]
 		public override string ToString ()
 		{
 			return base.ToString ();
@@ -119,7 +118,7 @@ namespace System.ServiceModel.Security.Tokens
 			*/
 		}
 
-		protected override void InitializeSecurityTokenRequirement (SecurityTokenRequirement requirement)
+		protected internal override void InitializeSecurityTokenRequirement (SecurityTokenRequirement requirement)
 		{
 			requirement.TokenType =
 				RequireClientCertificate ?

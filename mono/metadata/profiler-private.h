@@ -4,6 +4,7 @@
 
 #include <mono/metadata/profiler.h>
 #include "mono/utils/mono-compiler.h"
+#include <glib.h>
 
 extern MonoProfileFlags mono_profiler_events;
 
@@ -37,10 +38,11 @@ void mono_profiler_allocation      (MonoObject *obj, MonoClass *klass) MONO_INTE
 void mono_profiler_monitor_event   (MonoObject *obj, MonoProfilerMonitorEvent event) MONO_INTERNAL;
 void mono_profiler_stat_hit        (guchar *ip, void *context) MONO_INTERNAL;
 void mono_profiler_stat_call_chain (int call_chain_depth, guchar **ips, void *context) MONO_INTERNAL;
-#define MONO_PROFILER_MAX_STAT_CALL_CHAIN_DEPTH 16
 int  mono_profiler_stat_get_call_chain_depth (void) MONO_INTERNAL;
+MonoProfilerCallChainStrategy  mono_profiler_stat_get_call_chain_strategy (void) MONO_INTERNAL;
 void mono_profiler_thread_start    (gsize tid) MONO_INTERNAL;
 void mono_profiler_thread_end      (gsize tid) MONO_INTERNAL;
+void mono_profiler_thread_name     (gsize tid, const char *name) MONO_INTERNAL;
 
 void mono_profiler_exception_thrown         (MonoObject *exception) MONO_INTERNAL;
 void mono_profiler_exception_method_leave   (MonoMethod *method) MONO_INTERNAL;
@@ -58,11 +60,16 @@ void mono_profiler_class_loaded (MonoClass *klass, int result) MONO_INTERNAL;
 void mono_profiler_appdomain_event  (MonoDomain *domain, int code) MONO_INTERNAL;
 void mono_profiler_appdomain_loaded (MonoDomain *domain, int result) MONO_INTERNAL;
 
+void mono_profiler_iomap (char *report, const char *pathname, const char *new_pathname) MONO_INTERNAL;
+
 MonoProfileCoverageInfo* mono_profiler_coverage_alloc (MonoMethod *method, int entries) MONO_INTERNAL;
 void                     mono_profiler_coverage_free  (MonoMethod *method) MONO_INTERNAL;
 
 void mono_profiler_gc_event       (MonoGCEvent e, int generation) MONO_INTERNAL;
 void mono_profiler_gc_heap_resize (gint64 new_size) MONO_INTERNAL;
+void mono_profiler_gc_moves       (void **objects, int num) MONO_INTERNAL;
+void mono_profiler_gc_handle      (int op, int type, uintptr_t handle, MonoObject *obj) MONO_INTERNAL;
+void mono_profiler_gc_roots       (int num, void **objects, int *root_types, uintptr_t *extra_info) MONO_INTERNAL;
 
 void mono_profiler_code_chunk_new (gpointer chunk, int size) MONO_INTERNAL;
 void mono_profiler_code_chunk_destroy (gpointer chunk) MONO_INTERNAL;

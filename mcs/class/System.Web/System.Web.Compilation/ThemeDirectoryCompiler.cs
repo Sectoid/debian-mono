@@ -4,7 +4,7 @@
 // Authors:
 //   Chris Toshok (toshok@ximian.com)
 //
-// (C) 2006 Novell, Inc. (http://www.novell.com)
+// (C) 2006-2009 Novell, Inc. (http://www.novell.com)
 //
 
 //
@@ -28,8 +28,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System;
 using System.Collections;
 using System.IO;
@@ -39,7 +37,7 @@ using System.Web.Util;
 
 namespace System.Web.UI
 {
-	internal sealed class ThemeDirectoryCompiler
+	sealed class ThemeDirectoryCompiler
 	{
 		public static Type GetCompiledType (string theme, HttpContext context)
 		{
@@ -57,6 +55,8 @@ namespace System.Web.UI
 				ptp.AddDependency (css_files [i]);
 				css_urls [i] = virtualPath + Path.GetFileName (css_files [i]);
 			}
+
+			Array.Sort (css_urls, StringComparer.OrdinalIgnoreCase);
 			ptp.LinkedStyleSheets = css_urls;
 			
 			AspComponentFoundry shared_foundry = new AspComponentFoundry ();
@@ -102,4 +102,3 @@ namespace System.Web.UI
 	}
 }
 
-#endif

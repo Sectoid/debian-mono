@@ -1,7 +1,204 @@
+2011-07-12  Nicolas Graziano  <nicolas.graziano@gmail.com>
+
+	Correct the include files Platform is not in test.
+
+2011-07-06  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	Add System/Platform.cs to *System*.dll.sources
+
+2011-07-05  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	Implemented a shared way to detect MacOSX for System.dll
+
+2011-03-20  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add some missing types to the mobile profile
+
+2011-01-20  Miguel de Icaza  <miguel@gnome.org>
+
+	[sockets] Implement DuplicateAndClose and Socket
+	(SocketInformation) constructor for in-process socket passing
+	(AppDomains)
+
+2011-01-04  Marek Habersack  <grendel@twistedcode.net>
+
+	[system] Unbreak a 4.0 System.ServiceModel test.
+
+	This type is instantiated by one of the tests for the
+	System.ServiceModel.Channels.HttpTransportBindingElement type.
+
+2010-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	Remove no longer used bootstrap profiles
+
+2010-11-05  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.dll.sources: * mobile_System.dll.sources: *
+	moonlight_shared_System.dll.sources: Add new CookieParser.cs to
+	the build
+
+2010-10-26  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* moonlight_shared_System.dll.sources: Add Stopwatch to fix the
+	build
+
+2010-10-20  Atsushi Eno  <atsushi@ximian.com>
+
+	ExtendedProtection Configuration types are also used in WCF 4.0.
+
+2010-10-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Add System.Security.Authentication.ExtendedProtection stubs,
+	referenced by WCF 4.0.
+
+2010-09-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	LocalEndPoint works now for non-blocking connects
+
+	We didn't keep the endpoint around for non-blocking connects and
+	later, when Poll() was called, we didn't have the information.
+	Also 'isbound' wasn't being set in a few places and UDP sockets
+	needed to be marked as not connected after a call to Connect()
+	with an Any address.
+
+	Removed an old test for Connect(Any) with UDP sockets, since this
+	is used to disconnect them now.
+
+	Fixes bug #640749.
+
+2010-09-21  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* System.dll.sources: Add IDesignerLoaderHost2.cs to our build.
+
+2010-09-20  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* System.dll.sources: Add IDesignerHostTransactionState.cs and
+	TypeDescriptionProviderService.cs to our build.
+
+2010-09-13  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* System_test.dll.sources: Include TypeDescriptionProviderTest.cs
+	in our build.
+
+2010-09-09  Jb Evain  <jbevain@gmail.com>
+
+	Fix System usage of bootstrap .sources from the normal .sources
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Fix the monodroid and monotouch profile builds
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Factorize the monotouch and monodroid sources into a
+	mobile.sources
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System build for monodroid
+
+2010-09-07  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* System.dll.sources: Add DateTimeOffsetConverter.cs. *
+	System_test.dll.sources: Add DateTimeOffsetConverterTests.cs.
+
+2010-09-03  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* System_test.dll.sources: Add AttributeCollectionTest.cs.
+
+2010-08-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Update file hierarchy change in System too
+
+2010-08-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add BarrierPostPhaseException and use it when executing post-phase
+	delegate in Barrier.
+
+2010-08-04  Raja R Harinath  <harinath@hurrynot.org>
+
+	Add a dummy SmtpServer to talk to our SmtpClient in unit tests
+
+2010-07-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Makefile: Ensure SECURITY_DEP gets defined in our moonlight
+	raw profile
+
+2010-05-10  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* moonlight_bootstrap_System.dll.sources: Minimal build for 
+	bootstrap. Does not depend on corlib's internals
+	* moonlight_raw_System.dll.sources: Full raw (pre-tuned) build 
+	for Moonlight - includes SSL code
+	* moonlight_shared_System.dll.sources: New. Parts that are both
+	needed for bootstrap and raw builds
+
+2010-04-29  Marek Habersack  <mhabersack@novell.com>
+
+	* System.Security.Authentication.ExtendedProtection/ChannelBinding.cs:
+	added
+
+2010-04-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* moonlight_raw_System.dll.sources: Add new (for SL4) types
+	to moonlight build
+
+2010-04-16  Raja R Harinath  <harinath@hurrynot.org>
+	and Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile (LIBRARY_COMPILE) [USE_BOOT_COMPILE]:
+	Don't override if the profile says it isn't necessary by setting
+	PROFILE_MCS_HAS_BOOTSTRAP_FALLBACK.
+
+2010-04-01  Jb Evain  <jbevain@novell.com>
+
+	* System.dll.sources: add SortedSet to the build.
+
+2010-03-20  Miguel de Icaza  <miguel@novell.com>
+
+	* Eliminate warnings in a bunch of places.
+
+2010-03-19  Miguel de Icaza  <miguel@novell.com>
+
+	* Eliminate warnings in a bunch of places.
+
+2010-03-19  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* moonlight_*_System.dll.sources: Bring extra types so we can
+	build a full, managed, internal HTTP stack to be reused for SL3+
+	* Makefile: Add a INSIDE_SYSTEM define when compiling System.dll
+	to makes it possible to rebuild the same types in System.Net.dll
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* net_2_1_*.dll.sources: rename to moonlight_*.dll.sources.
+
+2010-03-11  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* net_2_1_raw_System.dll.sources: Add existing files that are 
+	part of SL4
+
+2010-03-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* System_test.dll.sources: Add System.Threading/BarrierTest.cs
+
+2010-02-23  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* System_test.dll.sources: Add System.IO.Ports/SerialPortTest.cs.
+
+2010-01-29  Mike Kestner <mkestner@novell.com>
+
+	* System.dll.sources: add System.Net/WebUtility.cs.
+	* System_test.dll.sources: add WebUtilityTest.cs to tests.
+
 2010-01-12  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* System_test.dll.sources: Add NetworkCredentialTest.cs to the tests
-	[Backport r149401]
+
+2009-12-04  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.dll.sources: Add (moved) System.Net/DnsEndPoint.cs
+	to the build (used by 2.1/moonlight and 4.0)
 
 2009-12-01  Sebastien Pouliot  <sebastien@ximian.com>
 
@@ -13,7 +210,6 @@
 	* net_2_1_raw_System.dll.sources: Remove build/common/*.cs files
 	since this will confuse other assemblies (e.g. System.Net.dll)
 	to select mscorlib or System.dll version of the internal types
-	[Backport r145313]
 
 2009-10-15  Jb Evain  <jbevain@novell.com>
 
@@ -27,7 +223,6 @@
 2009-09-26  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* System_test.dll.sources: Add unit tests for SocketAsyncEventArgs
-	[Backport r142675]
 
 2009-09-21  Sebastien Pouliot  <sebastien@ximian.com>
 

@@ -34,9 +34,7 @@ using System.Runtime.InteropServices;
 namespace System.Security.Principal {
 
 	[Serializable]
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public class WindowsPrincipal : IPrincipal {
 
 		private WindowsIdentity _identity;
@@ -64,7 +62,7 @@ namespace System.Security.Principal {
 
 		public virtual bool IsInRole (int rid) 
 		{
-			if (IsPosix) {
+			if (Environment.IsUnix) {
 				return IsMemberOfGroupId (Token, (IntPtr) rid);
 			}
 			else {
@@ -109,7 +107,7 @@ namespace System.Security.Principal {
 			if (role == null)
 				return false;	// ArgumentNullException
 
-			if (IsPosix) {
+			if (Environment.IsUnix) {
 				// note: Posix is always case-sensitive
 				return IsMemberOfGroupName (Token, role);
 			}
@@ -138,7 +136,7 @@ namespace System.Security.Principal {
 
 		public virtual bool IsInRole (WindowsBuiltInRole role)
 		{
-			if (IsPosix) {
+			if (Environment.IsUnix) {
 				// right now we only map Administrator == root
 				string group = null;
 				switch (role) {
@@ -154,20 +152,11 @@ namespace System.Security.Principal {
 				return IsInRole ((int) role);
 			}
 		}
-#if NET_2_0
 		[MonoTODO ("not implemented")]
 		[ComVisible (false)]
 		public virtual bool IsInRole (SecurityIdentifier sid)
 		{
 			throw new NotImplementedException ();
-		}
-#endif
-		private static bool IsPosix {
-			get {
-				int p = (int) Environment.Platform;
-				
-				return p == 128 || p == 4 || p == 6;
-			}
 		}
 
 		private IntPtr Token {

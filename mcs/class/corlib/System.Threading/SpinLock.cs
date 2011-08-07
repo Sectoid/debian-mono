@@ -1,4 +1,3 @@
-#if NET_4_0
 // SpinLock.cs
 //
 // Copyright (c) 2008 Jérémie "Garuma" Laval
@@ -23,154 +22,184 @@
 //
 //
 
+#if NET_4_0
+
 using System;
+using System.Collections.Concurrent;
 using System.Runtime.ConstrainedExecution;
+using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 namespace System.Threading
 {
+	[StructLayout(LayoutKind.Explicit)]
+	internal struct TicketType {
+		[FieldOffset(0)]
+		public long TotalValue;
+		[FieldOffset(0)]
+		public int Value;
+		[FieldOffset(4)]
+		public int Users;
+	}
+
+	/* Implement the ticket SpinLock algorithm described on http://locklessinc.com/articles/locks/
+	 * This lock is usable on both endianness.
+	 * All the try/finally patterns in this class and various extra gimmicks compared to the original
+	 * algorithm are here to avoid problems caused by asynchronous exceptions.
+	 */
+	[System.Diagnostics.DebuggerDisplay ("IsHeld = {IsHeld}")]
+	[System.Diagnostics.DebuggerTypeProxy ("System.Threading.SpinLock+SystemThreading_SpinLockDebugView")]
 	public struct SpinLock
 	{
-		const int isFree = 0;
-		const int isOwned = 1;
-		int lockState;
-		readonly SpinWait sw;
+		TicketType ticket;
+
 		int threadWhoTookLock;
 		readonly bool isThreadOwnerTrackingEnabled;
-		
+
+		static Watch sw = Watch.StartNew ();
+
+		ConcurrentOrderedList<int> stallTickets;
+
 		public bool IsThreadOwnerTrackingEnabled {
 			get {
 				return isThreadOwnerTrackingEnabled;
 			}
 		}
-		
+
 		public bool IsHeld {
 			get {
-				return lockState == isOwned;
+				// No need for barrier here
+				long totalValue = ticket.TotalValue;
+				return (totalValue >> 32) != (totalValue & 0xFFFFFFFF);
 			}
 		}
-		
+
 		public bool IsHeldByCurrentThread {
 			get {
 				if (isThreadOwnerTrackingEnabled)
-					return lockState == isOwned && Thread.CurrentThread.ManagedThreadId == threadWhoTookLock;
+					return IsHeld && Thread.CurrentThread.ManagedThreadId == threadWhoTookLock;
 				else
-					return lockState == isOwned;
+					return IsHeld;
 			}
 		}
 
-		public SpinLock (bool trackId)
+		public SpinLock (bool enableThreadOwnerTracking)
 		{
-			this.isThreadOwnerTrackingEnabled = trackId;
+			this.isThreadOwnerTrackingEnabled = enableThreadOwnerTracking;
 			this.threadWhoTookLock = 0;
-			this.lockState = isFree;
-			this.sw = new SpinWait();
+			this.ticket = new TicketType ();
+			this.stallTickets = null;
 		}
-		
-		void CheckAndSetThreadId ()
-		{
-			if (threadWhoTookLock == Thread.CurrentThread.ManagedThreadId)
-				throw new LockRecursionException("The current thread has already acquired this lock.");
-			threadWhoTookLock = Thread.CurrentThread.ManagedThreadId;
-		}
-		
+
+		[MonoTODO ("Not safe against async exceptions")]
 		public void Enter (ref bool lockTaken)
 		{
-			try {
-				Enter ();
-				lockTaken = lockState == isOwned && Thread.CurrentThread.ManagedThreadId == threadWhoTookLock;
-			} catch {
-				lockTaken = false;
-			}
-		}
-		
-		internal void Enter () 
-		{
-			int result = Interlocked.Exchange (ref lockState, isOwned);
-			
-			//Thread.BeginCriticalRegion();
-			while (result == isOwned) {
-				// If resource available, set it to in-use and return
-				if (result == isFree) {
-					result = Interlocked.Exchange (ref lockState, isOwned);
-					if (result == isFree)
-						break;
-				}
-				
-				// Efficiently spin, until the resource looks like it might 
-				// be free. NOTE: Just reading here (as compared to repeatedly 
-				// calling Exchange) improves performance because writing 
-				// forces all CPUs to update this value
-				//while (Thread.VolatileRead (ref lockState) == isOwned) {
-					sw.SpinOnce ();
-				//}
-			}
-			
-			CheckAndSetThreadId ();
-		}
-		
-		bool TryEnter ()
-		{
-			//Thread.BeginCriticalRegion();
+			if (lockTaken)
+				throw new ArgumentException ("lockTaken", "lockTaken must be initialized to false");
+			if (isThreadOwnerTrackingEnabled && IsHeldByCurrentThread)
+				throw new LockRecursionException ();
 
-			// If resource available, set it to in-use and return
-			if (Interlocked.Exchange (ref lockState, isOwned) == isFree) {
-				CheckAndSetThreadId ();
-				return true;
+			int slot = -1;
+
+			RuntimeHelpers.PrepareConstrainedRegions ();
+			try {
+				slot = Interlocked.Increment (ref ticket.Users) - 1;
+
+				SpinWait wait = new SpinWait ();
+				while (slot != ticket.Value) {
+					wait.SpinOnce ();
+
+					while (stallTickets != null && stallTickets.TryRemove (ticket.Value))
+						++ticket.Value;
+				}
+			} finally {
+				if (slot == ticket.Value) {
+					lockTaken = true;
+					threadWhoTookLock = Thread.CurrentThread.ManagedThreadId;
+				} else if (slot != -1) {
+					// We have been interrupted, initialize stallTickets
+					if (stallTickets == null)
+						Interlocked.CompareExchange (ref stallTickets, new ConcurrentOrderedList<int> (), null);
+					stallTickets.TryAdd (slot);
+				}
 			}
-			return false;
 		}
-		
+
 		public void TryEnter (ref bool lockTaken)
 		{
-			try {
-				lockTaken = TryEnter ();
-			} catch {
-				lockTaken = false;
-			}
+			TryEnter (0, ref lockTaken);
 		}
-		
+
 		public void TryEnter (TimeSpan timeout, ref bool lockTaken)
 		{
 			TryEnter ((int)timeout.TotalMilliseconds, ref lockTaken);
 		}
-		
-		public void TryEnter (int milliSeconds, ref bool lockTaken)
+
+		public void TryEnter (int millisecondsTimeout, ref bool lockTaken)
 		{
-			//Thread.BeginCriticalRegion();
-			
-			Watch sw = Watch.StartNew ();
-			
-			while (sw.ElapsedMilliseconds < milliSeconds) {
-				TryEnter (ref lockTaken);
-			}
-			sw.Stop ();
+			if (millisecondsTimeout < -1)
+				throw new ArgumentOutOfRangeException ("milliSeconds", "millisecondsTimeout is a negative number other than -1");
+			if (lockTaken)
+				throw new ArgumentException ("lockTaken", "lockTaken must be initialized to false");
+			if (isThreadOwnerTrackingEnabled && IsHeldByCurrentThread)
+				throw new LockRecursionException ();
+
+			long start = millisecondsTimeout == -1 ? 0 : sw.ElapsedMilliseconds;
+			bool stop = false;
+
+			do {
+				while (stallTickets != null && stallTickets.TryRemove (ticket.Value))
+					++ticket.Value;
+
+				long u = ticket.Users;
+				long totalValue = (u << 32) | u;
+				long newTotalValue
+					= BitConverter.IsLittleEndian ? (u << 32) | (u + 1) : ((u + 1) << 32) | u;
+				
+				RuntimeHelpers.PrepareConstrainedRegions ();
+				try {}
+				finally {
+					lockTaken = Interlocked.CompareExchange (ref ticket.TotalValue, newTotalValue, totalValue) == totalValue;
+				
+					if (lockTaken) {
+						threadWhoTookLock = Thread.CurrentThread.ManagedThreadId;
+						stop = true;
+					}
+				}
+	        } while (!stop && (millisecondsTimeout == -1 || (sw.ElapsedMilliseconds - start) < millisecondsTimeout));
 		}
 
-		//[ReliabilityContractAttribute]
-		public void Exit () 
-		{ 
+		[ReliabilityContract (Consistency.WillNotCorruptState, Cer.Success)]
+		public void Exit ()
+		{
 			Exit (false);
 		}
 
-		public void Exit (bool flushReleaseWrites) 
-		{ 
-			threadWhoTookLock = int.MinValue;
-			
-			// Mark the resource as available
-			if (!flushReleaseWrites) {
-				lockState = isFree;
-			} else {
-				Interlocked.Exchange (ref lockState, isFree);
+		[ReliabilityContract (Consistency.WillNotCorruptState, Cer.Success)]
+		public void Exit (bool useMemoryBarrier)
+		{
+			RuntimeHelpers.PrepareConstrainedRegions ();
+			try {}
+			finally {
+				if (isThreadOwnerTrackingEnabled && !IsHeldByCurrentThread)
+					throw new SynchronizationLockException ("Current thread is not the owner of this lock");
+
+				threadWhoTookLock = int.MinValue;
+				do {
+					if (useMemoryBarrier)
+						Interlocked.Increment (ref ticket.Value);
+					else
+						ticket.Value++;
+				} while (stallTickets != null && stallTickets.TryRemove (ticket.Value));
 			}
-			//Thread.EndCriticalRegion();
 		}
 	}
-	
+
 	// Wraps a SpinLock in a reference when we need to pass
 	// around the lock
 	internal class SpinLockWrapper
 	{
-		public readonly SpinLock Lock = new SpinLock (false);
+		public SpinLock Lock = new SpinLock (false);
 	}
 }
 #endif

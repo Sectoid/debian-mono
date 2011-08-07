@@ -34,6 +34,7 @@
 using System;
 using System.Reflection;
 using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Diagnostics.SymbolStore;
@@ -42,10 +43,8 @@ using System.Resources;
 using System.Globalization;
 
 namespace System.Reflection.Emit {
-#if NET_2_0
 	[ComVisible (true)]
 	[ComDefaultInterface (typeof (_ModuleBuilder))]
-#endif
 	[ClassInterface (ClassInterfaceType.None)]
 	public class ModuleBuilder : Module, _ModuleBuilder {
 
@@ -68,7 +67,7 @@ namespace System.Reflection.Emit {
 		private TypeBuilder global_type;
 		private Type global_type_created;
 		Hashtable name_cache;
-		Hashtable us_string_cache = new Hashtable ();
+		Dictionary<string, int> us_string_cache;
 		private int[] table_indexes;
 		bool transient;
 		ModuleBuilderTokenGenerator token_gen;
@@ -91,6 +90,7 @@ namespace System.Reflection.Emit {
 			// guid = Guid.NewGuid().ToByteArray ();
 			table_idx = get_next_table_index (this, 0x00, true);
 			name_cache = new Hashtable ();
+			us_string_cache = new Dictionary<string, int> (512);
 
 			basic_init (this);
 
@@ -103,17 +103,14 @@ namespace System.Reflection.Emit {
 			}
 
 			if (emitSymbolInfo) {
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 				symbolWriter = new Mono.CompilerServices.SymbolWriter.SymbolWriterImpl (this);
 #else
 				Assembly asm = Assembly.LoadWithPartialName ("Mono.CompilerServices.SymbolWriter");
 				if (asm == null)
-					throw new ExecutionEngineException ("The assembly for default symbol writer cannot be loaded");
+					throw new TypeLoadException ("The assembly for default symbol writer cannot be loaded");
 
-				Type t = asm.GetType ("Mono.CompilerServices.SymbolWriter.SymbolWriterImpl");
-				if (t == null)
-					throw new ExecutionEngineException ("The type that implements the default symbol writer interface cannot be found");
-
+				Type t = asm.GetType ("Mono.CompilerServices.SymbolWriter.SymbolWriterImpl", true);
 				symbolWriter = (ISymbolWriter) Activator.CreateInstance (t, new object[] { this });
 #endif
 				string fileName = fqname;
@@ -203,12 +200,7 @@ namespace System.Reflection.Emit {
 			return DefineGlobalMethod (name, attributes, callingConvention, returnType, null, null, parameterTypes, null, null);
 		}
 
-#if NET_2_0 || BOOTSTRAP_NET_2_0
-		public
-#else
-		internal
-#endif
-		MethodBuilder DefineGlobalMethod (string name, MethodAttributes attributes, CallingConventions callingConvention, Type returnType, Type[] requiredReturnTypeCustomModifiers, Type[] optionalReturnTypeCustomModifiers, Type[] parameterTypes, Type[][] requiredParameterTypeCustomModifiers, Type[][] optionalParameterTypeCustomModifiers)
+		public MethodBuilder DefineGlobalMethod (string name, MethodAttributes attributes, CallingConventions callingConvention, Type returnType, Type[] requiredReturnTypeCustomModifiers, Type[] optionalReturnTypeCustomModifiers, Type[] parameterTypes, Type[][] requiredParameterTypeCustomModifiers, Type[][] optionalParameterTypeCustomModifiers)
 		{
 			if (name == null)
 				throw new ArgumentNullException ("name");
@@ -271,14 +263,14 @@ namespace System.Reflection.Emit {
 		}
 
 		private TypeBuilder DefineType (string name, TypeAttributes attr, Type parent, Type[] interfaces, PackingSize packingSize, int typesize) {
+			if (name == null)
+				throw new ArgumentNullException ("fullname");
+			if (name_cache.ContainsKey (name))
+				throw new ArgumentException ("Duplicate type name within an assembly.");
 			TypeBuilder res = new TypeBuilder (this, name, attr, parent, interfaces, packingSize, typesize, null);
 			AddType (res);
-			
-			try {
-				name_cache.Add (name, res);
-			} catch {
-				throw new ArgumentException ("Duplicate type name within an assembly.");
-			}
+
+			name_cache.Add (name, res);
 			
 			return res;
 		}
@@ -293,9 +285,7 @@ namespace System.Reflection.Emit {
 			return (TypeBuilder) name_cache [name];
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public TypeBuilder DefineType (string name, TypeAttributes attr, Type parent, Type[] interfaces) {
 			return DefineType (name, attr, parent, interfaces, PackingSize.Unspecified, TypeBuilder.UnspecifiedTypeSize);
 		}
@@ -327,16 +317,12 @@ namespace System.Reflection.Emit {
 			return eb;
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public override Type GetType( string className) {
 			return GetType (className, false, false);
 		}
 		
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public override Type GetType( string className, bool ignoreCase) {
 			return GetType (className, false, ignoreCase);
 		}
@@ -385,9 +371,7 @@ namespace System.Reflection.Emit {
 			return null;
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif		
 		public override Type GetType (string className, bool throwOnError, bool ignoreCase)
 		{
 			if (className == null)
@@ -466,9 +450,7 @@ namespace System.Reflection.Emit {
 			}
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public void SetCustomAttribute( ConstructorInfo con, byte[] binaryAttribute) {
 			SetCustomAttribute (new CustomAttributeBuilder (con, binaryAttribute));
 		}
@@ -559,7 +541,6 @@ namespace System.Reflection.Emit {
 			throw new NotImplementedException ();
 		}
 
-#if NET_2_0 || BOOTSTRAP_NET_2_0
 		public void DefineManifestResource (string name, Stream stream, ResourceAttributes attribute) {
 			if (name == null)
 				throw new ArgumentNullException ("name");
@@ -584,7 +565,6 @@ namespace System.Reflection.Emit {
 			resources [p].attrs = attribute;
 			resources [p].stream = stream;
 		}
-#endif
 
 		[MonoTODO]
 		public void SetSymCustomAttribute (string name, byte[] data)
@@ -616,13 +596,13 @@ namespace System.Reflection.Emit {
 			return GetMethodToken (GetArrayMethod (arrayClass, methodName, callingConvention, returnType, parameterTypes));
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public MethodToken GetConstructorToken (ConstructorInfo con)
 		{
 			if (con == null)
 				throw new ArgumentNullException ("con");
+			if (con.DeclaringType.Module != this)
+				throw new InvalidOperationException ("The constructor is not in this module");
 			return new MethodToken (GetToken (con));
 		}
 
@@ -675,22 +655,29 @@ namespace System.Reflection.Emit {
 		private static extern int getUSIndex (ModuleBuilder mb, string str);
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		private static extern int getToken (ModuleBuilder mb, object obj);
+		private static extern int getToken (ModuleBuilder mb, object obj, bool create_open_instance);
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private static extern int getMethodToken (ModuleBuilder mb, MethodInfo method,
 							  Type[] opt_param_types);
 
-		internal int GetToken (string str) {
-			if (us_string_cache.Contains (str))
-				return (int)us_string_cache [str];
-			int result = getUSIndex (this, str);
-			us_string_cache [str] = result;
+		internal int GetToken (string str)
+		{
+			int result;
+			if (!us_string_cache.TryGetValue (str, out result)) {
+				result = getUSIndex (this, str);
+				us_string_cache [str] = result;
+			}
+			
 			return result;
 		}
 
 		internal int GetToken (MemberInfo member) {
-			return getToken (this, member);
+			return getToken (this, member, true);
+		}
+
+		internal int GetToken (MemberInfo member, bool create_open_instance) {
+			return getToken (this, member, create_open_instance);
 		}
 
 		internal int GetToken (MethodInfo method, Type[] opt_param_types) {
@@ -698,7 +685,7 @@ namespace System.Reflection.Emit {
 		}
 
 		internal int GetToken (SignatureHelper helper) {
-			return getToken (this, helper);
+			return getToken (this, helper, true);
 		}
 
 		/*
@@ -836,6 +823,103 @@ namespace System.Reflection.Emit {
 		{
 			throw new NotImplementedException ();
 		}
+
+#if NET_4_0 || MOONLIGHT || MOBILE
+		public override	Assembly Assembly {
+			get { return assemblyb; }
+		}
+
+		public override string Name {
+			get { return name; }
+		}
+
+		public override string ScopeName {
+			get { return name; }
+		}
+
+		public override Guid ModuleVersionId {
+			get {
+				return GetModuleVersionId ();
+			}
+		}
+
+		//XXX resource modules can't be defined with ModuleBuilder
+		public override bool IsResource ()
+		{
+			return false;
+		}
+
+		protected override MethodInfo GetMethodImpl (string name, BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers) 
+		{
+			if (global_type_created == null)
+				return null;
+			if (types == null)
+				return global_type_created.GetMethod (name);
+			return global_type_created.GetMethod (name, bindingAttr, binder, callConvention, types, modifiers);
+		}
+
+		public override FieldInfo ResolveField (int metadataToken, Type [] genericTypeArguments, Type [] genericMethodArguments) {
+			ResolveTokenError error;
+
+			IntPtr handle = ResolveFieldToken (_impl, metadataToken, ptrs_from_types (genericTypeArguments), ptrs_from_types (genericMethodArguments), out error);
+			if (handle == IntPtr.Zero)
+				throw resolve_token_exception (metadataToken, error, "Field");
+			else
+				return FieldInfo.GetFieldFromHandle (new RuntimeFieldHandle (handle));
+		}
+
+		public override MemberInfo ResolveMember (int metadataToken, Type [] genericTypeArguments, Type [] genericMethodArguments) {
+
+			ResolveTokenError error;
+
+			MemberInfo m = ResolveMemberToken (_impl, metadataToken, ptrs_from_types (genericTypeArguments), ptrs_from_types (genericMethodArguments), out error);
+			if (m == null)
+				throw resolve_token_exception (metadataToken, error, "MemberInfo");
+			else
+				return m;
+		}
+
+		public override MethodBase ResolveMethod (int metadataToken, Type [] genericTypeArguments, Type [] genericMethodArguments) {
+			ResolveTokenError error;
+
+			IntPtr handle = ResolveMethodToken (_impl, metadataToken, ptrs_from_types (genericTypeArguments), ptrs_from_types (genericMethodArguments), out error);
+			if (handle == IntPtr.Zero)
+				throw resolve_token_exception (metadataToken, error, "MethodBase");
+			else
+				return MethodBase.GetMethodFromHandleNoGenericCheck (new RuntimeMethodHandle (handle));
+		}
+
+		public override string ResolveString (int metadataToken) {
+			ResolveTokenError error;
+
+			string s = ResolveStringToken (_impl, metadataToken, out error);
+			if (s == null)
+				throw resolve_token_exception (metadataToken, error, "string");
+			else
+				return s;
+		}
+
+		public override byte[] ResolveSignature (int metadataToken) {
+			ResolveTokenError error;
+
+		    byte[] res = ResolveSignature (_impl, metadataToken, out error);
+			if (res == null)
+				throw resolve_token_exception (metadataToken, error, "signature");
+			else
+				return res;
+		}
+
+		public override Type ResolveType (int metadataToken, Type [] genericTypeArguments, Type [] genericMethodArguments) {
+			ResolveTokenError error;
+
+			IntPtr handle = ResolveTypeToken (_impl, metadataToken, ptrs_from_types (genericTypeArguments), ptrs_from_types (genericMethodArguments), out error);
+			if (handle == IntPtr.Zero)
+				throw resolve_token_exception (metadataToken, error, "Type");
+			else
+				return Type.GetTypeFromHandle (new RuntimeTypeHandle (handle));
+		}
+
+#endif
 	}
 
 	internal class ModuleBuilderTokenGenerator : TokenGenerator {
@@ -850,8 +934,8 @@ namespace System.Reflection.Emit {
 			return mb.GetToken (str);
 		}
 
-		public int GetToken (MemberInfo member) {
-			return mb.GetToken (member);
+		public int GetToken (MemberInfo member, bool create_open_instance) {
+			return mb.GetToken (member, create_open_instance);
 		}
 
 		public int GetToken (MethodInfo method, Type[] opt_param_types) {

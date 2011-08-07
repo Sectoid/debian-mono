@@ -39,10 +39,8 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace System.Reflection.Emit {
-#if NET_2_0
 	[ComVisible (true)]
 	[ComDefaultInterface (typeof (_SignatureHelper))]
-#endif
 	[ClassInterface (ClassInterfaceType.None)]
 	public sealed class SignatureHelper : _SignatureHelper {
 		internal enum SignatureHelperType {
@@ -85,7 +83,6 @@ namespace System.Reflection.Emit {
 			return new SignatureHelper ((ModuleBuilder) mod, SignatureHelperType.HELPER_LOCAL);
 		}
 
-#if NET_2_0
 		public static SignatureHelper GetLocalVarSigHelper ()
 		{
 			return new SignatureHelper (null, SignatureHelperType.HELPER_LOCAL);
@@ -100,7 +97,6 @@ namespace System.Reflection.Emit {
 		{
 			return GetMethodSigHelper (null, CallingConventions.Standard, unmanagedCallingConvention, returnType, null);
 		}
-#endif
 
 		public static SignatureHelper GetMethodSigHelper (Module mod, CallingConventions callingConvention, Type returnType)
 		{
@@ -116,11 +112,38 @@ namespace System.Reflection.Emit {
 		{
 			return GetMethodSigHelper (mod, CallingConventions.Standard, (CallingConvention)0, returnType, parameterTypes);
 		}
+
 		[MonoTODO("Not implemented")]
 		public static SignatureHelper GetPropertySigHelper (Module mod, Type returnType, Type[] parameterTypes)
 		{
 			throw new NotImplementedException ();
 		}
+
+		[MonoTODO("Not implemented")]
+		public static SignatureHelper GetPropertySigHelper (Module mod, Type returnType,
+								    Type [] requiredReturnTypeCustomModifiers,
+								    Type [] optionalReturnTypeCustomModifiers,
+								    Type [] parameterTypes,
+								    Type [] [] requiredParameterTypeCustomModifiers,
+								    Type [] [] optionalParameterTypeCustomModifiers)
+		{
+			throw new NotImplementedException ();
+		}
+
+#if NET_4_0
+		[MonoTODO("Not implemented")]
+		public static SignatureHelper GetPropertySigHelper (Module mod,
+									CallingConventions callingConvention,
+									Type returnType,
+								    Type [] requiredReturnTypeCustomModifiers,
+								    Type [] optionalReturnTypeCustomModifiers,
+								    Type [] parameterTypes,
+								    Type [] [] requiredParameterTypeCustomModifiers,
+								    Type [] [] optionalParameterTypeCustomModifiers)
+		{
+			throw new NotImplementedException ();
+		}
+#endif
 
 		//
 		// Grows the given array, and returns the index where the element
@@ -141,7 +164,6 @@ namespace System.Reflection.Emit {
 			}
 		}
 
-#if NET_2_0
 		//
 		// Appends the given type array @t into the @array passed at
 		// position @pos.   If there is no array, it gets created
@@ -239,18 +261,6 @@ namespace System.Reflection.Emit {
 			if (optionalCustomModifiers != null)
 				AppendArrayAt (ref modopts, optionalCustomModifiers, p);
 		}
-
-		[MonoTODO("Not implemented")]
-		public static SignatureHelper GetPropertySigHelper (Module mod, Type returnType,
-								    Type [] requiredReturnTypeCustomModifiers,
-								    Type [] optionalReturnTypeCustomModifiers,
-								    Type [] parameterTypes,
-								    Type [] [] requiredParameterTypeCustomModifiers,
-								    Type [] [] optionalParameterTypeCustomModifiers)
-		{
-			throw new NotImplementedException ();
-		}
-#endif
 
 		public void AddArgument (Type clsArgument)
 		{

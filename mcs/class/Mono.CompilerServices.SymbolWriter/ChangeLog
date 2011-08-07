@@ -1,3 +1,23 @@
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Switch to single mcs compiler for all managed code build
+
+2010-11-26  Marek Safar  <marek.safar@gmail.com>
+
+	Switch symbol writer to public api
+
+2010-08-02  Marek Safar  <marek.safar@gmail.com>
+
+	Replace MOONLIGHT with NET_2_1
+
+2010-08-02  Marek Safar  <marek.safar@gmail.com>
+
+	Workaround unusual moonlight setup
+
+2010-08-01  Marek Safar  <marek.safar@gmail.com>
+
+	Update SymbolWriter to use generics collections
+
 2009-04-15  Martin Baulig  <martin@ximian.com>
 
 	* MonoSymbolWriter.cs: Move `ISourceFile', `ICompileUnit' and

@@ -183,7 +183,11 @@ namespace System.Xml.Schema
 
 			switch (Type.GetTypeCode (value.GetType ())) {
 			case TypeCode.Int16:
+				Init ((short) value, xmlType);
+				return;
 			case TypeCode.UInt16:
+				Init ((ushort) value, xmlType);
+				return;
 			case TypeCode.Int32:
 				Init ((int) value, xmlType);
 				return;
@@ -197,8 +201,10 @@ namespace System.Xml.Schema
 				Init ((float) value, xmlType);
 				return;
 			case TypeCode.Int64:
-			case TypeCode.UInt32:
 				Init ((long) value, xmlType);
+				return;
+			case TypeCode.UInt32:
+				Init ((uint) value, xmlType);
 				return;
 			case TypeCode.String:
 				Init ((string) value, xmlType);
@@ -285,6 +291,8 @@ namespace System.Xml.Schema
 			case XmlTypeCode.Short:
 			case XmlTypeCode.UnsignedShort:
 				return ValueAsInt;
+			case XmlTypeCode.Decimal:
+				return ValueAsDecimal;
 			case XmlTypeCode.Double:
 			case XmlTypeCode.Float:
 				return ValueAsDouble;
@@ -340,6 +348,8 @@ namespace System.Xml.Schema
 					return ValueAsBoolean;
 				case XmlTypeCode.DateTime:
 					return ValueAsDateTime;
+				case XmlTypeCode.Decimal:
+					return ValueAsDecimal;
 				case XmlTypeCode.Float:
 				case XmlTypeCode.Double:
 					return ValueAsDouble;
@@ -361,12 +371,18 @@ namespace System.Xml.Schema
 				case XmlTypeCode.Boolean:
 					stringValue = XQueryConvert.BooleanToString (ValueAsBoolean);
 					break;
+				case XmlTypeCode.Date:
+				case XmlTypeCode.Time:
 				case XmlTypeCode.DateTime:
 					stringValue = XQueryConvert.DateTimeToString (ValueAsDateTime);
 					break;
 				case XmlTypeCode.Float:
 				case XmlTypeCode.Double:
 					stringValue = XQueryConvert.DoubleToString (ValueAsDouble);
+					break;
+				case XmlTypeCode.Integer:
+				case XmlTypeCode.Decimal:
+					stringValue = XQueryConvert.DecimalToString (ValueAsDecimal);
 					break;
 				case XmlTypeCode.NonPositiveInteger:
 				case XmlTypeCode.NonNegativeInteger:
@@ -394,6 +410,12 @@ namespace System.Xml.Schema
 					case XmlTypeCode.String:
 						stringValue = (string) objectValue;
 						break;
+					case XmlTypeCode.Date:
+						stringValue = XQueryConvert.DateToString ((DateTime) objectValue);
+						break;
+					case XmlTypeCode.Time:
+						stringValue = XQueryConvert.TimeToString ((DateTime) objectValue);
+						break;
 					case XmlTypeCode.DateTime:
 						stringValue = XQueryConvert.DateTimeToString ((DateTime) objectValue);
 						break;
@@ -406,6 +428,7 @@ namespace System.Xml.Schema
 					case XmlTypeCode.Double:
 						stringValue = XQueryConvert.DoubleToString ((double) objectValue);
 						break;
+					case XmlTypeCode.Integer:
 					case XmlTypeCode.Decimal:
 						stringValue = XQueryConvert.DecimalToString ((decimal) objectValue);
 						break;
@@ -476,6 +499,37 @@ namespace System.Xml.Schema
 				}
 
 				throw new InvalidCastException (String.Format ("Conversion from {0} to {1} is not supported", schemaType.QualifiedName, XmlSchemaSimpleType.XsDateTime.QualifiedName));
+			}
+		}
+
+		// Unlike the other ValueAs...() functions, this is not part
+		// of the XPathItem abstract class, so it's not an override
+		public decimal ValueAsDecimal {
+			get {
+				switch (xmlTypeCode) {
+				case XmlTypeCode.Boolean:
+					return XQueryConvert.BooleanToDecimal (booleanValue);
+				case XmlTypeCode.Decimal:
+					return decimalValue;
+				case XmlTypeCode.Double:
+					return XQueryConvert.DoubleToDecimal (doubleValue);
+				case XmlTypeCode.Long:
+					return XQueryConvert.IntegerToDecimal (longValue);
+				case XmlTypeCode.Int:
+					return XQueryConvert.IntToDecimal (intValue);
+				case XmlTypeCode.Float:
+					return XQueryConvert.FloatToDecimal (floatValue);
+				case XmlTypeCode.String:
+					return XQueryConvert.StringToDecimal (stringValue);
+				case XmlTypeCode.None:
+				case XmlTypeCode.Item:
+				case XmlTypeCode.AnyAtomicType:
+					if (objectValue is decimal)
+						return (decimal) objectValue;
+					break;
+				}
+
+				throw new InvalidCastException (String.Format ("Conversion from {0} to {1} is not supported", schemaType.QualifiedName, XmlSchemaSimpleType.XsDecimal.QualifiedName));
 			}
 		}
 

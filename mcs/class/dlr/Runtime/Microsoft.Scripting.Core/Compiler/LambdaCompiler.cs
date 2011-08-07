@@ -2,48 +2,34 @@
  *
  * Copyright (c) Microsoft Corporation. 
  *
- * This source code is subject to terms and conditions of the Microsoft Public License. A 
+ * This source code is subject to terms and conditions of the Apache License, Version 2.0. A 
  * copy of the license can be found in the License.html file at the root of this distribution. If 
- * you cannot locate the  Microsoft Public License, please send an email to 
+ * you cannot locate the  Apache License, Version 2.0, please send an email to 
  * dlr@microsoft.com. By using this source code in any fashion, you are agreeing to be bound 
- * by the terms of the Microsoft Public License.
+ * by the terms of the Apache License, Version 2.0.
  *
  * You must not remove this notice, or any other, from this software.
  *
  *
  * ***************************************************************************/
-using System; using Microsoft;
 
-
-#if MICROSOFT_SCRIPTING_CORE || SILVERLIGHT
-#if CODEPLEX_40
-using ILGenerator = System.Linq.Expressions.Compiler.OffsetTrackingILGenerator;
-#else
-using ILGenerator = Microsoft.Linq.Expressions.Compiler.OffsetTrackingILGenerator;
-#endif
-#endif
-
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-#if CODEPLEX_40
 using System.Dynamic.Utils;
-#else
-using Microsoft.Scripting.Utils;
-#endif
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
-#if !CODEPLEX_40
-using Microsoft.Runtime.CompilerServices;
-#endif
-
 using System.Threading;
 
-#if CODEPLEX_40
-namespace System.Linq.Expressions.Compiler {
+#if CLR2
+namespace Microsoft.Scripting.Ast.Compiler {
 #else
-namespace Microsoft.Linq.Expressions.Compiler {
+namespace System.Linq.Expressions.Compiler {
+#endif
+#if CLR2 || SILVERLIGHT
+    using ILGenerator = OffsetTrackingILGenerator;
 #endif
 
     /// <summary>
@@ -101,7 +87,7 @@ namespace Microsoft.Linq.Expressions.Compiler {
         private LambdaCompiler(AnalyzedTree tree, LambdaExpression lambda) {
             Type[] parameterTypes = GetParameterTypes(lambda).AddFirst(typeof(Closure));
 
-#if SILVERLIGHT && MICROSOFT_SCRIPTING_CORE
+#if SILVERLIGHT && CLR2
             var method = new DynamicMethod(lambda.Name ?? "lambda_method", lambda.ReturnType, parameterTypes);
 #else
             var method = new DynamicMethod(lambda.Name ?? "lambda_method", lambda.ReturnType, parameterTypes, true);
@@ -111,7 +97,7 @@ namespace Microsoft.Linq.Expressions.Compiler {
             _lambda = lambda;
             _method = method;
 
-#if MICROSOFT_SCRIPTING_CORE || SILVERLIGHT
+#if CLR2 || SILVERLIGHT
             _ilg = new OffsetTrackingILGenerator(method.GetILGenerator());
 #else
             _ilg = method.GetILGenerator();
@@ -150,7 +136,7 @@ namespace Microsoft.Linq.Expressions.Compiler {
             _typeBuilder = (TypeBuilder)method.DeclaringType;
             _method = method;
 
-#if MICROSOFT_SCRIPTING_CORE || SILVERLIGHT
+#if CLR2 || SILVERLIGHT
             _ilg = new OffsetTrackingILGenerator(method.GetILGenerator());
 #else
             _ilg = method.GetILGenerator();
@@ -324,7 +310,7 @@ namespace Microsoft.Linq.Expressions.Compiler {
         /// </summary>
         private MemberExpression CreateLazyInitializedField<T>(string name) {
             if (_method is DynamicMethod) {
-                return Expression.Field(Expression.Constant(new StrongBox<T>()), "Value");
+                return Expression.Field(Expression.Constant(new StrongBox<T>(default(T))), "Value");
             } else {
                 return Expression.Field(null, CreateStaticField(name, typeof(T)));
             }

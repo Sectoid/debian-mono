@@ -1,3 +1,366 @@
+2011-06-28  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement support for Stream param with WebHttpBinding raw content
+	format.
+
+2011-04-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Enable environment-controled output on non-moon profile too. Add
+	error logging.
+
+2011-04-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Get real fix for bug #687902. Revert request processor
+	IDisposable.
+
+	and handle session shutdown when creating InstanceContext. Also
+	add note on DisposeInstance(), which got me stuck.
+
+2011-04-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Ongoing service channel closing fix and session management in
+	ChannelDispatcher.
+
+	It is part of bugfix 687902.
+
+	To get the bug fixed, the new "using" sections in
+	ChannelDispatcher.cs to explicitly dispose channels. But this
+	causes regression in PerSession-based tests. So some new session
+	management code is (likely) required as well.
+
+	It will also alter "mixed" MaxConcurrentCalls and
+	MaxConcurrentSessions with correct management code.
+
+2011-04-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Add XmlSerializerFormatAttribute support in mobile profiles.
+
+	Unlike moonlight, XmlSerializer is in the framework lib (sys.xml),
+	so we don't have to split them out to Sys.Xml.Serialization.dll.
+
+2011-04-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Split XmlMessagesFormatter out. It is for use in
+	Sys.Xml.Serialization.dll.
+
+	XmlMessagesFormatter will be used in Sys.Xml.Serialization.dll and
+	this type should not be excluded by !NET_2_1 or !MOONLIGHT. It is
+	not doable if this class is in BaseMessagesFormatter.cs.
+
+2011-04-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Some XmlSerializerFormatAttribute and
+	XmlSerializerOperationBehavior refactoring.
+
+2011-03-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Add endpoint behavior support in NET_2_1, which involved not a few
+	additions.
+
+2011-03-14  Peter Gerbrandt  <pg@viadux.de>
+
+	Apply DataContractSerializerOperationBehavior.
+
+2011-03-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Replace SRE-based client proxy generator with RealProxy.
+
+	Now PE verified workaround should be unnecessary.
+
+2011-02-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Another fix to not write null header. Add UniqueId deserialization
+	workaround.
+
+2011-02-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not try to serialize null header item.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Message headers are now serialized and deserialized for
+	MessageHeaderDescription.
+
+2011-02-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Support ServiceKnownTypes. Fixed another case on bug #652331.
+
+2011-02-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Open and close client/service runtime channels in chains. Fixed
+	bug #663278.
+
+2011-02-07  Atsushi Eno  <atsushi@ximian.com>
+
+	handle IsTerminating.
+
+2011-02-04  Atsushi Eno  <atsushi@ximian.com>
+
+	Callback contract should be distinguished from others for
+	DispatchOperation.
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix regression, avoid null key.
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	And rename source file name.
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Rename InstanceBhavior, too ambiguous among IXxxBehavior
+	interfaces.
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Sessions should not be keyed by MessageId but be done by channel
+	SessionId.
+
+2010-10-20  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf] make /js and /jsdebug dispatchers work.
+
+	There were several issues here:
+
+	- The IChannelDispatcherBoundListener was defined twice, in two
+	different namespaces, and it caused code in
+	ChannelDispatcher.Attach not to set its associated listener's
+	ChannelDispatcher property to the correct value. This, in turn,
+	caused incorrect HttpListenerManagerTable operation, where it
+	would put the "/js" and "/jsdebug" dispatchers in separate
+	HttpListenerManagers, instead of in the main (base) service's one.
+	- After fixing the above, it turned out that SvcHttpHandler
+	selected the manager based on the host's base address, when it
+	should first try to find one whose URL matches the current request
+	exactly.
+
+2010-09-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix the issue that callback contract often gets confused by
+	picking unexpected contract type.
+
+	The problem is that DispatchRuntime.Type is a service
+	implementation type that could implement two or more contract
+	interfaces, and it was in random order how ServiceProxyGenerator
+	picks up the contract type. Now it looks for correct contract type
+	instead of the service type by exactly looking for the target
+	contract in the endpoint (dispatcher).
+
+2010-07-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* InputOrReplyProcessor.cs : remove SecurityHandler. WS-Trust must
+	  be handled before endpoint dispatching (it must not pass contract
+	  filter) and doesn't make sense to be here.
+	* SecurityHandler.cs : move to old-code.
+
+2010-07-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SecurityHandler.cs : add new using. Though this class will vanish.
+
+2010-07-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : apply ErrorHandlers to IInputChannel too.
+
+2010-07-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* PostReceiveRequestHandler.cs : don't replace correctly passed-by-
+	  reference Message with wrong, consumed Message.
+
+2010-07-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : do not swallow exception during
+	  RequestContext.get_RequestMessage() and thus return SOAP Fault for
+	  MessageSecurityException to the client.
+
+2010-07-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : support ErrorHandlers.
+
+2010-07-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs :
+	  moved IChannelDispatcherBoundListener from HttpChannelListener.cs.
+
+2010-07-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MessageProcessingContext.cs : update possibly-updated ReplyMessage
+	  to send, by message inspectors. Fix by Clovis Ribeiro, should fix
+	  bug #619534.
+
+2010-06-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : enable service throttling again.
+	  This time Http(Listener), ASP.NET and TCP listeners all work.
+
+2010-06-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : raise an error if IChannelListener is
+	  already opened when it's opening.
+
+2010-06-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceThrottle.cs : take ChannelDispatcher to validate setters.
+
+2010-06-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : add simple bool field to mark for mex channel.
+
+2010-06-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : MessageVersion check is moved to
+	  ServiceHostBase.
+
+2010-06-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationInvokerHandler.cs, MessageProcessingContext.cs :
+	  ChannelDispatcher may be null, so check its availability before
+	  using it. Don't use it, when possible.
+	* DispatchOperation.cs : remove unused member.
+
+2010-06-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EndpointDispatcher.cs, BaseMessagesFormatter.cs:
+	  Now MessageDescription.Direction is differentiated from "IsRequest"
+	  property, to precisely identify request/reply in callbacks. Also
+	  now we don't have to create extraneous ContractDescription for
+	  callbacks.
+
+2010-06-03  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EndpointDispatcher.cs, DispatchRuntime.cs, ClientRuntime.cs :
+	  now Callback[Dispatch|Client]Runtime properties are always filled
+	  so that users can configure the callback runtimes (not sure such
+	  configured runtimes work fine yet, but it is a required step).
+	* InputOrReplyRequestProcessor.cs : instead of HasCallbackRuntime
+	  hack, use CallbackClientRuntime.CallbackContractType for checking
+	  callback existence.
+
+2010-05-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientOperation.cs, DispatchOperation.cs : remove extra fields.
+
+2010-05-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientOperation.cs : do the same for client side too.
+
+2010-05-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DispatchOperation.cs : on callback channels ChannelDispatcher is
+	  not available. Wait for something like ClientRuntime.ChannelFactory.
+
+2010-05-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EndpointDispatcher.cs : some comments.
+	* DispatchOperation.cs : remove on-the-fly dependency on 
+	  OperationDescription. Add immutable check on each property.
+
+2010-05-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EndpointDispatcher.cs : fill CallbackDispatchRuntime. Add some
+	  FIXME comments for ongoing fixes.
+
+2010-05-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationInvokerHandler.cs : assign RelatesTo header item here.
+
+2010-05-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : disable slottling again :( It still fails
+	  to process concurrent requests if there is service metadata channel
+	  and MaxConcurrentSessions > 1 on non-ASP.NET channels.
+
+2010-05-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : enable throttling again. Though issues
+	  regarding parallel request is not here (multiple dispatchers
+	  can accept a channels for each), and HTTP channels do not accept
+	  more than one channel at a time anyways.
+
+2010-04-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : add workaround to set ChannelDispatcher
+	  to IChannelListener. Avoid null ChannelDispatcher in http listener.
+
+2010-04-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationInvokerHandler.cs : workaround NRE issue in AsyncCallTest.
+	  The original code was worse than this workaround.
+
+2010-04-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EndpointAddressMessageFilter.cs : check null arg. Return false for
+	  no To header case and do not result in NRE.f
+
+2010-04-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* BaseMessagesFormatter.cs : hasParameter check is incorrectly
+	  restrictive to reject some kinds of pairs.
+
+2010-04-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* FaultContractInfo.cs : add serializer property.
+
+2010-04-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientOperation.cs : do not automatically fill FaultContractInfos.
+
+2010-04-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationInvokerHandler.cs : implement FaultContractInfos support.
+	* ErrorProcessingHandler.cs : update comment. It is not relevant.
+
+2010-04-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EndpointDispatcher.cs : fill FaultContractInfos.
+	* DispatchOperation.cs : do not fill them dynamically/automatically.
+	* ErrorProcessingHandler.cs : added some FIXME notes.
+
+2010-03-30  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : differentiate EndpointNotFound and
+	  ActionNotSupported so that FaultConverter can create appropriate
+	  fault messages. Removed extra filter condition on null To item.
+	  And create fault messages on *any* server side error, do not let
+	  request client infinitely wait for the response until timeout.
+
+	  (RunDestinationUnreachableTest() is still not working but it works
+	  when it is SOAP 1.2.)
+
+2010-03-30  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : for faults, use fault namespace, not that of
+	  ReplyAction. Added FIXME comment regarding dispatcher.
+
+2010-03-25  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationInvokerHandler.cs : removed unused code.
+
+2010-03-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : return EndpointDispatcher at initializing
+	  for internal use. Add some locks. Patch by Matt Dargavel.
+
+2010-03-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : fix wrong method call in open_delegate.
+	  Patch by Matt Dargavel.
+
+2010-03-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : give the actual exception message instead
+	  of "error occured".
+
+2010-03-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XPathMessageContext.cs : implement.
+	* XPathMessageFilterTable.cs : add some missing overloads.
+
+2010-02-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* InputOrReplyRequestProcessor.cs : now ServiceRuntimeChannel is
+	  moved to fake public namespace.
+
 2010-02-18  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* ChannelDispatcher.cs : revert previous change - it could result

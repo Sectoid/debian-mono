@@ -31,6 +31,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Xml;
@@ -73,29 +74,24 @@ namespace System.Runtime.Serialization.Json
 		{
 		}
 
-        DataContractJsonSerializer(Type type, string rootName, IEnumerable<Type> knownTypes, int maxItemsInObjectGraph, bool ignoreExtensionDataObject, bool alwaysEmitTypeInformation)
-        {
-            if (type == null)
+		DataContractJsonSerializer(Type type, string rootName, IEnumerable<Type> knownTypes, int maxItemsInObjectGraph, bool ignoreExtensionDataObject, bool alwaysEmitTypeInformation)
+		{
+			if (type == null)
 				throw new ArgumentNullException ("type");
 			if (rootName == null)
 				throw new ArgumentNullException ("rootName");
 			if (maxItemsInObjectGraph < 0)
 				throw new ArgumentOutOfRangeException ("maxItemsInObjectGraph");
 
-			List<Type> types = new List<Type> ();
-			types.Add (type);
-			if (knownTypes != null)
-				types.AddRange (knownTypes);
-
 			this.type = type;
-			known_types = new ReadOnlyCollection<Type> (types);
+			known_types = new ReadOnlyCollection<Type> (knownTypes != null ? knownTypes.ToArray () : Type.EmptyTypes);
 			root = rootName;
 			max_items = maxItemsInObjectGraph;
 			ignore_extension = ignoreExtensionDataObject;
 			always_emit_type = alwaysEmitTypeInformation;
 		}
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		public DataContractJsonSerializer (Type type, IEnumerable<Type> knownTypes, int maxItemsInObjectGraph, bool ignoreExtensionDataObject, IDataContractSurrogate dataContractSurrogate, bool alwaysEmitTypeInformation)
             : this (type, default_root_name, knownTypes, maxItemsInObjectGraph, ignoreExtensionDataObject, alwaysEmitTypeInformation)
 		{
@@ -121,7 +117,7 @@ namespace System.Runtime.Serialization.Json
 		int max_items;
 		bool ignore_extension;
 		bool always_emit_type;
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		IDataContractSurrogate surrogate;
 
 		[MonoTODO]

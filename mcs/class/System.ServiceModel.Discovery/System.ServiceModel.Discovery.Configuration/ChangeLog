@@ -1,0 +1,45 @@
+2011-01-08  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed missing protected internal modifier
+
+2010-09-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix (isolate) internal namespace for Udp transport.
+
+2010-09-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Flush ongoing WCF Discovery configuration work.
+
+2010-09-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Cosmetic warning cleanups.
+
+2010-09-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement discovery version converter.
+
+2010-09-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Add lacking property initializer.
+
+2010-09-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Ongoing WCF discovery configuration implementation.
+
+2010-09-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Add a bunch of missing configuration members etc. based on
+	corcompare results.
+
+2010-08-11  Atsushi Eno  <atsushi@ximian.com>
+
+	flush ongoing hack. add UDP transport. Headers on configuration
+	sources.
+
+2010-08-02  atsushieno  <atsushi@ximian.com>
+
+	Fix a bunch of compilation errors now that I can get.
+
+2010-07-30  Atsushi Enomoto  <atsushi@ximian.com>
+
+	*.cs : initial checkin.

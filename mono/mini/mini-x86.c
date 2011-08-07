@@ -20,6 +20,7 @@
 #include <mono/metadata/threads.h>
 #include <mono/metadata/profiler-private.h>
 #include <mono/metadata/mono-debug.h>
+#include <mono/metadata/gc-internal.h>
 #include <mono/utils/mono-math.h>
 #include <mono/utils/mono-counters.h>
 #include <mono/utils/mono-mmap.h>
@@ -33,7 +34,6 @@
 static gint lmf_tls_offset = -1;
 static gint lmf_addr_tls_offset = -1;
 static gint appdomain_tls_offset = -1;
-static gint thread_tls_offset = -1;
 
 #ifdef MONO_XEN_OPT
 static gboolean optimize_for_xen = TRUE;
@@ -41,7 +41,7 @@ static gboolean optimize_for_xen = TRUE;
 #define optimize_for_xen 0
 #endif
 
-#ifdef PLATFORM_WIN32
+#ifdef TARGET_WIN32
 static gboolean is_win32 = TRUE;
 #else
 static gboolean is_win32 = FALSE;
@@ -56,15 +56,53 @@ static CRITICAL_SECTION mini_arch_mutex;
 
 #define ARGS_OFFSET 8
 
-#ifdef PLATFORM_WIN32
+#ifdef TARGET_WIN32
 /* Under windows, the default pinvoke calling convention is stdcall */
 #define CALLCONV_IS_STDCALL(sig) ((((sig)->call_convention) == MONO_CALL_STDCALL) || ((sig)->pinvoke && ((sig)->call_convention) == MONO_CALL_DEFAULT))
 #else
 #define CALLCONV_IS_STDCALL(sig) (((sig)->call_convention) == MONO_CALL_STDCALL)
 #endif
 
+#define X86_IS_CALLEE_SAVED_REG(reg) (((reg) == X86_EBX) || ((reg) == X86_EDI) || ((reg) == X86_ESI))
+
 MonoBreakpointInfo
 mono_breakpoint_info [MONO_BREAKPOINT_ARRAY_SIZE];
+
+
+#ifdef __native_client_codegen__
+const guint kNaClAlignment = kNaClAlignmentX86;
+const guint kNaClAlignmentMask = kNaClAlignmentMaskX86;
+
+/* Default alignment for Native Client is 32-byte. */
+gint8 nacl_align_byte = -32; /* signed version of 0xe0 */
+
+/* mono_arch_nacl_pad: Add pad bytes of alignment instructions at code,       */
+/* Check that alignment doesn't cross an alignment boundary.        */
+guint8 *
+mono_arch_nacl_pad (guint8 *code, int pad)
+{
+	const int kMaxPadding = 7;    /* see x86-codegen.h: x86_padding() */
+
+	if (pad == 0) return code;
+	/* assertion: alignment cannot cross a block boundary */
+	g_assert(((uintptr_t)code & (~kNaClAlignmentMask)) ==
+			 (((uintptr_t)code + pad - 1) & (~kNaClAlignmentMask)));
+	while (pad >= kMaxPadding) {
+		x86_padding (code, kMaxPadding);
+		pad -= kMaxPadding;
+	}
+	if (pad != 0) x86_padding (code, pad);
+	return code;
+}
+
+guint8 *
+mono_arch_nacl_skip_nops (guint8 *code)
+{
+	x86_skip_nops (code);
+	return code;
+}
+
+#endif /* __native_client_codegen__ */
 
 /*
  * The code generated for sequence points reads from this location, which is
@@ -141,6 +179,11 @@ mono_arch_xregname (int reg)
 	}
 }
 
+void 
+mono_x86_patch (unsigned char* code, gpointer target)
+{
+	x86_patch (code, (unsigned char*)target);
+}
 
 typedef enum {
 	ArgInIReg,
@@ -170,6 +213,9 @@ typedef struct {
 	guint32 freg_usage;
 	gboolean need_stack_align;
 	guint32 stack_align_amount;
+	gboolean vtype_retaddr;
+	/* The index of the vret arg in the argument list */
+	int vret_arg_index;
 	ArgInfo ret;
 	ArgInfo sig_cookie;
 	ArgInfo args [1];
@@ -181,7 +227,7 @@ typedef struct {
 
 static X86_Reg_No param_regs [] = { 0 };
 
-#if defined(PLATFORM_WIN32) || defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(TARGET_WIN32) || defined(__APPLE__) || defined(__FreeBSD__)
 #define SMALL_STRUCTS_IN_REGS
 static X86_Reg_No return_regs [] = { X86_EAX, X86_EDX };
 #endif
@@ -297,12 +343,13 @@ add_valuetype (MonoGenericSharingContext *gsctx, MonoMethodSignature *sig, ArgIn
  * For x86 win32, see ???.
  */
 static CallInfo*
-get_call_info_internal (MonoGenericSharingContext *gsctx, CallInfo *cinfo, MonoMethodSignature *sig, gboolean is_pinvoke)
+get_call_info_internal (MonoGenericSharingContext *gsctx, CallInfo *cinfo, MonoMethodSignature *sig)
 {
-	guint32 i, gr, fr;
+	guint32 i, gr, fr, pstart;
 	MonoType *ret_type;
 	int n = sig->hasthis + sig->param_count;
 	guint32 stack_size = 0;
+	gboolean is_pinvoke = sig->pinvoke;
 
 	gr = 0;
 	fr = 0;
@@ -353,15 +400,15 @@ get_call_info_internal (MonoGenericSharingContext *gsctx, CallInfo *cinfo, MonoM
 			guint32 tmp_gr = 0, tmp_fr = 0, tmp_stacksize = 0;
 
 			add_valuetype (gsctx, sig, &cinfo->ret, sig->ret, TRUE, &tmp_gr, &tmp_fr, &tmp_stacksize);
-			if (cinfo->ret.storage == ArgOnStack)
+			if (cinfo->ret.storage == ArgOnStack) {
+				cinfo->vtype_retaddr = TRUE;
 				/* The caller passes the address where the value is stored */
-				add_general (&gr, &stack_size, &cinfo->ret);
+			}
 			break;
 		}
 		case MONO_TYPE_TYPEDBYREF:
-			/* Same as a valuetype with size 24 */
-			add_general (&gr, &stack_size, &cinfo->ret);
-			;
+			/* Same as a valuetype with size 12 */
+			cinfo->vtype_retaddr = TRUE;
 			break;
 		case MONO_TYPE_VOID:
 			cinfo->ret.storage = ArgNone;
@@ -371,9 +418,31 @@ get_call_info_internal (MonoGenericSharingContext *gsctx, CallInfo *cinfo, MonoM
 		}
 	}
 
-	/* this */
-	if (sig->hasthis)
-		add_general (&gr, &stack_size, cinfo->args + 0);
+	pstart = 0;
+	/*
+	 * To simplify get_this_arg_reg () and LLVM integration, emit the vret arg after
+	 * the first argument, allowing 'this' to be always passed in the first arg reg.
+	 * Also do this if the first argument is a reference type, since virtual calls
+	 * are sometimes made using calli without sig->hasthis set, like in the delegate
+	 * invoke wrappers.
+	 */
+	if (cinfo->vtype_retaddr && !is_pinvoke && (sig->hasthis || (sig->param_count > 0 && MONO_TYPE_IS_REFERENCE (mini_type_get_underlying_type (gsctx, sig->params [0]))))) {
+		if (sig->hasthis) {
+			add_general (&gr, &stack_size, cinfo->args + 0);
+		} else {
+			add_general (&gr, &stack_size, &cinfo->args [sig->hasthis + 0]);
+			pstart = 1;
+		}
+		add_general (&gr, &stack_size, &cinfo->ret);
+		cinfo->vret_arg_index = 1;
+	} else {
+		/* this */
+		if (sig->hasthis)
+			add_general (&gr, &stack_size, cinfo->args + 0);
+
+		if (cinfo->vtype_retaddr)
+			add_general (&gr, &stack_size, &cinfo->ret);
+	}
 
 	if (!sig->pinvoke && (sig->call_convention == MONO_CALL_VARARG) && (n == 0)) {
 		gr = PARAM_REGS;
@@ -383,7 +452,7 @@ get_call_info_internal (MonoGenericSharingContext *gsctx, CallInfo *cinfo, MonoM
 		add_general (&gr, &stack_size, &cinfo->sig_cookie);
 	}
 
-	for (i = 0; i < sig->param_count; ++i) {
+	for (i = pstart; i < sig->param_count; ++i) {
 		ArgInfo *ainfo = &cinfo->args [sig->hasthis + i];
 		MonoType *ptype;
 
@@ -481,7 +550,7 @@ get_call_info_internal (MonoGenericSharingContext *gsctx, CallInfo *cinfo, MonoM
 }
 
 static CallInfo*
-get_call_info (MonoGenericSharingContext *gsctx, MonoMemPool *mp, MonoMethodSignature *sig, gboolean is_pinvoke)
+get_call_info (MonoGenericSharingContext *gsctx, MonoMemPool *mp, MonoMethodSignature *sig)
 {
 	int n = sig->hasthis + sig->param_count;
 	CallInfo *cinfo;
@@ -491,7 +560,7 @@ get_call_info (MonoGenericSharingContext *gsctx, MonoMemPool *mp, MonoMethodSign
 	else
 		cinfo = g_malloc0 (sizeof (CallInfo) + (sizeof (ArgInfo) * n));
 
-	return get_call_info_internal (gsctx, cinfo, sig, is_pinvoke);
+	return get_call_info_internal (gsctx, cinfo, sig);
 }
 
 /*
@@ -505,31 +574,39 @@ get_call_info (MonoGenericSharingContext *gsctx, MonoMemPool *mp, MonoMethodSign
  *
  * Returns the size of the argument area on the stack.
  * This should be signal safe, since it is called from
- * mono_arch_find_jit_info_ext ().
+ * mono_arch_find_jit_info ().
  * FIXME: The metadata calls might not be signal safe.
  */
 int
 mono_arch_get_argument_info (MonoMethodSignature *csig, int param_count, MonoJitArgumentInfo *arg_info)
 {
-	int k, args_size = 0;
+	int len, k, args_size = 0;
 	int size, pad;
 	guint32 align;
 	int offset = 8;
 	CallInfo *cinfo;
 
 	/* Avoid g_malloc as it is not signal safe */
-	cinfo = (CallInfo*)g_newa (guint8*, sizeof (CallInfo) + (sizeof (ArgInfo) * (csig->param_count + 1)));
+	len = sizeof (CallInfo) + (sizeof (ArgInfo) * (csig->param_count + 1));
+	cinfo = (CallInfo*)g_newa (guint8*, len);
+	memset (cinfo, 0, len);
 
-	cinfo = get_call_info_internal (NULL, cinfo, csig, FALSE);
+	cinfo = get_call_info_internal (NULL, cinfo, csig);
 
-	if (MONO_TYPE_ISSTRUCT (csig->ret) && (cinfo->ret.storage == ArgOnStack)) {
+	arg_info [0].offset = offset;
+
+	if (cinfo->vtype_retaddr && cinfo->vret_arg_index == 0) {
 		args_size += sizeof (gpointer);
 		offset += 4;
 	}
 
-	arg_info [0].offset = offset;
-
 	if (csig->hasthis) {
+		args_size += sizeof (gpointer);
+		offset += 4;
+	}
+
+	if (cinfo->vtype_retaddr && cinfo->vret_arg_index == 1 && csig->hasthis) {
+		/* Emitted after this */
 		args_size += sizeof (gpointer);
 		offset += 4;
 	}
@@ -550,6 +627,12 @@ mono_arch_get_argument_info (MonoMethodSignature *csig, int param_count, MonoJit
 		offset += pad;
 		arg_info [k + 1].offset = offset;
 		offset += size;
+
+		if (k == 0 && cinfo->vtype_retaddr && cinfo->vret_arg_index == 1 && !csig->hasthis) {
+			/* Emitted after the first arg */
+			args_size += sizeof (gpointer);
+			offset += 4;
+		}
 	}
 
 	if (mono_do_x86_stack_align && !CALLCONV_IS_STDCALL (csig))
@@ -560,6 +643,25 @@ mono_arch_get_argument_info (MonoMethodSignature *csig, int param_count, MonoJit
 	arg_info [k].pad = pad;
 
 	return args_size;
+}
+
+gboolean
+mono_x86_tail_call_supported (MonoMethodSignature *caller_sig, MonoMethodSignature *callee_sig)
+{
+	CallInfo *c1, *c2;
+	gboolean res;
+
+	c1 = get_call_info (NULL, NULL, caller_sig);
+	c2 = get_call_info (NULL, NULL, callee_sig);
+	res = c1->stack_usage >= c2->stack_usage;
+	if (callee_sig->ret && MONO_TYPE_ISSTRUCT (callee_sig->ret) && c2->ret.storage != ArgValuetypeInReg)
+		/* An address on the callee's stack is passed as the first argument */
+		res = FALSE;
+
+	g_free (c1);
+	g_free (c2);
+
+	return res;
 }
 
 static const guchar cpuid_impl [] = {
@@ -588,6 +690,14 @@ typedef void (*CpuidFunc) (int id, int* p_eax, int* p_ebx, int* p_ecx, int* p_ed
 static int 
 cpuid (int id, int* p_eax, int* p_ebx, int* p_ecx, int* p_edx)
 {
+#if defined(__native_client__)
+	/* Taken from below, the bug listed in the comment is */
+	/* only valid for non-static cases.                   */
+	__asm__ __volatile__ ("cpuid"
+		: "=a" (*p_eax), "=b" (*p_ebx), "=c" (*p_ecx), "=d" (*p_edx)
+		: "a" (id));
+	return 1;
+#else
 	int have_cpuid = 0;
 #ifndef _MSC_VER
 	__asm__  __volatile__ (
@@ -642,6 +752,7 @@ cpuid (int id, int* p_eax, int* p_ebx, int* p_ecx, int* p_edx)
 		return 1;
 	}
 	return 0;
+#endif
 }
 
 /*
@@ -675,6 +786,9 @@ mono_arch_init (void)
 	ss_trigger_page = mono_valloc (NULL, mono_pagesize (), MONO_MMAP_READ);
 	bp_trigger_page = mono_valloc (NULL, mono_pagesize (), MONO_MMAP_READ|MONO_MMAP_32BIT);
 	mono_mprotect (bp_trigger_page, mono_pagesize (), 0);
+
+	mono_aot_register_jit_icall ("mono_x86_throw_exception", mono_x86_throw_exception);
+	mono_aot_register_jit_icall ("mono_x86_throw_corlib_exception", mono_x86_throw_corlib_exception);
 }
 
 /*
@@ -692,10 +806,16 @@ mono_arch_cleanup (void)
 guint32
 mono_arch_cpu_optimizazions (guint32 *exclude_mask)
 {
+#if !defined(__native_client__)
 	int eax, ebx, ecx, edx;
 	guint32 opts = 0;
 	
 	*exclude_mask = 0;
+
+	if (mono_aot_only)
+		/* The cpuid function allocates from the global codeman */
+		return opts;
+
 	/* Feature Flags function, flags returned in EDX. */
 	if (cpuid (1, &eax, &ebx, &ecx, &edx)) {
 		if (edx & (1 << 15)) {
@@ -718,6 +838,9 @@ mono_arch_cpu_optimizazions (guint32 *exclude_mask)
 #endif
 	}
 	return opts;
+#else
+	return MONO_OPT_CMOV | MONO_OPT_FCMOV | MONO_OPT_SSE2;
+#endif
 }
 
 /*
@@ -725,7 +848,6 @@ mono_arch_cpu_optimizazions (guint32 *exclude_mask)
  *
  * Returns a bitmask corresponding to all supported versions.
  * 
- * TODO detect other versions like SSE4a.
  */
 guint32
 mono_arch_cpu_enumerate_simd_versions (void)
@@ -733,20 +855,38 @@ mono_arch_cpu_enumerate_simd_versions (void)
 	int eax, ebx, ecx, edx;
 	guint32 sse_opts = 0;
 
+	if (mono_aot_only)
+		/* The cpuid function allocates from the global codeman */
+		return sse_opts;
+
 	if (cpuid (1, &eax, &ebx, &ecx, &edx)) {
 		if (edx & (1 << 25))
-			sse_opts |= 1 << SIMD_VERSION_SSE1;
+			sse_opts |= SIMD_VERSION_SSE1;
 		if (edx & (1 << 26))
-			sse_opts |= 1 << SIMD_VERSION_SSE2;
+			sse_opts |= SIMD_VERSION_SSE2;
 		if (ecx & (1 << 0))
-			sse_opts |= 1 << SIMD_VERSION_SSE3;
+			sse_opts |= SIMD_VERSION_SSE3;
 		if (ecx & (1 << 9))
-			sse_opts |= 1 << SIMD_VERSION_SSSE3;
+			sse_opts |= SIMD_VERSION_SSSE3;
 		if (ecx & (1 << 19))
-			sse_opts |= 1 << SIMD_VERSION_SSE41;
+			sse_opts |= SIMD_VERSION_SSE41;
 		if (ecx & (1 << 20))
-			sse_opts |= 1 << SIMD_VERSION_SSE42;
+			sse_opts |= SIMD_VERSION_SSE42;
 	}
+
+	/* Yes, all this needs to be done to check for sse4a.
+	   See: "Amd: CPUID Specification"
+	 */
+	if (cpuid (0x80000000, &eax, &ebx, &ecx, &edx)) {
+		/* eax greater or equal than 0x80000001, ebx = 'htuA', ecx = DMAc', edx = 'itne'*/
+		if ((((unsigned int) eax) >= 0x80000001) && (ebx == 0x68747541) && (ecx == 0x444D4163) && (edx == 0x69746E65)) {
+			cpuid (0x80000001, &eax, &ebx, &ecx, &edx);
+			if (ecx & (1 << 6))
+				sse_opts |= SIMD_VERSION_SSE4a;
+		}
+	}
+
+
 	return sse_opts;	
 }
 
@@ -905,7 +1045,7 @@ needs_stack_frame (MonoCompile *cfg)
 	if (cfg->arch.need_stack_frame_inited)
 		return cfg->arch.need_stack_frame;
 
-	header = mono_method_get_header (cfg->method);
+	header = cfg->header;
 	sig = mono_method_signature (cfg->method);
 
 	if (cfg->disable_omit_fp)
@@ -950,10 +1090,10 @@ mono_arch_allocate_vars (MonoCompile *cfg)
 	gint32 *offsets;
 	CallInfo *cinfo;
 
-	header = mono_method_get_header (cfg->method);
+	header = cfg->header;
 	sig = mono_method_signature (cfg->method);
 
-	cinfo = get_call_info (cfg->generic_sharing_context, cfg->mempool, sig, FALSE);
+	cinfo = get_call_info (cfg->generic_sharing_context, cfg->mempool, sig);
 
 	cfg->frame_reg = X86_EBP;
 	offset = 0;
@@ -1001,6 +1141,8 @@ mono_arch_allocate_vars (MonoCompile *cfg)
 		offset += (locals_stack_align - 1);
 		offset &= ~(locals_stack_align - 1);
 	}
+	cfg->locals_min_stack_offset = - (offset + locals_stack_size);
+	cfg->locals_max_stack_offset = - offset;
 	/*
 	 * EBP is at alignment 8 % MONO_ARCH_FRAME_ALIGNMENT, so if we
 	 * have locals larger than 8 bytes we need to make sure that
@@ -1085,7 +1227,7 @@ mono_arch_create_vars (MonoCompile *cfg)
 
 	sig = mono_method_signature (cfg->method);
 
-	cinfo = get_call_info (cfg->generic_sharing_context, cfg->mempool, sig, FALSE);
+	cinfo = get_call_info (cfg->generic_sharing_context, cfg->mempool, sig);
 
 	if (cinfo->ret.storage == ArgValuetypeInReg)
 		cfg->ret_var_is_local = TRUE;
@@ -1150,12 +1292,12 @@ mono_arch_get_llvm_call_info (MonoCompile *cfg, MonoMethodSignature *sig)
 	int i, n;
 	CallInfo *cinfo;
 	ArgInfo *ainfo;
-	int j;
 	LLVMCallInfo *linfo;
+	MonoType *t;
 
 	n = sig->param_count + sig->hasthis;
 
-	cinfo = get_call_info (cfg->generic_sharing_context, cfg->mempool, sig, sig->pinvoke);
+	cinfo = get_call_info (cfg->generic_sharing_context, cfg->mempool, sig);
 
 	linfo = mono_mempool_alloc0 (cfg->mempool, sizeof (LLVMCallInfo) + (sizeof (LLVMArgInfo) * n));
 
@@ -1184,6 +1326,7 @@ mono_arch_get_llvm_call_info (MonoCompile *cfg, MonoMethodSignature *sig)
 	if (MONO_TYPE_ISSTRUCT (sig->ret) && cinfo->ret.storage == ArgInIReg) {
 		/* Vtype returned using a hidden argument */
 		linfo->ret.storage = LLVMArgVtypeRetAddr;
+		linfo->vret_arg_index = cinfo->vret_arg_index;
 	}
 
 	if (MONO_TYPE_ISSTRUCT (sig->ret) && cinfo->ret.storage != ArgInIReg) {
@@ -1194,6 +1337,11 @@ mono_arch_get_llvm_call_info (MonoCompile *cfg, MonoMethodSignature *sig)
 
 	for (i = 0; i < n; ++i) {
 		ainfo = cinfo->args + i;
+
+		if (i >= sig->hasthis)
+			t = sig->params [i - sig->hasthis];
+		else
+			t = &mono_defaults.int_class->byval_arg;
 
 		linfo->args [i].storage = LLVMArgNone;
 
@@ -1206,16 +1354,19 @@ mono_arch_get_llvm_call_info (MonoCompile *cfg, MonoMethodSignature *sig)
 			linfo->args [i].storage = LLVMArgInFPReg;
 			break;
 		case ArgOnStack:
-			if ((i >= sig->hasthis) && (MONO_TYPE_ISSTRUCT(sig->params [i - sig->hasthis]))) {
-				linfo->args [i].storage = LLVMArgVtypeByVal;
+			if (MONO_TYPE_ISSTRUCT (t)) {
+				if (mono_class_value_size (mono_class_from_mono_type (t), NULL) == 0)
+				/* LLVM seems to allocate argument space for empty structures too */
+					linfo->args [i].storage = LLVMArgNone;
+				else
+					linfo->args [i].storage = LLVMArgVtypeByVal;
 			} else {
 				linfo->args [i].storage = LLVMArgInIReg;
-				if (!sig->params [i - sig->hasthis]->byref) {
-					if (sig->params [i - sig->hasthis]->type == MONO_TYPE_R4) {
+				if (t->byref) {
+					if (t->type == MONO_TYPE_R4)
 						linfo->args [i].storage = LLVMArgInFPReg;
-					} else if (sig->params [i - sig->hasthis]->type == MONO_TYPE_R8) {
+					else if (t->type == MONO_TYPE_R8)
 						linfo->args [i].storage = LLVMArgInFPReg;
-					}
 				}
 			}
 			break;
@@ -1257,7 +1408,7 @@ mono_arch_emit_call (MonoCompile *cfg, MonoCallInst *call)
 	sig = call->signature;
 	n = sig->param_count + sig->hasthis;
 
-	cinfo = get_call_info (cfg->generic_sharing_context, cfg->mempool, sig, FALSE);
+	cinfo = get_call_info (cfg->generic_sharing_context, cfg->mempool, sig);
 
 	if (!sig->pinvoke && (sig->call_convention == MONO_CALL_VARARG))
 		sentinelpos = sig->sentinelpos + (sig->hasthis ? 1 : 0);
@@ -1292,6 +1443,15 @@ mono_arch_emit_call (MonoCompile *cfg, MonoCallInst *call)
 	for (i = n - 1; i >= 0; i --) {
 		ArgInfo *ainfo = cinfo->args + i;
 		MonoType *t;
+
+		if (cinfo->vtype_retaddr && cinfo->vret_arg_index == 1 && i == 0) {
+			/* Push the vret arg before the first argument */
+			MonoInst *vtarg;
+			MONO_INST_NEW (cfg, vtarg, OP_X86_PUSH);
+			vtarg->type = STACK_MP;
+			vtarg->sreg1 = call->vret_var->dreg;
+			MONO_ADD_INS (cfg->cbb, vtarg);
+		}
 
 		if (i >= sig->hasthis)
 			t = sig->params [i - sig->hasthis];
@@ -1380,7 +1540,7 @@ mono_arch_emit_call (MonoCompile *cfg, MonoCallInst *call)
 			MONO_ADD_INS (cfg->cbb, vtarg);
 				
 			mono_call_inst_add_outarg_reg (cfg, call, vtarg->dreg, cinfo->ret.reg, FALSE);
-		} else {
+		} else if (cinfo->vtype_retaddr && cinfo->vret_arg_index == 0) {
 			MonoInst *vtarg;
 			MONO_INST_NEW (cfg, vtarg, OP_X86_PUSH);
 			vtarg->type = STACK_MP;
@@ -1643,6 +1803,13 @@ if (ins->inst_true_bb->native_offset) { \
 static guint8*
 emit_call (MonoCompile *cfg, guint8 *code, guint32 patch_type, gconstpointer data)
 {
+	/*The address must be 4 bytes aligned to avoid spanning multiple cache lines.
+	This is required for code patching to be safe on SMP machines.
+	*/
+	guint32 pad_size = (guint32)(code + 1 - cfg->native_code) & 0x3;
+	if (pad_size)
+		x86_padding (code, pad_size);
+
 	mono_add_patch_info (cfg, code - cfg->native_code, patch_type, data);
 	x86_call_code (code, 0);
 
@@ -1898,7 +2065,7 @@ mono_emit_stack_alloc (guchar *code, MonoInst* tree)
 	int sreg = tree->sreg1;
 	int need_touch = FALSE;
 
-#if defined(PLATFORM_WIN32) || defined(MONO_ARCH_SIGSEGV_ON_ALTSTACK)
+#if defined(TARGET_WIN32) || defined(MONO_ARCH_SIGSEGV_ON_ALTSTACK)
 	need_touch = TRUE;
 #endif
 
@@ -2018,6 +2185,38 @@ emit_move_return_value (MonoCompile *cfg, MonoInst *ins, guint8 *code)
 	return code;
 }
 
+#ifdef __APPLE__
+static int tls_gs_offset;
+#endif
+
+gboolean
+mono_x86_have_tls_get (void)
+{
+#ifdef __APPLE__
+	static gboolean have_tls_get = FALSE;
+	static gboolean inited = FALSE;
+
+	if (inited)
+		return have_tls_get;
+
+	guint32 *ins = (guint32*)pthread_getspecific;
+	/*
+	 * We're looking for these two instructions:
+	 *
+	 * mov    0x4(%esp),%eax
+	 * mov    %gs:[offset](,%eax,4),%eax
+	 */
+	have_tls_get = ins [0] == 0x0424448b && ins [1] == 0x85048b65;
+	tls_gs_offset = ins [2];
+
+	inited = TRUE;
+
+	return have_tls_get;
+#else
+	return TRUE;
+#endif
+}
+
 /*
  * mono_x86_emit_tls_get:
  * @code: buffer to store code to
@@ -2033,7 +2232,10 @@ emit_move_return_value (MonoCompile *cfg, MonoInst *ins, guint8 *code)
 guint8*
 mono_x86_emit_tls_get (guint8* code, int dreg, int tls_offset)
 {
-#ifdef PLATFORM_WIN32
+#if defined(__APPLE__)
+	x86_prefix (code, X86_GS_PREFIX);
+	x86_mov_reg_mem (code, dreg, tls_gs_offset + (tls_offset * 4), 4);
+#elif defined(TARGET_WIN32)
 	/* 
 	 * See the Under the Hood article in the May 1996 issue of Microsoft Systems 
 	 * Journal and/or a disassembly of the TlsGet () function.
@@ -2076,7 +2278,7 @@ emit_load_volatile_arguments (MonoCompile *cfg, guint8 *code)
 
 	sig = mono_method_signature (method);
 
-	cinfo = get_call_info (cfg->generic_sharing_context, cfg->mempool, sig, FALSE);
+	cinfo = get_call_info (cfg->generic_sharing_context, cfg->mempool, sig);
 	
 	/* This is the opposite of the code in emit_prolog */
 
@@ -2119,11 +2321,26 @@ x86_pop_reg (code, X86_ECX); \
 x86_pop_reg (code, X86_EDX); \
 x86_pop_reg (code, X86_EAX);
 
+/* REAL_PRINT_REG does not appear to be used, and was not adapted to work with Native Client. */
+#ifdef __native__client_codegen__
+#define REAL_PRINT_REG(text, reg) g_assert_not_reached()
+#endif
+
 /* benchmark and set based on cpu */
 #define LOOP_ALIGNMENT 8
 #define bb_is_loop_start(bb) ((bb)->loop_body_start && (bb)->nesting)
 
 #ifndef DISABLE_JIT
+
+#if defined(__native_client__) || defined(__native_client_codegen__)
+void
+mono_nacl_gc()
+{
+#ifdef __native_client_gc__
+	__nacl_suspend_thread_if_needed();
+#endif
+}
+#endif
 
 void
 mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
@@ -2145,7 +2362,23 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			bb->native_offset = cfg->code_len;
 		}
 	}
+#ifdef __native_client_codegen__
+	{
+		/* For Native Client, all indirect call/jump targets must be   */
+		/* 32-byte aligned.  Exception handler blocks are jumped to    */
+		/* indirectly as well.                                         */
+		gboolean bb_needs_alignment = (bb->flags & BB_INDIRECT_JUMP_TARGET) ||
+			(bb->flags & BB_EXCEPTION_HANDLER);
 
+		/* if ((cfg->code_len & kNaClAlignmentMask) != 0) { */
+		if ( bb_needs_alignment && ((cfg->code_len & kNaClAlignmentMask) != 0)) {
+            int pad = kNaClAlignment - (cfg->code_len & kNaClAlignmentMask);
+            if (pad != kNaClAlignment) code = mono_arch_nacl_pad(code, pad);
+            cfg->code_len += pad;
+            bb->native_offset = cfg->code_len;
+		}
+	}
+#endif  /* __native_client_codegen__ */
 	if (cfg->verbose_level > 2)
 		g_print ("Basic block %d starting at offset 0x%x\n", bb->block_num, bb->native_offset);
 
@@ -2165,14 +2398,19 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 
 	mono_debug_open_block (cfg, bb, offset);
 
+    if (mono_break_at_bb_method && mono_method_desc_full_match (mono_break_at_bb_method, cfg->method) && bb->block_num == mono_break_at_bb_bb_num)
+		x86_breakpoint (code);
+
 	MONO_BB_FOR_EACH_INS (bb, ins) {
 		offset = code - cfg->native_code;
 
 		max_len = ((guint8 *)ins_get_spec (ins->opcode))[MONO_INST_LEN];
 
-		if (G_UNLIKELY (offset > (cfg->code_size - max_len - 16))) {
+#define EXTRA_CODE_SPACE (NACL_SIZE (16, 16 + kNaClAlignment))
+
+		if (G_UNLIKELY (offset > (cfg->code_size - max_len - EXTRA_CODE_SPACE))) {
 			cfg->code_size *= 2;
-			cfg->native_code = g_realloc (cfg->native_code, cfg->code_size);
+			cfg->native_code = mono_realloc_native_code(cfg);
 			code = cfg->native_code + offset;
 			mono_jit_stats.code_reallocs++;
 		}
@@ -2363,7 +2601,7 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
  		case OP_NOT_NULL:
  			break;
 		case OP_SEQ_POINT: {
-			int i, il_offset;
+			int i;
 
 			if (cfg->compile_aot)
 				NOT_IMPLEMENTED;
@@ -2377,12 +2615,8 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			if (ins->flags & MONO_INST_SINGLE_STEP_LOC)
 				x86_alu_reg_mem (code, X86_CMP, X86_EAX, (guint32)ss_trigger_page);
 
-			il_offset = ins->inst_imm;
+			mono_add_seq_point (cfg, bb, ins, code - cfg->native_code);
 
-			if (!cfg->seq_points)
-				cfg->seq_points = g_ptr_array_new ();
-			g_ptr_array_add (cfg->seq_points, GUINT_TO_POINTER (il_offset));
-			g_ptr_array_add (cfg->seq_points, GUINT_TO_POINTER (code - cfg->native_code));
 			/* 
 			 * A placeholder for a possible breakpoint inserted by
 			 * mono_arch_set_breakpoint ().
@@ -2744,14 +2978,8 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			x86_mov_reg_imm (code, ins->dreg, 0);
 			break;
 		case OP_LOAD_GOTADDR:
-			x86_call_imm (code, 0);
-			/* 
-			 * The patch needs to point to the pop, since the GOT offset needs 
-			 * to be added to that address.
-			 */
-			mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_GOT_OFFSET, NULL);
-			x86_pop_reg (code, ins->dreg);
-			x86_alu_reg_imm (code, X86_ADD, ins->dreg, 0xf0f0f0f0);
+			g_assert (ins->dreg == MONO_ARCH_GOT_REG);
+			code = mono_arch_emit_load_got_addr (cfg->native_code, code, cfg, NULL);
 			break;
 		case OP_GOT_ENTRY:
 			mono_add_patch_info (cfg, offset, (MonoJumpInfoType)ins->inst_right->inst_i1, ins->inst_right->inst_p0);
@@ -2806,6 +3034,52 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			cfg->disable_aot = TRUE;
 			break;
 		}
+		case OP_TAILCALL: {
+			MonoCallInst *call = (MonoCallInst*)ins;
+			int pos = 0, i;
+
+			/* FIXME: no tracing support... */
+			if (cfg->prof_options & MONO_PROFILE_ENTER_LEAVE)
+				code = mono_arch_instrument_epilog (cfg, mono_profiler_method_leave, code, FALSE);
+			/* reset offset to make max_len work */
+			offset = code - cfg->native_code;
+
+			g_assert (!cfg->method->save_lmf);
+
+			//code = emit_load_volatile_arguments (cfg, code);
+
+			/* restore callee saved registers */
+			for (i = 0; i < X86_NREG; ++i)
+				if (X86_IS_CALLEE_SAVED_REG (i) && cfg->used_int_regs & (1 << i))
+					pos -= 4;
+			if (cfg->used_int_regs & (1 << X86_ESI)) {
+				x86_mov_reg_membase (code, X86_ESI, X86_EBP, pos, 4);
+				pos += 4;
+			}
+			if (cfg->used_int_regs & (1 << X86_EDI)) {
+				x86_mov_reg_membase (code, X86_EDI, X86_EBP, pos, 4);
+				pos += 4;
+			}
+			if (cfg->used_int_regs & (1 << X86_EBX)) {
+				x86_mov_reg_membase (code, X86_EBX, X86_EBP, pos, 4);
+				pos += 4;
+			}
+
+			/* Copy arguments on the stack to our argument area */
+			for (i = 0; i < call->stack_usage; i += 4) {
+				x86_mov_reg_membase (code, X86_EAX, X86_ESP, i, 4);
+				x86_mov_membase_reg (code, X86_EBP, 8 + i, X86_EAX, 4);
+			}
+	
+			/* restore ESP/EBP */
+			x86_leave (code);
+			offset = code - cfg->native_code;
+			mono_add_patch_info (cfg, offset, MONO_PATCH_INFO_METHOD_JUMP, ins->inst_p0);
+			x86_jump32 (code, 0);
+
+			cfg->disable_aot = TRUE;
+			break;
+		}
 		case OP_CHECK_THIS:
 			/* ensure ins->sreg1 is not NULL
 			 * note that cmp DWORD PTR [eax], eax is one byte shorter than
@@ -2832,6 +3106,8 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 				code = emit_call (cfg, code, MONO_PATCH_INFO_METHOD, call->method);
 			else
 				code = emit_call (cfg, code, MONO_PATCH_INFO_ABS, call->fptr);
+			ins->flags |= MONO_INST_GC_CALLSITE;
+			ins->backend.pc_offset = code - cfg->native_code;
 			if (call->stack_usage && !CALLCONV_IS_STDCALL (call->signature)) {
 				/* a pop is one byte, while an add reg, imm is 3. So if there are 4 or 8
 				 * bytes to pop, we want to use pops. GCC does this (note it won't happen
@@ -2864,6 +3140,8 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 		case OP_CALL_REG:
 			call = (MonoCallInst*)ins;
 			x86_call_reg (code, ins->sreg1);
+			ins->flags |= MONO_INST_GC_CALLSITE;
+			ins->backend.pc_offset = code - cfg->native_code;
 			if (call->stack_usage && !CALLCONV_IS_STDCALL (call->signature)) {
 				if (call->stack_usage == 4)
 					x86_pop_reg (code, X86_ECX);
@@ -2880,14 +3158,9 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 		case OP_CALL_MEMBASE:
 			call = (MonoCallInst*)ins;
 
-			/* 
-			 * Emit a few nops to simplify get_vcall_slot ().
-			 */
-			x86_nop (code);
-			x86_nop (code);
-			x86_nop (code);
-
 			x86_call_membase (code, ins->sreg1, ins->inst_offset);
+			ins->flags |= MONO_INST_GC_CALLSITE;
+			ins->backend.pc_offset = code - cfg->native_code;
 			if (call->stack_usage && !CALLCONV_IS_STDCALL (call->signature)) {
 				if (call->stack_usage == 4)
 					x86_pop_reg (code, X86_ECX);
@@ -2961,6 +3234,8 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			x86_push_reg (code, ins->sreg1);
 			code = emit_call (cfg, code, MONO_PATCH_INFO_INTERNAL_METHOD, 
 							  (gpointer)"mono_arch_throw_exception");
+			ins->flags |= MONO_INST_GC_CALLSITE;
+			ins->backend.pc_offset = code - cfg->native_code;
 			break;
 		}
 		case OP_RETHROW: {
@@ -2968,12 +3243,15 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			x86_push_reg (code, ins->sreg1);
 			code = emit_call (cfg, code, MONO_PATCH_INFO_INTERNAL_METHOD, 
 							  (gpointer)"mono_arch_rethrow_exception");
+			ins->flags |= MONO_INST_GC_CALLSITE;
+			ins->backend.pc_offset = code - cfg->native_code;
 			break;
 		}
 		case OP_CALL_HANDLER:
 			x86_alu_reg_imm (code, X86_SUB, X86_ESP, MONO_ARCH_FRAME_ALIGNMENT - 4);
 			mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_target_bb);
 			x86_call_imm (code, 0);
+			mono_cfg_add_try_hole (cfg, ins->inst_eh_block, code, bb);
 			x86_alu_reg_imm (code, X86_ADD, X86_ESP, MONO_ARCH_FRAME_ALIGNMENT - 4);
 			break;
 		case OP_START_HANDLER: {
@@ -3710,7 +3988,9 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			break;
 		}
 		case OP_MEMORY_BARRIER: {
-			/* Not needed on x86 */
+			/* http://blogs.sun.com/dave/resource/NHM-Pipeline-Blog-V2.txt */
+			x86_prefix (code, X86_LOCK_PREFIX);
+			x86_alu_membase_imm (code, X86_ADD, X86_ESP, 0, 0);
 			break;
 		}
 		case OP_ATOMIC_ADD_I4: {
@@ -3817,15 +4097,57 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			break;
 		}
 		case OP_ATOMIC_CAS_I4: {
+			g_assert (ins->dreg == X86_EAX);
 			g_assert (ins->sreg3 == X86_EAX);
 			g_assert (ins->sreg1 != X86_EAX);
 			g_assert (ins->sreg1 != ins->sreg2);
 
 			x86_prefix (code, X86_LOCK_PREFIX);
 			x86_cmpxchg_membase_reg (code, ins->sreg1, ins->inst_offset, ins->sreg2);
+			break;
+		}
+		case OP_CARD_TABLE_WBARRIER: {
+			int ptr = ins->sreg1;
+			int value = ins->sreg2;
+			guchar *br;
+			int nursery_shift, card_table_shift;
+			gpointer card_table_mask;
+			size_t nursery_size;
+			gulong card_table = (gulong)mono_gc_get_card_table (&card_table_shift, &card_table_mask);
+			gulong nursery_start = (gulong)mono_gc_get_nursery (&nursery_shift, &nursery_size);
 
-			if (ins->dreg != X86_EAX)
-				x86_mov_reg_reg (code, ins->dreg, X86_EAX, 4);
+			/*
+			 * We need one register we can clobber, we choose EDX and make sreg1
+			 * fixed EAX to work around limitations in the local register allocator.
+			 * sreg2 might get allocated to EDX, but that is not a problem since
+			 * we use it before clobbering EDX.
+			 */
+			g_assert (ins->sreg1 == X86_EAX);
+
+			/*
+			 * This is the code we produce:
+			 *
+			 *   edx = value
+			 *   edx >>= nursery_shift
+			 *   cmp edx, (nursery_start >> nursery_shift)
+			 *   jne done
+			 *   edx = ptr
+			 *   edx >>= card_table_shift
+			 *   card_table[edx] = 1
+			 * done:
+			 */
+
+			if (value != X86_EDX)
+				x86_mov_reg_reg (code, X86_EDX, value, 4);
+			x86_shift_reg_imm (code, X86_SHR, X86_EDX, nursery_shift);
+			x86_alu_reg_imm (code, X86_CMP, X86_EDX, nursery_start >> nursery_shift);
+			br = code; x86_branch8 (code, X86_CC_NE, -1, FALSE);
+			x86_mov_reg_reg (code, X86_EDX, ptr, 4);
+			x86_shift_reg_imm (code, X86_SHR, X86_EDX, card_table_shift);
+			if (card_table_mask)
+				x86_alu_reg_imm (code, X86_AND, X86_EDX, (int)card_table_mask);
+			x86_mov_membase_imm (code, X86_EDX, card_table, 1, 1);
+			x86_patch (br, code);
 			break;
 		}
 #ifdef MONO_ARCH_SIMD_INTRINSICS
@@ -3900,6 +4222,14 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			g_assert (ins->inst_c0 >= 0 && ins->inst_c0 <= 0xFF);
 			x86_sse_shift_reg_imm (code, X86_SSE_PSHUFD, ins->dreg, ins->sreg1, ins->inst_c0);
 			break;
+		case OP_SHUFPS:
+			g_assert (ins->inst_c0 >= 0 && ins->inst_c0 <= 0xFF);
+			x86_sse_alu_reg_reg_imm8 (code, X86_SSE_SHUFP, ins->sreg1, ins->sreg2, ins->inst_c0);
+			break; 
+		case OP_SHUFPD:
+			g_assert (ins->inst_c0 >= 0 && ins->inst_c0 <= 0x3);
+			x86_sse_alu_pd_reg_reg_imm8 (code, X86_SSE_SHUFP, ins->sreg1, ins->sreg2, ins->inst_c0);
+			break; 
 
 		case OP_ADDPD:
 			x86_sse_alu_pd_reg_reg (code, X86_SSE_ADD, ins->sreg1, ins->sreg2);
@@ -4279,10 +4609,12 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			break;
 		case OP_INSERTX_R8_SLOW:
 			x86_fst_membase (code, ins->backend.spill_var->inst_basereg, ins->backend.spill_var->inst_offset, TRUE, TRUE);
+			if (cfg->verbose_level)
+				printf ("CONVERTING a OP_INSERTX_R8_SLOW %d offset %x\n", ins->inst_c0, offset);
 			if (ins->inst_c0)
 				x86_sse_alu_pd_reg_membase (code, X86_SSE_MOVHPD_REG_MEMBASE, ins->dreg, ins->backend.spill_var->inst_basereg, ins->backend.spill_var->inst_offset);
 			else
-				x86_sse_alu_pd_reg_membase (code, X86_SSE_MOVSD_REG_MEMBASE, ins->dreg, ins->backend.spill_var->inst_basereg, ins->backend.spill_var->inst_offset);
+				x86_movsd_reg_membase (code, ins->dreg, ins->backend.spill_var->inst_basereg, ins->backend.spill_var->inst_offset);
 			break;
 
 		case OP_STOREX_MEMBASE_REG:
@@ -4368,6 +4700,32 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			x86_movsd_reg_membase (code, ins->dreg, ins->backend.spill_var->inst_basereg, ins->backend.spill_var->inst_offset);
 			x86_sse_shift_reg_imm (code, X86_SSE_PSHUFD, ins->dreg, ins->dreg, 0x44);
 			break;
+
+		case OP_CVTDQ2PD:
+			x86_sse_alu_ss_reg_reg (code, X86_SSE_CVTDQ2PD, ins->dreg, ins->sreg1);
+			break;
+		case OP_CVTDQ2PS:
+			x86_sse_alu_ps_reg_reg (code, X86_SSE_CVTDQ2PS, ins->dreg, ins->sreg1);
+			break;
+		case OP_CVTPD2DQ:
+			x86_sse_alu_sd_reg_reg (code, X86_SSE_CVTPD2DQ, ins->dreg, ins->sreg1);
+			break;
+		case OP_CVTPD2PS:
+			x86_sse_alu_pd_reg_reg (code, X86_SSE_CVTPD2PS, ins->dreg, ins->sreg1);
+			break;
+		case OP_CVTPS2DQ:
+			x86_sse_alu_pd_reg_reg (code, X86_SSE_CVTPS2DQ, ins->dreg, ins->sreg1);
+			break;
+		case OP_CVTPS2PD:
+			x86_sse_alu_ps_reg_reg (code, X86_SSE_CVTPS2PD, ins->dreg, ins->sreg1);
+			break;
+		case OP_CVTTPD2DQ:
+			x86_sse_alu_pd_reg_reg (code, X86_SSE_CVTTPD2DQ, ins->dreg, ins->sreg1);
+			break;
+		case OP_CVTTPS2DQ:
+			x86_sse_alu_ss_reg_reg (code, X86_SSE_CVTTPS2DQ, ins->dreg, ins->sreg1);
+			break;
+
 #endif
 		case OP_LIVERANGE_START: {
 			if (cfg->verbose_level > 1)
@@ -4381,15 +4739,32 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			MONO_VARINFO (cfg, ins->inst_c0)->live_range_end = code - cfg->native_code;
 			break;
 		}
+		case OP_NACL_GC_SAFE_POINT: {
+#if defined(__native_client_codegen__)
+			code = emit_call (cfg, code, MONO_PATCH_INFO_ABS, (gpointer)mono_nacl_gc);
+#endif
+			break;
+		}
+		case OP_GC_LIVENESS_DEF:
+		case OP_GC_LIVENESS_USE:
+		case OP_GC_PARAM_SLOT_LIVENESS_DEF:
+			ins->backend.pc_offset = code - cfg->native_code;
+			break;
+		case OP_GC_SPILL_SLOT_LIVENESS_DEF:
+			ins->backend.pc_offset = code - cfg->native_code;
+			bb->spill_slot_defs = g_slist_prepend_mempool (cfg->mempool, bb->spill_slot_defs, ins);
+			break;
 		default:
 			g_warning ("unknown opcode %s\n", mono_inst_name (ins->opcode));
 			g_assert_not_reached ();
 		}
 
 		if (G_UNLIKELY ((code - cfg->native_code - offset) > max_len)) {
+#ifndef __native_client_codegen__
 			g_warning ("wrong maximal instruction length of instruction %s (expected %d, got %d)",
-				   mono_inst_name (ins->opcode), max_len, code - cfg->native_code - offset);
+					   mono_inst_name (ins->opcode), max_len, code - cfg->native_code - offset);
 			g_assert_not_reached ();
+#endif  /* __native_client_codegen__ */
 		}
 	       
 		cpos += max_len;
@@ -4406,7 +4781,7 @@ mono_arch_register_lowlevel_calls (void)
 }
 
 void
-mono_arch_patch_code (MonoMethod *method, MonoDomain *domain, guint8 *code, MonoJumpInfo *ji, gboolean run_cctors)
+mono_arch_patch_code (MonoMethod *method, MonoDomain *domain, guint8 *code, MonoJumpInfo *ji, MonoCodeManager *dyn_code_mp, gboolean run_cctors)
 {
 	MonoJumpInfo *patch_info;
 	gboolean compile_aot = !run_cctors;
@@ -4449,13 +4824,46 @@ mono_arch_patch_code (MonoMethod *method, MonoDomain *domain, guint8 *code, Mono
 		case MONO_PATCH_INFO_GENERIC_CLASS_INIT:
 		case MONO_PATCH_INFO_MONITOR_ENTER:
 		case MONO_PATCH_INFO_MONITOR_EXIT:
+#if defined(__native_client_codegen__) && defined(__native_client__)
+			if (nacl_is_code_address (code)) {
+				/* For tail calls, code is patched after being installed */
+				/* but not through the normal "patch callsite" method.   */
+				unsigned char buf[kNaClAlignment];
+				unsigned char *aligned_code = (uintptr_t)code & ~kNaClAlignmentMask;
+				unsigned char *_target = target;
+				int ret;
+				/* All patch targets modified in x86_patch */
+				/* are IP relative.                        */
+				_target = _target + (uintptr_t)buf - (uintptr_t)aligned_code;
+				memcpy (buf, aligned_code, kNaClAlignment);
+				/* Patch a temp buffer of bundle size, */
+				/* then install to actual location.    */
+				x86_patch (buf + ((uintptr_t)code - (uintptr_t)aligned_code), _target);
+				ret = nacl_dyncode_modify (aligned_code, buf, kNaClAlignment);
+				g_assert (ret == 0);
+			}
+			else {
+				x86_patch (ip, target);
+			}
+#else
 			x86_patch (ip, target);
+#endif
 			break;
 		case MONO_PATCH_INFO_NONE:
 			break;
-		default: {
+		case MONO_PATCH_INFO_R4:
+		case MONO_PATCH_INFO_R8: {
 			guint32 offset = mono_arch_get_patch_offset (ip);
 			*((gconstpointer *)(ip + offset)) = target;
+			break;
+		}
+		default: {
+			guint32 offset = mono_arch_get_patch_offset (ip);
+#if !defined(__native_client__)
+			*((gconstpointer *)(ip + offset)) = target;
+#else
+			*((gconstpointer *)(ip + offset)) = nacl_modify_patch_target (target);
+#endif
 			break;
 		}
 		}
@@ -4472,13 +4880,30 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 	int alloc_size, pos, max_offset, i, cfa_offset;
 	guint8 *code;
 	gboolean need_stack_frame;
+#ifdef __native_client_codegen__
+	guint alignment_check;
+#endif
 
-	cfg->code_size = MAX (mono_method_get_header (method)->code_size * 4, 10240);
+	cfg->code_size = MAX (cfg->header->code_size * 4, 10240);
 
 	if (cfg->prof_options & MONO_PROFILE_ENTER_LEAVE)
 		cfg->code_size += 512;
 
+#if defined(__default_codegen__)
 	code = cfg->native_code = g_malloc (cfg->code_size);
+#elif defined(__native_client_codegen__)
+	/* native_code_alloc is not 32-byte aligned, native_code is. */
+	cfg->native_code_alloc = g_malloc (cfg->code_size + kNaClAlignment);
+
+	/* Align native_code to next nearest kNaclAlignment byte. */
+	cfg->native_code = (guint)cfg->native_code_alloc + kNaClAlignment; 
+	cfg->native_code = (guint)cfg->native_code & ~kNaClAlignmentMask;
+	
+	code = cfg->native_code;
+
+	alignment_check = (guint)cfg->native_code & kNaClAlignmentMask;
+  	g_assert(alignment_check == 0);
+#endif
 
 	/* Offset between RSP and the CFA */
 	cfa_offset = 0;
@@ -4499,6 +4924,8 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 		mono_emit_unwind_op_offset (cfg, code, X86_EBP, - cfa_offset);
 		x86_mov_reg_reg (code, X86_EBP, X86_ESP, 4);
 		mono_emit_unwind_op_def_cfa_reg (cfg, code, X86_EBP);
+	} else {
+		cfg->frame_reg = X86_ESP;
 	}
 
 	alloc_size = cfg->stack_offset;
@@ -4522,29 +4949,42 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 			code = emit_call (cfg, code, MONO_PATCH_INFO_INTERNAL_METHOD, (gpointer)"mono_jit_thread_attach");
 			x86_alu_reg_imm (code, X86_ADD, X86_ESP, 4);
 			x86_patch (buf, code);
-#ifdef PLATFORM_WIN32
+#ifdef TARGET_WIN32
 			/* The TLS key actually contains a pointer to the MonoJitTlsData structure */
 			/* FIXME: Add a separate key for LMF to avoid this */
 			x86_alu_reg_imm (code, X86_ADD, X86_EAX, G_STRUCT_OFFSET (MonoJitTlsData, lmf));
 #endif
 		}
 		else {
-			g_assert (!cfg->compile_aot);
-			x86_push_imm (code, cfg->domain);
+			if (cfg->compile_aot) {
+				/* 
+				 * This goes before the saving of callee saved regs, so save the got reg
+				 * ourselves.
+				 */
+				x86_push_reg (code, MONO_ARCH_GOT_REG);
+				code = mono_arch_emit_load_got_addr (cfg->native_code, code, cfg, NULL);
+				x86_push_imm (code, 0);
+			} else {
+				x86_push_imm (code, cfg->domain);
+			}
 			code = emit_call (cfg, code, MONO_PATCH_INFO_INTERNAL_METHOD, (gpointer)"mono_jit_thread_attach");
 			x86_alu_reg_imm (code, X86_ADD, X86_ESP, 4);
+			if (cfg->compile_aot)
+				x86_pop_reg (code, MONO_ARCH_GOT_REG);
 		}
 	}
 
 	if (method->save_lmf) {
 		pos += sizeof (MonoLMF);
 
-		if (cfg->compile_aot)
-			cfg->disable_aot = TRUE;
-
 		/* save the current IP */
-		mono_add_patch_info (cfg, code + 1 - cfg->native_code, MONO_PATCH_INFO_IP, NULL);
-		x86_push_imm_template (code);
+		if (cfg->compile_aot) {
+			/* This pushes the current ip */
+			x86_call_imm (code, 0);
+		} else {
+			mono_add_patch_info (cfg, code + 1 - cfg->native_code, MONO_PATCH_INFO_IP, NULL);
+			x86_push_imm_template (code);
+		}
 		cfa_offset += sizeof (gpointer);
 
 		/* save all caller saved regs */
@@ -4585,12 +5025,14 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 			if (lmf_addr_tls_offset != -1) {
 				/* Load lmf quicky using the GS register */
 				code = mono_x86_emit_tls_get (code, X86_EAX, lmf_addr_tls_offset);
-#ifdef PLATFORM_WIN32
+#ifdef TARGET_WIN32
 				/* The TLS key actually contains a pointer to the MonoJitTlsData structure */
 				/* FIXME: Add a separate key for LMF to avoid this */
 				x86_alu_reg_imm (code, X86_ADD, X86_EAX, G_STRUCT_OFFSET (MonoJitTlsData, lmf));
 #endif
 			} else {
+				if (cfg->compile_aot)
+					code = mono_arch_emit_load_got_addr (cfg->native_code, code, cfg, NULL);
 				code = emit_call (cfg, code, MONO_PATCH_INFO_INTERNAL_METHOD, (gpointer)"mono_get_lmf_addr");
 			}
 
@@ -4642,7 +5084,7 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 
 	if (alloc_size) {
 		/* See mono_emit_stack_alloc */
-#if defined(PLATFORM_WIN32) || defined(MONO_ARCH_SIGSEGV_ON_ALTSTACK)
+#if defined(TARGET_WIN32) || defined(MONO_ARCH_SIGSEGV_ON_ALTSTACK)
 		guint32 remaining_size = alloc_size;
 		/*FIXME handle unbounded code expansion, we should use a loop in case of more than X interactions*/
 		guint32 required_code_size = ((remaining_size / 0x1000) + 1) * 8; /*8 is the max size of x86_alu_reg_imm + x86_test_membase_reg*/
@@ -4650,7 +5092,7 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 		if (G_UNLIKELY (required_code_size >= (cfg->code_size - offset))) {
 			while (required_code_size >= (cfg->code_size - offset))
 				cfg->code_size *= 2;
-			cfg->native_code = g_realloc (cfg->native_code, cfg->code_size);
+			cfg->native_code = mono_realloc_native_code(cfg);
 			code = cfg->native_code + offset;
 			mono_jit_stats.code_reallocs++;
 		}
@@ -4696,11 +5138,23 @@ mono_arch_emit_prolog (MonoCompile *cfg)
 			/* max alignment for loops */
 			if ((cfg->opt & MONO_OPT_LOOP) && bb_is_loop_start (bb))
 				max_offset += LOOP_ALIGNMENT;
-
+#ifdef __native_client_codegen__
+			/* max alignment for native client */
+			max_offset += kNaClAlignment;
+#endif
 			MONO_BB_FOR_EACH_INS (bb, ins) {
 				if (ins->opcode == OP_LABEL)
 					ins->inst_c1 = max_offset;
-				
+#ifdef __native_client_codegen__
+				{
+					int space_in_block = kNaClAlignment -
+						((max_offset + cfg->code_len) & kNaClAlignmentMask);
+					int max_len = ((guint8 *)ins_get_spec (ins->opcode))[MONO_INST_LEN];
+					if (space_in_block < max_len && max_len < kNaClAlignment) {
+						max_offset += space_in_block;
+					}
+				}
+#endif  /* __native_client_codegen__ */
 				max_offset += ((guint8 *)ins_get_spec (ins->opcode))[MONO_INST_LEN];
 			}
 		}
@@ -4755,7 +5209,7 @@ mono_arch_emit_epilog (MonoCompile *cfg)
 
 	while (cfg->code_len + max_epilog_size > (cfg->code_size - 16)) {
 		cfg->code_size *= 2;
-		cfg->native_code = g_realloc (cfg->native_code, cfg->code_size);
+		cfg->native_code = mono_realloc_native_code(cfg);
 		mono_jit_stats.code_reallocs++;
 	}
 
@@ -4863,7 +5317,7 @@ mono_arch_emit_epilog (MonoCompile *cfg)
 	}
 
 	/* Load returned vtypes into registers if needed */
-	cinfo = get_call_info (cfg->generic_sharing_context, cfg->mempool, sig, FALSE);
+	cinfo = get_call_info (cfg->generic_sharing_context, cfg->mempool, sig);
 	if (cinfo->ret.storage == ArgValuetypeInReg) {
 		for (quad = 0; quad < 2; quad ++) {
 			switch (cinfo->ret.pair_storage [quad]) {
@@ -4936,7 +5390,7 @@ mono_arch_emit_exceptions (MonoCompile *cfg)
 
 	while (cfg->code_len + code_size > (cfg->code_size - 16)) {
 		cfg->code_size *= 2;
-		cfg->native_code = g_realloc (cfg->native_code, cfg->code_size);
+		cfg->native_code = mono_realloc_native_code(cfg);
 		mono_jit_stats.code_reallocs++;
 	}
 
@@ -4969,8 +5423,12 @@ mono_arch_emit_exceptions (MonoCompile *cfg)
 				guint32 size;
 
 				/* Compute size of code following the push <OFFSET> */
+#if defined(__default_codegen__)
 				size = 5 + 5;
-
+#elif defined(__native_client_codegen__)
+				code = mono_nacl_align (code);
+				size = kNaClAlignment;
+#endif
 				/*This is aligned to 16 bytes by the callee. This way we save a few bytes here.*/
 
 				if ((code - cfg->native_code) - throw_ip < 126 - size) {
@@ -5045,22 +5503,19 @@ mono_arch_setup_jit_tls_data (MonoJitTlsData *tls)
 {
 	if (!tls_offset_inited) {
 		if (!getenv ("MONO_NO_TLS")) {
-#ifdef PLATFORM_WIN32
+#ifdef TARGET_WIN32
 			/* 
 			 * We need to init this multiple times, since when we are first called, the key might not
 			 * be initialized yet.
 			 */
 			appdomain_tls_offset = mono_domain_get_tls_key ();
 			lmf_tls_offset = mono_get_jit_tls_key ();
-			thread_tls_offset = mono_thread_get_tls_key ();
 
 			/* Only 64 tls entries can be accessed using inline code */
 			if (appdomain_tls_offset >= 64)
 				appdomain_tls_offset = -1;
 			if (lmf_tls_offset >= 64)
 				lmf_tls_offset = -1;
-			if (thread_tls_offset >= 64)
-				thread_tls_offset = -1;
 #else
 #if MONO_XEN_OPT
 			optimize_for_xen = access ("/proc/xen", F_OK) == 0;
@@ -5069,7 +5524,6 @@ mono_arch_setup_jit_tls_data (MonoJitTlsData *tls)
 			appdomain_tls_offset = mono_domain_get_tls_offset ();
 			lmf_tls_offset = mono_get_lmf_tls_offset ();
 			lmf_addr_tls_offset = mono_get_lmf_addr_tls_offset ();
-			thread_tls_offset = mono_thread_get_tls_offset ();
 #endif
 		}
 	}		
@@ -5089,10 +5543,18 @@ mono_arch_free_jit_tls_data (MonoJitTlsData *tls)
 //[1 + 5] x86_jump_mem(inst,mem)
 
 #define CMP_SIZE 6
+#if defined(__default_codegen__)
 #define BR_SMALL_SIZE 2
 #define BR_LARGE_SIZE 5
+#elif defined(__native_client_codegen__)
+/* I suspect the size calculation below is actually incorrect. */
+/* TODO: fix the calculation that uses these sizes.  */
+#define BR_SMALL_SIZE 16
+#define BR_LARGE_SIZE 12
+#endif  /*__native_client_codegen__*/
 #define JUMP_IMM_SIZE 6
 #define ENABLE_WRONG_METHOD_CHECK 0
+#define DEBUG_IMT 0
 
 static int
 imt_branch_distance (MonoIMTCheckItem **imt_entries, int start, int target)
@@ -5137,10 +5599,16 @@ mono_arch_build_imt_thunk (MonoVTable *vtable, MonoDomain *domain, MonoIMTCheckI
 		}
 		size += item->chunk_size;
 	}
+#if defined(__native_client__) && defined(__native_client_codegen__)
+	/* In Native Client, we don't re-use thunks, allocate from the */
+	/* normal code manager paths. */
+	code = mono_domain_code_reserve (domain, size);
+#else
 	if (fail_tramp)
 		code = mono_method_alloc_generic_virtual_thunk (domain, size);
 	else
 		code = mono_domain_code_reserve (domain, size);
+#endif
 	start = code;
 	for (i = 0; i < count; ++i) {
 		MonoIMTCheckItem *item = imt_entries [i];
@@ -5207,6 +5675,26 @@ mono_arch_build_imt_thunk (MonoVTable *vtable, MonoDomain *domain, MonoIMTCheckI
 	if (!fail_tramp)
 		mono_stats.imt_thunks_size += code - start;
 	g_assert (code - start <= size);
+
+#if DEBUG_IMT
+	{
+		char *buff = g_strdup_printf ("thunk_for_class_%s_%s_entries_%d", vtable->klass->name_space, vtable->klass->name, count);
+		mono_disassemble_code (NULL, (guint8*)start, code - start, buff);
+		g_free (buff);
+	}
+#endif
+	if (mono_jit_map_is_enabled ()) {
+		char *buff;
+		if (vtable)
+			buff = g_strdup_printf ("imt_%s_%s_entries_%d", vtable->klass->name_space, vtable->klass->name, count);
+		else
+			buff = g_strdup_printf ("imt_thunk_entries_%d", count);
+		mono_emit_jit_tramp (start, code - start, buff);
+		g_free (buff);
+	}
+
+	nacl_domain_code_validate (domain, &start, size, &code);
+
 	return start;
 }
 
@@ -5215,34 +5703,23 @@ mono_arch_find_imt_method (mgreg_t *regs, guint8 *code)
 {
 	return (MonoMethod*) regs [MONO_ARCH_IMT_REG];
 }
-
-MonoObject*
-mono_arch_find_this_argument (mgreg_t *regs, MonoMethod *method, MonoGenericSharingContext *gsctx)
-{
-	MonoMethodSignature *sig = mono_method_signature (method);
-	CallInfo *cinfo = get_call_info (gsctx, NULL, sig, FALSE);
-	int this_argument_offset;
-	MonoObject *this_argument;
-
-	/* 
-	 * this is the offset of the this arg from esp as saved at the start of 
-	 * mono_arch_create_trampoline_code () in tramp-x86.c.
-	 */
-	this_argument_offset = 5;
-	if (MONO_TYPE_ISSTRUCT (sig->ret) && (cinfo->ret.storage == ArgOnStack))
-		this_argument_offset++;
-
-	this_argument = * (MonoObject**) (((guint8*) regs [X86_ESP]) + this_argument_offset * sizeof (gpointer));
-
-	g_free (cinfo);
-	return this_argument;
-}
 #endif
 
 MonoVTable*
 mono_arch_find_static_call_vtable (mgreg_t *regs, guint8 *code)
 {
 	return (MonoVTable*) regs [MONO_ARCH_RGCTX_REG];
+}
+
+GSList*
+mono_arch_get_cie_program (void)
+{
+	GSList *l = NULL;
+
+	mono_add_unwind_op_def_cfa (l, (guint8*)NULL, (guint8*)NULL, X86_ESP, 4);
+	mono_add_unwind_op_offset (l, (guint8*)NULL, (guint8*)NULL, X86_NREG, -4);
+
+	return l;
 }
 
 MonoInst*
@@ -5330,18 +5807,6 @@ MonoInst* mono_arch_get_domain_intrinsic (MonoCompile* cfg)
 	return ins;
 }
 
-MonoInst* mono_arch_get_thread_intrinsic (MonoCompile* cfg)
-{
-	MonoInst* ins;
-
-	if (thread_tls_offset == -1)
-		return NULL;
-
-	MONO_INST_NEW (cfg, ins, OP_TLS_GET);
-	ins->inst_offset = thread_tls_offset;
-	return ins;
-}
-
 guint32
 mono_arch_get_patch_offset (guint8 *code)
 {
@@ -5419,82 +5884,32 @@ mono_breakpoint_clean_code (guint8 *method_start, guint8 *code, int offset, guin
 	return can_write;
 }
 
-gpointer
-mono_arch_get_vcall_slot (guint8 *code, mgreg_t *regs, int *displacement)
+/*
+ * mono_x86_get_this_arg_offset:
+ *
+ *   Return the offset of the stack location where this is passed during a virtual
+ * call.
+ */
+guint32
+mono_x86_get_this_arg_offset (MonoGenericSharingContext *gsctx, MonoMethodSignature *sig)
 {
-	guint8 buf [8];
-	guint8 reg = 0;
-	gint32 disp = 0;
-
-	mono_breakpoint_clean_code (NULL, code, 8, buf, sizeof (buf));
-	code = buf + 8;
-
-	*displacement = 0;
-
-	code -= 6;
-
-	/* 
-	 * A given byte sequence can match more than case here, so we have to be
-	 * really careful about the ordering of the cases. Longer sequences
-	 * come first.
-	 * There are two types of calls:
-	 * - direct calls: 0xff address_byte 8/32 bits displacement
-	 * - indirect calls: nop nop nop <call>
-	 * The nops make sure we don't confuse the instruction preceeding an indirect
-	 * call with a direct call.
-	 */
-	if ((code [1] != 0xe8) && (code [3] == 0xff) && ((code [4] & 0x18) == 0x10) && ((code [4] >> 6) == 1)) {
-		reg = code [4] & 0x07;
-		disp = (signed char)code [5];
-	} else if ((code [0] == 0xff) && ((code [1] & 0x18) == 0x10) && ((code [1] >> 6) == 2)) {
-		reg = code [1] & 0x07;
-		disp = *((gint32*)(code + 2));
-	} else if ((code [1] == 0xe8)) {
-			return NULL;
-	} else if ((code [4] == 0xff) && (((code [5] >> 6) & 0x3) == 0) && (((code [5] >> 3) & 0x7) == 2)) {
-		/*
-		 * This is a interface call
-		 * 8b 40 30   mov    0x30(%eax),%eax
-		 * ff 10      call   *(%eax)
-		 */
-		disp = 0;
-		reg = code [5] & 0x07;
-	}
-	else
-		return NULL;
-
-	*displacement = disp;
-	return (gpointer)regs [reg];
+	return 0;
 }
 
 gpointer
-mono_arch_get_this_arg_from_call (MonoGenericSharingContext *gsctx, MonoMethodSignature *sig,
-		mgreg_t *regs, guint8 *code)
+mono_arch_get_this_arg_from_call (mgreg_t *regs, guint8 *code)
 {
 	guint32 esp = regs [X86_ESP];
 	CallInfo *cinfo = NULL;
 	gpointer res;
 	int offset;
 
-	/* 
-	 * Avoid expensive calls to get_generic_context_from_code () + get_call_info 
-	 * if possible.
-	 */
-	if (MONO_TYPE_ISSTRUCT (sig->ret)) {
-		if (!gsctx && code)
-			gsctx = mono_get_generic_context_from_code (code);
-		cinfo = get_call_info (gsctx, NULL, sig, FALSE);
-
-		offset = cinfo->args [0].offset;
-	} else {
-		offset = 0;
-	}
+	offset = 0;
 
 	/*
 	 * The stack looks like:
 	 * <other args>
 	 * <this=delegate>
-	 * <possible vtype return address>
 	 * <return addr>
 	 * <4 pointers pushed by mono_arch_create_trampoline_code ()>
 	 */
@@ -5505,6 +5920,108 @@ mono_arch_get_this_arg_from_call (MonoGenericSharingContext *gsctx, MonoMethodSi
 }
 
 #define MAX_ARCH_DELEGATE_PARAMS 10
+
+static gpointer
+get_delegate_invoke_impl (gboolean has_target, guint32 param_count, guint32 *code_len)
+{
+	guint8 *code, *start;
+	int code_reserve = 64;
+
+	/*
+	 * The stack contains:
+	 * <delegate>
+	 * <return addr>
+	 */
+
+	if (has_target) {
+		start = code = mono_global_codeman_reserve (code_reserve);
+
+		/* Replace the this argument with the target */
+		x86_mov_reg_membase (code, X86_EAX, X86_ESP, 4, 4);
+		x86_mov_reg_membase (code, X86_ECX, X86_EAX, G_STRUCT_OFFSET (MonoDelegate, target), 4);
+		x86_mov_membase_reg (code, X86_ESP, 4, X86_ECX, 4);
+		x86_jump_membase (code, X86_EAX, G_STRUCT_OFFSET (MonoDelegate, method_ptr));
+
+		g_assert ((code - start) < code_reserve);
+	} else {
+		int i = 0;
+		/* 8 for mov_reg and jump, plus 8 for each parameter */
+#ifdef __native_client_codegen__
+		/* TODO: calculate this size correctly */
+		code_reserve = 13 + (param_count * 8) + 2 * kNaClAlignment;
+#else
+		code_reserve = 8 + (param_count * 8);
+#endif  /* __native_client_codegen__ */
+		/*
+		 * The stack contains:
+		 * <args in reverse order>
+		 * <delegate>
+		 * <return addr>
+		 *
+		 * and we need:
+		 * <args in reverse order>
+		 * <return addr>
+		 * 
+		 * without unbalancing the stack.
+		 * So move each arg up a spot in the stack (overwriting un-needed 'this' arg)
+		 * and leaving original spot of first arg as placeholder in stack so
+		 * when callee pops stack everything works.
+		 */
+
+		start = code = mono_global_codeman_reserve (code_reserve);
+
+		/* store delegate for access to method_ptr */
+		x86_mov_reg_membase (code, X86_ECX, X86_ESP, 4, 4);
+
+		/* move args up */
+		for (i = 0; i < param_count; ++i) {
+			x86_mov_reg_membase (code, X86_EAX, X86_ESP, (i+2)*4, 4);
+			x86_mov_membase_reg (code, X86_ESP, (i+1)*4, X86_EAX, 4);
+		}
+
+		x86_jump_membase (code, X86_ECX, G_STRUCT_OFFSET (MonoDelegate, method_ptr));
+
+		g_assert ((code - start) < code_reserve);
+	}
+
+	nacl_global_codeman_validate(&start, code_reserve, &code);
+	mono_debug_add_delegate_trampoline (start, code - start);
+
+	if (code_len)
+		*code_len = code - start;
+
+	if (mono_jit_map_is_enabled ()) {
+		char *buff;
+		if (has_target)
+			buff = (char*)"delegate_invoke_has_target";
+		else
+			buff = g_strdup_printf ("delegate_invoke_no_target_%d", param_count);
+		mono_emit_jit_tramp (start, code - start, buff);
+		if (!has_target)
+			g_free (buff);
+	}
+
+	return start;
+}
+
+GSList*
+mono_arch_get_delegate_invoke_impls (void)
+{
+	GSList *res = NULL;
+	guint8 *code;
+	guint32 code_len;
+	int i;
+
+	code = get_delegate_invoke_impl (TRUE, 0, &code_len);
+	res = g_slist_prepend (res, mono_tramp_info_create (g_strdup ("delegate_invoke_impl_has_target"), code, code_len, NULL, NULL));
+
+	for (i = 0; i < MAX_ARCH_DELEGATE_PARAMS; ++i) {
+		code = get_delegate_invoke_impl (FALSE, i, &code_len);
+		res = g_slist_prepend (res, mono_tramp_info_create (g_strdup_printf ("delegate_invoke_impl_target_%d", i), code, code_len, NULL, NULL));
+	}
+
+	return res;
+}
 
 gpointer
 mono_arch_get_delegate_invoke_impl (MonoMethodSignature *sig, gboolean has_target)
@@ -5528,18 +6045,11 @@ mono_arch_get_delegate_invoke_impl (MonoMethodSignature *sig, gboolean has_targe
 		static guint8* cached = NULL;
 		if (cached)
 			return cached;
-		
-		start = code = mono_global_codeman_reserve (64);
 
-		/* Replace the this argument with the target */
-		x86_mov_reg_membase (code, X86_EAX, X86_ESP, 4, 4);
-		x86_mov_reg_membase (code, X86_ECX, X86_EAX, G_STRUCT_OFFSET (MonoDelegate, target), 4);
-		x86_mov_membase_reg (code, X86_ESP, 4, X86_ECX, 4);
-		x86_jump_membase (code, X86_EAX, G_STRUCT_OFFSET (MonoDelegate, method_ptr));
-
-		g_assert ((code - start) < 64);
-
-		mono_debug_add_delegate_trampoline (start, code - start);
+		if (mono_aot_only)
+			start = mono_aot_get_trampoline ("delegate_invoke_impl_has_target");
+		else
+			start = get_delegate_invoke_impl (TRUE, 0, NULL);
 
 		mono_memory_barrier ();
 
@@ -5547,8 +6057,6 @@ mono_arch_get_delegate_invoke_impl (MonoMethodSignature *sig, gboolean has_targe
 	} else {
 		static guint8* cache [MAX_ARCH_DELEGATE_PARAMS + 1] = {NULL};
 		int i = 0;
-		/* 8 for mov_reg and jump, plus 8 for each parameter */
-		int code_reserve = 8 + (sig->param_count * 8);
 
 		for (i = 0; i < sig->param_count; ++i)
 			if (!mono_is_regsize_var (sig->params [i]))
@@ -5558,38 +6066,13 @@ mono_arch_get_delegate_invoke_impl (MonoMethodSignature *sig, gboolean has_targe
 		if (code)
 			return code;
 
-		/*
-		 * The stack contains:
-		 * <args in reverse order>
-		 * <delegate>
-		 * <return addr>
-		 *
-		 * and we need:
-		 * <args in reverse order>
-		 * <return addr>
-		 * 
-		 * without unbalancing the stack.
-		 * So move each arg up a spot in the stack (overwriting un-needed 'this' arg)
-		 * and leaving original spot of first arg as placeholder in stack so
-		 * when callee pops stack everything works.
-		 */
-
-		start = code = mono_global_codeman_reserve (code_reserve);
-
-		/* store delegate for access to method_ptr */
-		x86_mov_reg_membase (code, X86_ECX, X86_ESP, 4, 4);
-
-		/* move args up */
-		for (i = 0; i < sig->param_count; ++i) {
-			x86_mov_reg_membase (code, X86_EAX, X86_ESP, (i+2)*4, 4);
-			x86_mov_membase_reg (code, X86_ESP, (i+1)*4, X86_EAX, 4);
+		if (mono_aot_only) {
+			char *name = g_strdup_printf ("delegate_invoke_impl_target_%d", sig->param_count);
+			start = mono_aot_get_trampoline (name);
+			g_free (name);
+		} else {
+			start = get_delegate_invoke_impl (FALSE, sig->param_count, NULL);
 		}
-
-		x86_jump_membase (code, X86_ECX, G_STRUCT_OFFSET (MonoDelegate, method_ptr));
-
-		g_assert ((code - start) < code_reserve);
-
-		mono_debug_add_delegate_trampoline (start, code - start);
 
 		mono_memory_barrier ();
 
@@ -5781,11 +6264,120 @@ mono_arch_decompose_long_opts (MonoCompile *cfg, MonoInst *long_ins)
 #endif /* MONO_ARCH_SIMD_INTRINSICS */
 }
 
+/*MONO_ARCH_HAVE_HANDLER_BLOCK_GUARD*/
+gpointer
+mono_arch_install_handler_block_guard (MonoJitInfo *ji, MonoJitExceptionInfo *clause, MonoContext *ctx, gpointer new_value)
+{
+	int offset;
+	gpointer *sp, old_value;
+	char *bp;
+	const unsigned char *handler;
+
+	/*Decode the first instruction to figure out where did we store the spvar*/
+	/*Our jit MUST generate the following:
+	 mov %esp, -?(%ebp)
+	 Which is encoded as: 0x89 mod_rm.
+	 mod_rm (esp, ebp, imm) which can be: (imm will never be zero)
+		mod (reg + imm8):  01 reg(esp): 100 rm(ebp): 101 -> 01100101 (0x65)
+		mod (reg + imm32): 10 reg(esp): 100 rm(ebp): 101 -> 10100101 (0xA5)
+	*/
+	handler = clause->handler_start;
+
+	if (*handler != 0x89)
+		return NULL;
+
+	++handler;
+
+	if (*handler == 0x65)
+		offset = *(signed char*)(handler + 1);
+	else if (*handler == 0xA5)
+		offset = *(int*)(handler + 1);
+	else
+		return NULL;
+
+	/*Load the spvar*/
+	bp = MONO_CONTEXT_GET_BP (ctx);
+	sp = *(gpointer*)(bp + offset);
+
+	old_value = *sp;
+	if (old_value < ji->code_start || (char*)old_value > ((char*)ji->code_start + ji->code_size))
+		return old_value;
+
+	*sp = new_value;
+
+	return old_value;
+}
+
+/*
+ * mono_aot_emit_load_got_addr:
+ *
+ *   Emit code to load the got address.
+ * On x86, the result is placed into EBX.
+ */
+guint8*
+mono_arch_emit_load_got_addr (guint8 *start, guint8 *code, MonoCompile *cfg, MonoJumpInfo **ji)
+{
+	x86_call_imm (code, 0);
+	/* 
+	 * The patch needs to point to the pop, since the GOT offset needs 
+	 * to be added to that address.
+	 */
+	if (cfg)
+		mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_GOT_OFFSET, NULL);
+	else
+		*ji = mono_patch_info_list_prepend (*ji, code - start, MONO_PATCH_INFO_GOT_OFFSET, NULL);
+	x86_pop_reg (code, MONO_ARCH_GOT_REG);
+	x86_alu_reg_imm (code, X86_ADD, MONO_ARCH_GOT_REG, 0xf0f0f0f0);
+
+	return code;
+}
+
+/*
+ * mono_ppc_emit_load_aotconst:
+ *
+ *   Emit code to load the contents of the GOT slot identified by TRAMP_TYPE and
+ * TARGET from the mscorlib GOT in full-aot code.
+ * On x86, the GOT address is assumed to be in EBX, and the result is placed into 
+ * EAX.
+ */
+guint8*
+mono_arch_emit_load_aotconst (guint8 *start, guint8 *code, MonoJumpInfo **ji, int tramp_type, gconstpointer target)
+{
+	/* Load the mscorlib got address */
+	x86_mov_reg_membase (code, X86_EAX, MONO_ARCH_GOT_REG, sizeof (gpointer), 4);
+	*ji = mono_patch_info_list_prepend (*ji, code - start, tramp_type, target);
+	/* arch_emit_got_access () patches this */
+	x86_mov_reg_membase (code, X86_EAX, X86_EAX, 0xf0f0f0f0, 4);
+
+	return code;
+}
+
+/* Can't put this into mini-x86.h */
+gpointer
+mono_x86_get_signal_exception_trampoline (MonoTrampInfo **info, gboolean aot);
+
+GSList *
+mono_arch_get_trampolines (gboolean aot)
+{
+	MonoTrampInfo *info;
+	GSList *tramps = NULL;
+
+	mono_x86_get_signal_exception_trampoline (&info, aot);
+
+	tramps = g_slist_append (tramps, info);
+
+	return tramps;
+}
+
+
 #if __APPLE__
 #define DBG_SIGNAL SIGBUS
 #else
 #define DBG_SIGNAL SIGSEGV
 #endif
+
+/* Soft Debug support */
+#ifdef MONO_ARCH_SOFT_DEBUG_SUPPORTED
 
 /*
  * mono_arch_set_breakpoint:
@@ -5853,8 +6445,9 @@ mono_arch_stop_single_stepping (void)
 gboolean
 mono_arch_is_single_step_event (void *info, void *sigctx)
 {
-#ifdef PLATFORM_WIN32
-	EXCEPTION_RECORD* einfo = (EXCEPTION_RECORD*)info;	/* Sometimes the address is off by 4 */
+#ifdef TARGET_WIN32
+	EXCEPTION_RECORD* einfo = ((EXCEPTION_POINTERS*)info)->ExceptionRecord;	/* Sometimes the address is off by 4 */
+
 	if ((einfo->ExceptionInformation[1] >= ss_trigger_page && (guint8*)einfo->ExceptionInformation[1] <= (guint8*)ss_trigger_page + 128))
 		return TRUE;
 	else
@@ -5872,8 +6465,8 @@ mono_arch_is_single_step_event (void *info, void *sigctx)
 gboolean
 mono_arch_is_breakpoint_event (void *info, void *sigctx)
 {
-#ifdef PLATFORM_WIN32
-	EXCEPTION_RECORD* einfo = (EXCEPTION_RECORD*)info;	/* Sometimes the address is off by 4 */
+#ifdef TARGET_WIN32
+	EXCEPTION_RECORD* einfo = ((EXCEPTION_POINTERS*)info)->ExceptionRecord;	/* Sometimes the address is off by 4 */
 	if ((einfo->ExceptionInformation[1] >= bp_trigger_page && (guint8*)einfo->ExceptionInformation[1] <= (guint8*)bp_trigger_page + 128))
 		return TRUE;
 	else
@@ -5952,3 +6545,6 @@ mono_arch_get_seq_point_info (MonoDomain *domain, guint8 *code)
 	NOT_IMPLEMENTED;
 	return NULL;
 }
+
+#endif
+

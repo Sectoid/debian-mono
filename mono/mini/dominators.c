@@ -143,7 +143,7 @@ compute_dominators (MonoCompile *cfg)
 
 #ifdef DEBUG_DOMINATORS
 	printf ("DTREE %s %d\n", mono_method_full_name (cfg->method, TRUE), 
-		mono_method_get_header (cfg->method)->num_clauses);
+		cfg->header->num_clauses);
 	for (i = 0; i < cfg->num_bblocks; ++i) {
 		MonoBasicBlock *bb = cfg->bblocks [i];
 		printf ("BB%d(dfn=%d) (IDOM=BB%d): ", bb->block_num, bb->dfn, bb->idom ? bb->idom->block_num : -1);
@@ -384,6 +384,9 @@ mono_compute_natural_loops (MonoCompile *cfg)
 			/* The loop body start is the first bblock in the order they will be emitted */
 			MonoBasicBlock *h = cfg->bblocks [i];
 			MonoBasicBlock *body_start = h;
+#if defined(__native_client_codegen__)
+			MonoInst *inst;
+#endif
 			GList *l;
 
 			for (l = h->loop_blocks; l; l = l->next) {
@@ -394,6 +397,12 @@ mono_compute_natural_loops (MonoCompile *cfg)
 				}
 			}
 
+#if defined(__native_client_codegen__)
+			/* Instrument the loop (GC back branch safe point) */
+			MONO_INST_NEW (cfg, inst, OP_NACL_GC_SAFE_POINT);
+			inst->dreg = mono_alloc_dreg (cfg, STACK_I4);
+			mono_bblock_insert_before_ins (body_start, NULL, inst);
+#endif
 			body_start->loop_body_start = 1;
 		}
 	}

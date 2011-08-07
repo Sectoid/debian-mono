@@ -27,8 +27,12 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-#if (NET_2_0||BOOTSTRAP_NET_2_0) && !NET_2_1
+#if !NET_2_1
+
+//
+// Defining this writes the output to console.log
 //#define DEBUG
+
 using System.Collections;
 using System.IO;
 using System.Text;
@@ -208,8 +212,11 @@ namespace System {
 					endString += resetColors;
 				
 				unsafe {
-					if (!ConsoleDriver.TtySetup (keypadXmit, endString, out control_characters, out native_terminal_size))
-						throw new IOException ("Error initializing terminal.");
+					if (!ConsoleDriver.TtySetup (keypadXmit, endString, out control_characters, out native_terminal_size)){
+						control_characters = new byte [17];
+						native_terminal_size = null;
+						//throw new IOException ("Error initializing terminal.");
+					}
 				}
 				
 				stdin = new StreamReader (Console.OpenStandardInput (0), Console.InputEncoding);
@@ -243,7 +250,7 @@ namespace System {
 				
 				GetCursorPosition ();
 #if DEBUG
-					logger.WriteLine ("noGetPosition: {0} left: {1} top: {2}", noGetPosition, cursorLeft, cursorTop);
+				logger.WriteLine ("noGetPosition: {0} left: {1} top: {2}", noGetPosition, cursorLeft, cursorTop);
 				logger.Flush ();
 #endif
 				if (noGetPosition) {
@@ -474,7 +481,7 @@ namespace System {
 			int b;
 
 			// First, get any data in the input buffer.  Merely reduces the likelyhood of getting an error
-			int inqueue = ConsoleDriver.InternalKeyAvailable (1000);
+			int inqueue = ConsoleDriver.InternalKeyAvailable (0);
 			while (inqueue-- > 0){
 				b = stdin.Read ();
 				AddToBuffer (b);
@@ -574,8 +581,7 @@ namespace System {
 				if (!inited) {
 					Init ();
 				}
-
-				throw new NotSupportedException ();
+				return false;
 			}
 		}
 
@@ -673,7 +679,7 @@ namespace System {
 					Init ();
 				}
 
-				throw new NotSupportedException ();
+				return false;
 			}
 		}
 

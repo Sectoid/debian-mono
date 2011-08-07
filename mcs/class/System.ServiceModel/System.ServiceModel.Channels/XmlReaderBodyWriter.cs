@@ -36,39 +36,94 @@ namespace System.ServiceModel.Channels
 	internal class XmlReaderBodyWriter : BodyWriter
 	{
 		XmlDictionaryReader reader;
-		string xml;
+		string xml_bak;
+		XmlParserContext parser_context;
+		bool consumed;
 
-		public XmlReaderBodyWriter (string xml)
+		public XmlReaderBodyWriter (string xml, int maxBufferSize, XmlParserContext ctx)
 			: base (true)
 		{
-			this.xml = xml;
+			var settings = new XmlReaderSettings () {
+				// FIXME: enable this line (once MaxCharactersInDocument is implemented)
+				// MaxCharactersInDocument = maxBufferSize,
+				ConformanceLevel = ConformanceLevel.Fragment
+				};
+			reader = XmlDictionaryReader.CreateDictionaryReader (XmlReader.Create (new StringReader (xml), settings, ctx));
+			reader.MoveToContent ();
+			xml_bak = xml;
+			parser_context = ctx;
 		}
 
 		public XmlReaderBodyWriter (XmlDictionaryReader reader)
 			: base (false)
 		{
 			reader.MoveToContent ();
+			if (reader.NodeType != XmlNodeType.Element)
+				throw new InvalidOperationException ("Argument XmlReader is expected to be positioned at element");
 			this.reader = reader;
 		}
 
 		protected override BodyWriter OnCreateBufferedCopy (
 			int maxBufferSize)
 		{
-			if (xml == null) {
-				xml = reader.ReadOuterXml ();
+#if true
+			if (xml_bak == null) {
+				if (consumed)
+					throw new InvalidOperationException ("Body xml reader is already consumed");
+				var sw = new StringWriter ();
+				var xw = XmlDictionaryWriter.CreateDictionaryWriter (XmlWriter.Create (sw));
+				xw.WriteStartElement (reader.Prefix, reader.LocalName, reader.NamespaceURI);
+				for (int i = 0; i < reader.AttributeCount; i++) {
+					reader.MoveToAttribute (i);
+					if (reader.NamespaceURI != "http://www.w3.org/2000/xmlns/" || xw.LookupPrefix (reader.Value) == null)
+						xw.WriteAttributeString (reader.Prefix, reader.LocalName, reader.NamespaceURI, reader.Value);
+				}
+				reader.MoveToElement ();
+
+				var inr = reader as IXmlNamespaceResolver;
+				if (inr != null)
+					foreach (var p in inr.GetNamespacesInScope (XmlNamespaceScope.ExcludeXml))
+						if (xw.LookupPrefix (p.Value) != p.Key)
+							xw.WriteXmlnsAttribute (p.Key, p.Value);
+				if (!reader.IsEmptyElement) {
+					reader.Read ();
+					while (reader.NodeType != XmlNodeType.EndElement)
+						xw.WriteNode (reader, false);
+				}
+				xw.WriteEndElement ();
+
+				xw.Close ();
+				xml_bak = sw.ToString ();
 				reader = null;
 			}
-			return new XmlReaderBodyWriter (xml);
+#else // FIXME: this should be better, but somehow doesn't work.
+			if (xml_bak == null) {
+				if (consumed)
+					throw new InvalidOperationException ("Body xml reader is already consumed");
+				var nss = new XmlNamespaceManager (reader.NameTable);
+				var nsr = reader as IXmlNamespaceResolver;
+				if (nsr != null)
+					foreach (var p in nsr.GetNamespacesInScope (XmlNamespaceScope.ExcludeXml))
+						nss.AddNamespace (p.Key, p.Value);
+				parser_context = new XmlParserContext (nss.NameTable, nss, reader.XmlLang, reader.XmlSpace);
+				xml_bak = reader.ReadOuterXml ();
+			}
+#endif
+			return new XmlReaderBodyWriter (xml_bak, maxBufferSize, parser_context);
 		}
 
 		protected override void OnWriteBodyContents (
 			XmlDictionaryWriter writer)
 		{
-			if (reader == null && String.IsNullOrEmpty (xml))
+			if (consumed)
+				throw new InvalidOperationException ("Body xml reader is already consumed");
+			if (reader == null && String.IsNullOrEmpty (xml_bak))
 				return;
-			XmlReader r = reader ?? XmlReader.Create (new StringReader (xml));
+			XmlReader r = xml_bak != null ? XmlReader.Create (new StringReader (xml_bak), null, parser_context) : reader;
 			r.MoveToContent ();
 			writer.WriteNode (r, false);
+			if (xml_bak == null)
+				consumed = true;
 		}
 	}
 }

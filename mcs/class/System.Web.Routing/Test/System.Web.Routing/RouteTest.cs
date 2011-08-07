@@ -28,6 +28,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 using System;
+using System.IO;
 using System.Web;
 using System.Web.Routing;
 using NUnit.Framework;
@@ -341,7 +342,7 @@ namespace MonoTests.System.Web.Routing
 			Assert.AreEqual (3, rd.Values.Count, "#4");
 			Assert.AreEqual ("test", rd.Values["action"], "#4-1");
 			Assert.AreEqual ("xml", rd.Values["type"], "#4-2");
-			Assert.AreEqual ("1", rd.Values["page"], "#4-2");
+			Assert.AreEqual ("1", rd.Values["page"], "#4-3");
 		}
 
 		[Test]
@@ -626,7 +627,19 @@ namespace MonoTests.System.Web.Routing
 			var hc = new HttpContextStub ("~/xyzxyzxyzxyzblah", String.Empty);
 			var rd = r.GetRouteData (hc);
 
+#if NET_4_0 || !DOTNET
+			// When running on Mono this test succeeds - it was a bug in .NET routing for 3.5 which
+			// we don't reproduce anymore.
+			Assert.IsNotNull (rd, "#1");
+			Assert.AreEqual (r, rd.Route, "#2");
+			Assert.AreEqual (0, rd.DataTokens.Count, "#3");
+			Assert.AreEqual (3, rd.Values.Count, "#4");
+			Assert.AreEqual ("xyz", rd.Values ["foo"], "#4-1");
+			Assert.AreEqual ("xyz", rd.Values ["bar"], "#4-2");
+			Assert.AreEqual ("blah", rd.Values ["baz"], "#4-3");
+#else
 			Assert.IsNull (rd, "#1");
+#endif
 		}
 
 		[Test]
@@ -718,6 +731,255 @@ namespace MonoTests.System.Web.Routing
 			Assert.AreEqual (0, rd.Values.Count, "#4");
 		}
 
+		[Test]
+		public void GetRouteData34 ()
+		{
+			var r = new Route ("{foo}xyz{bar}xyz{baz}", null);
+			var hc = new HttpContextStub ("~/xyzxyzxyzxyzxyzxyzblah", String.Empty);
+			var rd = r.GetRouteData (hc);
+
+#if NET_4_0 || !DOTNET
+			// When running on Mono this test succeeds - it was a bug in .NET routing for 3.5 which
+			// we don't reproduce anymore.
+			Assert.IsNotNull (rd, "#1");
+			Assert.AreEqual (r, rd.Route, "#2");
+			Assert.AreEqual (0, rd.DataTokens.Count, "#3");
+			Assert.AreEqual (3, rd.Values.Count, "#4");
+			Assert.AreEqual ("xyzxyzxyz", rd.Values ["foo"], "#4-1");
+			Assert.AreEqual ("xyz", rd.Values ["bar"], "#4-2");
+			Assert.AreEqual ("blah", rd.Values ["baz"], "#4-3");
+#else
+			Assert.IsNull (rd, "#1");
+#endif
+		}
+
+		[Test]
+		public void GetRouteData35 ()
+		{
+			var r = new Route ("{foo}xyz{bar}xyz{baz}", null);
+			var hc = new HttpContextStub ("~/xyzxyzxyzdabxyzblah", String.Empty);
+			var rd = r.GetRouteData (hc);
+
+			Assert.IsNotNull (rd, "#1");
+			Assert.AreEqual (r, rd.Route, "#2");
+			Assert.AreEqual (0, rd.DataTokens.Count, "#3");
+			Assert.AreEqual (3, rd.Values.Count, "#4");
+			Assert.AreEqual ("xyzxyz", rd.Values ["foo"], "#4-1");
+			Assert.AreEqual ("dab", rd.Values ["bar"], "#4-2");
+			Assert.AreEqual ("blah", rd.Values ["baz"], "#4-3");
+		}
+
+		[Test]
+		public void GetRouteData36 ()
+		{
+			var r = new Route ("xyz{foo}xyz{bar}xyz{baz}", null);
+			var hc = new HttpContextStub ("~/xyzxyzxyzdabxyzblah", String.Empty);
+			var rd = r.GetRouteData (hc);
+
+#if NET_4_0 || !DOTNET
+			// When running on Mono this test succeeds - it was a bug in .NET routing for 3.5 which
+			// we don't reproduce anymore.
+			Assert.IsNotNull (rd, "#1");
+			Assert.AreEqual (r, rd.Route, "#2");
+			Assert.AreEqual (0, rd.DataTokens.Count, "#3");
+			Assert.AreEqual (3, rd.Values.Count, "#4");
+			Assert.AreEqual ("xyz", rd.Values ["foo"], "#4-1");
+			Assert.AreEqual ("dab", rd.Values ["bar"], "#4-2");
+			Assert.AreEqual ("blah", rd.Values ["baz"], "#4-3");
+#else
+			Assert.IsNull (rd, "#1");
+#endif
+		}
+
+		[Test]
+		public void GetRouteData37 ()
+		{
+			var r = new Route ("{foo}xyz{bar}xyz{baz}", null);
+			var hc = new HttpContextStub ("~/xyzxyzxyzxyzxyz", String.Empty);
+			var rd = r.GetRouteData (hc);
+
+#if NET_4_0 || !DOTNET
+			// When running on Mono this test succeeds - it was a bug in .NET routing for 3.5 which
+			// we don't reproduce anymore.
+			Assert.IsNotNull (rd, "#1");
+			Assert.AreEqual (r, rd.Route, "#2");
+			Assert.AreEqual (0, rd.DataTokens.Count, "#3");
+			Assert.AreEqual (3, rd.Values.Count, "#4");
+			Assert.AreEqual ("xyz", rd.Values ["foo"], "#4-1");
+			Assert.AreEqual ("xyz", rd.Values ["bar"], "#4-2");
+			Assert.AreEqual ("xyz", rd.Values ["baz"], "#4-3");
+#else
+			Assert.IsNull (rd, "#1");
+#endif
+		}
+
+		[Test]
+		public void GetRouteData38 ()
+		{
+			// {} matches and substitutes even at partial state ...
+			var r = new Route ("{foo}/bar{baz}", null);
+			var hc = new HttpContextStub ("~/x/bartest", String.Empty);
+			var rd = r.GetRouteData (hc);
+			Assert.IsNotNull (rd, "#1");
+			Assert.AreEqual (r, rd.Route, "#2");
+			Assert.AreEqual (0, rd.DataTokens.Count, "#3");
+			Assert.AreEqual (2, rd.Values.Count, "#4");
+			Assert.AreEqual ("x", rd.Values ["foo"], "#4-1");
+			Assert.AreEqual ("test", rd.Values ["baz"], "#4-2");
+		}
+
+		[Test]
+		public void GetRouteData39 ()
+		{
+			// {} matches and substitutes even at partial state ...
+			var r = new Route ("{foo}/bar{baz}", null);
+			var hc = new HttpContextStub ("~/x/barte", String.Empty);
+			var rd = r.GetRouteData (hc);
+			Assert.IsNotNull (rd, "#1");
+			Assert.AreEqual (r, rd.Route, "#2");
+			Assert.AreEqual (0, rd.DataTokens.Count, "#3");
+			Assert.AreEqual (2, rd.Values.Count, "#4");
+			Assert.AreEqual ("x", rd.Values ["foo"], "#4-1");
+			Assert.AreEqual ("te", rd.Values ["baz"], "#4-2");
+		}
+
+		[Test]
+		public void GetRouteData40 ()
+		{
+			// {} matches and substitutes even at partial state ...
+			var r = new Route ("{foo}/bar{baz}", null);
+			var hc = new HttpContextStub ("~/x/bartes", String.Empty);
+			var rd = r.GetRouteData (hc);
+			Assert.IsNotNull (rd, "#1");
+			Assert.AreEqual (r, rd.Route, "#2");
+			Assert.AreEqual (0, rd.DataTokens.Count, "#3");
+			Assert.AreEqual (2, rd.Values.Count, "#4");
+			Assert.AreEqual ("x", rd.Values ["foo"], "#4-1");
+			Assert.AreEqual ("tes", rd.Values ["baz"], "#4-2");
+		}
+
+		[Test]
+		public void GetRouteData41 ()
+		{
+			// {} matches and substitutes even at partial state ...
+			var r = new Route ("{foo}/bartes{baz}", null);
+			var hc = new HttpContextStub ("~/x/bartest", String.Empty);
+			var rd = r.GetRouteData (hc);
+			Assert.IsNotNull (rd, "#1");
+			Assert.AreEqual (r, rd.Route, "#2");
+			Assert.AreEqual (0, rd.DataTokens.Count, "#3");
+			Assert.AreEqual (2, rd.Values.Count, "#4");
+			Assert.AreEqual ("x", rd.Values ["foo"], "#4-1");
+			Assert.AreEqual ("t", rd.Values ["baz"], "#4-2");
+		}
+
+		[Test]
+		public void GetRouteData42 ()
+		{
+			// {} matches and substitutes even at partial state ...
+			var r = new Route ("{foo}/bartes{baz}", null);
+			var hc = new HttpContextStub ("~/x/bartest1", String.Empty);
+			var rd = r.GetRouteData (hc);
+			Assert.IsNotNull (rd, "#1");
+			Assert.AreEqual (r, rd.Route, "#2");
+			Assert.AreEqual (0, rd.DataTokens.Count, "#3");
+			Assert.AreEqual (2, rd.Values.Count, "#4");
+			Assert.AreEqual ("x", rd.Values ["foo"], "#4-1");
+			Assert.AreEqual ("t1", rd.Values ["baz"], "#4-2");
+		}
+
+		[Test]
+		public void GetRouteData43 ()
+		{
+			// {} matches and substitutes even at partial state ...
+			var r = new Route ("{foo}-{bar}-{baz}", null);
+			var hc = new HttpContextStub ("~/--", String.Empty);
+			var rd = r.GetRouteData (hc);
+			Assert.IsNull (rd, "#1");
+
+			hc = new HttpContextStub ("~/1-2-3", String.Empty);
+			rd = r.GetRouteData (hc);
+			Assert.IsNotNull (rd, "#2");
+			Assert.AreEqual (r, rd.Route, "#2");
+			Assert.AreEqual (0, rd.DataTokens.Count, "#3");
+			Assert.AreEqual (3, rd.Values.Count, "#4");
+			Assert.AreEqual ("1", rd.Values ["foo"], "#4-1");
+			Assert.AreEqual ("2", rd.Values ["bar"], "#4-2");
+			Assert.AreEqual ("3", rd.Values ["baz"], "#4-2");
+		}
+
+		[Test]
+		public void GetRouteData44 ()
+		{
+			// {} matches and substitutes even at partial state ...
+			var r = new Route ("{foo}/bartes{baz}", null);
+			var hc = new HttpContextStub ("~/x/bartest/", String.Empty);
+			var rd = r.GetRouteData (hc);
+			Assert.IsNotNull (rd, "#1");
+			Assert.AreEqual (r, rd.Route, "#2");
+			Assert.AreEqual (0, rd.DataTokens.Count, "#3");
+			Assert.AreEqual (2, rd.Values.Count, "#4");
+			Assert.AreEqual ("x", rd.Values ["foo"], "#4-1");
+			Assert.AreEqual ("t", rd.Values ["baz"], "#4-2");
+		}
+
+		[Test]
+		public void GetRouteData45 ()
+		{
+			var r = new Route ("{foo}/{bar}", null);
+			var hc = new HttpContextStub ("~/x/y/", String.Empty);
+			var rd = r.GetRouteData (hc);
+			Assert.IsNotNull (rd, "#1");
+			Assert.AreEqual (r, rd.Route, "#2");
+			Assert.AreEqual (0, rd.DataTokens.Count, "#3");
+			Assert.AreEqual (2, rd.Values.Count, "#4");
+			Assert.AreEqual ("x", rd.Values ["foo"], "#4-1");
+			Assert.AreEqual ("y", rd.Values ["bar"], "#4-2");
+		}
+
+		[Test (Description="Bug #651593")]
+		public void GetRouteData46 ()
+		{
+			var r = new Route ("Foo", null) {
+				Defaults = new RouteValueDictionary (new {
+					controller = "Foo",
+					action = "Index"
+				})
+			};
+			var hc = new HttpContextStub ("/Foo/123", String.Empty);
+			var rd = r.GetRouteData (hc);
+			Assert.IsNull (rd, "#1");
+
+			r = new Route ("Foo", null) {
+				Defaults = new RouteValueDictionary (new {
+					controller = "Foo",
+					action = "Index"
+				})
+			};
+			hc = new HttpContextStub ("~/Foo/123", String.Empty);
+			rd = r.GetRouteData (hc);
+			Assert.IsNull (rd, "#2");
+		}
+
+		[Test (Description="Bug #651966")]
+		public void GetRouteData47 ()
+		{
+			var r = new Route ("Foo/{id}", new StopRoutingHandler ()) {
+				Defaults = new RouteValueDictionary (new {
+					controller = "Foo",
+					action = "Retrieve"
+				}),
+				Constraints = new RouteValueDictionary (new {
+					id = @"\d{1,10}"
+				})
+			};
+			
+			var hc = new HttpContextStub ("/Foo/x123", String.Empty);
+			var rd = r.GetRouteData (hc);
+
+			Assert.IsNull (rd, "#1");
+		}
+		
 		[Test]
 		[ExpectedException (typeof (ArgumentNullException))]
 		public void GetVirtualPathNullContext ()
@@ -1009,7 +1271,28 @@ namespace MonoTests.System.Web.Routing
 			Assert.AreEqual ("x/y.aspx?nonEmptyValue=Some%20Value%20%2B%20encoding%20%26", vp.VirtualPath, "#B1-1");
 
 		}
+#if NET_4_0
+		[Test (Description="Bug #671753")]
+		public void GetVirtualPath15 ()
+		{
+			var context = new HttpContextWrapper (
+				new HttpContext (new HttpRequest ("filename", "http://localhost/filename", String.Empty),
+						 new HttpResponse (new StringWriter())
+				)
+			);
+			var rc = new RequestContext (context, new RouteData ());
 
+			Assert.IsNotNull (RouteTable.Routes, "#A1");
+			RouteTable.Routes.MapPageRoute ("TestRoute", "{language}/testroute", "~/TestRoute.aspx", true, null,
+							new RouteValueDictionary {{"language", "(ru|en)"}});
+
+			Assert.IsNotNull(RouteTable.Routes.GetVirtualPath (rc, "TestRoute", new RouteValueDictionary {{"language", "en"}}), "#A2");
+
+			rc.RouteData.Values["language"] = "ru";
+			Assert.IsNotNull (RouteTable.Routes.GetVirtualPath (rc, "TestRoute", new RouteValueDictionary ()), "#A3");
+			Assert.IsNotNull (RouteTable.Routes.GetVirtualPath (rc, "TestRoute", null), "#A4");
+		}
+#endif
 		// Bug #500739
 		[Test]
 		public void RouteGetRequiredStringWithDefaults ()

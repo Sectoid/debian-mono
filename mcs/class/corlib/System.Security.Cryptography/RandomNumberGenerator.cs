@@ -31,16 +31,16 @@ using System.Runtime.InteropServices;
 
 namespace System.Security.Cryptography {
 	
-#if NET_2_0 && !NET_2_1
+#if !NET_2_1
 	[ComVisible (true)]
 #endif
-	public abstract class RandomNumberGenerator {
-
-#if NET_2_0
-		protected RandomNumberGenerator ()
-#else
-		public RandomNumberGenerator ()
+	public abstract class RandomNumberGenerator
+#if NET_4_0
+	: IDisposable
 #endif
+	{
+
+		protected RandomNumberGenerator ()
 		{
 		}
 
@@ -58,5 +58,14 @@ namespace System.Security.Cryptography {
 		public abstract void GetBytes (byte[] data);
 
 		public abstract void GetNonZeroBytes (byte[] data);
+#if NET_4_0
+		public void Dispose ()
+		{
+			Dispose (true);
+		}
+
+		protected virtual void Dispose (bool disposing)
+		{}
+#endif
 	}
 }

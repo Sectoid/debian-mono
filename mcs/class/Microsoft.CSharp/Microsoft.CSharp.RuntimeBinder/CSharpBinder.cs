@@ -31,32 +31,49 @@ using System.Dynamic;
 using System.Linq.Expressions;
 using Compiler = Mono.CSharp;
 using System.Reflection;
+using System.Collections.Generic;
 
 namespace Microsoft.CSharp.RuntimeBinder
 {
 	class CSharpBinder
 	{
 		static ConstructorInfo binder_exception_ctor;
-		static bool compiler_initialized;
-		static object compiler_initializer = new object ();
 		static object resolver = new object ();
 
-		public static DynamicMetaObject Bind (DynamicMetaObject target, Compiler.Expression expr, BindingRestrictions restrictions, DynamicMetaObject errorSuggestion)
+		DynamicMetaObjectBinder binder;
+		Compiler.Expression expr;
+		BindingRestrictions restrictions;
+		DynamicMetaObject errorSuggestion;
+
+		public CSharpBinder (DynamicMetaObjectBinder binder, Compiler.Expression expr, DynamicMetaObject errorSuggestion)
 		{
-			var report = new Compiler.Report (ErrorPrinter.Instance) { WarningLevel = 0 };
-			var ctx = new Compiler.CompilerContext (report);
-			Compiler.RootContext.ToplevelTypes = new Compiler.ModuleContainer (ctx, true);
+			this.binder = binder;
+			this.expr = expr;
+			this.restrictions = BindingRestrictions.Empty;
+			this.errorSuggestion = errorSuggestion;
+		}
 
-			InitializeCompiler (ctx);
+		public Compiler.ResolveContext.Options ResolveOptions { get; set; }
 
+		public void AddRestrictions (DynamicMetaObject arg)
+		{
+			restrictions = restrictions.Merge (CreateRestrictionsOnTarget (arg));
+		}
+
+		public void AddRestrictions (DynamicMetaObject[] args)
+		{
+			restrictions = restrictions.Merge (CreateRestrictionsOnTarget (args));
+		}
+
+		public DynamicMetaObject Bind (DynamicContext ctx, Type callingType)
+		{
 			Expression res;
 			try {
-				// TODO: ResolveOptions
-				Compiler.ResolveContext rc = new Compiler.ResolveContext (new RuntimeBinderContext (ctx));
+				var rc = new Compiler.ResolveContext (new RuntimeBinderContext (ctx, callingType), ResolveOptions);
 
 				// Static typemanager and internal caches are not thread-safe
 				lock (resolver) {
-					expr = expr.Resolve (rc);
+					expr = expr.Resolve (rc, Compiler.ResolveFlags.VariableOrValue);
 				}
 
 				if (expr == null)
@@ -67,13 +84,7 @@ namespace Microsoft.CSharp.RuntimeBinder
 				if (errorSuggestion != null)
 					return errorSuggestion;
 
-				if (binder_exception_ctor == null)
-					binder_exception_ctor = typeof (RuntimeBinderException).GetConstructor (new[] { typeof (string) });
-
-				//
-				// Uses target type to keep expressions composition working
-				//
-				res = Expression.Throw (Expression.New (binder_exception_ctor, Expression.Constant (e.Message)), target.LimitType);
+				res = CreateBinderException (e.Message);
 			} catch (Exception) {
 				if (errorSuggestion != null)
 					return errorSuggestion;
@@ -84,62 +95,191 @@ namespace Microsoft.CSharp.RuntimeBinder
 			return new DynamicMetaObject (res, restrictions);
 		}
 
-		//
-		// Creates mcs expression from dynamic method object
-		//
-		public static Compiler.Expression CreateCompilerExpression (CSharpArgumentInfo info, DynamicMetaObject value, bool typed)
+		Expression CreateBinderException (string message)
 		{
-			if (info.IsNamed)
-				throw new NotImplementedException ("IsNamed");
+			if (binder_exception_ctor == null)
+				binder_exception_ctor = typeof (RuntimeBinderException).GetConstructor (new[] { typeof (string) });
 
-			if (value.Value == null)
-				return new Compiler.NullLiteral (value.LimitType, Compiler.Location.Null);
-
-			if ((info.Flags & CSharpArgumentInfoFlags.LiteralConstant) != 0) {
-				if (!typed)
-					throw new NotImplementedException ("weakly typed constant");
-
-				return Compiler.Constant.CreateConstant (value.RuntimeType ?? value.LimitType, value.Value, Compiler.Location.Null);
-			}
-
-			return new Compiler.RuntimeValueExpression (value, typed);
+			//
+			// Uses target type to keep expressions composition working
+			//
+			return Expression.Throw (Expression.New (binder_exception_ctor, Expression.Constant (message)), binder.ReturnType);
 		}
 
-		static void InitializeCompiler (Compiler.CompilerContext ctx)
+		static BindingRestrictions CreateRestrictionsOnTarget (DynamicMetaObject arg)
 		{
-			if (compiler_initialized)
-				return;
+			return arg.HasValue && arg.Value == null ?
+				BindingRestrictions.GetInstanceRestriction (arg.Expression, null) :
+				BindingRestrictions.GetTypeRestriction (arg.Expression, arg.LimitType);
+		}
+
+		public static BindingRestrictions CreateRestrictionsOnTarget (DynamicMetaObject[] args)
+		{
+			if (args.Length == 0)
+				return BindingRestrictions.Empty;
+
+			var res = CreateRestrictionsOnTarget (args[0]);
+			for (int i = 1; i < args.Length; ++i)
+				res = res.Merge (CreateRestrictionsOnTarget (args[i]));
+
+			return res;
+		}
+	}
+
+	class DynamicContext
+	{
+		static DynamicContext dc;
+		static object compiler_initializer = new object ();
+		static object lock_object = new object ();
+
+		readonly Compiler.ModuleContainer module;
+		readonly Compiler.ReflectionImporter importer;
+
+		private DynamicContext (Compiler.ModuleContainer module, Compiler.ReflectionImporter importer)
+		{
+			this.module = module;
+			this.importer = importer;
+		}
+
+		public Compiler.CompilerContext CompilerContext {
+			get {
+				return module.Compiler;
+			}
+		}
+
+		public Compiler.ModuleContainer Module {
+			get {
+				return module;
+			}
+		}
+
+		public static DynamicContext Create ()
+		{
+			if (dc != null)
+				return dc;
 
 			lock (compiler_initializer) {
-				if (compiler_initialized)
-					return;
+				if (dc != null)
+					return dc;
 
-				// TODO: This smells like pretty big issue
-				// AppDomain.CurrentDomain.AssemblyLoad += (sender, e) => { throw new NotImplementedException (); };
+				var reporter = new Compiler.Report (ErrorPrinter.Instance) {
+					WarningLevel = 0
+				};
 
-				// Add all currently loaded assemblies
-				foreach (System.Reflection.Assembly a in AppDomain.CurrentDomain.GetAssemblies ())
-					Compiler.GlobalRootNamespace.Instance.AddAssemblyReference (a);
+				var cc = new Compiler.CompilerContext (reporter) {
+					IsRuntimeBinder = true
+				};
 
-				Compiler.TypeManager.InitCoreTypes (ctx);
-				Compiler.TypeManager.InitOptionalCoreTypes (ctx);
-				compiler_initialized = true;
+				//IList<Compiler.PredefinedTypeSpec> core_types = null;
+				//// HACK: To avoid re-initializing static TypeManager types, like string_type
+				//if (!Compiler.RootContext.EvalMode) {
+				//    core_types = Compiler.TypeManager.InitCoreTypes ();
+				//}
+
+				//
+				// Any later loaded assemblies are handled internally by GetAssemblyDefinition
+				// domain.AssemblyLoad cannot be used as that would be too destructive as we
+				// would hold all loaded assemblies even if they can be never visited
+				//
+				// TODO: Remove this code and rely on GetAssemblyDefinition only
+				//
+				var module = new Compiler.ModuleContainer (cc);
+				var temp = new Compiler.AssemblyDefinitionDynamic (module, "dynamic");
+				module.SetDeclaringAssembly (temp);
+
+				// Import all currently loaded assemblies
+				var domain = AppDomain.CurrentDomain;
+
+				temp.Create (domain, System.Reflection.Emit.AssemblyBuilderAccess.Run);
+				var importer = new Compiler.ReflectionImporter (cc.BuildinTypes) {
+					IgnorePrivateMembers = false
+				};
+
+				Compiler.RootContext.ToplevelTypes = module;
+
+				foreach (var a in AppDomain.CurrentDomain.GetAssemblies ()) {
+					importer.ImportAssembly (a, module.GlobalRootNamespace);
+				}
+
+				if (!Compiler.RootContext.EvalMode) {
+					cc.BuildinTypes.CheckDefinitions (module);
+					module.InitializePredefinedTypes ();
+				}
+
+				dc = new DynamicContext (module, importer);
 			}
+
+			return dc;
 		}
 
-		public static DynamicMetaObject Bind (DynamicMetaObject target, DynamicMetaObject errorSuggestion, DynamicMetaObject[] args)
+		//
+		// Creates mcs expression from dynamic object
+		//
+		public Compiler.Expression CreateCompilerExpression (CSharpArgumentInfo info, DynamicMetaObject value)
 		{
-			return Bind (target, errorSuggestion);
+			//
+			// No type details provider, go with runtime type
+			//
+			if (info == null) {
+				if (value.LimitType == typeof (object))
+					return new Compiler.NullLiteral (Compiler.Location.Null);
+
+				return new Compiler.RuntimeValueExpression (value, ImportType (value.RuntimeType));
+			}
+
+			//
+			// Value is known to be a type
+			//
+			if ((info.Flags & CSharpArgumentInfoFlags.IsStaticType) != 0)
+				return new Compiler.TypeExpression (ImportType ((Type) value.Value), Compiler.Location.Null);
+
+			if (value.Value == null &&
+				(info.Flags & (CSharpArgumentInfoFlags.IsOut | CSharpArgumentInfoFlags.IsRef | CSharpArgumentInfoFlags.UseCompileTimeType)) == 0 &&
+				value.LimitType == typeof (object)) {
+				return new Compiler.NullLiteral (Compiler.Location.Null);
+			}
+
+			//
+			// Use compilation time type when type was known not to be dynamic during compilation
+			//
+			Type value_type = (info.Flags & CSharpArgumentInfoFlags.UseCompileTimeType) != 0 ? value.Expression.Type : value.LimitType;
+			var type = ImportType (value_type);
+
+			if ((info.Flags & CSharpArgumentInfoFlags.Constant) != 0)
+				return Compiler.Constant.CreateConstantFromValue (type, value.Value, Compiler.Location.Null);
+
+			return new Compiler.RuntimeValueExpression (value, type);
 		}
 
-		public static DynamicMetaObject Bind (DynamicMetaObject target, DynamicMetaObject errorSuggestion)
+		//
+		// Creates mcs arguments from dynamic argument info
+		//
+		public Compiler.Arguments CreateCompilerArguments (IEnumerable<CSharpArgumentInfo> info, DynamicMetaObject[] args)
 		{
-			return errorSuggestion ??
-				   new DynamicMetaObject (
-						   Expression.Constant (new object ()),
-						   target.Restrictions.Merge (
-							   BindingRestrictions.GetTypeRestriction (
-								   target.Expression, target.LimitType)));
+			var res = new Compiler.Arguments (args.Length);
+			int pos = 0;
+
+			// enumerates over args
+			foreach (var item in info) {
+				var expr = CreateCompilerExpression (item, args[pos++]);
+				if (item.IsNamed) {
+					res.Add (new Compiler.NamedArgument (item.Name, Compiler.Location.Null, expr, item.ArgumentModifier));
+				} else {
+					res.Add (new Compiler.Argument (expr, item.ArgumentModifier));
+				}
+
+				if (pos == args.Length)
+					break;
+			}
+
+			return res;
+		}
+
+		public Compiler.TypeSpec ImportType (Type type)
+		{
+			lock (lock_object) {
+				return importer.ImportType (type);
+			}
 		}
 	}
 }

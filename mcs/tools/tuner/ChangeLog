@@ -1,3 +1,28 @@
+2011-06-12  Sebastien Pouliot  <sebastien@xamarin.com>
+
+	Fix namespace and avoid looping once ctor is found
+
+2011-06-09  Sebastien Pouliot  <sebastien@xamarin.com>
+
+	Refactor MonoMac's MarkNSObjects substep so it can be reused in
+	other products
+
+2011-06-04  Jb Evain  <jbevain@gmail.com>
+
+	update tuner
+
+2011-06-02  Jb Evain  <jbevain@gmail.com>
+
+	update tuner
+
+2010-10-20  Jb Evain  <jbevain@gmail.com>
+
+	Fix tuner build
+
+2010-10-05  Jb Evain  <jbevain@gmail.com>
+
+	Update the tuner to cecil-light
+
 2009-11-03  Jb Evain  <jbevain@novell.com>
 
 	* Mono.Tuner/CheckVisibility.cs: detect a throw_on_visibility_error
@@ -7,6 +32,10 @@
 2009-11-02  Jb Evain  <jbevain@novell.com>
 
 	* Mono.Tuner/MoonlightAssemblyStep.cs: adapt to the MT linker merge.
+
+2009-10-14  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Makefile (CECIL, LINKER): Point to profile-specific assembly.
 
 2009-09-16  Andrés G. Aragoneses  <aaragoneses@novell.com>
 

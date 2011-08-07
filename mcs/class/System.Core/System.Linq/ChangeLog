@@ -1,3 +1,293 @@
+2011-06-23  Jb Evain  <jbevain@gmail.com>
+
+	Fix queryable enumerable expression transformation
+
+2011-06-23  Jb Evain  <jbevain@gmail.com>
+
+	Don't emit null queryable constants when rewriting linq queries,
+	fix #701187
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
+2011-01-26  Jb Evain  <jbevain@gmail.com>
+
+	[linq] Fix Reverse for IList implementors
+
+2011-01-25  Jb Evain  <jbevain@gmail.com>
+
+	[linq] Fix overflow check for Count
+
+2011-01-25  Jb Evain  <jbevain@gmail.com>
+
+	[linq] fix Range extreme boundaries
+
+2010-12-30  Jb Evain  <jbevain@gmail.com>
+
+	[LINQ] Fix non generic AsQueryable issue #661462
+
+2010-12-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Sys.Core parameters fixup
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Some .net 4.0 api compatibility fixes
+
+2010-12-09  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Detect when AsParallel is called multiple time in a query
+	and simply reuse the existing ParallelQuery object
+
+2010-08-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Add dummy GetEnumerator override in OrderedParallelQuery
+	to make gui-compare happy
+
+2010-08-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Include Cancellation checks deeper in the pipeline
+	processing
+
+2010-08-25  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Use default comparer instead of throwing an ANE in PLinq
+	operators
+
+2010-08-24  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Implement GroupBy operator
+
+2010-08-24  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Plug in QueryJoinNode for Join operator
+
+2010-08-20  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Add implementation of Take/TakeWhile operators (including
+	corresponding query node and unit tests)
+
+2010-08-19  Jb Evain  <jbevain@gmail.com>
+
+	[Fix] Enumerable.Except: return a duplicate free set. Fix bug
+	#611821.
+
+2010-08-18  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Tune SkipWhile operator, re-enable its unit tests
+
+2010-08-18  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Reflect directory hierarchy change on namespace names
+
+2010-08-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Move NET_4_0 define check under licence text
+
+2010-08-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Fix and improve Skip operator and use two different
+	versions of the predicate depending on the relative order of the
+	query.
+
+	This actually make the operator complies to the behavior described
+	in MSDN "Order Preservation" table.
+
+2010-08-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Fix ToArray and ToList operator to also conservatively
+	keep order when an explicit order guard is in the query.
+
+2010-08-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Fix ProcessAndAggregate to correctly initialize its seed
+	with all workers when no seedFunc is supplied.
+
+2010-08-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Add a IsOrdered internal operator that naively says if the
+	current node is behind an ordered guard.
+
+	This is necessary for some PLinq operator that can provide a
+	better optimized version of themselves when there is no ordering
+	constraint whithout having to create yet another query node. Note
+	that the method can be optimized with a more specialized version
+	of the visitor.
+
+2010-08-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Remove unused Process overload.
+
+2010-08-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix whitespace mess in ParallelEnumerable methods.
+
+2010-08-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Fix visitor behavior when on a QueryOrderGuardNode.
+
+	Previously the case of Unordered wasn't taken in account and the
+	control flow wasn't properly forwarded to the following nodes in
+	the query# Please enter the commit message for your changes. Lines
+	starting
+
+2010-08-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Switch to the more reliable ToListOrdered operator in
+	QueryReverseNode.
+
+	Using ToArray directly, even though incorrect, was working by a
+	twist of fate in that the mostly-standard partitioner and ToArray
+	operator were based on the same assumptions.
+
+2010-08-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Terminate directly when all the necessary values have been
+	correctly staged in OrderingEnumerator.
+
+2010-08-16  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Enclose operator processing in a try/finally block so that
+	upon Dispose'ing the iterator a cleanup path is also called.
+
+	This prevent some other operator from deadlocking by e.g. removing
+	participant in barrier that ordered operator may use.
+
+2010-08-16  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Cleanup code in QueryNodes.
+
+	Switch from manually creating result sets to creating them with a
+	Linq query. Replaced some type with var. Split indexed and non
+	indexed call in two different virtual method call.
+
+2010-07-14  Jb Evain  <jbevain@novell.com>
+
+	* Enumerable.cs (Union): fix HashSet.Contains call.
+
+2010-07-13  Jb Evain  <jbevain@novell.com>
+
+	* Enumerable.cs (Except): fix HashSet.Contains call.
+	Fixes #621911.
+
+2010-06-22  Jb Evain  <jbevain@novell.com>
+
+	* Queryable.cs: properly set the constants types in the queryable
+	expression tree.
+
+2010-06-22  Jb Evain  <jbevain@novell.com>
+
+	* EnumerableQuery_T.cs
+	* QueryableEnumerable.cs:
+		override ToString.
+
+2010-06-18  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* EnumerableQuery.cs:
+	* EnumerableQuery_T.cs:
+	* EnumerableExecutor.cs: 
+	* EnumerableExecutor_T.cs: Include in Moonlight.
+
+	* Enumerable.cs: Moonlight too needs Zip.
+
+2010-05-25  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* ParallelExecuter.cs: Fix NRE caused by lambda wrapping
+
+2010-05-25  Jb Evain  <jbevain@novell.com>
+
+	* Enumerable.cs: make Reverse lazier. Based on a patch by
+	Matthew Flaschen <matthew.flaschen@gatech.edu>. Fixes #608195.
+
+2010-05-19  Jb Evain  <jbevain@novell.com>
+
+	* Enumerable.cs: fix GroupBy to deal with a null key for the last
+	group entry. Also fix GroupBy to properly throw ArgumentNullException.
+
+2010-05-05  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* ParallelEnumerable.cs: Some operators weren't declared
+	as extension methods. Fixed.
+
+2010-04-29  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* ParallelQueryEnumerator.cs: Use new non-blocking collection
+	for storing indexed elements.
+
+2010-04-29  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* ParallelExecuter.cs: Bring indexed worker methods support.
+	Check for null callback.
+
+2010-04-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* OrderedParallelQuery.cs:
+	* ParallelEnumerable.cs:
+	* ParallelExecuter.cs:
+	* ParallelPartitioner.cs:
+	* ParallelQuery.cs:
+	* ParallelQueryEnumerator.cs: First check-in of PLinq
+
+2010-04-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* ParallelExecutionMode.cs:
+	* ParallelMergeOptions.cs: Initial check-in of PLinq (enum)
+
+2010-04-12  Miguel de Icaza  <miguel@novell.com>
+
+	* Enumerable.cs: Jumbo patch that inlines code, mainly for the AOT
+	scenario where we our compiler cant infer the extra layer of
+	indirection of a lambda function.
+
+	But additionally, since we lack support for our JIT to inline
+	intermediate delegate calls, it should save memory and run
+	faster. 
+
+2010-04-07  Jb Evain  <jbevain@novell.com>
+
+	* EnumerableExecutor.cs: make ctor protected.
+
+2010-04-07  Jb Evain  <jbevain@novell.com>
+
+	* EnumerableQuery_T.cs: implement.
+
+2010-04-07  Jb Evain  <jbevain@novell.com>
+
+	* EnumerableQuery.cs: make ctor protected.
+
+2010-04-06  Jb Evain  <jbevain@novell.com>
+
+	* QueryableEnumerable.cs: make TransformQueryable work on net_4_0.
+
+2010-04-06  Jb Evain  <jbevain@novell.com>
+
+	* QueryableTransformer.cs: use factory method that work for all
+	ET implementations.
+
+2010-03-30  Jb Evain  <jbevain@novell.com>
+
+	* Queryable.cs: implement Zip for net_4_0.
+
+2010-03-24  Jb Evain  <jbevain@novell.com>
+
+	* SortSequenceContext.cs: Fix OrderByDescending stability.
+	Based on a patch by Richard Kiene  <richard.kiene@logos.com>.
+
+2010-02-23  Marek Safar  <marek.safar@gmail.com>
+
+	* Enumerable.cs: Implement Zip.
+
+2010-01-25  Jb Evain  <jbevain@novell.com>
+
+	* QueryableTransformer.cs (ReplaceQueryableMethod): fix
+	exception message.
+
+2009-12-03  Marek Safar  <marek.safar@gmail.com>
+
+	* EnumerableExecutor.cs, EnumerableExecutor_T.cs, EnumerableQuery.cs
+	EnumerableQuery_T.cs: Implemented.
+
 2009-11-14  Jb Evain  <jbevain@novell.com>
 
 	* QueryableTransformer: adjust to latest ExpressionTransformer
@@ -7,7 +297,11 @@
 
 	* Enumerable.cs (ToLookup): Accept null keys.
 	* Lookup.cs: Accept null keys.
-	
+
+2009-10-08  Marek Safar  <marek.safar@gmail.com>
+
+	* Enumerable.cs (Empty): Optimized allocation.
+
 2009-08-07  Marek Safar  <marek.safar@gmail.com>
 
 	* Enumerable.cs (Skip): Optimized and fixed int.MaxValue overflow.

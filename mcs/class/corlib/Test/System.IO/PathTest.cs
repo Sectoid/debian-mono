@@ -563,16 +563,23 @@ namespace MonoTests.System.IO
 				{"root//dir", "root\\dir"},
 				{"root/.              /", "root\\"},
 				{"root/..             /", ""},
+#if !NET_2_0
 				{"root/      .              /", "root\\"},
 				{"root/      ..             /", ""},
+#endif
 				{"root/./", "root\\"},
 				{"root/..                      /", ""},
 				{".//", ""}
 			};
 
 			for (int i = 0; i < test.GetUpperBound (0); i++) {
-				Assert.AreEqual (root + test [i, 1], Path.GetFullPath (root + test [i, 0]),
-						 String.Format ("GetFullPathWindows #{0}", i));
+				try {
+					Assert.AreEqual (root + test [i, 1], Path.GetFullPath (root + test [i, 0]),
+							 String.Format ("GetFullPathWindows #{0}", i));
+				} catch (Exception ex) { 
+					Assert.Fail (String.Format ("GetFullPathWindows #{0} (\"{1}\") failed: {2}", 
+						i, root + test [i, 0], ex.GetType ()));
+				}
 			}
 
 			// UNC tests
@@ -598,8 +605,10 @@ namespace MonoTests.System.IO
 				{"root//dir", "root\\dir"},
 				{"root/.              /", "root\\"},
 				{"root/..             /", ""},
+#if !NET_2_0
 				{"root/      .              /", "root\\"},
 				{"root/      ..             /", ""},
+#endif
 				{"root/./", "root\\"},
 				{"root/..                      /", ""},
 				{".//", ""}
@@ -610,8 +619,66 @@ namespace MonoTests.System.IO
 				string res = test [i, 1] != null
 					? root + test [i, 1]
 					: root2;
-				Assert.AreEqual (res, Path.GetFullPath (root + test [i, 0]),
-						 String.Format ("GetFullPathWindows UNC #{0}", i));
+				try {
+					Assert.AreEqual (res, Path.GetFullPath (root + test [i, 0]),
+							 String.Format ("GetFullPathWindows UNC #{0}", i));
+				} catch (AssertionException) {
+					throw;
+				} catch (Exception ex) {
+					Assert.Fail (String.Format ("GetFullPathWindows UNC #{0} (\"{1}\") failed: {2}",
+						i, root + test [i, 0], ex.GetType ()));
+				}
+			}
+
+			test = new string [,] {		
+				{"root////././././././../root/././../root", "root"},
+				{"root/", "root\\"},
+				{"root/./", "root\\"},
+				{"root/./", "root\\"},
+				{"root/../", ""},
+				{"root/../", ""},
+				{"root/../..", null},
+				{"root/.hiddenfile", "root\\.hiddenfile"},
+				{"root/. /", "root\\"},
+				{"root/.. /", ""},
+				{"root/..weirdname", "root\\..weirdname"},
+				{"root/..", null},
+				{"root/../a/b/../../..", null},
+				{"root/./..", null},
+				{"..", null},
+				{".", null},
+				{"root//dir", "root\\dir"},
+				{"root/.              /", "root\\"},
+				{"root/..             /", ""},
+#if !NET_2_0
+				{"root/      .              /", "root\\"},
+				{"root/      ..             /", ""},
+#endif
+				{"root/./", "root\\"},
+				{"root/..                      /", ""},
+				{".//", ""}
+			};
+
+			string root3 = @"//server/share";
+			root = @"//server/share/";
+			bool needSlashConvert = Path.DirectorySeparatorChar != '/';
+
+			for (int i = 0; i < test.GetUpperBound (0); i++) {
+				// "null" means we have to compare against "root2"
+				string res = test [i, 1] != null
+					? root + test [i, 1]
+					: root3;
+				if (needSlashConvert)
+					res = res.Replace ('/', Path.DirectorySeparatorChar);
+				try {
+					Assert.AreEqual (res, Path.GetFullPath (root + test [i, 0]),
+							 String.Format ("GetFullPathWindows UNC[2] #{0}", i));
+				} catch (AssertionException) {
+					throw;
+				} catch (Exception ex) {
+					Assert.Fail (String.Format ("GetFullPathWindows UNC[2] #{0} (\"{1}\") failed: {2}",
+						i, root + test [i, 0], ex.GetType ()));
+				}
 			}
 		}
 
@@ -1185,6 +1252,147 @@ namespace MonoTests.System.IO
 					Assert.IsTrue (('a' <= c && c <= 'z') || ('0' <= c && c <= '9'));
 				}
 			}
+		}
+#endif
+#if NET_4_0
+		string Concat (string sep, params string [] parms)
+		{
+			return String.Join (sep, parms);
+		}
+
+		[Test]
+		public void Combine_3Params ()
+		{
+			string sep = Path.DirectorySeparatorChar.ToString ();
+
+			try {
+				Path.Combine (null, "two", "three");
+				Assert.Fail ("#A1-1");
+			} catch {
+				// success
+			}
+
+			try {
+				Path.Combine ("one", null, "three");
+				Assert.Fail ("#A1-2");
+			} catch {
+				// success
+			}
+
+			try {
+				Path.Combine ("one", "two", null);
+				Assert.Fail ("#A1-3");
+			} catch {
+				// success
+			}
+			
+			Assert.AreEqual (Concat (sep, "one", "two", "three"), Path.Combine ("one", "two", "three"), "#A2-1");
+			Assert.AreEqual (Concat (sep, sep + "one", "two", "three"), Path.Combine (sep + "one", "two", "three"), "#A2-2");
+			Assert.AreEqual (Concat (sep, sep + "one", "two", "three"), Path.Combine (sep + "one" + sep, "two", "three"), "#A2-3");
+			Assert.AreEqual (Concat (sep, sep + "two", "three"), Path.Combine (sep + "one" + sep, sep + "two", "three"), "#A2-4");
+			Assert.AreEqual (Concat (sep, sep + "three"), Path.Combine (sep + "one" + sep, sep + "two", sep + "three"), "#A2-5");
+
+			Assert.AreEqual (Concat (sep, sep + "one" + sep, "two", "three"), Path.Combine (sep + "one" + sep + sep, "two", "three"), "#A3");
+
+			Assert.AreEqual ("", Path.Combine ("", "", ""), "#A4");
+		}
+
+		[Test]
+		public void Combine_4Params ()
+		{
+			string sep = Path.DirectorySeparatorChar.ToString ();
+
+			try {
+				Path.Combine (null, "two", "three", "four");
+				Assert.Fail ("#A1-1");
+			} catch {
+				// success
+			}
+
+			try {
+				Path.Combine ("one", null, "three", "four");
+				Assert.Fail ("#A1-2");
+			} catch {
+				// success
+			}
+
+			try {
+				Path.Combine ("one", "two", null, "four");
+				Assert.Fail ("#A1-3");
+			} catch {
+				// success
+			}
+
+			try {
+				Path.Combine ("one", "two", "three", null);
+				Assert.Fail ("#A1-4");
+			} catch {
+				// success
+			}
+
+			Assert.AreEqual (Concat (sep, "one", "two", "three", "four"), Path.Combine ("one", "two", "three", "four"), "#A2-1");
+			Assert.AreEqual (Concat (sep, sep + "one", "two", "three", "four"), Path.Combine (sep + "one", "two", "three", "four"), "#A2-2");
+			Assert.AreEqual (Concat (sep, sep + "one", "two", "three", "four"), Path.Combine (sep + "one" + sep, "two", "three", "four"), "#A2-3");
+			Assert.AreEqual (Concat (sep, sep + "two", "three", "four"), Path.Combine (sep + "one" + sep, sep + "two", "three", "four"), "#A2-4");
+			Assert.AreEqual (Concat (sep, sep + "three", "four"), Path.Combine (sep + "one" + sep, sep + "two", sep + "three", "four"), "#A2-5");
+			Assert.AreEqual (Concat (sep, sep + "four"), Path.Combine (sep + "one" + sep, sep + "two", sep + "three", sep + "four"), "#A2-6");
+
+			Assert.AreEqual (Concat (sep, sep + "one" + sep, "two", "three", "four"), Path.Combine (sep + "one" + sep + sep, "two", "three", "four"), "#A3");
+
+			Assert.AreEqual ("", Path.Combine ("", "", "", ""), "#A4");
+		}
+
+		[Test]
+		public void Combine_ManyParams ()
+		{
+			string sep = Path.DirectorySeparatorChar.ToString ();
+
+			try {
+				Path.Combine (null, "two", "three", "four", "five");
+				Assert.Fail ("#A1-1");
+			} catch {
+				// success
+			}
+
+			try {
+				Path.Combine ("one", null, "three", "four", "five");
+				Assert.Fail ("#A1-2");
+			} catch {
+				// success
+			}
+
+			try {
+				Path.Combine ("one", "two", null, "four", "five");
+				Assert.Fail ("#A1-3");
+			} catch {
+				// success
+			}
+
+			try {
+				Path.Combine ("one", "two", "three", null, "five");
+				Assert.Fail ("#A1-4");
+			} catch {
+				// success
+			}
+
+			try {
+				Path.Combine ("one", "two", "three", "four", null);
+				Assert.Fail ("#A1-5");
+			} catch {
+				// success
+			}
+
+			Assert.AreEqual (Concat (sep, "one", "two", "three", "four", "five"), Path.Combine ("one", "two", "three", "four", "five"), "#A2-1");
+			Assert.AreEqual (Concat (sep, sep + "one", "two", "three", "four", "five"), Path.Combine (sep + "one", "two", "three", "four", "five"), "#A2-2");
+			Assert.AreEqual (Concat (sep, sep + "one", "two", "three", "four", "five"), Path.Combine (sep + "one" + sep, "two", "three", "four", "five"), "#A2-3");
+			Assert.AreEqual (Concat (sep, sep + "two", "three", "four", "five"), Path.Combine (sep + "one" + sep, sep + "two", "three", "four", "five"), "#A2-4");
+			Assert.AreEqual (Concat (sep, sep + "three", "four", "five"), Path.Combine (sep + "one" + sep, sep + "two", sep + "three", "four", "five"), "#A2-5");
+			Assert.AreEqual (Concat (sep, sep + "four", "five"), Path.Combine (sep + "one" + sep, sep + "two", sep + "three", sep + "four", "five"), "#A2-6");
+			Assert.AreEqual (Concat (sep, sep + "five"), Path.Combine (sep + "one" + sep, sep + "two", sep + "three", sep + "four", sep + "five"), "#A2-6");
+
+			Assert.AreEqual (Concat (sep, sep + "one" + sep, "two", "three", "four", "five"), Path.Combine (sep + "one" + sep + sep, "two", "three", "four", "five"), "#A3");
+
+			Assert.AreEqual ("", Path.Combine ("", "", "", "", ""), "#A4");
 		}
 #endif
 	}

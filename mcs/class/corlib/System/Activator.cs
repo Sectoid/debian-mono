@@ -37,7 +37,7 @@ using System.Security.Permissions;
 using System.Security.Policy;
 using System.Configuration.Assemblies;
 using System.Text;
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Activation;
 #endif
@@ -45,10 +45,8 @@ using System.Runtime.Remoting.Activation;
 namespace System 
 {
 	[ClassInterface (ClassInterfaceType.None)]
-#if NET_2_0
 	[ComVisible (true)]
 	[ComDefaultInterface (typeof (_Activator))]
-#endif
 	public sealed class Activator : _Activator
 	{
 		const BindingFlags _flags = BindingFlags.CreateInstance | BindingFlags.Public | BindingFlags.Instance;
@@ -60,7 +58,7 @@ namespace System
 		{
 		}
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		[MonoTODO ("No COM support")]
 		public static ObjectHandle CreateComInstanceFrom (string assemblyName, string typeName)
 		{
@@ -76,7 +74,6 @@ namespace System
 			throw new NotImplementedException();
 		}
 
-#if NET_1_1
 		[MonoTODO("Mono does not support COM")]
 		public static ObjectHandle CreateComInstanceFrom (string assemblyName, string typeName,
 		                                                  byte []hashValue, AssemblyHashAlgorithm hashAlgorithm)
@@ -92,7 +89,6 @@ namespace System
 
 			throw new NotImplementedException();
 		}
-#endif
 
 		public static ObjectHandle CreateInstanceFrom (string assemblyFile, string typeName)
 		{
@@ -105,6 +101,9 @@ namespace System
 				activationAttributes, null);
 		}
 
+#if NET_4_0
+		[Obsolete]
+#endif
 		public static ObjectHandle CreateInstanceFrom (string assemblyFile, string typeName, bool ignoreCase,
 		                                               BindingFlags bindingAttr, Binder binder, object [] args,
 		                                               CultureInfo culture, object [] activationAttributes,
@@ -139,6 +138,9 @@ namespace System
 				activationAttributes, null);
 		}
 
+#if NET_4_0
+		[Obsolete]
+#endif
 		public static ObjectHandle CreateInstance (string assemblyName, string typeName, bool ignoreCase,
 		                                           BindingFlags bindingAttr, Binder binder, object [] args,
 							   CultureInfo culture, object [] activationAttributes, Evidence securityInfo)
@@ -153,7 +155,6 @@ namespace System
 			return (obj != null) ? new ObjectHandle (obj) : null;
 		}
 
-#if NET_2_0
 		[MonoNotSupported ("no ClickOnce in mono")]
 		public static ObjectHandle CreateInstance (ActivationContext activationContext)
 		{
@@ -175,6 +176,10 @@ namespace System
 			return domain.CreateInstanceFrom (assemblyFile, typeName);
 		}
 
+
+#if NET_4_0
+		[Obsolete]
+#endif
 		public static ObjectHandle CreateInstanceFrom (AppDomain domain, string assemblyFile, string typeName,
 							       bool ignoreCase, BindingFlags bindingAttr, Binder binder,
 							       object [] args, CultureInfo culture,
@@ -194,6 +199,9 @@ namespace System
 			return domain.CreateInstance (assemblyName, typeName);
 		}
 
+#if NET_4_0
+		[Obsolete]
+#endif
 		public static ObjectHandle CreateInstance (AppDomain domain, string assemblyName, string typeName,
 							   bool ignoreCase, BindingFlags bindingAttr, Binder binder,
 							   object [] args, CultureInfo culture,
@@ -204,26 +212,19 @@ namespace System
 				throw new ArgumentNullException ("domain");
 			return domain.CreateInstance (assemblyName, typeName, ignoreCase, bindingAttr, binder, args, culture, activationAttributes, securityAttributes);
 		}
-#endif
 #endif // !NET_2_1
 
-#if NET_2_0
 		public static T CreateInstance <T> ()
 		{
 			return (T) CreateInstance (typeof (T));
 		}
-#endif
 
 		public static object CreateInstance (Type type)
 		{
 			return CreateInstance (type, false);
 		}
 
-#if NET_2_0
 		public static object CreateInstance (Type type, params object [] args)
-#else
-		public static object CreateInstance (Type type, object [] args)
-#endif
 		{
 			return CreateInstance (type, args, new object [0]);
 		}
@@ -244,49 +245,44 @@ namespace System
 		{
 			CheckType (type);
 
-#if NET_2_0
 			if (type.ContainsGenericParameters)
 				throw new ArgumentException (type + " is an open generic type", "type");
-#endif
+
 			// It seems to apply the same rules documented for InvokeMember: "If the type of lookup
 			// is omitted, BindingFlags.Public | BindingFlags.Instance will apply".
 			if ((bindingAttr & _accessFlags) == 0)
 				bindingAttr |= BindingFlags.Public | BindingFlags.Instance;
 
-			int length = 0;
-			if (args != null)
-				length = args.Length;
-
-			Type[] atypes = length == 0 ? Type.EmptyTypes : new Type [length];
-			for (int i = 0; i < length; ++i)
-				if (args [i] != null)
-					atypes [i] = args [i].GetType ();
-
 			if (binder == null)
 				binder = Binder.DefaultBinder;
 
-			ConstructorInfo ctor = (ConstructorInfo) binder.SelectMethod (bindingAttr, type.GetConstructors (bindingAttr), atypes, null);
+			object state;
+			ConstructorInfo ctor = (ConstructorInfo) binder.BindToMethod (bindingAttr, type.GetConstructors (bindingAttr), ref args, null, null, null, out state);
 
 			if (ctor == null) {
 				// Not sure about this
-				if (type.IsValueType && atypes.Length == 0) {
+				if (type.IsValueType && (args == null || args.Length == 0)) {
 					return CreateInstanceInternal (type);
 				}
 
-				StringBuilder sb = new StringBuilder ();
-				foreach (Type t in atypes){
-						sb.Append (t != null ? t.ToString () : "(unknown)");
-					sb.Append (", ");
+				var sb = new StringBuilder ();
+				if (args != null) {
+					for (int i = 0; i < args.Length; i++) {
+						if (i > 0)
+							sb.Append (", ");
+
+						var argument = args [i];
+						var arg_type = argument != null ? argument.GetType () : null;
+						sb.Append (arg_type != null ? arg_type.ToString () : "(unknown)");
+					}
 				}
-				if (sb.Length > 2)
-					sb.Length -= 2;
-				
+
 				throw new MissingMethodException (String.Format (Locale.GetText ("No constructor found for {0}::.ctor({1})"),
 										 type.FullName, sb));
 			}
 
 			CheckAbstractType (type);
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 			if (activationAttributes != null && activationAttributes.Length > 0) {
 				if (!type.IsMarshalByRef) {
 					string msg = Locale.GetText ("Type '{0}' doesn't derive from MarshalByRefObject.", type.FullName);
@@ -306,10 +302,10 @@ namespace System
 		public static object CreateInstance (Type type, bool nonPublic)
 		{ 
 			CheckType (type);
-#if NET_2_0
+
 			if (type.ContainsGenericParameters)
 				throw new ArgumentException (type + " is an open generic type", "type");
-#endif
+
 			CheckAbstractType (type);
 
 			ConstructorInfo ctor;
@@ -330,8 +326,8 @@ namespace System
 				if (type.IsValueType)
 					return CreateInstanceInternal (type);
 
-				throw new MissingMethodException (Locale.GetText ("Default constructor not found."),
-								".ctor() of " + type.FullName);
+				throw new MissingMethodException (Locale.GetText ("Default constructor not found for type " + 
+							type.FullName + "."));
 			}
 
 			return ctor.Invoke (null);
@@ -353,15 +349,11 @@ namespace System
 		{
 			if (type.IsAbstract) {
 				string msg = Locale.GetText ("Cannot create an abstract class '{0}'.", type.FullName);
-#if NET_2_0
 				throw new MissingMethodException (msg);
-#else
-				throw new MemberAccessException (msg);
-#endif
 			}
 		}
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		[SecurityPermission (SecurityAction.LinkDemand, RemotingConfiguration = true)]
 		public static object GetObject (Type type, string url)
 		{
@@ -383,7 +375,6 @@ namespace System
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		internal static extern object CreateInstanceInternal (Type type);
 
-#if NET_1_1
 		void _Activator.GetIDsOfNames ([In] ref Guid riid, IntPtr rgszNames, uint cNames, uint lcid, IntPtr rgDispId)
 		{
 			throw new NotImplementedException ();
@@ -403,6 +394,58 @@ namespace System
 			IntPtr pVarResult, IntPtr pExcepInfo, IntPtr puArgErr)
 		{
 			throw new NotImplementedException ();
+		}
+
+#if NET_4_0
+		public static ObjectHandle CreateInstance (string assemblyName, string typeName, bool ignoreCase,
+		                                           BindingFlags bindingAttr, Binder binder, object [] args,
+							   CultureInfo culture, object [] activationAttributes)
+		{
+			Assembly assembly = null;
+			if(assemblyName == null)
+				assembly = Assembly.GetCallingAssembly ();
+			else
+				assembly = Assembly.Load (assemblyName);
+			Type type = assembly.GetType (typeName, true, ignoreCase);
+			object obj = CreateInstance (type, bindingAttr, binder, args, culture, activationAttributes);
+			return (obj != null) ? new ObjectHandle (obj) : null;
+		}
+
+		public static ObjectHandle CreateInstance (AppDomain domain, string assemblyName, string typeName,
+							   bool ignoreCase, BindingFlags bindingAttr, Binder binder,
+							   object [] args, CultureInfo culture,
+							   object [] activationAttributes)
+		{
+			if (domain == null)
+				throw new ArgumentNullException ("domain");
+			return domain.CreateInstance (assemblyName, typeName, ignoreCase, bindingAttr, binder, args, culture, activationAttributes);
+		}
+
+		public static ObjectHandle CreateInstanceFrom (string assemblyFile, string typeName, bool ignoreCase,
+		                                               BindingFlags bindingAttr, Binder binder, object [] args,
+		                                               CultureInfo culture, object [] activationAttributes)
+		{
+			Assembly assembly = Assembly.LoadFrom (assemblyFile);
+			if (assembly == null)
+				return null;
+
+			Type type = assembly.GetType (typeName, true, ignoreCase);
+			if (type == null)
+				return null;
+
+			object obj = CreateInstance (type, bindingAttr, binder, args, culture, activationAttributes);
+			return (obj != null) ? new ObjectHandle (obj) : null;
+		}
+
+		public static ObjectHandle CreateInstanceFrom (AppDomain domain, string assemblyFile, string typeName,
+							       bool ignoreCase, BindingFlags bindingAttr, Binder binder,
+							       object [] args, CultureInfo culture,
+							       object [] activationAttributes)
+		{
+			if (domain == null)
+				throw new ArgumentNullException ("domain");
+
+			return domain.CreateInstanceFrom (assemblyFile, typeName, ignoreCase, bindingAttr, binder, args, culture, activationAttributes);
 		}
 #endif
 	}

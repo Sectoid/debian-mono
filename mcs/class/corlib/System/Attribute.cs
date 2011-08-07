@@ -29,6 +29,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
@@ -36,18 +37,10 @@ namespace System
 {
 	[AttributeUsage (AttributeTargets.All)]
 	[Serializable]
-
-#if NET_2_0
 	[ComVisible (true)]
 	[ComDefaultInterface (typeof (_Attribute))]
-#endif
-
-#if NET_1_1
 	[ClassInterfaceAttribute (ClassInterfaceType.None)]
 	public abstract class Attribute : _Attribute {
-#else
-	public abstract class Attribute {
-#endif
 		protected Attribute ()
 		{
 		}
@@ -138,9 +131,7 @@ namespace System
 			// neither parameter is allowed to be null
 			CheckParameters (element, attributeType);
 
-			// ParameterInfo inheritance hierarchies CAN NOT be searched for attributes, so the second
-			// parameter of GetCustomAttributes () is IGNORED.
-			object[] attributes = element.GetCustomAttributes (attributeType, inherit);
+			object[] attributes = GetCustomAttributes (element, attributeType, inherit);
 
 			return FindAttribute (attributes);
 		}
@@ -208,6 +199,10 @@ namespace System
 			// element parameter is not allowed to be null
 			CheckParameters (element, attributeType);
 
+			Attribute [] attributes;
+			if (inherit && TryGetParamCustomAttributes (element, attributeType, out attributes))
+				return attributes;
+
 			return (Attribute []) element.GetCustomAttributes (attributeType, inherit);
 		}
 
@@ -236,33 +231,17 @@ namespace System
 
 		public static Attribute[] GetCustomAttributes (Module element, bool inherit)
 		{
-			// element parameter is not allowed to be null
-			CheckParameters (element, typeof (Attribute));
-
-			return (Attribute []) element.GetCustomAttributes (inherit);
+			return GetCustomAttributes (element, typeof (Attribute), inherit);
 		}
 
 		public static Attribute[] GetCustomAttributes (Assembly element, bool inherit)
 		{
-			// element parameter is not allowed to be null
-			CheckParameters (element, typeof (Attribute));
-
-			return (Attribute []) element.GetCustomAttributes (inherit);
+			return GetCustomAttributes (element, typeof (Attribute), inherit);
 		}
 
 		public static Attribute[] GetCustomAttributes (MemberInfo element, bool inherit)
 		{
-			// element parameter is not allowed to be null
-			CheckParameters (element, typeof (Attribute));
-
-			// MS ignores the inherit param in PropertyInfo's ICustomAttributeProvider 
-			// implementation, but not in the Attributes, so directly get the attributes
-			// from MonoCustomAttrs instead of going throught the PropertyInfo's 
-			// ICustomAttributeProvider
-			MemberTypes mtype = element.MemberType;
-			if (mtype == MemberTypes.Property)
-				return (Attribute []) MonoCustomAttrs.GetCustomAttributes (element, inherit);
-			return (Attribute []) element.GetCustomAttributes (typeof (Attribute), inherit);
+			return GetCustomAttributes (element, typeof (Attribute), inherit);
 		}
 
 		public static Attribute[] GetCustomAttributes (ParameterInfo element, bool inherit)
@@ -270,12 +249,19 @@ namespace System
 			// element parameter is not allowed to be null
 			CheckParameters (element, typeof (Attribute));
 
-			return (Attribute []) element.GetCustomAttributes (inherit);
+			return GetCustomAttributes (element, typeof (Attribute), inherit);
 		}
 
 		public override int GetHashCode ()
 		{
-			return base.GetHashCode ();
+			int result = TypeId.GetHashCode ();
+
+			FieldInfo[] fields = GetType ().GetFields (BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+			foreach (FieldInfo field in fields) {
+				object value = field.GetValue (this);
+				result ^= value == null ? 0 : value.GetHashCode ();
+			}
+			return result;
 		}
 
 		public virtual bool IsDefaultAttribute ()
@@ -315,14 +301,12 @@ namespace System
 				mtype != MemberTypes.NestedType)
 				throw new NotSupportedException (Locale.GetText (
 					"Element is not a constructor, method, property, event, type or field."));
-#if NET_2_0
 			// MS ignores the inherit param in PropertyInfo's ICustomAttributeProvider 
 			// implementation, but not in the Attributes, so directly get the attributes
 			// from MonoCustomAttrs instead of going throught the PropertyInfo's 
 			// ICustomAttributeProvider
 			if (mtype == MemberTypes.Property)
 				return MonoCustomAttrs.IsDefined (element, attributeType, inherit);
-#endif
 			return ((MemberInfo) element).IsDefined (attributeType, inherit);
 		}
 
@@ -340,7 +324,6 @@ namespace System
 			return element.IsDefined (attributeType, inherit);
 		}
 
-		// FIXME: MS apparently walks the inheritance way in some form.
 		public static bool IsDefined (ParameterInfo element, Type attributeType, bool inherit)
 		{
 			CheckParameters (element, attributeType);
@@ -348,8 +331,74 @@ namespace System
 			if (element.IsDefined (attributeType, inherit))
 				return true;
 
-			// FIXME: MS walks up the inheritance chain in some crazy way
-			return IsDefined (element.Member, attributeType, inherit);
+			if (inherit)
+				return IsDefinedOnParameter (element, attributeType);
+
+			return false;
+		}
+
+		static bool IsDefinedOnParameter (ParameterInfo parameter, Type attributeType)
+		{
+			var member = parameter.Member;
+			if (member.MemberType != MemberTypes.Method)
+				return false;
+
+			var method = ((MethodInfo) member).GetBaseMethod ();
+
+			while (true) {
+				var param = method.GetParameters () [parameter.Position];
+				if (param.IsDefined (attributeType, false))
+					return true;
+
+				var base_method = method.GetBaseMethod ();
+				if (base_method == method)
+					break;
+
+				method = base_method;
+			}
+
+			return false;
+		}
+
+		static bool TryGetParamCustomAttributes (ParameterInfo parameter, Type attributeType, out Attribute [] attributes)
+		{
+			attributes = null;
+
+			if (parameter.Member.MemberType != MemberTypes.Method)
+				return false;
+
+			var method = (MethodInfo) parameter.Member;
+			var definition = method.GetBaseDefinition ();
+
+			if (method == definition)
+				return false;
+
+			var types = new List<Type> ();
+			var custom_attributes = new List<Attribute> ();
+
+			while (true) {
+				var param = method.GetParameters () [parameter.Position];
+				var param_attributes = (Attribute []) param.GetCustomAttributes (attributeType, false);
+				foreach (var param_attribute in param_attributes) {
+					var param_type = param_attribute.GetType ();
+					if (types.Contains (param_type))
+						continue;
+
+					types.Add (param_type);
+					custom_attributes.Add (param_attribute);
+				}
+
+				var base_method = method.GetBaseMethod ();
+				if (base_method == method)
+					break;
+
+				method = base_method;
+			}
+
+			attributes = (Attribute []) Array.CreateInstance (attributeType, custom_attributes.Count);
+			custom_attributes.CopyTo (attributes, 0);
+
+			return true;
 		}
 
 		public virtual bool Match (object obj)
@@ -371,7 +420,6 @@ namespace System
 			return ValueType.DefaultEquals (this, obj);
 		}
 
-#if NET_1_1
 		void _Attribute.GetIDsOfNames ([In] ref Guid riid, IntPtr rgszNames, uint cNames, uint lcid, IntPtr rgDispId)
 		{
 			throw new NotImplementedException ();
@@ -392,6 +440,5 @@ namespace System
 		{
 			throw new NotImplementedException ();
 		}
-#endif
 	}
 }

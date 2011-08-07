@@ -12,7 +12,7 @@
 
 #include <config.h>
 
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 
 #include <mono/io-layer/io-layer.h>
 #include "image.h"
@@ -24,7 +24,11 @@ STDAPI MonoFixupCorEE(HMODULE ModuleHandle);
 
 /* Defined by the linker. */
 #ifndef _MSC_VER
+#ifdef __MINGW64_VERSION_MAJOR
+#define __ImageBase __MINGW_LSYMBOL(_image_base__)
+#else
 #define __ImageBase _image_base__
+#endif
 #endif
 extern IMAGE_DOS_HEADER __ImageBase MONO_INTERNAL;
 
@@ -40,6 +44,6 @@ void mono_fixup_exe_image (MonoImage* image) MONO_INTERNAL;
 /* Declared in image.c. */
 MonoImage* mono_image_open_from_module_handle (HMODULE module_handle, char* fname, gboolean has_entry_point, MonoImageOpenStatus* status) MONO_INTERNAL;
 
-#endif /* PLATFORM_WIN32 */
+#endif /* HOST_WIN32 */
 
 #endif /* __MONO_COREE_H__ */

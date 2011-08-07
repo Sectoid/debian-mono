@@ -1,3 +1,14 @@
+2010-06-25  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TabControlPainter.cs: Use TabControl.Font to draw instead of
+	TabPage.Font values.
+	Fixes bits of #551032.
+
+2010-05-17  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TabControlPainter.cs: When drawing the contents of our tabs use 
+	TabControl.Padding instead of BorderThickness and FocusRectSpacing.
+
 2008-10-20  Jonathan Pobst  <monkey@jpobst.com>
 
 	* ToolStripPainter.cs: Don't paint over a set BackgroundImage.

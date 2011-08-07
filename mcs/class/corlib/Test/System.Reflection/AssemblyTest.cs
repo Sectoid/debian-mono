@@ -216,14 +216,15 @@ namespace MonoTests.System.Reflection
 			Assert.IsFalse (corlib_test.GlobalAssemblyCache, "GlobalAssemblyCache");
 
 			Assert.IsTrue (corlib_test.GetReferencedAssemblies ().Length > 0, "GetReferencedAssemblies");
-#if NET_2_0
 			Assert.AreEqual (0, corlib_test.HostContext, "HostContext");
+#if NET_4_0
+			Assert.AreEqual ("v4.0.30319", corlib_test.ImageRuntimeVersion, "ImageRuntimeVersion");
+#else
 			Assert.AreEqual ("v2.0.50727", corlib_test.ImageRuntimeVersion, "ImageRuntimeVersion");
+#endif
+
 			Assert.IsNotNull (corlib_test.ManifestModule, "ManifestModule");
 			Assert.IsFalse (corlib_test.ReflectionOnly, "ReflectionOnly");
-#elif NET_1_1
-			Assert.AreEqual ("v1.1.4322", corlib_test.ImageRuntimeVersion, "ImageRuntimeVersion");
-#endif
 		}
 #endif
 
@@ -420,7 +421,7 @@ namespace MonoTests.System.Reflection
 		[Test]
 		public void LoadWithPartialName ()
 		{
-			string [] names = { "corlib_test_net_1_1", "corlib_test_net_2_0", "corlib_plattest" };
+			string [] names = { "corlib_test_net_1_1", "corlib_test_net_2_0", "corlib_test_net_4_0", "corlib_plattest" };
 
 			foreach (string s in names)
 				if (Assembly.LoadWithPartialName (s) != null)
@@ -1088,21 +1089,26 @@ namespace MonoTests.System.Reflection
 		}
 #endif // TARGET_JVM
 
-#if NET_2_0
 		[Test]
 		public void ManifestModule ()
 		{
 			Assembly assembly = typeof (int).Assembly;
 			Module module = assembly.ManifestModule;
 			Assert.IsNotNull (module, "#1");
+
+#if NET_4_0
+			Assert.AreEqual ("MonoModule", module.GetType ().Name, "#2");
+#else
 			Assert.AreEqual (typeof (Module), module.GetType (), "#2");
+#endif
+
 			Assert.AreEqual ("mscorlib.dll", module.Name, "#3");
 			Assert.IsFalse (module.IsResource (), "#4");
 			Assert.IsTrue (assembly.GetModules ().Length > 0, "#5");
 			Assert.AreSame (module, assembly.GetModules () [0], "#6");
 			Assert.AreSame (module, assembly.ManifestModule, "#7");
 		}
-#endif
+
 
 		[Serializable ()]
 		private class AssemblyResolveHandler

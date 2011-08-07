@@ -53,13 +53,7 @@ namespace System.Net {
 		public string Accept {
 			get { return Headers [HttpRequestHeader.Accept]; }
 			// this header cannot be set directly inside the collection (hence the helper)
-			set {
-				if (value == null)
-					throw new ArgumentNullException ("Accept");
-				if (value.Length == 0)
-					throw new ArgumentException ("Accept");
-				Headers.SetHeader ("accept", value);
-			}
+			set { Headers.SetHeader ("accept", value); }
 		}
 
 		public virtual bool AllowReadStreamBuffering {
@@ -67,16 +61,16 @@ namespace System.Net {
 			set { throw NotImplemented (); }
 		}
 
+		// new in SL4 RC
+		public virtual bool AllowWriteStreamBuffering {
+			get { throw NotImplemented (); }
+			set { throw NotImplemented (); }
+		}
+
 		public override string ContentType {
 			get { return Headers [HttpRequestHeader.ContentType]; }
 			// this header cannot be set directly inside the collection (hence the helper)
-			set {
-				if (value == null)
-					throw new ArgumentNullException ("ContentType");
-				if (value.Length == 0)
-					throw new ArgumentException ("ContentType");
-				Headers.SetHeader ("content-type", value);
-			}
+			set { Headers.SetHeader ("content-type", value); }
 		}
 
 		public virtual bool HaveResponse {
@@ -92,14 +86,13 @@ namespace System.Net {
 			set {
 				// note: this is not a field assignment but a copy (see unit tests)
 				// make sure everything we're supplied is valid...
-				string[] keys = value.AllKeys;
-				foreach (string header in keys) {
+				foreach (string header in value) {
 					// anything bad will throw
 					WebHeaderCollection.ValidateHeader (header);
 				}
 				// ... before making those values our own
-				Headers.headers.Clear ();
-				foreach (string header in keys) {
+				Headers.Clear ();
+				foreach (string header in value) {
 					headers [header] = value [header];
 				}
 			}
@@ -119,6 +112,10 @@ namespace System.Net {
 			get { throw NotImplemented (); }
 		}
 
+		// new in SL4 RC
+		public virtual bool SupportsCookieContainer {
+			get { return false; }
+		}
 
 		public override void Abort ()
 		{

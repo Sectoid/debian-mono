@@ -1,3 +1,45 @@
+2010-12-23  Marek Safar  <marek.safar@gmail.com>
+
+	Update mono-api-info to work with latest cecil. Updated to latest
+	SL4
+
+2010-12-22  Alan McGovern  <alan.mcgovern@gmail.com>
+
+	[mono-api-info] Do not ignore finalizers
+
+	Finalizer chaining is done at compile time, so if you compile
+	against a lib with no finalizer and then run against one with a
+	finalizer, you'll end up ignoring the finalizer in the second lib
+	and it will never be run. Therefore we need to take these into
+	account.
+
+2010-10-06  Jb Evain  <jbevain@gmail.com>
+
+	Port corcompare to cecil-light
+
+2010-08-23  Andrés G. Aragoneses  <knocte@gmail.com>
+
+	[tools] Merge mono-abi-info tool into a "--abi" flag for
+	mono-api-info
+
+	This commit also includes a brief (help welcome!) man page for
+	mono-api-info that explains its usage.
+
+2010-08-05  Andrés G. Aragoneses  <andres@lindenlab.com>
+
+	* mono-api-info.cs: Implemented new mode to show ABI.
+	* Makefile: added mono-abi-info autofoo.
+
+2010-04-16  C.J. Adams-Collier	<cjac@colliertech.org>
+
+	* mono-api-diff.cs: revived from the mono-2-2 branch and applied
+	patch from debian package, noted that I'll handle maintenance
+	
+2010-02-10  Marek Habersack  <mhabersack@novell.com>
+
+	* mono-api-info.cs: added support for extracting and generating
+	TypeForwardedTo assembly attributes.
+
 2009-06-03  Jb Evain  <jbevain@novell.com>
 
 	* AssemblyResolver.cs: properly attach the resolver to the

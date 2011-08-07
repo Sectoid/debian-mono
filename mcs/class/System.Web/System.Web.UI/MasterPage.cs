@@ -4,7 +4,7 @@
 // Authors:
 //   Lluis Sanchez Gual (lluis@novell.com)
 //
-// (C) 2005 Novell, Inc.
+// (C) 2005-2010 Novell, Inc.
 //
 
 //
@@ -28,13 +28,12 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Web.Compilation;
+using System.Web.Hosting;
 using System.Web.Util;
 using System.Web.UI.WebControls;
 using System.IO;
@@ -99,10 +98,23 @@ namespace System.Web.UI
 				return parentMasterPage;
 			}
 		}		
-		
+#if NET_4_0
+		public void InstantiateInContentPlaceHolder (Control contentPlaceHolder, ITemplate template)
+		{
+			// .NET compatibility...
+			if (contentPlaceHolder == null || template == null)
+				throw new NullReferenceException ();
+
+			if (contentPlaceHolder != null && template != null)
+				template.InstantiateIn (contentPlaceHolder);
+		}
+#endif
 		internal static MasterPage CreateMasterPage (TemplateControl owner, HttpContext context,
 							     string masterPageFile, IDictionary contentTemplateCollection)
 		{
+			var req = context.Request;
+			if (req != null)
+				masterPageFile = HostingEnvironment.VirtualPathProvider.CombineVirtualPaths (req.CurrentExecutionFilePath, masterPageFile);
 #if TARGET_JVM
 			MasterPage masterPage = MasterPageParser.GetCompiledMasterInstance (masterPageFile,
 											    owner.Page.MapPath (masterPageFile),
@@ -137,21 +149,23 @@ namespace System.Web.UI
 			return masterPage;
 		}
 
-		internal static void ApplyMasterPageRecursive (MasterPage master, IList appliedMasterPageFiles)
+		internal static void ApplyMasterPageRecursive (string currentFilePath, VirtualPathProvider vpp, MasterPage master, Dictionary <string, bool> appliedMasterPageFiles)
 		{
 			/* XXX need to use virtual paths here? */
-			if (master.MasterPageFile != null) {
-				if (appliedMasterPageFiles.Contains (master.MasterPageFile))
+			string mpFile = master.MasterPageFile;
+			if (!String.IsNullOrEmpty (mpFile)) {
+				mpFile = vpp.CombineVirtualPaths (currentFilePath, mpFile);
+				if (appliedMasterPageFiles.ContainsKey (mpFile))
 					throw new HttpException ("circular dependency in master page files detected");
-				if (master.Master != null) {
+
+				MasterPage innerMaster = master.Master;
+				if (innerMaster != null) {
 					master.Controls.Clear ();
-					master.Controls.Add (master.Master);
-					appliedMasterPageFiles.Add (master.MasterPageFile);
-					MasterPage.ApplyMasterPageRecursive (master.Master, appliedMasterPageFiles);
+					master.Controls.Add (innerMaster);
+					appliedMasterPageFiles.Add (mpFile, true);
+					MasterPage.ApplyMasterPageRecursive (currentFilePath, vpp, innerMaster, appliedMasterPageFiles);
 				}
 			}
 		}
 	}
 }
-
-#endif

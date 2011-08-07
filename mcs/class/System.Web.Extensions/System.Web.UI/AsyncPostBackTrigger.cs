@@ -65,19 +65,24 @@ namespace System.Web.UI
 
 		protected internal override bool HasTriggered ()
 		{
-			Control ctrl = Owner.FindControl (ControlID);
+			Control ctrl = FindTargetControl (true);
 			string ctrlUniqueID = ctrl != null ? ctrl.UniqueID : null;
 			if (ctrlUniqueID == null)
 				return false;
-			
-			if (String.Compare (Owner.ScriptManager.AsyncPostBackSourceElementID, ctrlUniqueID, StringComparison.Ordinal) == 0)
+
+			string asyncPostBackElementID = Owner.ScriptManager.AsyncPostBackSourceElementID;
+			if (String.Compare (asyncPostBackElementID, ctrlUniqueID, StringComparison.Ordinal) == 0)
 				return true;
+			else if (asyncPostBackElementID.StartsWith (ctrlUniqueID + "$", StringComparison.Ordinal))
+				return true;
+			
 			return false;
 		}
 
 		// LAME SPEC: it seems DefaultEventAttribute is never queried for the event name.
-		protected internal override void Initialize () {
-			Control c = FindTargetControl (false);
+		protected internal override void Initialize ()
+		{
+			Control c = FindTargetControl (true);
 			ScriptManager sm = Owner.ScriptManager;
 			string eventName = EventName;
 
@@ -100,12 +105,15 @@ namespace System.Web.UI
 			sm.RegisterAsyncPostBackControl (c);
 		}
 
-		public void OnEvent (object sender, EventArgs e) {
-			Owner.Update ();
+		public void OnEvent (object sender, EventArgs e)
+		{
+			UpdatePanel owner = Owner;
+			if (owner != null && owner.UpdateMode != UpdatePanelUpdateMode.Always)
+				owner.Update ();
 		}
 
 		public override string ToString () {
-			return String.Format ("AsyncPostBack: {0}.{1}", ControlID, EventName);
+			return String.Format ("AsyncPostBackTrigger: {0}.{1}", ControlID, EventName);
 		}
 	}
 }

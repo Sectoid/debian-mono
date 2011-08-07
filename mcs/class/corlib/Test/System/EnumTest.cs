@@ -682,6 +682,67 @@ namespace MonoTests.System
 			Assert.AreEqual (TestingEnum3.Test, Enum.Parse (t1.GetType (), "18446744073709551615", false));
 		}
 
+#if NET_4_0
+		[Test]
+		public void TryParseErrors ()
+		{
+			TestingEnum result;
+			bool success;
+
+			success = Enum.TryParse<TestingEnum> (null, out result);
+			Assert.AreEqual (false, success, "#A1");
+			Assert.AreEqual (TestingEnum.This, result, "#A2");
+
+			success = Enum.TryParse<TestingEnum> ("WrongValue", out result);
+			Assert.AreEqual (false, success, "#B1");
+			Assert.AreEqual (TestingEnum.This, result, "#B2");
+
+			success = Enum.TryParse<TestingEnum> (String.Empty, out result);
+			Assert.AreEqual (false, success, "#C1");
+			Assert.AreEqual (TestingEnum.This, result, "#C2");
+
+			success = Enum.TryParse<TestingEnum> (" ", out result);
+			Assert.AreEqual (false, success, "#D1");
+			Assert.AreEqual (TestingEnum.This, result, "#D2");
+
+			// TryParse throws ArgumentException if TEnum is not an enumeration type
+			try {
+				int n;
+				Enum.TryParse<int> ("31416", out n);
+				Assert.Fail ("#E1");
+			} catch (ArgumentException ex) {
+				Assert.AreEqual (typeof (ArgumentException), ex.GetType (), "#E2");
+				Assert.IsNull (ex.InnerException, "#E3");
+				Assert.IsNotNull (ex.Message, "#E4");
+				Assert.IsNotNull (ex.ParamName, "#E5");
+				Assert.AreEqual ("enumType", ex.ParamName, "#E6");
+			}
+		}
+
+		[Test]
+		public void TryParse ()
+		{
+			TestingEnum result;
+			bool success;
+
+			success = Enum.TryParse<TestingEnum> ("Is", out result);
+			Assert.AreEqual (true, success, "#A1");
+			Assert.AreEqual (TestingEnum.Is, result, "#A2");
+
+			success = Enum.TryParse<TestingEnum> ("100", out result);
+			Assert.AreEqual (true, success, "#C1");
+			Assert.AreEqual (((TestingEnum)100), result, "#C2");
+
+			success = Enum.TryParse<TestingEnum> ("is", out result);
+			Assert.AreEqual (false, success, "#D1");
+			Assert.AreEqual (TestingEnum.This, result, "#D2");
+
+			success = Enum.TryParse<TestingEnum> ("is", true, out result);
+			Assert.AreEqual (true, success, "#D1");
+			Assert.AreEqual (TestingEnum.Is, result, "#D2");
+		}
+#endif
+
 		[Test]
 		public void ToObject_EnumType_Int32 ()
 		{
@@ -785,6 +846,12 @@ namespace MonoTests.System
 				Assert.IsNotNull (ex.ParamName, "#5");
 				Assert.AreEqual ("value", ex.ParamName, "#6");
 			}
+		}
+
+		[Test]
+		public void ConvertToStringType ()
+		{
+			Assert.AreEqual ("This", ((IConvertible) TestingEnum.This).ToType (typeof (string), null));
 		}
 
 		[Test]

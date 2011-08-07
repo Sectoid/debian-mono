@@ -1,42 +1,406 @@
-2009-11-02  Jérémie Laval  <jeremie.laval@gmail.com>
+2011-05-02  Jb Evain  <jbevain@gmail.com>
 
-	* Parallel.cs: Added fix for Bug #536919.
+	Fix non net_4_0 profiles build
+
+2011-05-02  Jb Evain  <jbevain@gmail.com>
+
+	Properly check the maxstacksize asked for the Thread
+
+2011-04-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fail gracefully when CancellationToken has been created
+	uninitialized by user.
+
+	Also add corresponding unit test.
+
+2011-04-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Honors correctly canceled ctor parameter of CancellationToken
+
+2011-04-15  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	[corlib] Ensure Thread.ManagedThreadId is unique per thread.
+
+	This fixes bug #667329.
+
+	The problem was that ManagedThreadId was created from a
+	per-appdomain counter, but stored in a per-thread storage, so if
+	two threads could end up with the same ManagedThreadId if a second
+	appdomain executed on the second thread first.
+
+2011-03-14  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fix the mobile build
+
+2011-03-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Timer] Use static CB for invoking timer callbacks.
+
+2011-02-11  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* Thread.cs (.ctor): Check if maxStackSize is negative and raise
+	and AOORE. Silently use a saner minimum size of 128k as mono can't
+	really run with much less than that.
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add pfx to the mobile profile
+
+2011-01-07  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Remove now unused internal classes
+
+2011-01-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add missing Debugger and ReliabilityContract attributes to .NET 4
+	types
+
+2011-01-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use while loop instead of if for removing as much stalled tickets
+	as possible
+
+2011-01-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix comments
+
+2011-01-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Protect SpinLock's Enter method against asynchronous exception
+
+2011-01-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Update ThreadLocal to use default(T) for initialization with
+	parameterless ctor following comment on
+	https://connect.microsoft.com/VisualStudio/feedback/details/630350/threadlocal-documentation-and-actual-behavior-mismatch
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Some 4.0 API tweaks
+
+2010-12-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	More parameter renaming
+
+2010-12-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Increment Count even on single-processor in SpinWait. Fix #624849.
+
+2010-12-09  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix semantic of CountdownEvent Reset methods. Fix #658244.
+
+2010-11-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix corlib regression
+
+2010-11-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* Thread.cs: Move culture data from InternalThread to Thread and
+	thus completely avoid the whole caching and serialization
+	nightmare. Even thou this is a cleanup it should speed up
+	multi-appdomain setups.
+
+2010-11-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Adjust sleeping values
+
+2010-11-20  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Timer] Use a WaitHandle instead of Wait/Pulse
+
+	Notifications of changes were sent using Monitor.Pulse() while the
+	scheduler thread was in a Monitor.Wait(). The way we handle
+	Monitor.Wait() internally involves creating an manual-reset event
+	and waiting on it each time Monitor.Wait() is called.
+
+	With this change, one 1 event is created for the lifetime of the
+	appdomain. These seems to help avoiding contention when there are
+	a lot of timers in play.
+
+2010-11-18  Mark Probst  <mark.probst@gmail.com>
+
+	[fix] Fix build.
+
+2010-11-18  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Revert the CER-like changes made to SpinLock.Enter method and
+	document the problem.
+
+2010-10-22  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Protect TryEnter and Exit methods of SpinLock against asynchronous
+	exceptions.
+
+2010-11-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[CancellationToken] Speed up ThrowIfCancellationRequested
+	operation
+
+2010-11-10  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Simplify Parallel.For execution.
+
+	This commit remove the stealing path until a better solution for
+	it is devised.
+
+2010-11-10  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Final performance improvement on ReaderWriterLockSlim
+
+2010-11-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the previous change.
+
+2010-11-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Speed up Thread.ManagedThreadId.
+
+2010-11-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	ManualResetEventSlim performance improvements
+
+2010-11-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	SpinLock performance improvements
+
+2010-10-26  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* Monitor.cs (TryEnter): Implement v4 overloads that take a "ref
+	book lookTaken" var. Setting this flag must be done in the runtime
+	to avoid async exceptions.
+
+	* Monitor.cs (Enter): Fix v4 overload to be async exception safe.
+
+2010-10-25  Marek Safar  <marek.safar@gmail.com>
+
+	Keep only 1 Dispose implementation
+
+2010-10-22  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use test-and-test-and-set pattern in
+	LazyInitializer::EnsureInitialized
+
+2010-10-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix the collision handling code
+
+	After the fix for bug #605092, inserting timers with an equal due
+	time was failing because searching in the list was also using a
+	reference comparison. Now, when adding a new timer, we search
+	using just the due time. Fixes bug #648130.
+
+2010-08-31  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix non 4.0 build of ReaderWriterLockSlim.
+
+	It needs to be cleaned up though.
+
+2010-08-31  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Factorize tatas pattern in TryRelaxedSet method in AtomicBoolean,
+	add AtomicBoolean to the compilation file list for System.Core
+
+2010-08-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Rework ReaderWriterLockSlim to use simpler Interlocked arithmetic.
+
+2010-08-19  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Remove timed deep sleep in ManualResetEventSlim and instead
+	combine several WaitHandle to wait on
+
+2010-08-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Move NET_4_0 define checks at the right position under the licence
+	text
+
+2010-08-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add BOOTSTRAP_NET_4_0 define check in LazyInitializer (since it's
+	now used in ManualResetEventSlim).
+
+2010-08-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Port CountdownEvent to use a ManualResetEventSlim for all its
+	waiting operations and use it as the native handle too.
+
+2010-08-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Lazy initialization of ManualResetEventSlim's underlying kernel
+	object.
+
+	It avoids allocating kernel ressources when the standard fast path
+	is used which is the main goal of this type.
+
+2010-08-11  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Adapt to new exception in threadpool behavior.
+
+	Since an exception in the threadpool can kill the application,
+	silently ignore it when we know it is not harmful.
+
+2010-08-09  Jb Evain  <jbevain@gmail.com>
+
+	Fix typo
+
+2010-08-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Include set accessor in ThreadLocal's Value property. Catch
+	possible exception in the initialization function and re-throw it
+	accordingly. Track circular calling of Value property. Add
+	corresponding unit-tests.
+
+2010-08-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add missing BOOTSTRAP_NET_4_0 define check in ManualResetEventSlim
+	(as BlockingCollection now depends on that type).
+
+2010-08-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use SemaphoreSlim underlying kernel-based event to sleep deeper
+	when too much time has already been spent spinning.
+
+	Same rationale change than ealier ManualResetEventSlim commit.
+
+2010-08-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Correctly uses CancellationToken's ThrowIfCancellationRequested
+	method in SemaphoreSlim and throw OperationCanceledException
+	instead of returning false.
+
+2010-08-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Correctly set SemaphoreSlim underlying kernel-based event state
+	when it's changing state itself.
+
+2010-08-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Correctly use ManualResetEventSlim's kernel-based counterpart to
+	deep sleep when too much has already been spent spinning.
+
+	Instead of using solely SpinWait's SpinOnce method after
+	ManualResetEventSlim's spinCount is reached, it now uses
+	ManualResetEvent's WaitOne method. Various other checks like
+	CancellationToken canceled state are still verified during that
+	time albeit slower.
+
+2010-08-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use directly CancellationToken's ThrowIfCancellationRequested in
+	ManualResetEventSlim
+
+2010-08-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Revert stalling changes introduced in SpinWait. Add a guard for
+	ntime overflow.
+
+	The deeper-sleep stalling code path is now delegated to the
+	concerned types rather than being directly inside SpinWait.
+
+2010-07-31  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Fix] Adjust SpinWait values to stall the thread earlier. Fix
+	#624849.
+
+2010-05-17 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Timer.cs: check object reference when the timers are equal.
+	Fixes bug #605092.
+
+2010-04-23  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* LazyThreadSafetyMode.cs: Include in Moonlight build.
+
+2010-04-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* AtomicBoolean.cs:
+	* CountdownEvent.cs:
+	* SpinLock.cs: Add BOOTSTRAP_NET_4_0 define
+
+2010-03-25 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ThreadPool.cs: add fast path to queue work items in the runtime.
+
+2010-03-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Monitor.cs: Implement new NET_4_0 (and SL4) Enter overload 
+	required to run some DRT tests (e.g. 7007)
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* ThreadPool.cs, Thread.cs, ExecutionContext.cs: use MOONLIGHT
+	symbol to disambiguate MonoTouch and Moonlight code.
+
+2010-03-08  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* SpinLock.cs: Merge algorithm back in SpinLock struct
+
+2010-03-08  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* SpinLock.cs: Update to use ticket spinlock algorithm
+
+2010-02-26 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* LazyThreadSafetyMode.cs: Added.
+
+2010-02-08  Zoltan Varga  <vargaz@gmail.com>
+
+	* WaitHandle.cs (CheckArray): Check that the handles array is not null.
+	Fixes #576039.
+
+2010-02-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* CancellationToken.cs:
+	* CancellationTokenSource.cs:
+	* ManualResetEventSlim.cs:
+	* SemaphoreSlim.cs:
+	* SpinLock.cs:
+	* SpinWait.cs:
+	* ThreadLocal.cs: Port to .NET 4 beta 2 API
 
 2009-12-09  Jb Evain  <jbevain@novell.com>
 
 	* ThreadPool.cs (QueueUserWorkItem): properly throw
 	an ANE instead of triggering a NRE when being passed a null callback.
 
-	backports r147934.
+2009-11-02  Miguel de Icaza  <miguel@novell.com>
+
+	* Jumbo patch to drop support for pre-NET_2_0 code:
+
+	Remove ONLY_1_1 code
+	Remove NET_1_0 only code
+	Remove NET_2_0 defines assuming the value is true.
 
 2009-11-02  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* Thread.cs (set_CurrentUICulture): Delay setting in_currentculture
 	to true until after the null check and the return statement.
 
+2009-11-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* Parallel.cs: Added fix for Bug #536919.
+
 2009-10-25  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* Thread.cs: Fix validations for Join and Sleep overloads
-	[Backport r144824]
 
 2009-10-22  Sebastien Pouliot  <sebastien@ximian.com>
 
-	* EventWaitHandleTest.cs: New. Test case for EventResetMode 
-	validation
-	[Backport r144681]
-
-2009-10-22  Sebastien Pouliot  <sebastien@ximian.com> 
-
+	* EventWaitHandle.cs: Add validation on the EventResetMode 
+	parameter used in the constructors
 	* Monitor.cs: Fix validations for TryEnter and Wait. Reduce 
 	duplicated code between overloads.
-	[Backport r144627]
 
 2009-10-21  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* WaitHandle.cs: Add missing validations for 'millisecondsTimeout'
 	in Wait[One|Any|All]. Also call the overloaded (bool) methods for
 	WaitAll to reduce code duplication.
-	[Backport r144529]
 
 2009-10-20  Sebastien Pouliot  <sebastien@ximian.com>
 
@@ -45,7 +409,6 @@
 	(ctor and Change methods). Seal private TimerComparer class and
 	avoid multiple (identical) casts in its Compare method. Seal 
 	private Scheduler class.
-	[Backport r144466]
 
 2009-10-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -56,21 +419,38 @@
 	* Thread.cs: change type of the current_appcontext field to object
 	to avoid triggering static constructors unless explicitely required.
 
+2009-10-16 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Timer.cs: looks like any negative value is treated as Infinite.
+
 2009-10-07  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* Thread.cs: Remove LocalDataStoreSlot-related methods from
 	Moonlight build
-	[Backport r143629]
 
 2009-09-29  Rolf Bjarne Kvinge  <RKvinge@novell.com>
 
 	* Thread.cs: StartSafe: ignore ThreadAbortExceptions.
 
-	Backport of r142847.
-
 2009-09-27 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* Timer.cs: account for the time spent sending jobs to the queue.
+
+2009-09-26  Mark Probst  <mark.probst@gmail.com>
+
+	* Thread.cs: Serialize the principal so as not to make it cross
+	appdomains.  Two new internal calls for copying byte arrays
+	between domains.
+
+2009-09-25  Mark Probst  <mark.probst@gmail.com>
+
+	* Thread.cs: The Thread class is split up into Thread and
+	InternalThread now.  We have exactly one InternalThread per
+	thread, and at most one Thread per appdomain per thread.  Most
+	data is stored in InternalThread.  All InternalThread objects live
+	in the root domain.
+
+	* Environment.cs: Corlib version bump.
 
 2009-09-24 Gonzalo Paniagua Javier <gonzalo@novell.com>
 

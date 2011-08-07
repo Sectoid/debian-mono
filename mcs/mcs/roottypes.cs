@@ -11,67 +11,244 @@
 //
 
 using System;
-using System.Collections;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using Mono.CompilerServices.SymbolWriter;
+
+#if STATIC
+using IKVM.Reflection;
+using IKVM.Reflection.Emit;
+#else
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Runtime.InteropServices;
+#endif
 
 namespace Mono.CSharp
 {
 	//
-	// Compiled top-level types
+	// Module (top-level type) container
 	//
-	public sealed class ModuleContainer : TypeContainer
+	public class ModuleContainer : TypeContainer
 	{
-		// TODO: It'd be so nice to have generics
-		Hashtable anonymous_types;
-		public ModuleBuilder Builder;
-		readonly bool is_unsafe;
-		readonly CompilerContext context;
+		//
+		// Compiler generated container for static data
+		//
+		sealed class StaticDataContainer : CompilerGeneratedClass
+		{
+			Dictionary<int, Struct> size_types;
+			new int fields;
+#if !STATIC
+			static MethodInfo set_data;
+#endif
 
-		bool has_default_charset;
+			public StaticDataContainer (ModuleContainer module)
+				: base (module, new MemberName ("<PrivateImplementationDetails>" + module.builder.ModuleVersionId.ToString ("B"), Location.Null), Modifiers.STATIC)
+			{
+				size_types = new Dictionary<int, Struct> ();
+			}
+
+			public override void CloseType ()
+			{
+				base.CloseType ();
+
+				foreach (var entry in size_types) {
+					entry.Value.CloseType ();
+				}
+			}
+
+			public FieldSpec DefineInitializedData (byte[] data, Location loc)
+			{
+				Struct size_type;
+				if (!size_types.TryGetValue (data.Length, out size_type)) {
+					//
+					// Build common type for this data length. We cannot use
+					// DefineInitializedData because it creates public type,
+					// and its name is not unique among modules
+					//
+					size_type = new Struct (null, this, new MemberName ("$ArrayType=" + data.Length, Location), Modifiers.PRIVATE | Modifiers.COMPILER_GENERATED, null);
+					size_type.CreateType ();
+					size_type.DefineType ();
+
+					size_types.Add (data.Length, size_type);
+
+					var pa = Module.PredefinedAttributes.StructLayout;
+					if (pa.Constructor != null || pa.ResolveConstructor (Location, TypeManager.short_type)) {
+						var argsEncoded = new AttributeEncoder ();
+						argsEncoded.Encode ((short) LayoutKind.Explicit);
+
+						var field_size = pa.GetField ("Size", TypeManager.int32_type, Location);
+						var pack = pa.GetField ("Pack", TypeManager.int32_type, Location);
+						if (field_size != null) {
+							argsEncoded.EncodeNamedArguments (
+								new[] { field_size, pack },
+								new[] { new IntConstant ((int) data.Length, Location), new IntConstant (1, Location) }
+							);
+						}
+
+						pa.EmitAttribute (size_type.TypeBuilder, argsEncoded);
+					}
+				}
+
+				var name = "$field-" + fields.ToString ("X");
+				++fields;
+				const Modifiers fmod = Modifiers.STATIC | Modifiers.INTERNAL;
+				var fbuilder = TypeBuilder.DefineField (name, size_type.CurrentType.GetMetaInfo (), ModifiersExtensions.FieldAttr (fmod) | FieldAttributes.HasFieldRVA);
+#if STATIC
+				fbuilder.__SetDataAndRVA (data);
+#else
+				if (set_data == null)
+					set_data = typeof (FieldBuilder).GetMethod ("SetRVAData", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+				try {
+					set_data.Invoke (fbuilder, new object[] { data });
+				} catch {
+					Report.RuntimeMissingSupport (loc, "SetRVAData");
+				}
+#endif
+
+				return new FieldSpec (CurrentType, null, size_type.CurrentType, fbuilder, fmod);
+			}
+		}
 
 		public CharSet DefaultCharSet = CharSet.Ansi;
 		public TypeAttributes DefaultCharSetType = TypeAttributes.AnsiClass;
 
-		static readonly string[] attribute_targets = new string[] { "module" };
+		Dictionary<int, List<AnonymousTypeClass>> anonymous_types;
+		StaticDataContainer static_data;
 
-		public ModuleContainer (CompilerContext context, bool isUnsafe)
-			: base (null, null, MemberName.Null, null, Kind.Root)
+		AssemblyDefinition assembly;
+		readonly CompilerContext context;
+		readonly RootNamespace global_ns;
+		Dictionary<string, RootNamespace> alias_ns;
+
+		ModuleBuilder builder;
+
+		// HACK
+		public List<Enum> hack_corlib_enums = new List<Enum> ();
+
+		bool has_default_charset;
+		bool has_extenstion_method;
+
+		PredefinedAttributes predefined_attributes;
+		PredefinedTypes predefined_types;
+
+		static readonly string[] attribute_targets = new string[] { "assembly", "module" };
+
+		public ModuleContainer (CompilerContext context)
+			: base (null, null, MemberName.Null, null, 0)
 		{
-			this.is_unsafe = isUnsafe;
 			this.context = context;
 
-			types = new ArrayList ();
-			anonymous_types = new Hashtable ();
+			caching_flags &= ~(Flags.Obsolete_Undetected | Flags.Excluded_Undetected);
+
+			types = new List<TypeContainer> ();
+			anonymous_types = new Dictionary<int, List<AnonymousTypeClass>> ();
+			global_ns = new GlobalRootNamespace ();
+			alias_ns = new Dictionary<string, RootNamespace> ();
 		}
+
+		#region Properties
 
  		public override AttributeTargets AttributeTargets {
  			get {
- 				return AttributeTargets.Module;
+ 				return AttributeTargets.Assembly;
  			}
 		}
 
+		public ModuleBuilder Builder {
+			get {
+				return builder;
+			}
+		}
+
+		public override CompilerContext Compiler {
+			get {
+				return context;
+			}
+		}
+
+		public override AssemblyDefinition DeclaringAssembly {
+			get {
+				return assembly;
+			}
+		}
+
+		public bool HasDefaultCharSet {
+			get {
+				return has_default_charset;
+			}
+		}
+
+		public bool HasExtensionMethod {
+			get {
+				return has_extenstion_method;
+			}
+			set {
+				has_extenstion_method = value;
+			}
+		}
+
+		//
+		// Returns module global:: namespace
+		//
+		public RootNamespace GlobalRootNamespace {
+		    get {
+		        return global_ns;
+		    }
+		}
+
+		public override ModuleContainer Module {
+			get {
+				return this;
+			}
+		}
+
+		internal PredefinedAttributes PredefinedAttributes {
+			get {
+				return predefined_attributes;
+			}
+		}
+
+		internal PredefinedTypes PredefinedTypes {
+			get {
+				return predefined_types;
+			}
+		}
+
+		public override string[] ValidAttributeTargets {
+			get {
+				return attribute_targets;
+			}
+		}
+
+		#endregion
+
 		public void AddAnonymousType (AnonymousTypeClass type)
 		{
-			ArrayList existing = (ArrayList)anonymous_types [type.Parameters.Count];
+			List<AnonymousTypeClass> existing;
+			if (!anonymous_types.TryGetValue (type.Parameters.Count, out existing))
 			if (existing == null) {
-				existing = new ArrayList ();
+				existing = new List<AnonymousTypeClass> ();
 				anonymous_types.Add (type.Parameters.Count, existing);
 			}
+
 			existing.Add (type);
 		}
 
-		public void AddAttributes (ArrayList attrs)
+		public void AddAttributes (List<Attribute> attrs)
+		{
+			AddAttributes (attrs, this);
+		}
+
+		public void AddAttributes (List<Attribute> attrs, IMemberContext context)
 		{
 			foreach (Attribute a in attrs)
-				a.AttachTo (this, CodeGen.Assembly);
+				a.AttachTo (this, context);
 
 			if (attributes == null) {
 				attributes = new Attributes (attrs);
 				return;
 			}
-
 			attributes.AddAttributes (attrs);
 		}
 
@@ -80,23 +257,95 @@ namespace Mono.CSharp
 			return AddPartial (nextPart, nextPart.Name);
 		}
 
-		public override void ApplyAttributeBuilder (Attribute a, CustomAttributeBuilder cb, PredefinedAttributes pa)
+		public override void ApplyAttributeBuilder (Attribute a, MethodSpec ctor, byte[] cdata, PredefinedAttributes pa)
 		{
+			if (a.Target == AttributeTargets.Assembly) {
+				assembly.ApplyAttributeBuilder (a, ctor, cdata, pa);
+				return;
+			}
+
 			if (a.Type == pa.CLSCompliant) {
-				if (CodeGen.Assembly.ClsCompliantAttribute == null) {
-					Report.Warning (3012, 1, a.Location, "You must specify the CLSCompliant attribute on the assembly, not the module, to enable CLS compliance checking");
-				} else if (CodeGen.Assembly.IsClsCompliant != a.GetBoolean ()) {
-					Report.SymbolRelatedToPreviousError (CodeGen.Assembly.ClsCompliantAttribute.Location, CodeGen.Assembly.ClsCompliantAttribute.GetSignatureForError ());
-					Report.Warning (3017, 1, a.Location, "You cannot specify the CLSCompliant attribute on a module that differs from the CLSCompliant attribute on the assembly");
+				Attribute cls = DeclaringAssembly.CLSCompliantAttribute;
+				if (cls == null) {
+					Report.Warning (3012, 1, a.Location,
+						"You must specify the CLSCompliant attribute on the assembly, not the module, to enable CLS compliance checking");
+				} else if (DeclaringAssembly.IsCLSCompliant != a.GetBoolean ()) {
+					Report.SymbolRelatedToPreviousError (cls.Location, cls.GetSignatureForError ());
+					Report.Warning (3017, 1, a.Location,
+						"You cannot specify the CLSCompliant attribute on a module that differs from the CLSCompliant attribute on the assembly");
 					return;
 				}
 			}
 
-			Builder.SetCustomAttribute (cb);
+			builder.SetCustomAttribute ((ConstructorInfo) ctor.GetMetaInfo (), cdata);
 		}
 
-		public override CompilerContext Compiler {
-			get { return context; }
+		public override void CloseType ()
+		{
+			HackCorlibEnums ();
+
+			foreach (TypeContainer tc in types) {
+				tc.CloseType ();
+			}
+
+			if (compiler_generated != null)
+				foreach (CompilerGeneratedClass c in compiler_generated)
+					c.CloseType ();
+		}
+
+		public TypeBuilder CreateBuilder (string name, TypeAttributes attr, int typeSize)
+		{
+			return builder.DefineType (name, attr, null, typeSize);
+		}
+
+		//
+		// Creates alias global namespace
+		//
+		public RootNamespace CreateRootNamespace (string alias)
+		{
+			if (alias == global_ns.Alias) {
+				NamespaceEntry.Error_GlobalNamespaceRedefined (Location.Null, Report);
+				return global_ns;
+			}
+
+			RootNamespace rn;
+			if (!alias_ns.TryGetValue (alias, out rn)) {
+				rn = new RootNamespace (alias);
+				alias_ns.Add (alias, rn);
+			}
+
+			return rn;
+		}
+
+		public new void Define ()
+		{
+			builder = assembly.CreateModuleBuilder ();
+
+			// FIXME: Temporary hack for repl to reset
+			static_data = null;
+
+			// TODO: It should be done much later when the types are resolved
+			// but that require DefineType clean-up
+			ResolveGlobalAttributes ();
+
+			foreach (TypeContainer tc in types)
+				tc.CreateType ();
+
+			InitializePredefinedTypes ();
+
+			foreach (TypeContainer tc in types)
+				tc.DefineType ();
+
+			foreach (TypeContainer tc in types)
+				tc.ResolveTypeParameters ();
+
+			foreach (TypeContainer tc in types) {
+				try {
+					tc.Define ();
+				} catch (Exception e) {
+					throw new InternalErrorException (tc, e);
+				}
+			}
 		}
 
 		public override void Emit ()
@@ -104,20 +353,35 @@ namespace Mono.CSharp
 			if (OptAttributes != null)
 				OptAttributes.Emit ();
 
-			if (is_unsafe) {
-				Type t = TypeManager.CoreLookupType (context, "System.Security", "UnverifiableCodeAttribute", Kind.Class, true);
-				if (t != null) {
-					ConstructorInfo unverifiable_code_ctor = TypeManager.GetPredefinedConstructor (t, Location.Null, Type.EmptyTypes);
-					if (unverifiable_code_ctor != null)
-						Builder.SetCustomAttribute (new CustomAttributeBuilder (unverifiable_code_ctor, new object [0]));
-				}
+			if (RootContext.Unsafe) {
+				var pa = PredefinedAttributes.UnverifiableCode;
+				if (pa.IsDefined)
+					pa.EmitAttribute (builder);
 			}
+
+			foreach (var tc in types)
+				tc.DefineConstants ();
+
+			HackCorlib ();
+
+			foreach (TypeContainer tc in types)
+				tc.EmitType ();
+
+			if (Compiler.Report.Errors > 0)
+				return;
+
+			foreach (TypeContainer tc in types)
+				tc.VerifyMembers ();
+
+			if (compiler_generated != null)
+				foreach (var c in compiler_generated)
+					c.EmitType ();
 		}
 
-		public AnonymousTypeClass GetAnonymousType (ArrayList parameters)
+		public AnonymousTypeClass GetAnonymousType (IList<AnonymousTypeParameter> parameters)
 		{
-			ArrayList candidates = (ArrayList) anonymous_types [parameters.Count];
-			if (candidates == null)
+			List<AnonymousTypeClass> candidates;
+			if (!anonymous_types.TryGetValue (parameters.Count, out candidates))
 				return null;
 
 			int i;
@@ -134,15 +398,11 @@ namespace Mono.CSharp
 			return null;
 		}
 
-		public override bool GetClsCompliantAttributeValue ()
+		public RootNamespace GetRootNamespace (string name)
 		{
-			return CodeGen.Assembly.IsClsCompliant;
-		}
-
-		public bool HasDefaultCharSet {
-			get {
-				return has_default_charset;
-			}
+			RootNamespace rn;
+			alias_ns.TryGetValue (name, out rn);
+			return rn;
 		}
 
 		public override string GetSignatureForError ()
@@ -150,22 +410,84 @@ namespace Mono.CSharp
 			return "<module>";
 		}
 
+		void HackCorlib ()
+		{
+#if !STATIC
+			if (RootContext.StdLib)
+				return;
+
+			//
+			// HACK: When building corlib mcs uses loaded mscorlib which
+			// has different predefined types and this method sets mscorlib types
+			// to be same to avoid type check errors in CreateType.
+			//
+			var type = typeof (Type);
+			var system_4_type_arg = new[] { type, type, type, type };
+
+			MethodInfo set_corlib_type_builders =
+				typeof (System.Reflection.Emit.AssemblyBuilder).GetMethod (
+				"SetCorlibTypeBuilders", BindingFlags.NonPublic | BindingFlags.Instance, null,
+				system_4_type_arg, null);
+
+			if (set_corlib_type_builders == null) {
+				Compiler.Report.Warning (-26, 3,
+					"The compilation may fail due to missing `System.Reflection.Emit.AssemblyBuilder.SetCorlibTypeBuilders(...)' method");
+				return;
+			}
+
+			object[] args = new object[4];
+			args[0] = TypeManager.object_type.GetMetaInfo ();
+			args[1] = TypeManager.value_type.GetMetaInfo ();
+			args[2] = TypeManager.enum_type.GetMetaInfo ();
+			args[3] = TypeManager.void_type.GetMetaInfo ();
+			set_corlib_type_builders.Invoke (assembly.Builder, args);
+#endif
+		}
+
+		void HackCorlibEnums ()
+		{
+			if (RootContext.StdLib)
+				return;
+
+			// Another Mono corlib HACK
+			// mono_class_layout_fields requires to have enums created
+			// before creating a class which used the enum for any of its fields
+			foreach (var e in hack_corlib_enums)
+				e.CloseType ();
+		}
+
+		public void InitializePredefinedTypes ()
+		{
+			predefined_attributes = new PredefinedAttributes (this);
+			predefined_types = new PredefinedTypes (this);
+		}
+
 		public override bool IsClsComplianceRequired ()
 		{
-			return true;
+			return DeclaringAssembly.IsCLSCompliant;
 		}
 
-		public override ModuleContainer Module {
-			get {
-				return this;
+		//
+		// Makes const data field inside internal type container
+		//
+		public FieldSpec MakeStaticData (byte[] data, Location loc)
+		{
+			if (static_data == null) {
+				static_data = new StaticDataContainer (this);
+				static_data.CreateType ();
+				static_data.DefineType ();
+
+				AddCompilerGeneratedClass (static_data);
 			}
+
+			return static_data.DefineInitializedData (data, loc);
 		}
 
-		protected override bool AddMemberType (DeclSpace ds)
+		protected override bool AddMemberType (TypeContainer ds)
 		{
 			if (!AddToContainer (ds, ds.Name))
 				return false;
-			ds.NamespaceEntry.NS.AddDeclSpace (ds.Basename, ds);
+			ds.NamespaceEntry.NS.AddType (ds.Definition);
 			return true;
 		}
 
@@ -178,7 +500,7 @@ namespace Mono.CSharp
 		/// <summary>
 		/// It is called very early therefore can resolve only predefined attributes
 		/// </summary>
-		public void Resolve ()
+		void ResolveGlobalAttributes ()
 		{
 			if (OptAttributes == null)
 				return;
@@ -186,7 +508,10 @@ namespace Mono.CSharp
 			if (!OptAttributes.CheckTargets ())
 				return;
 
-			Attribute a = ResolveAttribute (PredefinedAttributes.Get.DefaultCharset);
+			// FIXME: Define is wrong as the type may not exist yet
+			var DefaultCharSet_attr = new PredefinedAttribute (this, "System.Runtime.InteropServices", "DefaultCharSetAttribute");
+			DefaultCharSet_attr.Define ();
+			Attribute a = ResolveModuleAttribute (DefaultCharSet_attr);
 			if (a != null) {
 				has_default_charset = true;
 				DefaultCharSet = a.GetCharSetValue ();
@@ -201,31 +526,41 @@ namespace Mono.CSharp
 					DefaultCharSetType = TypeAttributes.UnicodeClass;
 					break;
 				default:
-					Report.Error (1724, a.Location, "Value specified for the argument to 'System.Runtime.InteropServices.DefaultCharSetAttribute' is not valid");
+					Report.Error (1724, a.Location, "Value specified for the argument to `{0}' is not valid", 
+						DefaultCharSet_attr.GetSignatureForError ());
 					break;
 				}
 			}
 		}
 
-		Attribute ResolveAttribute (PredefinedAttribute a_type)
+		public Attribute ResolveAssemblyAttribute (PredefinedAttribute a_type)
 		{
-			Attribute a = OptAttributes.Search (a_type);
+			Attribute a = OptAttributes.Search ("assembly", a_type);
 			if (a != null) {
 				a.Resolve ();
 			}
 			return a;
 		}
 
-		public override string[] ValidAttributeTargets {
-			get {
-				return attribute_targets;
+		Attribute ResolveModuleAttribute (PredefinedAttribute a_type)
+		{
+			Attribute a = OptAttributes.Search ("module", a_type);
+			if (a != null) {
+				a.Resolve ();
 			}
+			return a;
+		}
+
+		public void SetDeclaringAssembly (AssemblyDefinition assembly)
+		{
+			// TODO: This setter is quite ugly but I have not found a way around it yet
+			this.assembly = assembly;
 		}
 	}
 
-	class RootDeclSpace : DeclSpace {
+	class RootDeclSpace : TypeContainer {
 		public RootDeclSpace (NamespaceEntry ns)
-			: base (ns, null, MemberName.Null, null)
+			: base (ns, null, MemberName.Null, null, 0)
 		{
 			PartialContainer = RootContext.ToplevelTypes;
 		}
@@ -244,29 +579,15 @@ namespace Mono.CSharp
 			get { throw new InternalErrorException ("should not be called"); }
 		}
 
-		public override bool Define ()
+		public override void DefineType ()
 		{
 			throw new InternalErrorException ("should not be called");
-		}
-
-		public override TypeBuilder DefineType ()
-		{
-			throw new InternalErrorException ("should not be called");
-		}
-
-		public override MemberCache MemberCache {
-			get { return PartialContainer.MemberCache; }
 		}
 
 		public override ModuleContainer Module {
 			get {
 				return PartialContainer.Module;
 			}
-		}
-
-		public override bool GetClsCompliantAttributeValue ()
-		{
-			return PartialContainer.GetClsCompliantAttributeValue ();
 		}
 
 		public override bool IsClsComplianceRequired ()

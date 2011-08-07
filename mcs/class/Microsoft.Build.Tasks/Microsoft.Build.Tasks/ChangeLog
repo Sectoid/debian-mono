@@ -1,3 +1,263 @@
+2011-03-01  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix warnings.
+
+2011-03-01  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix assembly name comparison when resolving references.
+
+	AssemblyResolver.cs (AssemblyNamesCompatible): If either of the
+	references don't have a public key token, then ignore that.
+
+2011-03-01  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Vbc task - make error column check a little non-specific.
+
+2011-03-01  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Exec task - add support for custom error/warning regex.
+
+	Add 4.0 api, CustomErrorRegularExpression and
+	CustomWarningRegularExpression.
+
+2011-02-28  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] ResolveAssemblyReference - log task parameters
+
+2011-02-28  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] ResolveAssemblyReference - add missing api.
+
+2011-02-28  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] GetReferenceAssemblyPaths - add missing license header.
+
+2011-02-28  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Add support for multi-targeting arbitrary frameworks.
+
+	ToolsVersion 4.0 supports targeting arbitrary frameworks defined
+	by FrameworkList.xml files and referenced by
+	$(TargetFrameworkMoniker), which is of the format:
+	Identifier,Version=<version>[,Profile=<profile>]
+
+	built as:
+	$(TargetFrameworkIdentifier),Version=$(TargetFrameworkVersion)[,Profile=$(TargetFrameworkProfile)]
+
+	eg. '.NETFramework,Version=v4.0' .
+
+	Frameworks are searched for in (order):
+
+	1. Paths specified in the environment variable
+	$XBUILD_FRAMEWORK_FOLDERS_PATH 2.
+	/Library/Frameworks/Mono.framework/External/xbuild-frameworks on
+	Mac OSX. 3. MSBuild property $(TargetFrameworkRoot) 4.
+	$prefix/lib/mono/xbuild-frameworks (default location)
+
+	.NET frameworks 2.0/3.0/3.5/4.0 have corresponding
+	FrameworkList.xml files now, which allows projects to target them.
+	Custom frameworks like MonoDroid can install suitable
+	FrameworkList.xml files, and projects can target them using the
+	correct $(TargetFrameworkIdentifier) and
+	$(TargetFrameworkVersion).
+
+	Update man page.
+
+2011-02-28  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Add missing property to Error/Warning tasks.
+
+2011-02-24  Ankit Jain  <radical@corewars.org>
+
+	* Microsoft.Build.Tasks/Microsoft.Build.Tasks/AssemblyResolver.cs
+	(GetAssemblyNameFromFile): Rename to ..
+	(TryGetAssemblyNameFromFile): .. this, to make it consistent with
+	the similar method TryGetAssemblyNameFromFullName . Track api
+	changes. *
+	Microsoft.Build.Tasks/Microsoft.Build.Tasks/ResolveAssemblyReference.cs:
+	Track api changes.
+
+2011-02-24  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix bug #674630.
+
+	Handle errors in trying to create AssemblyName from invalid full
+	names.
+
+2011-02-15  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix bug #671700, resource naming in presence of "Link".
+
+	AssignTargetPath.cs: If 'Link' metadata is present, then use that
+	as the target path.
+
+	Add relevant test.
+
+2011-02-11  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Update Utilities.FromMSBuildPath from monodevelop.
+
+	Updating FromMSBuildPath also fixes a bug on windows.
+
+2011-01-11  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Copy metadata from Project items to target outputs.
+
+	Copy metadata from Project items to the corresponding target
+	outputs in MSBuild task.
+
+	Fix the corresponding test also.
+
+2011-01-11  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix bug #663180, second part.
+
+	Fix the way RunningOnMac is detected (use `uname`=="Darwin"),
+	thanks to Michael Hutchinson. And use
+	"/Library/Frameworks/Mono.framework/External/pkgconfig" as a
+	search path for pkg-config files on MacOSX.
+
+2011-01-10  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Sync *PcFileCache.cs changes from monodevelop.
+
+2011-01-05  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix bug #662355.
+
+	Support reference aliases in Csc task.
+
+2010-11-10  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Emit /platform: for *mcs
+
+	Emit /platform:foo for the *mcs. Based on patch from
+	technomage1972 <dellis1972@googlemail.com> .
+
+2010-09-16  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Use files referenced by resx for dependency check.
+
+	For .resx resource files, check files referenced by the resx file
+	also, to determine whether to resgen it or not.
+
+	IsResgenRequired () has been taken from MonoDevelop
+	(main/src/core/MonoDevelop.Core/MonoDevelop.Projects.Formats.MD1/MD1DotNetProjectHandler.cs)
+
+2010-09-15  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Add ToolTask.EnvironmentVariables property.
+
+2010-08-31  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Task 'Touch' should pass even if the file already exists.
+
+	Microsoft.Build.Tasks/Microsoft.Build.Tasks/Touch.cs: Task should
+	'succeed' even if the files already exist.
+
+2010-08-31  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Quote filenames for resgen.
+
+	Microsoft.Build.Tasks/Microsoft.Build.Tasks/GenerateResource.cs:
+	Quote filenames passed to resgen.
+
+2010-08-18  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Add env var to dump details of reference resolution.
+
+	If xbuild is unable to resolve a reference, then it dumps details
+	of why it failed. This adds a env var
+	XBUILD_LOG_REFERENCE_RESOLVER, which if set, logs those details of
+	why a particular search path was used to resolve the reference.
+
+	Update the man page also.
+
+2010-08-03  Ankit Jain  <radical@corewars.org>
+
+	[xbuild]When invoking resgen, set MONO_IOMAP only if its not
+	already set.
+
+	Microsoft.Build.Tasks/Microsoft.Build.Tasks/GenerateResource.cs:
+	Set MONO_IOMAP only if its unset, allowing it to be set from
+	command line etc.
+
+2010-06-10  Ankit Jain  <jankit@novell.com>
+
+	* Csc.cs: Quote -define: arguments.
+
+2010-06-09  Ankit Jain  <jankit@novell.com>
+
+	* ToolTask.cs: Don't check for tool's existence, as we might
+	not have the full path.
+
+2010-05-28  Ankit Jain  <jankit@novell.com>
+
+	* AssemblyResolver.cs: Add some comments.
+
+2010-05-28  Ankit Jain  <jankit@novell.com>
+
+	* AssemblyResolver.cs (FindInDirectory): Add a 'specific_version'
+	parameter. Look for reference.{dll|exe} instead of checking all
+	files in the directory. Compare assembly names only if
+	specific_version is true.
+	(ResolveHintPathReference): Extract code to check and compare assembly
+	names to ..
+	(ResolvedReferenceFromPath): .. this.
+	(AssemblyNamesCompatible): Change default value of @specificVersion to
+	true.
+	Track api changes.
+	* ResolveAssemblyReference.cs (ResolveReference): Specify
+	'specific_version' in case of SearchPath.Directory.
+	(TryGetSpecificVersionValue): msbuild seems to look only for ',' in
+	the reference, instead of checking whether the assembly is strong
+	named.
+	(TryGetResolvedReferenceByAssemblyName): Track api changes.
+
+2010-05-28  Ankit Jain  <jankit@novell.com>
+
+	* AssemblyResolver.cs (PopulateTargetFrameworkAssemblies):
+	Handle invalid dll, add a null check.
+
+2010-04-10  Ankit Jain  <jankit@novell.com>
+
+	* GetFrameworkPath.cs (FrameworkVersion40Path): New.
+
+2010-04-10  Ankit Jain  <jankit@novell.com>
+
+	* Copy.cs: Cleanly log errors, instead of throwing exceptions.
+
+2010-04-10  Ankit Jain  <jankit@novell.com>
+
+	* Vbc.cs (LogEventsFromTextOutput):
+	* ToolTask.cs (LogEventsFromTextOutput): Emit the messages
+	that don't match the error regex, as is.
+
+2010-04-08  Ankit Jain  <jankit@novell.com>
+
+	* Copy.cs: Handle non-existant source files.
+
+2010-04-08  Ankit Jain  <jankit@novell.com>
+
+	Fix bug #594541
+	* Vbc.cs (LogEventsFromTextOutput): Override and correctly parse
+	output. Taken regex from monodevelop for this.
+
+2010-04-08  Ankit Jain  <jankit@novell.com>
+
+	* Vbc.cs (ValidateParameters): Always return true, dummy implementation.
+
+2010-04-07  Ankit Jain  <jankit@novell.com>
+
+	* MSBuild.cs: Emit global properties, if any. Sort the property
+	list.
+
+2010-04-03  Ankit Jain  <jankit@novell.com>
+
+	* Csc.cs: Use dmcs as the compiler for 4.0 profile.
+	* MSBuild.cs (ToolsVersion): New.
+	Use toolsVersion for building.
+
 2010-02-10  Ankit Jain  <jankit@novell.com>
 
 	* GenerateResource.cs (CompileResourceFile): Check File.Exists

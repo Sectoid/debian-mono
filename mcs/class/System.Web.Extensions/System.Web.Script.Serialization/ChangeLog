@@ -1,3 +1,8 @@
+2011-03-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #655474. Don't assume an Uri being
+	serialized is an absolute one
+
 2009-08-18  Marek Habersack  <mhabersack@novell.com>
 
 	* JavaScriptSerializer.cs: read converters from the config only if

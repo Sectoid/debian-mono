@@ -10,6 +10,7 @@ LIBRARY = System.ServiceModel.dll
 LIB_MCS_FLAGS = \
 		/nowarn:414,169,67,3005,436,219,618 \
 		/unsafe \
+		/d:TRACE \
 	        /r:System.dll \
 	        /r:System.Xml.dll \
 		/r:System.Core.dll \
@@ -30,8 +31,12 @@ LIB_MCS_FLAGS += /d:NET_3_0 	\
 			/r:Mono.Security.dll
 endif
 
-ifeq (net_2_1_raw, $(PROFILE))
+ifeq (moonlight_raw, $(PROFILE))
 LIB_MCS_FLAGS += /r:System.Net
+endif
+
+ifeq (4, $(FRAMEWORK_VERSION_MAJOR))
+LIB_MCS_FLAGS += /r:System.Web.ApplicationServices.dll
 endif
 
 TEST_MCS_FLAGS = $(LIB_MCS_FLAGS)
@@ -40,6 +45,7 @@ TEST_EXTRA_FILES = \
 	System.ServiceModel_test_net_3_0.dll.config \
 	Test/config/* \
 	Test/Resources/* \
+	Test/XmlFiles/* \
 	Test/System.ServiceModel.Description/dump.xml
 
 EXTRA_DISTFILES = $(RESOURCE_FILES) $(TEST_EXTRA_FILES)
