@@ -1,3 +1,17 @@
+2011-01-24  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Global.asax assembly must be passed as reference when
+	compiling. BuildManager.GetType improvements.
+
+	When user has their own global application class (global.asax is
+	present) the assembly produced from it must be passed as reference
+	to the compiler. BuildManager.GetType now supports fully-qualified
+	type names for 'typeName' and searches for the type in the
+	top-level assemblies, the global.asax assembly and in the
+	assemblies specified in as references in web.config.
+
+	All of this fixes certain MVC3+Razor applications.
+
 2011-01-10  Marek Safar  <marek.safar@gmail.com>
 
 	Fixed more protected internal modifiers

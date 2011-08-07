@@ -102,15 +102,15 @@ net_2_0_dirs := \
 	Mono.Tasklets       		\
 	Mono.CSharp			\
 	Moonlight.Build.Tasks		\
-	WindowsBase			\
-	System.Data.Services	\
-	System.Data.Services.Client \
+	System.Data.Services		\
 	System.Net
 
 net_2_0_only_dirs := \
 	System.Web.Extensions_1.0	\
 	System.Web.Extensions.Design_1.0	\
-	Compat.ICSharpCode.SharpZipLib
+	Compat.ICSharpCode.SharpZipLib	\
+	WindowsBase			\
+	System.Data.Services.Client
 
 moonlight_dirs := \
 	corlib			\
@@ -159,11 +159,15 @@ net_4_0_dirs := \
 	System.Windows.Forms.DataVisualization	\
 	System.ComponentModel.Composition \
 	System.Xaml \
+	WindowsBase \
+	System.Data.Services.Client \
 	System.ServiceModel.Routing \
 	System.ServiceModel.Discovery \
 	System.Runtime.Caching \
 	System.Runtime.DurableInstancing \
-	Mono.CodeContracts
+	Mono.CodeContracts \
+	Microsoft.Web.Infrastructure \
+	WebMatrix.Data
 
 net_2_0_SUBDIRS := $(common_dirs) $(net_2_0_dirs) $(net_2_0_only_dirs)
 moonlight_raw_SUBDIRS := $(moonlight_dirs)

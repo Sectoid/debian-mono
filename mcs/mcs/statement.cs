@@ -87,13 +87,6 @@ namespace Mono.CSharp {
 			ec.Report.Error (834, loc, "A lambda expression with statement body cannot be converted to an expresion tree");
 			return null;
 		}
-
-		public Statement PerformClone ()
-		{
-			CloneContext clonectx = new CloneContext ();
-
-			return Clone (clonectx);
-		}
 	}
 
 	public sealed class EmptyStatement : Statement
@@ -1778,7 +1771,7 @@ namespace Mono.CSharp {
 
 		int? resolving_init_idx;
 
-		Block original;
+		protected Block original;
 
 #if DEBUG
 		static int id;
@@ -2111,6 +2104,8 @@ namespace Mono.CSharp {
 #endif
 
 			clonectx.AddBlockMap (this, target);
+			if (original != this)
+				clonectx.AddBlockMap (original, target);
 
 			target.ParametersBlock = (ParametersBlock) (ParametersBlock == this ? target : clonectx.RemapBlockCopy (ParametersBlock));
 			target.Explicit = (ExplicitBlock) (Explicit == this ? target : clonectx.LookupBlock (Explicit));
@@ -2252,7 +2247,7 @@ namespace Mono.CSharp {
 							b.am_storey.AddParentStoreyReference (ec, am_storey);
 
 							// Stop propagation inside same top block
-							if (b.ParametersBlock.am_storey == ParametersBlock.am_storey)
+							if (b.ParametersBlock.Original == ParametersBlock.Original)
 								break;
 
 							b = b.ParametersBlock;
@@ -2412,6 +2407,9 @@ namespace Mono.CSharp {
 			ParametersBlock = this;
 		}
 
+		//
+		// It's supposed to be used by method body implementation of anonymous methods
+		//
 		protected ParametersBlock (ParametersBlock source, ParametersCompiled parameters)
 			: base (null, 0, source.StartLocation, source.EndLocation)
 		{
@@ -2424,6 +2422,12 @@ namespace Mono.CSharp {
 			this.am_storey = source.am_storey;
 
 			ParametersBlock = this;
+
+			//
+			// Overwrite original for comparison purposes when linking cross references
+			// between anonymous methods
+			//
+			original = source;
 		}
 
 		#region Properties
@@ -2510,6 +2514,12 @@ namespace Mono.CSharp {
 		public Expression GetParameterReference (int index, Location loc)
 		{
 			return new ParameterReference (parameter_info[index], loc);
+		}
+
+		public Statement PerformClone ()
+		{
+			CloneContext clonectx = new CloneContext ();
+			return Clone (clonectx);
 		}
 
 		protected void ProcessParameters ()

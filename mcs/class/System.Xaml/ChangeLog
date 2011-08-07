@@ -1,3 +1,7 @@
+2011-04-28  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove non-existent test source (it is only in master).
+
 2010-12-20  Atsushi Eno  <atsushi@ximian.com>
 
 	Implemented support for attached properties in xamlreaders and

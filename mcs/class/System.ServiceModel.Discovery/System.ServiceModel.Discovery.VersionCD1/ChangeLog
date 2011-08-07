@@ -1,3 +1,24 @@
+2011-04-27  Atsushi Eno  <atsushi@ximian.com>
+
+	Use FindCritera/ResolveCriteria Duration properties for
+	DiscoveryEndpoint timeout.
+
+2011-03-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix MessageID element name in discovery contracts.
+
+2011-02-24  Atsushi Eno  <atsushi@ximian.com>
+
+	To header rewrite only happens in Adhoc mode.
+
+	Update contracts to comply with that and make it consistent
+	between versions.
+
+2011-02-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Recent ContractDescription fix uncovered wrong contracts in
+	discovery.
+
 2010-09-24  Atsushi Eno  <atsushi@ximian.com>
 
 	Assign identical operation name for each contract version so that

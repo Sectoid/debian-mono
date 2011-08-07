@@ -385,7 +385,7 @@ struct _MonoInternalThread {
 	gpointer lock_data;
 	MonoAppContext *current_appcontext;
 	int stack_size;
-	GSList *appdomain_refs;
+	gpointer appdomain_refs;
 	/* This is modified using atomic ops, so keep it a gint32 */
 	gint32 interruption_requested;
 	gpointer suspend_event;
@@ -409,7 +409,7 @@ struct _MonoInternalThread {
 	 * when a new field is added to the unmanaged MonoThread structure.
 	 */
 	gpointer unused5;
-	gpointer unused6;
+	gint32 managed_id;
 };
 
 struct _MonoThread {
@@ -568,6 +568,7 @@ typedef struct {
 	char*    (*get_runtime_build_info) (void);
 	gpointer (*get_vtable_trampoline) (int slot_index);
 	gpointer (*get_imt_trampoline) (int imt_slot_index);
+	void (*set_cast_details) (MonoClass *from, MonoClass *to);
 } MonoRuntimeCallbacks;
 
 /* used to free a dynamic method */

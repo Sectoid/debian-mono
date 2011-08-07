@@ -1,3 +1,158 @@
+2011-07-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Ensure that Task is in a correct initial state before starting it
+	for real
+
+2011-07-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Allow using a worker number that is greater than
+	Environment.ProcessorCount for parallel loops.
+
+2011-03-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Revert fcbb5717c18ff8393f2300a254bb13e6fab9c7e4 and implement it
+	differently.
+
+	The commit had the good idea but since some values of the
+	enumeration overlap it broke the correct behavior. Instead we now
+	turn off the extra options and use the previous way to check.
+
+2011-03-18  Miguel de Icaza  <miguel@gnome.org>
+
+	Merged compile fix from master
+
+2011-03-18  Rafael Munitic  <rafael.munitic@gmail.com>
+
+	Must pass null to overloaded constructor instead of wrapper lambda
+	(TaskCompletionSource can use overloaded constructors and it will
+	pass null in function argument)
+
+2011-03-18  Rafael Munitic  <rafael.munitic@gmail.com>
+
+	Continuation options should be checked as flags
+
+2011-03-18  Rafael Munitic  <rafael.munitic@gmail.com>
+
+	If the function is null Wait will not get called and will not
+	check if Future is in faulted state/raise the exception
+
+2011-03-16  Koushik Dutta  <koushd@gmail.com>
+
+	Fix bug where if a task is Start-ed with a specific scheduler,
+	that scheduler is ignored if it is in a thread owned by another
+	scheduler. Tasks should not be locked to the scheduler that owns
+	the calling thread.
+
+	Fix bug where TryExecuteTask does not actually try to execute the
+	task. Instead, TryExecuteTaskInline is called, which is abstract.
+	The TpScheduler implementation, the default, then calls the
+	internal method Task.Execute which then actually executes the
+	task. The problem with this is that only 3rd party schedulers,
+	can't actually execute a task, thus making extending TaskScheduler
+	impossible. (Unless they use some serious Mono specific reflection
+	hacks as I am now.)
+
+2011-03-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Don't throw an exception when task array is empty in WaitAll and
+	throw in case a null element is encountered in it.
+
+	Fix for #679183
+
+2011-03-16  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Correctly implement enumerating CyclicDequeue.
+
+	Fix #679174
+
+2011-02-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fix the mobile build
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Allow people to optionally fallback to the old scheduler with an
+	environment variable
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Remove ctors in TpScheduler
+
+	This also remove the capping of the ThreadPool, problem needs to
+	be fixed in the pool itself.
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Make TryExecuteTaskInline a bit smarter
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Refactor common code block of TpScheduler and SyncContextScheduler
+	in SchedulerProxy
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Kill old IScheduler interface.
+
+	We still use the ParticipateUntil facility of IScheduler
+	internally and provide a default implementation for pure
+	TaskScheduler
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	When finding best worker number in Parallel loops use current
+	TaskScheduler instead of default TaskScheduler
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Adapt TpScheduler to the new API in TaskScheduler
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Cache callback delegate in TpScheduler when passing Task to
+	QueueUserWorkItem
+
+2011-02-14  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Don't create a new lambda everytime when queuing Task via
+	ThreadPool QueueUserWorkItem
+
+2011-02-14  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Try to execute task inline when they are ready to run and we wait
+	on them with no timeout
+
+2011-02-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Threadpool Task scheduler
+
+2011-02-16  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Implement properly TaskScheduler's
+	FromCurrentSynchronizationContext
+
+2011-01-31  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Adapt Parallel.For stealing to all processor flavors
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Allow multiple invocation of Task Execute method to allow
+	short-circuiting without breaking deque ordering
+
+2011-02-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Implement TaskFactory.FromAsync
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add pfx to the mobile profile
+
+2011-01-24  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Make sure a synchronous continuation get executed synchronously in
+	all cases
+
 2011-01-13  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Make use of the wait changes in the internal TaskScheduler ->

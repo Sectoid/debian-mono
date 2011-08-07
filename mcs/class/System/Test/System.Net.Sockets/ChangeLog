@@ -1,3 +1,10 @@
+2011-04-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[socket] Fixed other BeginConnect overloads
+
+	The BeginConnect overload taking an IPAddress[] was not really
+	asynchronous.
+
 2010-09-29  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* Test/System.Net.Sockets/SocketTest.cs: Add parameter validation

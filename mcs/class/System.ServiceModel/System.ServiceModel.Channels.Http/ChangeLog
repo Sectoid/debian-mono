@@ -1,3 +1,37 @@
+2011-06-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Support RemoteEndpointMessageProperty.
+
+2011-05-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Now our HttpListener can listen to wildcard prefix safely.
+
+	Fixed server part of bug #687580.
+
+2011-04-23  Atsushi Eno  <atsushi@ximian.com>
+
+	Log HTTP reply Message too. Make logging customizible on under the
+	moon.
+
+	Logging is done only when requested by
+	MOON_WCF_TRACE=[stdout|stderr] environment variable.
+
+2011-04-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Prepare for HostNameComparisonMode support (i.e. incomplete).
+
+	This is for bugfix #687580.
+
+2011-04-15  Atsushi Eno  <atsushi@ximian.com>
+
+	One more step to enable WCF diagnostics in Logger, and add
+	HttpReplyChannel log.
+
+2011-02-17  Atsushi Eno  <atsushi@ximian.com>
+
+	HTTP authentication in HttpListener had dropped during
+	refactoring. Now it's back.
+
 2010-11-09  Marek Habersack  <grendel@twistedcode.net>
 
 	[wcf] AJAX GET requests work now.

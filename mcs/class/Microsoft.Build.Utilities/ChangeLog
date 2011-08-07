@@ -1,3 +1,7 @@
+2011-02-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Add Mono.XBuild.Utilities/MSBuildUtils.cs to the build.
+
 2010-09-15  Marek Safar  <marek.safar@gmail.com>
 
 	[637935] Fixed 3.5 version of msbuild dlls to reference 3.5

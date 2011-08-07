@@ -40,23 +40,34 @@ AM_CONDITIONAL(CROSS_COMPILING, [test x$cross_compiling = xyes])
 AC_C_BIGENDIAN([ORDER=G_BIG_ENDIAN],[ORDER=G_LITTLE_ENDIAN])
 
 platform_darwin=no
+platform_android=no
 
 case $host in
 *-*-msdos* | *-*-go32* | *-*-mingw32* | *-*-cygwin* | *-*-windows*)
     PATHSEP='\\'
     SEARCHSEP=';'
     OS="WIN32"
+    PIDTYPE='void *'
     ;;
 *-*darwin*)
     platform_darwin=yes
     PATHSEP='/'
     SEARCHSEP=':'
     OS="UNIX"
+    PIDTYPE='int'
+    ;;
+*-*-linux-android*)
+    platform_android=yes
+    PATHSEP='/'
+    SEARCHSEP=':'
+    OS="UNIX"
+    PIDTYPE='int'
     ;;
 *)
     PATHSEP='/'
     SEARCHSEP=':'
     OS="UNIX"
+    PIDTYPE='int'
     ;;
 esac
 
@@ -84,12 +95,16 @@ AC_SUBST(CFLAGS)
 AC_SUBST(PATHSEP)
 AC_SUBST(SEARCHSEP)
 AC_SUBST(OS)
+AC_SUBST(PIDTYPE)
 AM_CONDITIONAL(HOST_WIN32, test x$OS = xWIN32)
 AM_CONDITIONAL(TARGET_WIN32, test x$OS = xWIN32)
 AM_CONDITIONAL(PLATFORM_DARWIN, test x$platform_darwin = xyes)
+AM_CONDITIONAL(PLATFORM_ANDROID, test x$platform_android = xyes)
 
 AC_CHECK_SIZEOF(int)
 AC_CHECK_SIZEOF(void *)
+AC_CHECK_SIZEOF(long)
+AC_CHECK_SIZEOF(long long)
 AC_CHECK_FUNCS(strndup strlcpy getpwuid_r strtok_r rewinddir vasprintf)
 AM_CONDITIONAL(NEED_VASPRINTF, test x$have_vasprintf = x )
 AC_CHECK_LIB(iconv, iconv_open, LIBS="$LIBS -liconv")
@@ -126,20 +141,11 @@ if test "x$have_iso_varargs" = "xyes"; then
 fi
 AC_SUBST(G_HAVE_ISO_VARARGS)
 
-AC_CHECK_HEADERS(getopt.h sys/time.h sys/wait.h pwd.h langinfo.h iconv.h localcharset.h)
+AC_CHECK_HEADERS(getopt.h sys/time.h sys/wait.h pwd.h langinfo.h iconv.h localcharset.h sys/types.h)
 AC_CHECK_HEADER(alloca.h, [HAVE_ALLOCA_H=1], [HAVE_ALLOCA_H=0])
 AC_SUBST(HAVE_ALLOCA_H)
 
-if test $ac_cv_sizeof_void_p != $ac_cv_sizeof_int; then
-   GPOINTER_TO_INT="((gint)(long) (ptr))"
-   GPOINTER_TO_UINT="((guint)(long) (ptr))"
-   GINT_TO_POINTER="((gpointer)(glong) (v))"
-   GUINT_TO_POINTER="((gpointer)(gulong) (v))"
-   GSIZE="long"
-   GSIZE_FORMAT='"lu"'
-   G_GUINT64_FORMAT='"lu"'
-   G_GINT64_FORMAT='"ld"'
-else
+if test $ac_cv_sizeof_void_p = $ac_cv_sizeof_int; then
    GPOINTER_TO_INT="((gint) (ptr))"
    GPOINTER_TO_UINT="((guint) (ptr))"
    GINT_TO_POINTER="((gpointer) (v))"
@@ -148,6 +154,26 @@ else
    GSIZE_FORMAT='"u"'
    G_GUINT64_FORMAT='"llu"'
    G_GINT64_FORMAT='"lld"'
+elif test $ac_cv_sizeof_void_p = $ac_cv_sizeof_long; then
+   GPOINTER_TO_INT="((gint)(long) (ptr))"
+   GPOINTER_TO_UINT="((guint)(long) (ptr))"
+   GINT_TO_POINTER="((gpointer)(glong) (v))"
+   GUINT_TO_POINTER="((gpointer)(gulong) (v))"
+   GSIZE="long"
+   GSIZE_FORMAT='"lu"'
+   G_GUINT64_FORMAT='"lu"'
+   G_GINT64_FORMAT='"ld"'
+elif test $ac_cv_sizeof_void_p = $ac_cv_sizeof_long_long; then
+   GPOINTER_TO_INT="((gint)(long long) (ptr))"
+   GPOINTER_TO_UINT="((guint)(unsigned long long) (ptr))"
+   GINT_TO_POINTER="((gpointer)(long long) (v))"
+   GUINT_TO_POINTER="((gpointer)(unsigned long long) (v))"
+   GSIZE="long long"
+   GSIZE_FORMAT='"I64u"'
+   G_GUINT64_FORMAT='"I64u"'
+   G_GINT64_FORMAT='"I64i"'
+else
+   AC_MSG_ERROR([unsupported pointer size])
 fi
 
 AC_PATH_PROG(PKG_CONFIG, pkg-config, no)

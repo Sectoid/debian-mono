@@ -1,3 +1,98 @@
+2011-04-21  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Inform user about all exceptions thrown during
+	HttpRuntime static initialization
+
+2011-04-05  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #684803. XmlSiteMapProvider must take its
+	root node into account when matching an URL.
+
+2011-04-02  Tomasz Kubacki  <tomasz.kubacki@gmail.com>
+
+	[asp.net] HttpApplication.InitOnce must ensure that
+	HttpApplication.Context does not return null.
+
+	HttpApplication.Context != null is assumed by
+	System.Web.WebPages.WebPagesHttpModule Init method
+
+2011-03-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[asp.net] Return the correct Mime type for 304.
+
+2011-03-17  Marek Habersack  <grendel@twistedcode.net>
+
+	Removed debug noise
+
+2011-03-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #678473. Do not map paths of absolute file
+	paths when passed to HttpRequest.WriteFile
+
+2011-03-16  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #668696. Handle recursive locks gracefully.
+
+2011-03-14  Kornél Pál  <kornelpal@gmail.com>
+
+	[asp.net] Fix for bug #650695. Implements the
+	System.Web.{HttpNotFoundHandler,HttpNotImplementedHandler}
+	classes.
+
+2011-02-09  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented CustomErrorsRedirectMode
+
+2011-01-31  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Handle wrapped ThreadAbortException
+
+	Third party ProcessRequest() like the one from Razor can wrap a
+	ThreadAbortException originated from response.Redirect().
+
+2011-01-27  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] A bunch of fixes related to the default
+	VirtualPathProvider (needed for Orchard)
+
+	* DefaultVirtualDirectory is now more careful when snipping off
+	parts of the path passed to its constructor. Before removing the
+	file part it checks whether the file indeed exists. Also sealed
+	the class and made it use generic List instead of ArrayList *
+	HttpRequest does not normalize mapped paths when converting them
+	to absolute ones. This is to avoid errors when path like
+	"~/bin/../../file.txt" is passed to MapPath. *
+	VirtualPathUtility.ToAbsolute overload with normalize parameter
+	really doesn't normalize the resulting path now.
+
+2011-01-19  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,mvc] Make unobtrustive request validation in MVC v3
+	possible
+
+	Validation is enabled early in the pipeline during request.
+	ValidationUtility makes sure that validation is indeed enabled and
+	replaces the default form and query string collections with a lazy
+	version which will validate values only when an existing key is
+	found and requested.
+
+2011-01-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Introduced unvalidated versions of Form and QueryString
+	properties for MVC3
+
+2011-01-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented BuildManager.GetObjectFactory
+
+	This method is not used by Mono internally but is called by MVC
+	v3.
+
+2011-01-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Added internal property InputValidationEnabled to report
+	whether the user enabled validation for current request.
+
 2011-01-17  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] (4.0) Validate the form data in Form getter

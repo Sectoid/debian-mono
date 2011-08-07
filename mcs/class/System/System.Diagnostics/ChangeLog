@@ -1,3 +1,26 @@
+2011-04-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix wrapper elements. It should be <TraceData><DataItem>...
+
+2011-04-21  Atsushi Eno  <atsushi@ximian.com>
+
+	XmlWriterTraceListener supports XPathNavigator as non-escaped xml
+	output.
+
+2011-04-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Flush XmlWriter and TextWriter so that incomplete changes are not
+	lost.
+
+2011-04-13  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix wrong TraceEventType values passed.
+
+2011-03-30  Louis Salin  <louis@lonestardevs.com>
+
+	TraceData and TraceEvent methods must pass a new instance of
+	TraceEventCache
+
 2010-10-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Remove arbitrary 1024 limit in GetProcesses

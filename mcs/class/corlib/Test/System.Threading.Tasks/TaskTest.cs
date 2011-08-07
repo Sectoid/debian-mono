@@ -162,7 +162,8 @@ namespace MonoTests.System.Threading.Tasks
 				Task t = new Task(delegate { taskResult = true; }, src.Token);
 				src.Cancel ();
 				
-				Task cont = t.ContinueWith (delegate { result = true; }, TaskContinuationOptions.OnlyOnCanceled);
+				Task cont = t.ContinueWith (delegate { result = true; },
+				                            TaskContinuationOptions.OnlyOnCanceled | TaskContinuationOptions.ExecuteSynchronously);
 
 				t.Start();
 				cont.Wait();
@@ -274,6 +275,33 @@ namespace MonoTests.System.Threading.Tasks
 			t.RunSynchronously ();
 
 			Assert.AreEqual (1, val);
+		}
+
+		[Test]
+		public void UnobservedExceptionOnFinalizerThreadTest ()
+		{
+			bool wasCalled = false;
+			TaskScheduler.UnobservedTaskException += (o, args) => {
+				wasCalled = true;
+				args.SetObserved ();
+			};
+			var inner = new ApplicationException ();
+			Task.Factory.StartNew (() => { throw inner; });
+			Thread.Sleep (1000);
+			GC.Collect ();
+			Thread.Sleep (1000);
+			GC.WaitForPendingFinalizers ();
+
+			Assert.IsTrue (wasCalled);
+		}
+
+		[Test, ExpectedException (typeof (InvalidOperationException))]
+		public void StartFinishedTaskTest ()
+		{
+			var t = Task.Factory.StartNew (delegate () { });
+			t.Wait ();
+
+			t.Start ();
 		}
 	}
 }

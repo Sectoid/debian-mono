@@ -1,3 +1,80 @@
+2011-07-12  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add shared_perfcounters option to enable minimal.
+
+2011-07-12  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Do DISABLE_PORTABILITY more agressively.
+
+2011-06-08  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix darwin-arm build.
+
+2011-04-01  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mach-support-*.c (mono_mach_arch_get_tls_value_from_thread):
+	This function now receives pthread_t instead of mach_port as
+	argument, so avoiding an expensive call to
+	pthread_from_mach_thread_np.
+
+2011-03-31  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mono-path.c (mono_path_canonicalize): Properly canonicalize non
+	UNC paths with an extra backslash. Eg: c:\foo\\bar was been
+	canonicalized to c:\\foo\bar.
+
+	This was breaking assembly loading in some rare cases.
+
+2011-03-29  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Cast p to char* since the offset is in byte units.
+
+2011-03-15  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Semaphore] Remove warnings
+
+2011-03-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Support NLS when opening assemblies on windows.
+
+	Patch by Horst Kakuschke that fixes bug #673793.
+
+2011-03-01  Zoltan Varga  <vargaz@gmail.com>
+
+	Use stdint.h for VS 2010 and later.
+
+2011-02-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Only use memory barriers on arm when running on armv6 or later.
+
+2011-02-21  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Implement proper TSD lookup for arm-darwin
+
+2011-02-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement mono_memory_barrier () and OP_MEMORY_BARRIER for ARM.
+
+2011-02-19  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Avoid leaking a mach_port every time we query the counters
+
+2011-02-19  Miguel de Icaza  <miguel@gnome.org>
+
+	Backport support for add support for new
+	PerformanceCounter("Process", "% Processor Time", "<process id as
+	string>" on OS X
+
+2011-01-29  Marek Habersack  <grendel@twistedcode.net>
+
+	[runtime] Use IOAMP-aware method of looking for domain
+	configuration file
+
+2011-01-24  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Avoid leaking the vmmap allocated by the kernel for the
+	thread_act_array_t
+
 2011-01-18  Zoltan Varga  <vargaz@gmail.com>
 
 	Make the stacks of aot image non-executable.

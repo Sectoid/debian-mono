@@ -132,6 +132,10 @@ mono_gc_base_init (void)
 	GC_init_gcj_malloc (5, NULL);
 #endif
 
+#ifdef HAVE_GC_ALLOW_REGISTER_THREADS
+	GC_allow_register_threads();
+#endif
+
 	if ((env = getenv ("MONO_GC_PARAMS"))) {
 		char **ptr, **opts = g_strsplit (env, ",", -1);
 		for (ptr = opts; *ptr; ++ptr) {
@@ -961,7 +965,7 @@ mono_gc_get_managed_allocator (MonoVTable *vtable, gboolean for_box)
 		return NULL;
 	if (!SMALL_ENOUGH (klass->instance_size))
 		return NULL;
-	if (klass->has_finalize || klass->marshalbyref || (mono_profiler_get_events () & MONO_PROFILE_ALLOCATIONS))
+	if (mono_class_has_finalizer (klass) || klass->marshalbyref || (mono_profiler_get_events () & MONO_PROFILE_ALLOCATIONS))
 		return NULL;
 	if (klass->rank)
 		return NULL;

@@ -1,3 +1,33 @@
+2011-04-04  Atsushi Eno  <atsushi@ximian.com>
+
+	Add WCF diagnostics implementation (not working yet).
+
+2011-04-01  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf] Unbreak the build (Assembly.IsDynamic is a 4.0 thing)
+
+2011-04-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement ConfigurationName support for ChannelFactory.
+
+	It is required for MoonlightDrtViewer bugfixing.
+
+2011-02-17  Atsushi Eno  <atsushi@ximian.com>
+
+	get out from NET_4_0.
+
+2011-02-17  Atsushi Eno  <atsushi@ximian.com>
+
+	Fill a couple of missing ServiceAuthorizationElement
+	implementation.
+
+2011-02-01  Atsushi Eno  <atsushi@ximian.com>
+
+	standard endpoint and protocol mapping support were lacking at
+	client side.
+
+	Turned out that they had nothing to do with #668089..
+
 2010-10-20  Atsushi Eno  <atsushi@ximian.com>
 
 	Forgot #if NET_4_0.

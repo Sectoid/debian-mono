@@ -1,3 +1,12 @@
+2011-02-21  Marek Habersack  <grendel@twistedcode.net>
+
+	[transactions] When cloning a transaction make sure to copy all
+	the stuff that matters.
+
+	The volatiles and durables lists must be copied even if they are
+	empty. The calling code might still be accessing them via the
+	original transaction (as is the case with Orchard+NHibernate)
+
 2010-10-05  Martin Baulig  <martin@novell.com>
 
 	Fix my previous commit.

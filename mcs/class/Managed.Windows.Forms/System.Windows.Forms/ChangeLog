@@ -1,3 +1,17 @@
+2011-03-29  Vincent Povirk  <madewokherd@gmail.com>
+
+	System.Windows.Forms.Mime: Use freedesktop.org only on Unix
+	platforms.
+
+2011-02-11  Miguel de Icaza  <miguel@gnome.org>
+
+	[fix] changing Form.Enabled sometimes can change the list of
+	OpenForms, fixes 671098
+
+2011-02-01  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Avoid a stack overflow when deactivating a window
+
 2011-01-06  Thomas Goldstein  <stifu@free.fr>
 
 	Replace decimal to hex string conversion code with a much more

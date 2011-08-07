@@ -1,3 +1,7 @@
+2011-02-01  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Avoid a stack overflow when deactivating a window
+
 2010-09-07  Atsushi Eno  <atsushi@ximian.com>
 
 	Avoid crash for use of deprecated InstallTrackingHandler in Snow

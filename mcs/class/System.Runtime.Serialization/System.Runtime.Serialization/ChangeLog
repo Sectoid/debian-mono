@@ -1,3 +1,148 @@
+2011-06-28  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement support for generic data contract type name with "{x}".
+
+2011-05-23  Atsushi Eno  <atsushi@ximian.com>
+
+	Look for KnownTypeAttributes on known types (recursively). Fixed
+	bug #695203.
+
+2011-05-10  Atsushi Eno  <atsushi@ximian.com>
+
+	CanImport() just returns false, without throwing error.
+
+2011-05-10  Atsushi Eno  <atsushi@ximian.com>
+
+	support import of xs:anyType, as well as make couple of minor
+	fixes.
+
+2011-05-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Update XsdDataContractImporter.CanImport and implement
+	ImportXmlType.
+
+2011-05-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Allow xsi:nil for void. Fixed client side of bug #687580.
+
+2011-04-28  Atsushi Eno  <atsushi@ximian.com>
+
+	Looks like xs:any is allowed under certain condition in
+	XsdDataContractImporter.
+
+	But I don't understand why :(
+
+2011-04-28  Atsushi Eno  <atsushi@ximian.com>
+
+	moonlight does not like XmlSchemaType but nasty code in
+	KnownTypeCollection :(
+
+2011-04-28  Atsushi Eno  <atsushi@ximian.com>
+
+	...and do return Type for all known xs:* types in
+	XsdDataContractImporter.
+
+2011-04-28  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not reject xsd:* types that are not listed in
+	KnownTypeCollection.
+
+	e.g. xs:token.
+
+2011-04-21  Atsushi Eno  <atsushi@ximian.com>
+
+	RooArray types were rejected as unknown when it is at root. Fixed
+	bug #688414.
+
+2011-04-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement support for KnownTypeAttribute.MethodName.
+
+2011-03-28  Atsushi Eno  <atsushi@ximian.com>
+
+	Looks like WCF serializer supports XmlNode, so we do as well.
+
+	for details: http://msdn.microsoft.com/en-us/library/aa347876.aspx
+
+	Fixed bug #682957.
+
+2011-03-10  Atsushi Eno  <atsushi@ximian.com>
+
+	In some collection case, xsi:type is explicitly written. Try to
+	copy that behavior.
+
+2011-03-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Some attempts to make KnownTypeCollection parallel access safe.
+
+2011-03-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Make sure to call MoveToContent() to correctly determine node
+	type.
+
+	Fix "Dictionary deserialization from xml with indent" issue.
+
+2011-03-08  Atsushi Eno  <atsushi@ximian.com>
+
+	DateTimeOffset child elements have fixed namespace.
+
+2011-03-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Couple of fixed to support new DateTimeOffset serialization in
+	.NET WCF.
+
+2011-02-17  Atsushi Eno  <atsushi@ximian.com>
+
+	MakXsdDataContractExporter refactoring to generally use
+	SerializationMap.XmlName.
+
+	Fixed bug #670539.
+
+2011-02-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Don't reject serialization map for existing different (but
+	same-purpose) type.
+
+2011-02-16  Atsushi Eno  <atsushi@ximian.com>
+
+	xsi:type parsing is wrong in default namespace resolution.
+
+	Fixed case #3 in bug #652331.
+
+2011-02-16  Atsushi Eno  <atsushi@ximian.com>
+
+	KnownTypeCollection; recursively registered type was not added to
+	the collection while it is "registered" state.
+
+2011-02-08  Atsushi Eno  <atsushi@ximian.com>
+
+	There's a tricky namespace-mismatching deserialization in .NET
+	implementation.
+
+	Fixed bug #666333.
+
+2011-02-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Contract-based type must ensure that the base type is also
+	contract-based.
+
+	Fixed bug #661987 on WCF side.
+
+	Conflicts:
+
+	mcs/class/System.Runtime.Serialization/Test/System.Runtime.Serialization/XmlObjectSerializerTest.cs
+
+2011-02-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Members in the base type in different namespace are serialized in
+	base ns.
+
+	When the serializer serializes a Type B which is derived from A,
+	it used to serialize member M in A as in namespace_of_B, not in
+	namespace_of_A.
+
+	This should fix bug #652331.
+
 2010-12-14  Atsushi Eno  <atsushi@ximian.com>
 
 	Fix enum serialization too.

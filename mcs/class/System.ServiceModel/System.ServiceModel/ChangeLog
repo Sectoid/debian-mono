@@ -1,3 +1,209 @@
+2011-07-27  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix wsdl import wrt element qname (!= type name).
+
+2011-05-31  Atsushi Eno  <atsushi@ximian.com>
+
+	Ref parameter was not covered by ParameterInfo.IsOut. Fixed bug
+	#696784.
+
+2011-05-11  Atsushi Eno  <atsushi@ximian.com>
+
+	Add PipeException. fixed bug #692987 by Eberhard Beilharz.
+
+2011-05-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Add (not-working) callback instance context mode test and FIXME
+	comment.
+
+2011-04-27  Atsushi Eno  <atsushi@ximian.com>
+
+	Handle fault messages in duplex callback channel.
+
+2011-04-26  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix monodroid/monotouch build.
+
+2011-04-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Make our own simple log format actually diagnostics-compatible.
+
+	So MS ServiceTraceViewer.exe can open our log now.
+
+2011-04-25  Atsushi Eno  <atsushi@ximian.com>
+
+	minor diagnostic log format brush up.
+
+2011-04-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Enable environment-controled output on non-moon profile too. Add
+	error logging.
+
+2011-04-23  Atsushi Eno  <atsushi@ximian.com>
+
+	Log HTTP reply Message too. Make logging customizible on under the
+	moon.
+
+	Logging is done only when requested by
+	MOON_WCF_TRACE=[stdout|stderr] environment variable.
+
+2011-04-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Use XPathNavigator output in WCF diagnostics. Got sorta-valid
+	message trace.
+
+2011-04-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Get real fix for bug #687902. Revert request processor
+	IDisposable.
+
+	and handle session shutdown when creating InstanceContext. Also
+	add note on DisposeInstance(), which got me stuck.
+
+2011-04-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Ongoing service channel closing fix and session management in
+	ChannelDispatcher.
+
+	It is part of bugfix 687902.
+
+	To get the bug fixed, the new "using" sections in
+	ChannelDispatcher.cs to explicitly dispose channels. But this
+	causes regression in PerSession-based tests. So some new session
+	management code is (likely) required as well.
+
+	It will also alter "mixed" MaxConcurrentCalls and
+	MaxConcurrentSessions with correct management code.
+
+2011-04-15  Atsushi Eno  <atsushi@ximian.com>
+
+	One more step to enable WCF diagnostics in Logger, and add
+	HttpReplyChannel log.
+
+2011-04-14  Atsushi Eno  <atsushi@ximian.com>
+
+	ServiceKnownTypeAttribute.MethodName was used way different to
+	lookup method.
+
+2011-04-04  Atsushi Eno  <atsushi@ximian.com>
+
+	unlike told by docs.mono-android.net Trace does not exist in
+	mobile profile.
+
+2011-04-04  Atsushi Eno  <atsushi@ximian.com>
+
+	Add WCF diagnostics implementation (not working yet).
+
+2011-04-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Less !NET_2_1/!MOONLIGHT to improve SL4 WCF compatibility.
+
+2011-04-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement ConfigurationName support for ChannelFactory.
+
+	It is required for MoonlightDrtViewer bugfixing.
+
+2011-03-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove old windows threading workaround.
+
+2011-03-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Empty element is valid here in silverlight secrity element.
+
+2011-03-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Forgot to add the actual new client proxy.
+
+2011-03-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Replace SRE-based client proxy generator with RealProxy.
+
+	Now PE verified workaround should be unnecessary.
+
+2011-02-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Simple InstanceContext.Extensions implementation by David Schmitt.
+
+	Fixed bug #674057.
+
+2011-02-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Almost eliminate wrong use of Constants.WsaNamespace.
+
+	They should be addressing-version-aware.
+
+2011-02-18  Atsushi Eno  <atsushi@ximian.com>
+
+	EndpointAddressAugust2004 was not serialized correctly.
+
+	Well, Actually unified the implementation with 10.
+
+2011-02-17  Atsushi Eno  <atsushi@ximian.com>
+
+	Couple of corcompare fixes.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	implement some ServiceHostBase public methods that already existed
+	internally.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	When the callback contract type is the same as the contract, do
+	not block replies.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	EndpointAddress could be empty on opening the factory.
+
+2011-02-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Open and close client/service runtime channels in chains. Fixed
+	bug #663278.
+
+2011-02-04  Atsushi Eno  <atsushi@ximian.com>
+
+	Duplex client has its own listener loop, so special care on reply
+	is needed.
+
+2011-02-04  Atsushi Eno  <atsushi@ximian.com>
+
+	Callback contract should be distinguished from others for
+	DispatchOperation.
+
+2011-02-01  Atsushi Eno  <atsushi@ximian.com>
+
+	standard endpoint and protocol mapping support were lacking at
+	client side.
+
+	Turned out that they had nothing to do with #668089..
+
+2011-01-22  Atsushi Eno  <atsushi@ximian.com>
+
+	Manage opened proxy channels and close them when ChannelFactory is
+	closed.
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Implemented a couple of async methods in InstanceContext as well
+	as disposing.
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Rename InstanceBhavior, too ambiguous among IXxxBehavior
+	interfaces.
+
+2011-01-31  Atsushi Eno  <atsushi@ximian.com>
+
+	add public NetTcpSecurity .ctor() and close #667429.
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	MonoTouch doesnt support SRE, so we need to disable this code on
+	MT
+
 2010-11-04  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
 
 	* MsmqTransportSecurity.cs: Use the proper default values for this

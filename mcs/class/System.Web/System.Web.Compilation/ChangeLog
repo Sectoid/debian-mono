@@ -1,3 +1,71 @@
+2011-06-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Construct properly rooted paths when assigning values
+	from resources
+
+2011-05-19  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Ignore JavaScript blocks enclosed in HTML comments
+
+2011-03-22  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Use List <string> instead of ArrayList to keep assembly
+	locations in TemplateParser
+
+2011-03-22  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Use List <string> instead of ArrayList to keep file
+	dependencies
+
+2011-03-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #670874. Match request URLs against
+	precompiled dictionary using absolute paths.
+
+2011-02-09  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #669048. Fix up virtual precompiled app
+	virtual paths with the virtual root of the current app
+
+2011-02-09  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Be more careful with errors collection when compilation
+	fails.
+
+2011-01-24  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Global.asax assembly must be passed as reference when
+	compiling. BuildManager.GetType improvements.
+
+	When user has their own global application class (global.asax is
+	present) the assembly produced from it must be passed as reference
+	to the compiler. BuildManager.GetType now supports fully-qualified
+	type names for 'typeName' and searches for the type in the
+	top-level assemblies, the global.asax assembly and in the
+	assemblies specified in as references in web.config.
+
+	All of this fixes certain MVC3+Razor applications.
+
+2011-01-20  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Avoid passing duplicate assemblies on mcs command line.
+
+2011-01-20  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[System.Web] Razor works now (modulo DB)
+
+2011-01-20  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Do not throw NREX when firstError is null in
+	ErrorMessage getter
+
+2011-01-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented BuildManager.GetObjectFactory
+
+	This method is not used by Mono internally but is called by MVC
+	v3.
+
 2010-11-03  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Use faster string comparison in caches in

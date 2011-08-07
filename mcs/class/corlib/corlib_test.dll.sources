@@ -198,6 +198,9 @@ System.Runtime.Versioning/TargetFrameworkAttributeTest.cs
 System.Runtime.Versioning/VersioningHelperTest.cs
 System/SByteTest.cs
 System.Security/CodeAccessPermissionTest.cs
+System.Security.AccessControl/CommonAceTest.cs
+System.Security.AccessControl/RawAclTest.cs
+System.Security.AccessControl/RawSecurityDescriptorTest.cs
 System.Security.Cryptography/AllTests2.cs
 System.Security.Cryptography/AsymmetricAlgorithmTest.cs
 System.Security.Cryptography/CipherModeTest.cs
@@ -331,6 +334,8 @@ System.Security.Policy/ZoneTest.cs
 System.Security.Policy/ZoneMembershipConditionTest.cs
 System.Security.Principal/GenericIdentityTest.cs
 System.Security.Principal/GenericPrincipalTest.cs
+System.Security.Principal/NTAccountTest.cs
+System.Security.Principal/SecurityIdentifierTest.cs
 System.Security.Principal/WindowsIdentityTest.cs
 System.Security.Principal/WindowsPrincipalTest.cs
 System.Security/SecureStringTest.cs

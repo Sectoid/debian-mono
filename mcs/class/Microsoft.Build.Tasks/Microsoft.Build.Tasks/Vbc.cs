@@ -35,6 +35,7 @@ using System.Text.RegularExpressions;
 
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
+using Mono.XBuild.Utilities;
 
 namespace Microsoft.Build.Tasks {
 
@@ -182,7 +183,7 @@ namespace Microsoft.Build.Tasks {
 			string col = match.Result ("${column}");
 			int columnNumber = 0;
 			if (!string.IsNullOrEmpty (col))
-				columnNumber = col == "255+" ? -1 : Int32.Parse (col);
+				columnNumber = col.IndexOf ("+") >= 0 ? -1 : Int32.Parse (col);
 
 			string category = match.Result ("${level}");
 			string code = match.Result ("${number}");
@@ -303,7 +304,7 @@ namespace Microsoft.Build.Tasks {
 
 		[MonoTODO]
 		protected override string ToolName {
-			get { return Utilities.RunningOnWindows ? "vbnc.bat" : "vbnc"; }
+			get { return MSBuildUtils.RunningOnWindows ? "vbnc.bat" : "vbnc"; }
 		}
 
 		[MonoTODO]

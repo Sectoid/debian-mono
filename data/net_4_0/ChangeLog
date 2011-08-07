@@ -1,3 +1,8 @@
+2011-01-25  Marek Habersack  <grendel@twistedcode.net>
+
+	[machine.config] Added the <system.transactions> section
+	definition
+
 2010-12-13  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] .NET 4.0 declares the <system.web.extensions> section in

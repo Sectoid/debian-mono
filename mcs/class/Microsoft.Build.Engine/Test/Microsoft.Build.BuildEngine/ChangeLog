@@ -1,3 +1,40 @@
+2011-03-09  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Clean up test logs.
+
+	Remove unnecessary debug spew for tests that pass.
+
+2011-03-03  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Add support for wildcards in Import.
+
+	With 4.0 profile, <Import ..> can have wildcards. This works
+	correctly with our multiple MSBuildExtensionsPath also.
+
+	If the import references $(MSBuildExtensionsPath) property, then
+	the each extension path is used to resolve the import, and the
+	search stop as soon as an import is found.
+
+	If such an import uses wildcard, then the search stops at the
+	extension path in which *atleast one* file got imported. And the
+	import fails if any invalid project file is encountered.
+
+	This commit also heavily refactors the Import code to simplify in
+	the face of the new features, and improves error detection and
+	reporting.
+
+	ImportTest.cs: Add test for wildcards.
+
+2011-03-02  Ankit Jain  <radical@corewars.org>
+
+	* TargetTest.cs (TestBeforeAndAfterTargets): New.
+
+2011-02-23  Ankit Jain  <radical@corewars.org>
+
+	*
+	Microsoft.Build.Engine/Test/Microsoft.Build.BuildEngine/ProjectTest.cs:
+	Add corresponding test.
+
 2011-01-11  Ankit Jain  <radical@corewars.org>
 
 	[xbuild] Copy metadata from Project items to target outputs.

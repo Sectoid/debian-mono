@@ -1,3 +1,13 @@
+2011-07-05  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	Implemented a shared way to detect MacOSX for System.dll
+
+2011-02-19  Miguel de Icaza  <miguel@gnome.org>
+
+	[594642]
+	System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces
+	fix for MacOS X
+
 2010-09-29  Atsushi Eno  <atsushi@ximian.com>
 
 	Add some missing StructLayoutAttributes.

@@ -1,3 +1,20 @@
+2011-04-27  Atsushi Eno  <atsushi@ximian.com>
+
+	Use FindCritera/ResolveCriteria Duration properties for
+	DiscoveryEndpoint timeout.
+
+2011-02-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix wrong async completion handling in UDP channel receive.
+
+	After AsyncWaitHandle.Set(), order of filling results and
+	WaitOne() are undefined.
+
+2011-02-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Recent ContractDescription fix uncovered wrong contracts in
+	discovery.
+
 2010-09-03  Atsushi Eno  <atsushi@ximian.com>
 
 	Ongoing Discovery duplex (UDP) implementation (not working yet).

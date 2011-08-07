@@ -156,6 +156,15 @@ mono_create_static_rgctx_trampoline (MonoMethod *m, gpointer addr)
  * Either IMPL_METHOD or AOT_ADDR will be set on return.
  */
 static gpointer*
+#ifdef __GNUC__
+/*
+ * This works against problems when compiling with gcc 4.6 on arm. The 'then' part of
+ * this line gets executed, even when the condition is false:
+ *		if (impl && mono_method_needs_static_rgctx_invoke (impl, FALSE))
+ *			*need_rgctx_tramp = TRUE;
+ */
+__attribute__ ((noinline))
+#endif
 mono_convert_imt_slot_to_vtable_slot (gpointer* slot, mgreg_t *regs, guint8 *code, MonoMethod *method, MonoMethod **impl_method, gboolean *need_rgctx_tramp, gboolean *variance_used, gpointer *aot_addr)
 {
 	MonoObject *this_argument = mono_arch_get_this_arg_from_call (regs, code);
@@ -466,8 +475,10 @@ common_call_trampoline (mgreg_t *regs, guint8 *code, MonoMethod *m, guint8* tram
 			ji = NULL;
 
 		/* Avoid recursion */
-		if (!(ji && ji->method->wrapper_type == MONO_WRAPPER_SYNCHRONIZED))
+		if (!(ji && ji->method->wrapper_type == MONO_WRAPPER_SYNCHRONIZED)) {
 			m = mono_marshal_get_synchronized_wrapper (m);
+			need_rgctx_tramp = FALSE;
+		}
 	}
 
 	/* Calls made through delegates on platforms without delegate trampolines */
@@ -909,7 +920,10 @@ mono_delegate_trampoline (mgreg_t *regs, guint8 *code, gpointer *tramp_data, gui
 			mono_error_raise_exception (&err);
 
 		callvirt = !delegate->target && sig->hasthis;
-		if (delegate->target && method->flags & METHOD_ATTRIBUTE_VIRTUAL && method->klass->flags & TYPE_ATTRIBUTE_ABSTRACT) {
+		if (delegate->target && 
+			method->flags & METHOD_ATTRIBUTE_VIRTUAL && 
+			method->flags & METHOD_ATTRIBUTE_ABSTRACT &&
+			method->klass->flags & TYPE_ATTRIBUTE_ABSTRACT) {
 			method = mono_object_get_virtual_method (delegate->target, method);
 			enable_caching = FALSE;
 		}

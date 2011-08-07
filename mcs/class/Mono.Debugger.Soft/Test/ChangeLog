@@ -1,3 +1,19 @@
+2011-03-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid an assert when returning nullable null's from sdb invokes.
+	Fixes #676587.
+
+2011-01-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Obsolete VirtualMachine.GetNextEvent () as it is impossible to
+	determine when to resume after an event, since the debuggee
+	suspends only once per event-set.
+
+2011-01-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a TID field to ThreadMirror which returns the system thread
+	id.
+
 2011-01-04  Zoltan Varga  <vargaz@gmail.com>
 
 	Add AssemblyLoadEventRequest () type to the sdb api, and use it to

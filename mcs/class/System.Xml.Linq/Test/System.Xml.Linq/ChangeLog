@@ -1,3 +1,13 @@
+2011-03-26  Atsushi Eno  <atsushi@ximian.com>
+
+	XStreamingElement should be covered in WriteTo(). It's not derived
+	from XNode.
+
+2011-01-31  Atsushi Eno  <atsushi@ximian.com>
+
+	Fixed bug #666872; XElement.Changed and .Changing were not
+	triggered.
+
 2010-04-23  Jonathan Pobst  <monkey@jpobst.com>
 
 	* XAttributeTest.cs, XElementTest.cs: Try to standardize DST usage

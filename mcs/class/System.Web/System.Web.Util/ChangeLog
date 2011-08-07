@@ -1,3 +1,10 @@
+2011-01-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented BuildManager.GetObjectFactory
+
+	This method is not used by Mono internally but is called by MVC
+	v3.
+
 2010-12-09  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Get system.web/httpRuntime only once

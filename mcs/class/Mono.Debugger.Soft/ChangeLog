@@ -1,3 +1,19 @@
+2011-03-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the title of the Mono.Debugger.Soft assembly monodoc.
+
+2011-02-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Add an assembly version to Mono.Debugger.Soft. Fixes #671536.
+
+2011-02-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Install Mono.Debugger.Soft in the 4.0 profile as well.
+
+2011-01-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix dist issues in Mono.Debugger.Soft.
+
 2011-01-04  Zoltan Varga  <vargaz@gmail.com>
 
 	Add AssemblyLoadEventRequest () type to the sdb api, and use it to

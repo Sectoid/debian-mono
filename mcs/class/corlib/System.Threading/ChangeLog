@@ -1,3 +1,55 @@
+2011-05-02  Jb Evain  <jbevain@gmail.com>
+
+	Fix non net_4_0 profiles build
+
+2011-05-02  Jb Evain  <jbevain@gmail.com>
+
+	Properly check the maxstacksize asked for the Thread
+
+2011-04-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fail gracefully when CancellationToken has been created
+	uninitialized by user.
+
+	Also add corresponding unit test.
+
+2011-04-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Honors correctly canceled ctor parameter of CancellationToken
+
+2011-04-15  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	[corlib] Ensure Thread.ManagedThreadId is unique per thread.
+
+	This fixes bug #667329.
+
+	The problem was that ManagedThreadId was created from a
+	per-appdomain counter, but stored in a per-thread storage, so if
+	two threads could end up with the same ManagedThreadId if a second
+	appdomain executed on the second thread first.
+
+2011-03-14  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fix the mobile build
+
+2011-03-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Timer] Use static CB for invoking timer callbacks.
+
+2011-02-11  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* Thread.cs (.ctor): Check if maxStackSize is negative and raise
+	and AOORE. Silently use a saner minimum size of 128k as mono can't
+	really run with much less than that.
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add pfx to the mobile profile
+
 2011-01-07  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Remove now unused internal classes

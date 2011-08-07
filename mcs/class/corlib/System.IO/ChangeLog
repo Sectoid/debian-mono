@@ -1,3 +1,60 @@
+2011-04-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	In *AllLines use WriteLine instead of Write.
+
+	This fixes bug #689670.
+
+2011-04-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[runtime,IO] Filesystem entries can only be sought for in
+	directories, not files.
+
+2011-03-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Revert "Fix a typo in Directory.GetFiles ()"
+
+	This reverts commit 5bbd6c23f8c5931788ff11722283384639ffbcf0.
+
+2011-03-28  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix a typo in Directory.GetFiles ()
+
+	The mask never matched the attributes and all files were
+	discarded. This fixes bug #683203.
+
+2011-03-23  Miguel de Icaza  <miguel@gnome.org>
+
+	OSX, Win32: Implements support for DriveInfo
+
+	This implements support for DriveInfo for OSX and Windows.
+
+	On OSX we use statfs system call that provides the filesystem type
+	information that we need. On Linux, we continue to fallback to
+	mtab parsing
+
+2011-03-08  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Avoid null refs when capacity set to 0
+
+	This fixes bug #676060.
+
+2011-03-07  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add 2 missing 4.0 APIs to the MOBILE profile
+
+2011-02-24  Steve Bjorg  <steve.bjorg@gmail.com>
+
+	TextReader.Null should return "" on ReadToEnd()
+
+2011-02-24  Miguel de Icaza  <miguel@gnome.org>
+
+	Add default implementations to ReadLine() and ReadToEnd() to
+	TextReader, fixes 655934
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
 2011-01-06  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	[windows] Improve drive search

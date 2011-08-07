@@ -1,3 +1,8 @@
+2011-04-05  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Protect entering ReaderWriterLockSlim upgradable mode against
+	async exceptions.
+
 2010-12-01  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	[ReaderWriterLockSlim] Fix for #656353. Add corresponding unit

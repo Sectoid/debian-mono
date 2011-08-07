@@ -31,6 +31,7 @@ using System.Collections;
 using System.Collections.Specialized;
 using System.Configuration;
 using System.IO;
+using System.Reflection;
 using System.Runtime.Serialization;
 using System.Globalization;
 #if NET_2_0
@@ -61,12 +62,23 @@ namespace System.Net
 		static bool isDefaultWebProxySet;
 		static IWebProxy defaultWebProxy;
 		static RequestCachePolicy defaultCachePolicy;
+		static MethodInfo cfGetDefaultProxy;
 #endif
 		
 		// Constructors
 		
 		static WebRequest ()
 		{
+			if (Platform.IsMacOS) {
+#if MONOTOUCH
+				Type type = Type.GetType ("MonoTouch.CoreFoundation.CFNetwork, monotouch");
+#else
+				Type type = Type.GetType ("MonoMac.CoreFoundation.CFNetwork, monomac");
+#endif
+				if (type != null)
+					cfGetDefaultProxy = type.GetMethod ("GetDefaultProxy");
+			}
+			
 #if NET_2_1
 			AddPrefix ("http", typeof (HttpRequestCreator));
 			AddPrefix ("https", typeof (HttpRequestCreator));
@@ -344,6 +356,10 @@ namespace System.Net
 					return new WebProxy (uri);
 				} catch (UriFormatException) { }
 			}
+			
+			if (cfGetDefaultProxy != null)
+				return (IWebProxy) cfGetDefaultProxy.Invoke (null, null);
+			
 			return new WebProxy ();
 		}
 #endif

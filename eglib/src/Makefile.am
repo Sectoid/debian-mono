@@ -24,7 +24,6 @@ os_files = $(unix_files)
 endif
 
 libeglib_la_SOURCES = \
-	eglib-config.h	\
 	eglib-remap.h	\
 	sort.frag.h	\
 	glib.h	     	\
@@ -62,6 +61,10 @@ INCLUDES = -I$(srcdir)
 
 if HOST_WIN32
 libeglib_la_LIBADD = -lm $(ICONV_LIBS) -lpsapi
+else
+if PLATFORM_ANDROID
+libeglib_la_LIBADD = -llog
+endif
 endif
 
 libeglib_static_la_LIBADD = $(libeglib_la_LIBADD)

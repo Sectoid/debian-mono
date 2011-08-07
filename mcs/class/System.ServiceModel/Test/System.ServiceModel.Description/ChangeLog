@@ -1,3 +1,58 @@
+2011-05-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix common issue in MetadataSet - call MoveToContent() while
+	iterating nodes.
+
+2011-05-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Add new MetadataSetTest and fix couple of minor issues.
+
+2011-05-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Revive this test by implementing mock web server.
+
+2011-05-09  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing XmlSerializerMessageContractImporter work.
+
+	It is part of bugfix #670945.
+
+2011-04-07  Atsushi Eno  <atsushi@ximian.com>
+
+	DataContractSerializerOperationBehavior is done too. Fix
+	moonlight_raw build.
+
+2011-04-01  Peter Gerbrandt  <pg@viadux.de>
+
+	Fix contract description for contracts with deep inheritance
+	hierarchy.
+
+2011-03-07  Peter Gerbrandt  <pg@viadux.de>
+
+	Support for the same interface as service contract and as callback
+	contract.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Message headers are now serialized and deserialized for
+	MessageHeaderDescription.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	MessageHeaderDescription were not filled in message contract.
+	Reject wrong contracts.
+
+2011-02-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Now operations are collected per corresponding
+	ContractDescription.
+
+	This fixes naming of MessageDescription Action URI from its type.
+
+2011-02-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement GetInheritedContracts(), towards bugfix #668089.
+
 2010-10-08  Atsushi Eno  <atsushi@ximian.com>
 
 	Do not reject contract from the same method, could happen by a

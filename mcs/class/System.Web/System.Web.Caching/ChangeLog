@@ -1,3 +1,15 @@
+2011-04-02  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Store new heap size when shrinking it. Thanks to Rodrigo
+	Kumpera for noticing it!
+
+	This should fix the IndexOutOfRangeError which occur after heap
+	exceeds 8192 elements and is then shrunk below that value.
+
+2011-01-20  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Don't throw NREX when a cache item to be removed is null
+
 2010-11-19  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Disabled array clearing on heap resize in

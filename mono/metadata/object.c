@@ -162,6 +162,13 @@ static MonoRuntimeCallbacks callbacks;
 void
 mono_thread_set_main (MonoThread *thread)
 {
+	static gboolean registered = FALSE;
+
+	if (!registered) {
+		MONO_GC_REGISTER_ROOT_SINGLE (main_thread);
+		registered = TRUE;
+	}
+
 	main_thread = thread;
 }
 
@@ -1530,6 +1537,12 @@ mono_method_alloc_generic_virtual_thunk (MonoDomain *domain, int size)
 	p = mono_domain_code_reserve (domain, size);
 	*p = size;
 
+	mono_domain_lock (domain);
+	if (!domain->generic_virtual_thunks)
+		domain->generic_virtual_thunks = g_hash_table_new (NULL, NULL);
+	g_hash_table_insert (domain->generic_virtual_thunks, p, p);
+	mono_domain_unlock (domain);
+
 	return p + 1;
 }
 
@@ -1541,7 +1554,18 @@ invalidate_generic_virtual_thunk (MonoDomain *domain, gpointer code)
 {
 	guint32 *p = code;
 	MonoThunkFreeList *l = (MonoThunkFreeList*)(p - 1);
+	gboolean found = FALSE;
 
+	mono_domain_lock (domain);
+	if (!domain->generic_virtual_thunks)
+		domain->generic_virtual_thunks = g_hash_table_new (NULL, NULL);
+	if (g_hash_table_lookup (domain->generic_virtual_thunks, l))
+		found = TRUE;
+	mono_domain_unlock (domain);
+
+	if (!found)
+		/* Not allocated by mono_method_alloc_generic_virtual_thunk (), i.e. AOT */
+		return;
 	init_thunk_free_lists (domain);
 
 	while (domain->thunk_free_lists [0] && domain->thunk_free_lists [0]->length >= MAX_WAIT_LENGTH) {
@@ -1850,6 +1874,9 @@ mono_class_create_runtime_vtable (MonoDomain *domain, MonoClass *class, gboolean
 
 	if (class->generic_class && !class->vtable)
 		mono_class_check_vtable_constraints (class, NULL);
+
+	/* Initialize klass->has_finalize */
+	mono_class_has_finalizer (class);
 
 	if (class->exception_type) {
 		mono_domain_unlock (domain);
@@ -4368,7 +4395,7 @@ mono_class_get_allocation_ftn (MonoVTable *vtable, gboolean for_box, gboolean *p
 	if (!(mono_profiler_get_events () & MONO_PROFILE_ALLOCATIONS))
 		profile_allocs = FALSE;
 
-	if (vtable->klass->has_finalize || vtable->klass->marshalbyref || (mono_profiler_get_events () & MONO_PROFILE_ALLOCATIONS))
+	if (mono_class_has_finalizer (vtable->klass) || vtable->klass->marshalbyref || (mono_profiler_get_events () & MONO_PROFILE_ALLOCATIONS))
 		return mono_object_new_specific;
 
 	if (!vtable->klass->has_references) {
@@ -4429,6 +4456,9 @@ mono_object_clone (MonoObject *obj)
 {
 	MonoObject *o;
 	int size = obj->vtable->klass->instance_size;
+
+	if (obj->vtable->klass->rank)
+		return (MonoObject*)mono_array_clone ((MonoArray*)obj);
 
 	o = mono_object_allocate (size, obj->vtable);
 

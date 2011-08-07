@@ -19,7 +19,8 @@
 #include <sys/statvfs.h>
 #elif defined(HAVE_SYS_STATFS_H)
 #include <sys/statfs.h>
-#elif defined(HAVE_SYS_PARAM_H) && defined(HAVE_SYS_MOUNT_H)
+#endif
+#if defined(HAVE_SYS_PARAM_H) && defined(HAVE_SYS_MOUNT_H)
 #include <sys/param.h>
 #include <sys/mount.h>
 #endif
@@ -64,6 +65,7 @@ static gboolean file_setfiletime(gpointer handle,
 				 const WapiFileTime *create_time,
 				 const WapiFileTime *last_access,
 				 const WapiFileTime *last_write);
+static guint32 GetDriveTypeFromPath (const gchar *utf8_root_path_name);
 
 /* File handle is only signalled for overlapped IO */
 struct _WapiHandleOps _wapi_file_ops = {
@@ -3587,6 +3589,42 @@ guint32 GetTempPath (guint32 len, gunichar2 *buf)
 	return(ret);
 }
 
+#ifdef HAVE_GETFSSTAT
+/* Darwin has getfsstat */
+gint32 GetLogicalDriveStrings (guint32 len, gunichar2 *buf)
+{
+	struct statfs *stats;
+	int size, n, i;
+	gunichar2 *dir;
+	glong length, total = 0;
+	
+	n = getfsstat (NULL, 0, MNT_NOWAIT);
+	if (n == -1)
+		return 0;
+	size = n * sizeof (struct statfs);
+	stats = (struct statfs *) g_malloc (size);
+	if (stats == NULL)
+		return 0;
+	if (getfsstat (stats, size, MNT_NOWAIT) == -1){
+		g_free (stats);
+		return 0;
+	}
+	for (i = 0; i < n; i++){
+		dir = g_utf8_to_utf16 (stats [i].f_mntonname, -1, NULL, &length, NULL);
+		if (total + length < len){
+			memcpy (buf + total, dir, sizeof (gunichar2) * length);
+			buf [total+length] = 0;
+		} 
+		g_free (dir);
+		total += length + 1;
+	}
+	if (total < len)
+		buf [total] = 0;
+	total++;
+	g_free (stats);
+	return total;
+}
+#else
 /* In-place octal sequence replacement */
 static void
 unescape_octal (gchar *str)
@@ -3700,6 +3738,7 @@ GetLogicalDriveStrings (guint32 len, gunichar2 *buf)
 }
 #endif
 }
+#endif
 
 #if (defined(HAVE_STATVFS) || defined(HAVE_STATFS)) && !defined(PLATFORM_ANDROID)
 gboolean GetDiskFreeSpaceEx(const gunichar2 *path_name, WapiULargeInteger *free_bytes_avail,
@@ -3805,12 +3844,32 @@ gboolean GetDiskFreeSpaceEx(const gunichar2 *path_name, WapiULargeInteger *free_
 }
 #endif
 
+/*
+ * General Unix support
+ */
 typedef struct {
 	guint32 drive_type;
 	const gchar* fstype;
 } _wapi_drive_type;
 
 static _wapi_drive_type _wapi_drive_types[] = {
+#if PLATFORM_MACOSX
+	{ DRIVE_REMOTE, "afp" },
+	{ DRIVE_REMOTE, "autofs" },
+	{ DRIVE_CDROM, "cddafs" },
+	{ DRIVE_CDROM, "cd9660" },
+	{ DRIVE_RAMDISK, "devfs" },
+	{ DRIVE_FIXED, "exfat" },
+	{ DRIVE_RAMDISK, "fdesc" },
+	{ DRIVE_REMOTE, "ftp" },
+	{ DRIVE_FIXED, "hfs" },
+	{ DRIVE_FIXED, "msdos" },
+	{ DRIVE_REMOTE, "nfs" },
+	{ DRIVE_FIXED, "ntfs" },
+	{ DRIVE_REMOTE, "smbfs" },
+	{ DRIVE_FIXED, "udf" },
+	{ DRIVE_REMOTE, "webdav" },
+#else
 	{ DRIVE_RAMDISK, "ramfs"      },
 	{ DRIVE_RAMDISK, "tmpfs"      },
 	{ DRIVE_RAMDISK, "proc"       },
@@ -3841,6 +3900,7 @@ static _wapi_drive_type _wapi_drive_types[] = {
 	{ DRIVE_REMOTE,  "ncpfs"      },
 	{ DRIVE_REMOTE,  "coda"       },
 	{ DRIVE_REMOTE,  "afs"        },
+#endif
 	{ DRIVE_UNKNOWN, NULL         }
 };
 
@@ -3859,42 +3919,30 @@ static guint32 _wapi_get_drive_type(const gchar* fstype)
 	return current->drive_type;
 }
 
-guint32 GetDriveType(const gunichar2 *root_path_name)
+#if PLATFORM_MACOSX
+static guint32
+GetDriveTypeFromPath (const char *utf8_root_path_name)
 {
+	struct statfs buf;
+	
+	if (statfs (utf8_root_path_name, &buf) == -1)
+		return DRIVE_UNKNOWN;
+	return _wapi_get_drive_type (buf.f_fstypename);
+}
+#else
+static guint32
+GetDriveTypeFromPath (const gchar *utf8_root_path_name)
+{
+	guint32 drive_type;
 	FILE *fp;
 	gchar buffer [512];
 	gchar **splitted;
-	gchar *utf8_root_path_name;
-	guint32 drive_type;
-
-	if (root_path_name == NULL) {
-		utf8_root_path_name = g_strdup (g_get_current_dir());
-		if (utf8_root_path_name == NULL) {
-			return(DRIVE_NO_ROOT_DIR);
-		}
-	}
-	else {
-		utf8_root_path_name = mono_unicode_to_external (root_path_name);
-		if (utf8_root_path_name == NULL) {
-#ifdef DEBUG
-			g_message("%s: unicode conversion returned NULL", __func__);
-#endif
-			return(DRIVE_NO_ROOT_DIR);
-		}
-		
-		/* strip trailing slash for compare below */
-		if (g_str_has_suffix(utf8_root_path_name, "/")) {
-			utf8_root_path_name[strlen(utf8_root_path_name) - 1] = 0;
-		}
-	}
 
 	fp = fopen ("/etc/mtab", "rt");
 	if (fp == NULL) {
 		fp = fopen ("/etc/mnttab", "rt");
-		if (fp == NULL) {
-			g_free (utf8_root_path_name);
+		if (fp == NULL) 
 			return(DRIVE_UNKNOWN);
-		}
 	}
 
 	drive_type = DRIVE_NO_ROOT_DIR;
@@ -3918,8 +3966,77 @@ guint32 GetDriveType(const gunichar2 *root_path_name)
 	}
 
 	fclose (fp);
+	return drive_type;
+}
+#endif
+
+guint32 GetDriveType(const gunichar2 *root_path_name)
+{
+	gchar *utf8_root_path_name;
+	guint32 drive_type;
+
+	if (root_path_name == NULL) {
+		utf8_root_path_name = g_strdup (g_get_current_dir());
+		if (utf8_root_path_name == NULL) {
+			return(DRIVE_NO_ROOT_DIR);
+		}
+	}
+	else {
+		utf8_root_path_name = mono_unicode_to_external (root_path_name);
+		if (utf8_root_path_name == NULL) {
+#ifdef DEBUG
+			g_message("%s: unicode conversion returned NULL", __func__);
+#endif
+			return(DRIVE_NO_ROOT_DIR);
+		}
+		
+		/* strip trailing slash for compare below */
+		if (g_str_has_suffix(utf8_root_path_name, "/") && utf8_root_path_name [1] != 0) {
+			utf8_root_path_name[strlen(utf8_root_path_name) - 1] = 0;
+		}
+	}
+	drive_type = GetDriveTypeFromPath (utf8_root_path_name);
 	g_free (utf8_root_path_name);
 
 	return (drive_type);
 }
 
+/* Linux has struct statfs which has a different layout */
+#if PLATFORM_MACOSX
+gboolean
+GetVolumeInformation (const gunichar2 *path, gunichar2 *volumename, int volumesize, int *outserial, int *maxcomp, int *fsflags, gunichar2 *fsbuffer, int fsbuffersize)
+{
+	gchar *utfpath;
+	struct statfs stat;
+	gboolean status = FALSE;
+	glong len;
+	
+	// We only support getting the file system type
+	if (fsbuffer == NULL)
+		return 0;
+	
+	utfpath = mono_unicode_to_external (path);
+	if (statfs (utfpath, &stat) != -1){
+		gunichar2 *ret = g_utf8_to_utf16 (stat.f_fstypename, -1, NULL, &len, NULL);
+		if (ret != NULL && len < fsbuffersize){
+			memcpy (fsbuffer, ret, len * sizeof (gunichar2));
+			fsbuffer [len] = 0;
+			status = TRUE;
+		}
+		if (ret != NULL)
+			g_free (ret);
+	}
+	g_free (utfpath);
+	return status;
+}
+/* Windows has its own GetVolumeInformation */
+#elif !HOST_WIN32 
+/*
+ * Linux does not this case, as the processing is done in managed code, by parsing /etc/mtab
+ */
+gboolean
+GetVolumeInformation (const gunichar2 *path, gunichar2 *volumename, int volumesize, int *outserial, int *maxcomp, int *fsflags, gunichar2 *fsbuffer, int fsbuffersize)
+{
+	return FALSE;
+}
+#endif

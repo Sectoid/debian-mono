@@ -1,3 +1,18 @@
+2011-03-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[msvc] New mono.def
+
+2011-03-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[windows] Update create-defs.pl
+
+	Library is now mono-2.0, exclude mono_gc_pthread_* from the
+	output.
+
+2011-01-19  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Dist more files needed by MSVC build
+
 2011-01-11  Geoff Norton  <grompf@sublimeintervention.com>
 
 	Fix the win32 build

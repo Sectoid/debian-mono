@@ -901,7 +901,16 @@ mono_class_inflate_generic_method_full_checked (MonoMethod *method, MonoClass *k
 		method = imethod->declaring;
 	}
 
-	if (!method->is_generic && !method->klass->generic_container)
+	/*
+	 * A method only needs to be inflated if the context has argument for which it is
+	 * parametric. Eg:
+	 * 
+	 * class Foo<T> { void Bar(); } - doesn't need to be inflated if only mvars' are supplied
+	 * class Foo { void Bar<T> (); } - doesn't need to be if only vars' are supplied
+	 * 
+	 */
+	if (!((method->is_generic && context->method_inst) || 
+		(method->klass->generic_container && context->class_inst)))
 		return method;
 
 	/*
@@ -1668,10 +1677,16 @@ mono_class_layout_fields (MonoClass *class)
 		if (layout != TYPE_ATTRIBUTE_AUTO_LAYOUT)
 			passes = 1;
 
-		if (class->parent)
+		if (class->parent) {
+			mono_class_setup_fields (class->parent);
+			if (class->parent->exception_type) {
+				mono_class_set_failure (class, MONO_EXCEPTION_TYPE_LOAD, NULL);
+				return;
+			}
 			real_size = class->parent->instance_size;
-		else
+		} else {
 			real_size = sizeof (MonoObject);
+		}
 
 		for (pass = 0; pass < passes; ++pass) {
 			for (i = 0; i < top; i++){
@@ -2392,6 +2407,16 @@ mono_unload_interface_ids (MonoBitSet *bitset)
 	mono_loader_unlock ();
 }
 
+void
+mono_unload_interface_id (MonoClass *class)
+{
+	if (class->interface_id) {
+		mono_loader_lock ();
+		mono_bitset_clear (global_interface_bitset, class->interface_id);
+		mono_loader_unlock ();
+	}
+}
+
 /*
  * mono_get_unique_iid:
  * @class: interface
@@ -2422,16 +2447,18 @@ mono_get_unique_iid (MonoClass *class)
 	}
 	mono_bitset_set (global_interface_bitset, iid);
 	/* set the bit also in the per-image set */
-	if (class->image->interface_bitset) {
-		if (iid >= mono_bitset_size (class->image->interface_bitset)) {
-			MonoBitSet *new_set = mono_bitset_clone (class->image->interface_bitset, iid + 1);
-			mono_bitset_free (class->image->interface_bitset);
-			class->image->interface_bitset = new_set;
+	if (!class->generic_class) {
+		if (class->image->interface_bitset) {
+			if (iid >= mono_bitset_size (class->image->interface_bitset)) {
+				MonoBitSet *new_set = mono_bitset_clone (class->image->interface_bitset, iid + 1);
+				mono_bitset_free (class->image->interface_bitset);
+				class->image->interface_bitset = new_set;
+			}
+		} else {
+			class->image->interface_bitset = mono_bitset_new (iid + 1, 0);
 		}
-	} else {
-		class->image->interface_bitset = mono_bitset_new (iid + 1, 0);
+		mono_bitset_set (class->image->interface_bitset, iid);
 	}
-	mono_bitset_set (class->image->interface_bitset, iid);
 
 #ifndef MONO_SMALL_CONFIG
 	if (mono_print_vtable) {
@@ -4718,6 +4745,7 @@ mono_class_init (MonoClass *class)
 		/* AOT case */
 		class->vtable_size = cached_info.vtable_size;
 		class->has_finalize = cached_info.has_finalize;
+		class->has_finalize_inited = TRUE;
 		class->ghcimpl = cached_info.ghcimpl;
 		class->has_cctor = cached_info.has_cctor;
 	} else if (class->rank == 1 && class->byval_arg.type == MONO_TYPE_SZARRAY) {
@@ -4735,12 +4763,14 @@ mono_class_init (MonoClass *class)
 		} else {
 			class->vtable_size = szarray_vtable_size[slot];
 		}
+		class->has_finalize_inited = TRUE;
 	} else if (class->generic_class && !MONO_CLASS_IS_INTERFACE (class)) {
 		MonoClass *gklass = class->generic_class->container_class;
 
 		/* Generic instance case */
 		class->ghcimpl = gklass->ghcimpl;
-		class->has_finalize = gklass->has_finalize;
+		class->has_finalize = mono_class_has_finalizer (gklass);
+		class->has_finalize_inited = TRUE;
 		class->has_cctor = gklass->has_cctor;
 
 		mono_class_setup_vtable (gklass);
@@ -4764,45 +4794,6 @@ mono_class_init (MonoClass *class)
 			}
 		}
 		*/
-
-		/* Interfaces and valuetypes are not supposed to have finalizers */
-		if (!(MONO_CLASS_IS_INTERFACE (class) || class->valuetype)) {
-			MonoMethod *cmethod = NULL;
-
-			if (class->parent && class->parent->has_finalize) {
-				class->has_finalize = 1;
-			} else {
-				if (class->type_token) {
-					cmethod = find_method_in_metadata (class, "Finalize", 0, METHOD_ATTRIBUTE_VIRTUAL);
-				} else if (class->parent) {
-					/* FIXME: Optimize this */
-					mono_class_setup_vtable (class);
-					if (class->exception_type || mono_loader_get_last_error ())
-						goto leave;
-					cmethod = class->vtable [finalize_slot];
-				}
-
-				if (cmethod) {
-					/* Check that this is really the finalizer method */
-					mono_class_setup_vtable (class);
-					if (class->exception_type || mono_loader_get_last_error ())
-						goto leave;
-
-					g_assert (class->vtable_size > finalize_slot);
-
-					class->has_finalize = 0;
-					if (class->parent) { 
-						cmethod = class->vtable [finalize_slot];
-						g_assert (cmethod);
-						if (cmethod->is_inflated)
-							cmethod = ((MonoMethodInflated*)cmethod)->declaring;
-						if (cmethod != default_finalize) {
-							class->has_finalize = 1;
-						}
-					}
-				}
-			}
-		}
 
 		/* C# doesn't allow interfaces to have cctors */
 		if (!MONO_CLASS_IS_INTERFACE (class) || class->image != mono_defaults.corlib) {
@@ -4885,6 +4876,66 @@ mono_class_init (MonoClass *class)
 		mono_debugger_class_init_func (class);
 
 	return class->exception_type == MONO_EXCEPTION_NONE;
+}
+
+/*
+ * mono_class_has_finalizer:
+ *
+ *   Return whenever KLASS has a finalizer, initializing klass->has_finalizer in the
+ * process.
+ */
+gboolean
+mono_class_has_finalizer (MonoClass *klass)
+{
+	if (!klass->has_finalize_inited) {
+		MonoClass *class = klass;
+
+		mono_loader_lock ();
+
+		/* Interfaces and valuetypes are not supposed to have finalizers */
+		if (!(MONO_CLASS_IS_INTERFACE (class) || class->valuetype)) {
+			MonoMethod *cmethod = NULL;
+
+			if (class->parent && class->parent->has_finalize) {
+				class->has_finalize = 1;
+			} else {
+				if (class->parent) {
+					/*
+					 * Can't search in metadata for a method named Finalize, because that
+					 * ignores overrides.
+					 */
+					mono_class_setup_vtable (class);
+					if (class->exception_type || mono_loader_get_last_error ())
+						goto leave;
+					cmethod = class->vtable [finalize_slot];
+				}
+
+				if (cmethod) {
+					g_assert (class->vtable_size > finalize_slot);
+
+					class->has_finalize = 0;
+					if (class->parent) { 
+						if (cmethod->is_inflated)
+							cmethod = ((MonoMethodInflated*)cmethod)->declaring;
+						if (cmethod != default_finalize) {
+							class->has_finalize = 1;
+						}
+					}
+				}
+			}
+		}
+
+		mono_memory_barrier ();
+		klass->has_finalize_inited = TRUE;
+
+		mono_loader_unlock ();
+	}
+
+	return klass->has_finalize;
+
+ leave:
+	mono_loader_unlock ();
+	return FALSE;
 }
 
 gboolean
@@ -5597,40 +5648,65 @@ make_generic_param_class (MonoGenericParam *param, MonoImage *image, gboolean is
 }
 
 #define FAST_CACHE_SIZE 16
-static MonoClass *var_cache_fast [FAST_CACHE_SIZE];
-static MonoClass *mvar_cache_fast [FAST_CACHE_SIZE];
-static GHashTable *var_cache_slow;
-static GHashTable *mvar_cache_slow;
 
 static MonoClass *
 get_anon_gparam_class (MonoGenericParam *param, gboolean is_mvar)
 {
 	int n = mono_generic_param_num (param);
+	MonoImage *image = param->image;
 	GHashTable *ht;
 
-	if (n < FAST_CACHE_SIZE)
-		return (is_mvar ? mvar_cache_fast : var_cache_fast) [n];
-	ht = is_mvar ? mvar_cache_slow : var_cache_slow;
-	return ht ? g_hash_table_lookup (ht, GINT_TO_POINTER (n)) : NULL;
+	g_assert (image);
+
+	if (n < FAST_CACHE_SIZE) {
+		if (is_mvar)
+			return image->mvar_cache_fast ? image->mvar_cache_fast [n] : NULL;
+		else
+			return image->var_cache_fast ? image->var_cache_fast [n] : NULL;
+	} else {
+		ht = is_mvar ? image->mvar_cache_slow : image->var_cache_slow;
+		return ht ? g_hash_table_lookup (ht, GINT_TO_POINTER (n)) : NULL;
+	}
 }
 
+/*
+ * LOCKING: Acquires the loader lock.
+ */
 static void
 set_anon_gparam_class (MonoGenericParam *param, gboolean is_mvar, MonoClass *klass)
 {
 	int n = mono_generic_param_num (param);
+	MonoImage *image = param->image;
 	GHashTable *ht;
 
+	g_assert (image);
+
 	if (n < FAST_CACHE_SIZE) {
-		(is_mvar ? mvar_cache_fast : var_cache_fast) [n] = klass;
+		if (is_mvar) {
+			/* No locking needed */
+			if (!image->mvar_cache_fast)
+				image->mvar_cache_fast = mono_image_alloc0 (image, sizeof (MonoClass*) * FAST_CACHE_SIZE);
+			image->mvar_cache_fast [n] = klass;
+		} else {
+			if (!image->var_cache_fast)
+				image->var_cache_fast = mono_image_alloc0 (image, sizeof (MonoClass*) * FAST_CACHE_SIZE);
+			image->var_cache_fast [n] = klass;
+		}
 		return;
 	}
-	ht = is_mvar ? mvar_cache_slow : var_cache_slow;
+	ht = is_mvar ? image->mvar_cache_slow : image->var_cache_slow;
 	if (!ht) {
-		ht = g_hash_table_new (NULL, NULL);
-		if (is_mvar)
-			mvar_cache_slow = ht;
-		else
-			var_cache_slow = ht;
+		mono_loader_lock ();
+		ht = is_mvar ? image->mvar_cache_slow : image->var_cache_slow;
+		if (!ht) {
+			ht = g_hash_table_new (NULL, NULL);
+			mono_memory_barrier ();
+			if (is_mvar)
+				image->mvar_cache_slow = ht;
+			else
+				image->var_cache_slow = ht;
+		}
+		mono_loader_unlock ();
 	}
 
 	g_hash_table_insert (ht, GINT_TO_POINTER (n), klass);
@@ -7020,7 +7096,8 @@ mono_class_from_name (MonoImage *image, const char* name_space, const char *name
 		name = buf;
 	}
 
-	if (get_class_from_name) {
+	/* FIXME: get_class_from_name () can't handle types in the EXPORTEDTYPE table */
+	if (get_class_from_name && image->tables [MONO_TABLE_EXPORTEDTYPE].rows == 0) {
 		gboolean res = get_class_from_name (image, name_space, name, &class);
 		if (res) {
 			if (!class)
@@ -7171,10 +7248,11 @@ mono_class_is_variant_compatible (MonoClass *klass, MonoClass *oklass)
 	int j;
 	MonoType **klass_argv, **oklass_argv;
 	MonoClass *klass_gtd = mono_class_get_generic_type_definition (klass);
+	MonoClass *oklass_gtd = mono_class_get_generic_type_definition (oklass);
 	MonoGenericContainer *container = klass_gtd->generic_container;
 
 	/*Viable candidates are instances of the same generic interface*/
-	if (mono_class_get_generic_type_definition (oklass) != klass_gtd)
+	if (mono_class_get_generic_type_definition (oklass) != klass_gtd || oklass == klass_gtd)
 		return FALSE;
 
 	klass_argv = &klass->generic_class->context.class_inst->type_argv [0];
@@ -7230,8 +7308,20 @@ mono_class_is_assignable_from (MonoClass *klass, MonoClass *oklass)
 		return klass == oklass;
 
 	if (MONO_CLASS_IS_INTERFACE (klass)) {
-		if ((oklass->byval_arg.type == MONO_TYPE_VAR) || (oklass->byval_arg.type == MONO_TYPE_MVAR))
+		if ((oklass->byval_arg.type == MONO_TYPE_VAR) || (oklass->byval_arg.type == MONO_TYPE_MVAR)) {
+			MonoGenericParam *gparam = oklass->byval_arg.data.generic_param;
+			MonoClass **constraints = mono_generic_container_get_param_info (gparam->owner, gparam->num)->constraints;
+			int i;
+
+			if (constraints) {
+				for (i = 0; constraints [i]; ++i) {
+					if (mono_class_is_assignable_from (klass, constraints [i]))
+						return TRUE;
+				}
+			}
+
 			return FALSE;
+		}
 
 		/* interface_offsets might not be set for dynamic classes */
 		if (oklass->ref_info_handle && !oklass->interface_bitmap)
@@ -7314,7 +7404,7 @@ mono_class_is_variant_compatible_slow (MonoClass *klass, MonoClass *oklass)
 	MonoGenericContainer *container = klass_gtd->generic_container;
 
 	/*Viable candidates are instances of the same generic interface*/
-	if (mono_class_get_generic_type_definition (oklass) != klass_gtd)
+	if (mono_class_get_generic_type_definition (oklass) != klass_gtd || oklass == klass_gtd)
 		return FALSE;
 
 	klass_argv = &klass->generic_class->context.class_inst->type_argv [0];
@@ -7482,7 +7572,7 @@ mono_class_get_finalizer (MonoClass *klass)
 
 	if (!klass->inited)
 		mono_class_init (klass);
-	if (!klass->has_finalize)
+	if (!mono_class_has_finalizer (klass))
 		return NULL;
 
 	if (mono_class_get_cached_class_info (klass, &cached_info))
