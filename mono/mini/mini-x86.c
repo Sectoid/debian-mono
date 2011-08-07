@@ -2185,18 +2185,33 @@ emit_move_return_value (MonoCompile *cfg, MonoInst *ins, guint8 *code)
 	return code;
 }
 
+#ifdef __APPLE__
+static int tls_gs_offset;
+#endif
+
 gboolean
 mono_x86_have_tls_get (void)
 {
 #ifdef __APPLE__
+	static gboolean have_tls_get = FALSE;
+	static gboolean inited = FALSE;
+
+	if (inited)
+		return have_tls_get;
+
 	guint32 *ins = (guint32*)pthread_getspecific;
 	/*
 	 * We're looking for these two instructions:
 	 *
 	 * mov    0x4(%esp),%eax
-	 * mov    %gs:0x48(,%eax,4),%eax
+	 * mov    %gs:[offset](,%eax,4),%eax
 	 */
-	return ins [0] == 0x0424448b && ins [1] == 0x85048b65 && ins [2] == 0x00000048;
+	have_tls_get = ins [0] == 0x0424448b && ins [1] == 0x85048b65;
+	tls_gs_offset = ins [2];
+
+	inited = TRUE;
+
+	return have_tls_get;
 #else
 	return TRUE;
 #endif
@@ -2219,7 +2234,7 @@ mono_x86_emit_tls_get (guint8* code, int dreg, int tls_offset)
 {
 #if defined(__APPLE__)
 	x86_prefix (code, X86_GS_PREFIX);
-	x86_mov_reg_mem (code, dreg, 0x48 + tls_offset * 4, 4);
+	x86_mov_reg_mem (code, dreg, tls_gs_offset + (tls_offset * 4), 4);
 #elif defined(TARGET_WIN32)
 	/* 
 	 * See the Under the Hood article in the May 1996 issue of Microsoft Systems 
@@ -4594,10 +4609,12 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			break;
 		case OP_INSERTX_R8_SLOW:
 			x86_fst_membase (code, ins->backend.spill_var->inst_basereg, ins->backend.spill_var->inst_offset, TRUE, TRUE);
+			if (cfg->verbose_level)
+				printf ("CONVERTING a OP_INSERTX_R8_SLOW %d offset %x\n", ins->inst_c0, offset);
 			if (ins->inst_c0)
 				x86_sse_alu_pd_reg_membase (code, X86_SSE_MOVHPD_REG_MEMBASE, ins->dreg, ins->backend.spill_var->inst_basereg, ins->backend.spill_var->inst_offset);
 			else
-				x86_sse_alu_pd_reg_membase (code, X86_SSE_MOVSD_REG_MEMBASE, ins->dreg, ins->backend.spill_var->inst_basereg, ins->backend.spill_var->inst_offset);
+				x86_movsd_reg_membase (code, ins->dreg, ins->backend.spill_var->inst_basereg, ins->backend.spill_var->inst_offset);
 			break;
 
 		case OP_STOREX_MEMBASE_REG:
@@ -6429,7 +6446,8 @@ gboolean
 mono_arch_is_single_step_event (void *info, void *sigctx)
 {
 #ifdef TARGET_WIN32
-	EXCEPTION_RECORD* einfo = (EXCEPTION_RECORD*)info;	/* Sometimes the address is off by 4 */
+	EXCEPTION_RECORD* einfo = ((EXCEPTION_POINTERS*)info)->ExceptionRecord;	/* Sometimes the address is off by 4 */
+
 	if ((einfo->ExceptionInformation[1] >= ss_trigger_page && (guint8*)einfo->ExceptionInformation[1] <= (guint8*)ss_trigger_page + 128))
 		return TRUE;
 	else
@@ -6448,7 +6466,7 @@ gboolean
 mono_arch_is_breakpoint_event (void *info, void *sigctx)
 {
 #ifdef TARGET_WIN32
-	EXCEPTION_RECORD* einfo = (EXCEPTION_RECORD*)info;	/* Sometimes the address is off by 4 */
+	EXCEPTION_RECORD* einfo = ((EXCEPTION_POINTERS*)info)->ExceptionRecord;	/* Sometimes the address is off by 4 */
 	if ((einfo->ExceptionInformation[1] >= bp_trigger_page && (guint8*)einfo->ExceptionInformation[1] <= (guint8*)bp_trigger_page + 128))
 		return TRUE;
 	else

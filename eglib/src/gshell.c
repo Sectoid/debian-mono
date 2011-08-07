@@ -57,7 +57,7 @@ split_cmdline (const gchar *cmdline, GPtrArray *array, GError **error)
 		} else if (quote_char) {
 			if (c == quote_char) {
 				quote_char = '\0';
-				if (fresh && g_ascii_isspace (*ptr)){
+				if (fresh && (g_ascii_isspace (*ptr) || *ptr == '\0')){
 					g_ptr_array_add (array, g_string_free (str, FALSE));
 					str = g_string_new ("");
 				}
@@ -225,7 +225,7 @@ g_shell_unquote (const gchar *quoted_string, GError **error)
 			}
 		} else if (*p == '\\'){
 			char c = *(++p);
-			if (!(c == '$' || c == '"' || c == '\\' || c == '`' || c == 0))
+			if (!(c == '$' || c == '"' || c == '\\' || c == '`' || c == '\'' || c == 0 ))
 				g_string_append_c (result, '\\');
 			if (c == 0)
 				break;

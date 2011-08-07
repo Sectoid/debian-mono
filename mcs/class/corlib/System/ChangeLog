@@ -1,3 +1,52 @@
+2011-07-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Move innerExceptions internal null check at the right place.
+
+2011-07-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Makes AggregateException ToString output closer to .NET one
+
+2011-07-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix AggregateException behavior
+
+2011-07-12  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Avoid a .cctor on the initialization path.
+
+2011-03-23  Miguel de Icaza  <miguel@gnome.org>
+
+	Add Environment.IsMacOS for handling OSX specific bits in corlib
+
+2011-03-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement OperatingSystem.ServicePack. Fixes #681552.
+
+2011-03-11  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Cache NewLine per AppDomain.
+
+2011-02-05  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[threadpool] Added dynamic concurrent queue implementation
+
+	Replace the big lock around the list+array used to queue work
+	items with a dynamic concurrent queue to reduce contention.
+
+2011-02-25  Miguel de Icaza  <miguel@gnome.org>
+
+	Fix build
+
+2011-02-24  Miguel de Icaza  <miguel@gnome.org>
+
+	[TerminfoDriver] be more tolerant to failures, and fallback
+	gracefully, instead of aborting
+
+2011-02-24  Miguel de Icaza  <miguel@gnome.org>
+
+	Do not throw exceptions, instead return a sensible value, fixes
+	656468
+
 2011-02-19  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Fix the check for version and PublicKeyToken

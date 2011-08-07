@@ -1,3 +1,8 @@
+2011-04-21  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented composite scripts support in
+	System.Web.Extensions
+
 2011-01-03  Marek Habersack  <grendel@twistedcode.net>
 
 	Fix for bug #659064. Resource URLs must always be the same.

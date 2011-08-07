@@ -1,3 +1,27 @@
+2011-04-27  Atsushi Eno  <atsushi@ximian.com>
+
+	Use FindCritera/ResolveCriteria Duration properties for
+	DiscoveryEndpoint timeout.
+
+2011-04-27  Atsushi Eno  <atsushi@ximian.com>
+
+	Log UDP messages (using System.ServiceModel internals via IVT).
+
+2011-03-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix MessageID element name in discovery contracts.
+
+2011-03-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove wrong overrides in RequestChannelBase in discovery.
+
+2011-02-24  Atsushi Eno  <atsushi@ximian.com>
+
+	To header rewrite only happens in Adhoc mode.
+
+	Update contracts to comply with that and make it consistent
+	between versions.
+
 2011-02-15  Atsushi Eno  <atsushi@ximian.com>
 
 	support UdpTranspoerSettings.MulticastInterfaceId. This should fix

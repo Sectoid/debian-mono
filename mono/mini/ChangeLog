@@ -1,3 +1,297 @@
+2011-07-29  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Use wrappers for accessing socket errors. Cygwin does not have
+	some errors in errno.h. Fixes Windows build.
+
+2011-07-25  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mini.c (mini_thread_cleanup): Under some rare cases it's
+	possible to have a NULL lmf.
+
+2011-07-26  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Make the card table on AMD64 correct for 64 bit nursery
+	addresses.
+
+2011-07-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a crash in the soft-float decompose code when a branch
+	following an fcompare is optimized away. Fixes #705186.
+
+2011-07-15  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	If a thread abort is fatal, print the exception before dying.
+
+2011-07-15  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mini-exceptions.c (mono_handle_exception_internal_first_pass):
+	Don't trim the trace list if we find a filter clause from a
+	wrapper. This makes stacktraces across MRI's work. Extract trace
+	trimming into a macro to reduce code duplication.
+
+2011-07-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a test for 7cb704d9a9ec73eb225c27b51e7f47de033e0ac0.
+
+2011-07-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid register allocation problems when a try clause is nested
+	inside a handler block.
+
+2011-07-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the length of r4const on arm.
+
+2011-06-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Use TARGET_ANDROID instead of PLATFORM_ANDROID in one place.
+
+2011-07-09  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix signal chaining to handle a stupid previous handler.
+
+2011-07-09  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Arm has MONO_ARCH_HAVE_SIGCTX_TO_MONOCTX. This gives us nice
+	stacktraces on unhandles exceptions.
+
+2011-07-08  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Disable the exception thread under iOS since it's neither needed
+	nor working.
+
+2011-06-15  Zoltan Varga  <vargaz@gmail.com>
+
+	Apply a workaround for a gcc 4.6 problem on arm.
+
+2011-06-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Add an assert to detect TLS mismatches between the aot compilation
+	and runtime environment.
+
+2011-06-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a corner case where an inlined bblock which had its next_bb
+	set was the last bblock in a method. Fixes #693905.
+
+2011-06-03  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Simplify building with the Android NDK.
+
+	Check --host against *-*-linux-android* for Android-specific
+	configure fixes, and improve **/Makefile.am to simplify Android
+	support:
+
+	./configure \ --build=`./config.guess` \
+	--host=armv5-linux-androideabi \ --target=armv5-linux-androideabi
+	\ --enable-nls=no --with-mcs-docs=no --enable-mcs-build=no \
+	CC="/path/to/ndk/arm-linux-androideabi-gcc
+	--sysroot=/path/to/sysroot" \ AR="..." AS="..." CPP="..."
+	CXX="..." LD="..." RANLIB="..." STRIP="..."
+	CFLAGS="-DARM_FPU_NONE=1" CXXFLAGS="-DARM_FPU_NONE=1"
+
+	See also Android NDK docs/STANDALONE-TOOLCHAIN.html.
+
+	The Android NDK/bionic is "interesting", in that it's lacking
+	header files and macros normally present on Linux which otherwise
+	break the build (e.g. no <link.h> which breaks Boehm support).
+	Using --host with an android target works around the known issues,
+	simplifying the building of libmonosgen-2.0.so with the Android
+	NDK toolchain.
+
+2011-06-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the previous change.
+
+2011-06-02  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix NOMAP32BIT support in specific trampolines.
+
+2011-05-30  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix sgen under xen
+
+2011-05-25  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix mul_imm under amd64
+
+2011-04-27  Martin Baulig  <martin@novell.com>
+
+	Add socket timeouts to the soft debugger.
+
+	SDB now support setting a send/receive timeout on the client's
+	side of the communication socket. To make this work, the server
+	sends a special 'keepalive' event when using receive timeouts.
+
+	There's a new method VirtualMachine.SetSocketTimeouts() to enable
+	this feature.
+
+2011-05-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add regression test for #691057
+
+2011-05-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* local-propagation.c (mono_local_deadce): Don't perform reverse
+	copyprop on simd insert ops. The backend requires dreg and sreg1
+	to match.
+
+	* mini-x86.c (mono_arch_output_basic_block): Fix insert_r8_slow
+	for the X element.
+
+	Fixes a few bugs due to #691057
+
+2011-04-28  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Avoid a needless buffer copy that is susceptible to overflow
+
+2011-04-28  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix loading from volatile base addresses in the LLVM backend.
+	Fixes #690020.
+
+2011-04-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix AOT support for isinst_with_cache wrappers. Fixes #687865.
+
+2011-04-21  Geoff Norton  <grompf@sublimeintervention.com>
+
+	We support hard breakpoints on arm, not sure why this is here at
+	all
+
+2011-04-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Allow storing managed pointers into 'native int' in the JIT,
+	fsharp generates code without a conv.i. Fixes #688008.
+
+2011-04-13  Martin Baulig  <martin@novell.com>
+
+	Oooops, it's supposed to be 'if (!strcmp (...))' !
+
+2011-04-12  Martin Baulig  <martin@novell.com>
+
+	Ooops, also enable explicit nulls.
+
+2011-04-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid putting a seq point at the beginning of finally clauses,
+	they already have one. Fixes #686269.
+
+2011-04-11  Martin Baulig  <martin@novell.com>
+
+	Add "soft breakpoint" support for ARM.
+
+	There is some broken hardware like the HTC Desire HD where we
+	can't use any signals for single-stepping and breakpoints.
+
+	See
+	http://baulig.blogspot.com/2011/04/limiting-page-faults-on-htc-desire-hd.html
+	for details.
+
+	To work around this, we read from a variable instead us using
+	trigger pages.
+
+2011-04-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Revert "Disable SMP on arm until #683409 is fixed."
+
+	This reverts commit 29550902eec1ab9dca1e64f51829b1032577748c.
+
+	This is now longer needed as #683409 is fixed.
+
+2011-04-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable SMP on arm until #683409 is fixed.
+
+2011-03-23  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	--version shows kqueue now.
+
+2011-03-22  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Set SO_REUSEADDR on listening sockets
+
+2011-03-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the length of 'break' on ppc.
+
+2011-03-18  Mark Sciabica  <msciabica@itracs.com>
+
+	Fix exception handling on windows x64.
+
+2011-03-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Switch to the domain of the assembly in question while executing
+	CMD_ASSEMBLY_GET_TYPE, so referenced assemblies are found. Fixes
+	#679586.
+
+2011-03-16  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix support for generic virtual thunks in full-aot.
+
+2011-03-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid calling class cctors during JITting when the same class
+	needs initialization more than once during a method. Fixes
+	#679467.
+
+2011-03-14  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[threads] appdomain_refs push/pop speedup
+
+	Replace the GSList with an array to avoid malloc/free on every
+	push/pop call.
+
+2011-03-08  Lucas Meijer  <lucas@unity3d.com>
+
+	backport of ee5a8cf9d09d525741e94b380bba411c6915026a, still under
+	the mit x11 license.
+
+2011-03-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Mark threads created when calling from native code into the
+	runtime as background threads. Fixes #678164.
+
+2011-03-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid an assert when returning nullable null's from sdb invokes.
+	Fixes #676587.
+
+2011-03-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Log all sdb log messages to the log file instead of stdout.
+
+2011-03-03  Geoff Norton  <grompf@sublimeintervention.com>
+
+	When running in a linked environment, this file might not exist
+
+2011-02-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Cache the result of the pthread_specific disassembly when checking
+	for fast tls on darwin
+
+2011-02-25  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix previous arm patch.
+
+2011-02-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix stop_debugger_thread () on windows. Shutdown both ends of the
+	connection socket since shutting down only the receive part
+	doesn't seem to work on windows. Wait for the debugger thread to
+	exit in a loop, since we don't use condvars on windows.
+
+2011-02-23  Martin Baulig  <martin@novell.com>
+
+	Fix bug #669836:
+
+	Treat exceptions that are caught by mono_runtime_invoke() as
+	unhandled in SDB.
+
+2011-02-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Only use memory barriers on arm when running on armv6 or later.
+
 2011-02-22  Zoltan Varga  <vargaz@gmail.com>
 
 	Fix the passing of the mrgctx argument in case of a

@@ -1,3 +1,16 @@
+2011-04-14  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Shorten code in WebConfigurationHost
+
+2011-04-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] A more effective way of looking for web.config
+
+2011-03-30  Martin  <test051102@hotmail.com>
+
+	[asp.net] Fix for bug #658184. AuthorizationRule restores its
+	Action when unmerging.
+
 2011-02-09  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Implemented CustomErrorsRedirectMode

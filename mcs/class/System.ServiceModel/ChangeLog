@@ -1,3 +1,79 @@
+2011-07-19  Atsushi Eno  <atsushieno@veritas-vos-liberabit.com>
+
+	support action parameter in SOAP 1.2 content type. Close pull
+	request #133.
+
+2011-05-11  Atsushi Eno  <atsushi@ximian.com>
+
+	Add PipeException. fixed bug #692987 by Eberhard Beilharz.
+
+2011-05-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Add new MetadataSetTest and fix couple of minor issues.
+
+2011-05-09  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing XmlSerializerMessageContractImporter work.
+
+	It is part of bugfix #670945.
+
+2011-04-30  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Avoid doubly declaring some types in the 2.1 profile for mobile
+
+2011-04-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Log net.tcp transport messages too.
+
+2011-04-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Actual source directory changes after changing namespaces.
+
+2011-04-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Use XPathNavigator output in WCF diagnostics. Got sorta-valid
+	message trace.
+
+2011-04-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Add ServiceKnownTypeAttributeTest.
+
+2011-04-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Add XmlSerializerFormatAttribute support in mobile profiles.
+
+	Unlike moonlight, XmlSerializer is in the framework lib (sys.xml),
+	so we don't have to split them out to Sys.Xml.Serialization.dll.
+
+2011-04-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Split XmlMessagesFormatter out. It is for use in
+	Sys.Xml.Serialization.dll.
+
+	XmlMessagesFormatter will be used in Sys.Xml.Serialization.dll and
+	this type should not be excluded by !NET_2_1 or !MOONLIGHT. It is
+	not doable if this class is in BaseMessagesFormatter.cs.
+
+2011-04-07  Atsushi Eno  <atsushi@ximian.com>
+
+	DataContractSerializerOperationBehavior is done too. Fix
+	moonlight_raw build.
+
+2011-04-04  Atsushi Eno  <atsushi@ximian.com>
+
+	Add WCF diagnostics implementation (not working yet).
+
+2011-03-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Add endpoint behavior support in NET_2_1, which involved not a few
+	additions.
+
+2011-03-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Replace SRE-based client proxy generator with RealProxy.
+
+	Now PE verified workaround should be unnecessary.
+
 2011-02-16  Atsushi Eno  <atsushi@ximian.com>
 
 	xsi:type parsing is wrong in default namespace resolution.

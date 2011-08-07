@@ -57,6 +57,10 @@ namespace System.ServiceModel.Channels.Http
 			}
 		}
 
+		internal HttpChannelListener<IReplyChannel> Source {
+			get { return source; }
+		}
+
 		public MessageEncoder Encoder {
 			get { return source.MessageEncoder; }
 		}
@@ -176,6 +180,8 @@ namespace System.ServiceModel.Channels.Http
 			msg.Properties.Add ("Via", LocalAddress.Uri);
 			msg.Properties.Add (HttpRequestMessageProperty.Name, CreateRequestProperty (ctxi));
 
+			Logger.LogMessage (MessageLogSourceKind.TransportReceive, ref msg, source.Source.MaxReceivedMessageSize);
+
 			context = new HttpRequestContext (this, ctxi, msg);
 			reqctx = context;
 			return true;
@@ -233,6 +239,7 @@ namespace System.ServiceModel.Channels.Http
 					msg.Headers.Action = action;
 				}
 			}
+			msg.Properties.Add (RemoteEndpointMessageProperty.Name, new RemoteEndpointMessageProperty (ctxi.Request.ClientIPAddress, ctxi.Request.ClientPort));
 
 			return msg;
 		}

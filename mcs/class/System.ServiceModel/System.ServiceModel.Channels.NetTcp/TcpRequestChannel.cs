@@ -35,7 +35,7 @@ using System.ServiceModel.Description;
 using System.Threading;
 using System.Xml;
 
-namespace System.ServiceModel.Channels
+namespace System.ServiceModel.Channels.NetTcp
 {
 	internal class TcpRequestChannel : RequestChannelBase
 	{
@@ -77,8 +77,7 @@ namespace System.ServiceModel.Channels
 			NetworkStream ns = client.GetStream ();
 			frame = new TcpBinaryFrameManager (TcpBinaryFrameManager.SingletonUnsizedMode, ns, false) {
 				Encoder = this.Encoder,
-				Via = this.Via,
-				EncodingRecord = TcpBinaryFrameManager.EncodingBinary };
+				Via = this.Via };
 		}
 
 		public override Message Request (Message input, TimeSpan timeout)
@@ -94,6 +93,8 @@ namespace System.ServiceModel.Channels
 			if (input.Headers.MessageId == null)
 				input.Headers.MessageId = new UniqueId ();
 
+			Logger.LogMessage (MessageLogSourceKind.TransportSend, ref input, int.MaxValue); // It is not a receive buffer
+
 			frame.WriteUnsizedMessage (input, timeout - (DateTime.Now - start));
 
 			// LAMESPEC: it contradicts the protocol described at section 3.1.1.1.1 in [MC-NMF].
@@ -101,6 +102,9 @@ namespace System.ServiceModel.Channels
 			frame.WriteEndRecord ();
 
 			var ret = frame.ReadUnsizedMessage (timeout - (DateTime.Now - start));
+
+			Logger.LogMessage (MessageLogSourceKind.TransportReceive, ref ret, info.BindingElement.MaxReceivedMessageSize);
+
 			frame.ReadEndRecord (); // both
 			return ret;
 		}

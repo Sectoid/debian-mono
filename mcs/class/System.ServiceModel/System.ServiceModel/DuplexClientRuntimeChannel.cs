@@ -38,8 +38,11 @@ using System.Xml;
 
 namespace System.ServiceModel.MonoInternal
 {
+#if DISABLE_REAL_PROXY
 	// FIXME: This is a quick workaround for bug #571907
-	public class DuplexClientRuntimeChannel
+	public
+#endif
+	class DuplexClientRuntimeChannel
 		: ClientRuntimeChannel, IDuplexContextChannel
 	{
 		public DuplexClientRuntimeChannel (ServiceEndpoint endpoint,
@@ -166,6 +169,15 @@ namespace System.ServiceModel.MonoInternal
 							return;
 						}
 					}
+				}
+				
+				if (message.IsFault) {
+					Exception ex;
+					var mf = MessageFault.CreateFault (message, 0x10000);
+					if (FaultConverter.GetDefaultFaultConverter (message.Version).TryCreateException (message, mf, out ex)) // FIXME: get maxMessageSize somehow
+						throw ex;
+					else
+						throw new FaultException (mf);
 				}
 				
 				if (!MessageMatchesEndpointDispatcher (message, Runtime.CallbackDispatchRuntime.EndpointDispatcher))

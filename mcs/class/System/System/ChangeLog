@@ -1,3 +1,24 @@
+2011-07-26  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	Don't invoke libc uname() on non-Unix systems
+
+2011-07-06  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	Reverted previous commit, struct sizes vary way too much between
+	platforms
+
+2011-07-06  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	Use a struct utsname when calling uname() instead of an 8K buffer
+
+2011-07-06  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	Make internal Platform class static
+
+2011-07-05  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	Implemented a shared way to detect MacOSX for System.dll
+
 2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
 
 	Further .NET 4.0 ification of the mobile profile

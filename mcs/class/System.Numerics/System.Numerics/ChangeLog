@@ -1,3 +1,9 @@
+2011-02-28  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* BigInteger.cs (CompareTo): Handle numbers larger than 64bits.
+
+	Fixes #674120
+
 2010-12-15  Marek Safar  <marek.safar@gmail.com>
 
 	Some .net 4.0 api compatibility fixes

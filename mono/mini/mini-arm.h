@@ -127,6 +127,8 @@ typedef struct {
 
 typedef struct MonoCompileArch {
 	gpointer seq_point_info_var, ss_trigger_page_var;
+	gpointer seq_point_read_var, seq_point_ss_method_var;
+	gpointer seq_point_bp_method_var;
 	gboolean omit_fp, omit_fp_computed;
 	gpointer cinfo;
 } MonoCompileArch;
@@ -170,9 +172,10 @@ typedef struct MonoCompileArch {
 #define MONO_ARCH_SOFT_DEBUG_SUPPORTED 1
 #define MONO_ARCH_HAVE_EXCEPTIONS_INIT 1
 #define MONO_ARCH_HAVE_GET_TRAMPOLINES 1
+#define MONO_ARCH_HAVE_SIGCTX_TO_MONOCTX 1
 
 /* Matches the HAVE_AEABI_READ_TP define in mini-arm.c */
-#if defined(__ARM_EABI__) && defined(__linux__) && !defined(PLATFORM_ANDROID)
+#if defined(__ARM_EABI__) && defined(__linux__) && !defined(TARGET_ANDROID)
 #define MONO_ARCH_HAVE_TLS_GET 1
 #endif
 

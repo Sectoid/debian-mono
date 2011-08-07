@@ -1,3 +1,7 @@
+2011-05-04  Marek Habersack  <grendel@twistedcode.net>
+
+	[corlib] Do not cache disposed resource sets.
+
 2011-01-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Add a case-insensitive hashtable

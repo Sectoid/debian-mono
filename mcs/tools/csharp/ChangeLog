@@ -1,3 +1,7 @@
+2011-04-19  Miguel de Icaza  <miguel@gnome.org>
+
+	Prevent crash on scripts that do not contain the #! line
+
 2011-01-30  Miguel de Icaza  <miguel@gnome.org>
 
 	[repl] Fix running specified scripts from command line, allow #!

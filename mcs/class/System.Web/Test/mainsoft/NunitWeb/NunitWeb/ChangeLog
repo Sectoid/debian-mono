@@ -1,3 +1,12 @@
+2011-04-06  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] CreateChildControls is internal only when compiling
+	system.web tests
+
+2011-03-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Test compilation fix for System.Web.Extensions
+
 2011-01-20  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Avoid passing duplicate assemblies on mcs command line.
