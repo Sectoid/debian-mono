@@ -19,7 +19,7 @@
 
 CURRENT_BRANCH=$(git branch -l | egrep '^\* ' | cut -d ' ' -f 2)
 UPSTREAM_BRANCH=$(grep -h upstream-branch $(git rev-parse --show-cdup)./debian/gbp.conf ~/.gbp.conf 2> /dev/null | head -n 1 | cut -d '=' -f 2)
-DEBIAN_PATCHES=$(git branch -l | egrep 'debian/patches/')
+DEBIAN_PATCHES=$(git branch -l | egrep "$CURRENT_BRANCH-patches/")
 if [ ! -z $UPSTREAM_BRANCH ]; then
         git checkout $UPSTREAM_BRANCH
         if [ $? != 0 ]; then
