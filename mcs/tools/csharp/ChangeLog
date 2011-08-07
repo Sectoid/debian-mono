@@ -1,3 +1,42 @@
+2011-04-19  Miguel de Icaza  <miguel@gnome.org>
+
+	Prevent crash on scripts that do not contain the #! line
+
+2011-01-30  Miguel de Icaza  <miguel@gnome.org>
+
+	[repl] Fix running specified scripts from command line, allow #!
+	syntax, add print command
+
+	We were calling the Reset () method after we had initialized the
+	driver with the new command line arguments, clearing the list of
+	files to execute before we executed them.
+
+	Added support for #! in the csharp repl, and added the print()
+	command to the InteractiveBase
+
+	Add a better way of dealing with -e, without adding hacks to the
+	core that wont work in the future
+
+2011-01-30  Miguel de Icaza  <miguel@gnome.org>
+
+	[repl] Add support for -e EXPRESSION to the csharp command
+
+2011-01-30  Miguel de Icaza  <miguel@gnome.org>
+
+	[repl] Fix running specified scripts from command line, allow #!
+	syntax, add print command
+
+	We were calling the Reset () method after we had initialized the
+	driver with the new command line arguments, clearing the list of
+	files to execute before we executed them.
+
+	Added support for #! in the csharp repl, and added the print()
+	command to the InteractiveBase
+
+2011-01-21  Miguel de Icaza  <miguel@gnome.org>
+
+	[getline] Fix history search in the cmdline editor
+
 2010-05-08  Daniel Nauck <dna@mono-project.de>
 
 	* csharp.sln: enable build for jay project in Debug|Win32 configuration.

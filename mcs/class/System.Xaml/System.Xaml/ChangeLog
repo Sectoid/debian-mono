@@ -1,3 +1,8 @@
+2011-03-18  Atsushi Eno  <atsushi@ximian.com>
+
+	XamlType lookup from xml name failed when [XmlnsDefinition] is
+	involved.
+
 2010-12-28  Atsushi Eno  <atsushi@ximian.com>
 
 	Actually we have almost what we need on mobile profiles.

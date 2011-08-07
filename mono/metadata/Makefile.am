@@ -29,7 +29,9 @@ platform_sources = $(unix_sources)
 endif
 
 if SHARED_MONO
+if SUPPORT_BOEHM
 bin_PROGRAMS = pedump
+endif
 endif
 
 #
@@ -52,7 +54,9 @@ moon-do-clean:
 endif
 
 if SHARED_MONO
+if SUPPORT_BOEHM
 shared_libraries = libmonoruntime.la
+endif
 endif
 noinst_LTLIBRARIES =  $(shared_libraries) libmonoruntime-static.la $(sgen_libraries) $(moonlight_libraries)
 
@@ -139,6 +143,8 @@ libmonoruntime_la_SOURCES = \
 	mono-basic-block.c	\
 	mono-basic-block.h	\
 	mono-config.c		\
+	mono-cq.c		\
+	mono-cq.h		\
 	mono-debug.h		\
 	mono-debug.c		\
 	mono-debug-debugger.h	\
@@ -191,6 +197,8 @@ libmonoruntime_la_SOURCES = \
 	sgen-major-copying.c	\
 	sgen-los.c		\
 	sgen-protocol.c \
+	sgen-bridge.c		\
+	sgen-bridge.h		\
 	sgen-gc.h		\
 	sgen-archdep.h		\
 	sgen-cardtable.h	\
@@ -253,6 +261,7 @@ libmonoruntimeinclude_HEADERS = \
 	mono-config.h		\
 	mono-debug.h		\
 	mono-gc.h		\
+	sgen-bridge.h		\
 	object.h		\
 	opcodes.h		\
 	profiler.h		\
@@ -274,6 +283,7 @@ PEDUMP_DTRACE_OBJECT =
 endif
 
 if SHARED_MONO
+if SUPPORT_BOEHM
 pedump_SOURCES =		\
 	pedump.c
 
@@ -284,6 +294,8 @@ if PLATFORM_DARWIN
 pedump_LDFLAGS=-framework CoreFoundation
 endif
 endif
+endif
 
-EXTRA_DIST = make-bundle.pl sample-bundle $(win32_sources) $(unix_sources) $(null_sources) $(sgen_sources) runtime.h
+EXTRA_DIST = make-bundle.pl sample-bundle $(win32_sources) $(unix_sources) $(null_sources) $(sgen_sources) runtime.h \
+		tpool-poll.c tpool-epoll.c tpool-kqueue.c
 

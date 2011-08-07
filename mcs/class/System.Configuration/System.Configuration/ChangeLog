@@ -1,3 +1,8 @@
+2011-04-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Use xmlns-ignoring XmlDocument derivation for config files. Fixed
+	bug #641935.
+
 2010-12-14  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Fix for bug #467221. Properly match location sub-paths

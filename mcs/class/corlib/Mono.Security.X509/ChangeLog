@@ -1,3 +1,17 @@
+2011-02-11  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* corlib/Mono.Security.X509/X509Store.cs: *
+	Mono.Security/Mono.Security.X509/X509Store.cs: Fix key pair
+	persistence to load key pairs from the same location (machine or
+	user) as the requested certificate. This avoids an internal
+	exception (on missing local machine directory) that stop the
+	evaluation of the certificate validity (i.e. no user store check)
+	*
+	System/System.Security.Cryptography.X509Certificates/X509Chain.cs:
+	Ensure that a missing local machine directory does not result in a
+	NRE while loading CRL (which would fail the certificate being
+	validated)
+
 2010-11-03  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* mcs/class/corlib/Mono.Security.X509/X509Store.cs: *

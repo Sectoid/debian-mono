@@ -1,3 +1,153 @@
+2011-07-20  Martinho Fernandes  <martinho.fernandes@gmail.com>
+
+	[Fix] Command-line option -checked now works (bug #706877)
+
+	The -checked option was not being considered in the
+	BuilderContext. Now it is set on construction of BuilderContext to
+	the value from RootContext.
+
+2011-04-21  Marek Safar  <marek.safar@gmail.com>
+
+	[688891] Keep same TypeParameter ctor syntax
+
+2011-04-21  Marek Safar  <marek.safar@gmail.com>
+
+	[688891] Copy type parameters for base proxy method
+
+2011-04-19  Marek Safar  <marek.safar@gmail.com>
+
+	[687282] Fixes cross references of nested anonymous methods which
+	don't start at parameters level block
+
+2011-03-09  Marek Safar  <marek.safar@gmail.com>
+
+	[677550] Fixes fixed buffer regressions
+
+2011-03-08  Miguel de Icaza  <miguel@gnome.org>
+
+	Make print take an object
+
+2011-03-01  Marek Safar  <marek.safar@gmail.com>
+
+	[675777] Remove invalid zero based optimization
+
+2011-02-23  Marek Safar  <marek.safar@gmail.com>
+
+	[674224] Type parameter constraint can resolve to nested type
+	before it has been imported
+
+2011-02-14  Marek Safar  <marek.safar@gmail.com>
+
+	[671552] Use correct emit method for stobj type
+
+2011-02-08  Marek Safar  <marek.safar@gmail.com>
+
+	[657099] Fix cloning of remapped blocks
+
+2011-02-08  Marek Safar  <marek.safar@gmail.com>
+
+	Fix remapping of cloned block parent when already in cloned
+	context
+
+2011-02-03  Marek Safar  <marek.safar@gmail.com>
+
+	Fix importing of private types under dynamic context
+
+2011-02-03  Marek Safar  <marek.safar@gmail.com>
+
+	Allow any expression to be used in where clause. Some custom linq
+	implementations use non-predicate version of where
+
+2011-02-02  Miguel de Icaza  <miguel@gnome.org>
+
+	[csharp] Change the signature for print
+
+2011-02-02  Marek Safar  <marek.safar@gmail.com>
+
+	Implement support for implicit user conversion for
+	DefaultParameterValue (very odd)
+
+2011-02-01  Marek Safar  <marek.safar@gmail.com>
+
+	Fix empty cast conversion from dynamic type object type argument
+
+2011-01-30  Miguel de Icaza  <miguel@gnome.org>
+
+	[repl] Fix running specified scripts from command line, allow #!
+	syntax, add print command
+
+	We were calling the Reset () method after we had initialized the
+	driver with the new command line arguments, clearing the list of
+	files to execute before we executed them.
+
+	Added support for #! in the csharp repl, and added the print()
+	command to the InteractiveBase
+
+	Add a better way of dealing with -e, without adding hacks to the
+	core that wont work in the future
+
+2011-01-30  Miguel de Icaza  <miguel@gnome.org>
+
+	[repl] Add support for -e EXPRESSION to the csharp command
+
+2011-01-30  Miguel de Icaza  <miguel@gnome.org>
+
+	[repl] Fix running specified scripts from command line, allow #!
+	syntax, add print command
+
+	We were calling the Reset () method after we had initialized the
+	driver with the new command line arguments, clearing the list of
+	files to execute before we executed them.
+
+	Added support for #! in the csharp repl, and added the print()
+	command to the InteractiveBase
+
+2011-01-27  Marek Safar  <marek.safar@gmail.com>
+
+	[667261] Fixes overload resolution of an optional parameter
+	followed by a params parameter of the same type
+
+2011-01-26  Marek Safar  <marek.safar@gmail.com>
+
+	Optimized constructor readonly access has to be inside same
+	declarting type
+
+2011-01-25  Marek Safar  <marek.safar@gmail.com>
+
+	Degrade wrong override member to virtual instead of non-virtual
+
+2011-01-24  Tomasz Kubacki  <tomasz.kubacki@gmail.com>
+
+	[Mono.CSharp] Improve error reporting
+
+2011-01-24  Marek Safar  <marek.safar@gmail.com>
+
+	[666476] Use correct parameter count when checking ambiguous
+	params methods
+
+2011-01-21  Marek Safar  <marek.safar@gmail.com>
+
+	Use byte array as underlying storage for AttributeEncoder
+
+2011-01-21  Miguel de Icaza  <miguel@gnome.org>
+
+	[Mono.CSharp] Fix bug where overwriting variables cleared the
+	wrong value
+
+	This fixes #641910
+
+2011-01-21  Miguel de Icaza  <miguel@gnome.org>
+
+	[csharp] repl using statement fix + support for --fatal
+
+	Fixes #638585 which kept reporting the same error on the using
+	statements over and over Added support for the --fatal flag to the
+	REPL
+
+2011-01-19  Marek Safar  <marek.safar@gmail.com>
+
+	[665333] Encode Length of Public Key correctly
+
 2011-01-18  Marek Safar  <marek.safar@gmail.com>
 
 	Checking skd path for is not enough, add check for mscorlib as

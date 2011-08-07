@@ -21,6 +21,16 @@ namespace Mono.Debugger.Soft
 		public int MinorVersion {
 			get; set;
 		}
+
+		/*
+		 * Check that this version is at least major:minor
+		 */
+		public bool AtLeast (int major, int minor) {
+			if ((MajorVersion > major) || ((MajorVersion == major && MinorVersion >= minor)))
+				return true;
+			else
+				return false;
+		}
 	}
 
 	class DebugInfo {
@@ -308,7 +318,7 @@ namespace Mono.Debugger.Soft
 		 * with newer runtimes, and vice versa.
 		 */
 		public const int MAJOR_VERSION = 2;
-		public const int MINOR_VERSION = 2;
+		public const int MINOR_VERSION = 3;
 
 		enum WPSuspendPolicy {
 			NONE = 0,
@@ -346,7 +356,8 @@ namespace Mono.Debugger.Soft
 			BREAKPOINT = 10,
 			STEP = 11,
 			TYPE_LOAD = 12,
-			EXCEPTION = 13
+			EXCEPTION = 13,
+			KEEPALIVE = 14
 		}
 
 		enum ModifierKind {
@@ -367,7 +378,8 @@ namespace Mono.Debugger.Soft
 			DISPOSE = 6,
 			INVOKE_METHOD = 7,
 			SET_PROTOCOL_VERSION = 8,
-			ABORT_INVOKE = 9
+			ABORT_INVOKE = 9,
+			SET_KEEPALIVE = 10
 		}
 
 		enum CmdEvent {
@@ -380,7 +392,9 @@ namespace Mono.Debugger.Soft
 			GET_STATE = 3,
 			GET_INFO = 4,
 			/* FIXME: Merge into GET_INFO when the major protocol version is increased */
-			GET_ID = 5
+			GET_ID = 5,
+			/* Ditto */
+			GET_TID = 6
 		}
 
 		enum CmdEventRequest {
@@ -1154,6 +1168,8 @@ namespace Mono.Debugger.Soft
 								long id = r.ReadId ();
 								events [i] = new EventInfo (etype, req_id) { ThreadId = thread_id, Id = id };
 								//EventHandler.AppDomainUnload (req_id, thread_id, id);
+							} else if (kind == EventKind.KEEPALIVE) {
+								events [i] = new EventInfo (etype, req_id) { };
 							} else {
 								throw new NotImplementedException ("Unknown event kind: " + kind);
 							}
@@ -1369,6 +1385,13 @@ namespace Mono.Debugger.Soft
 			SendReceive (CommandSet.VM, (int)CmdVM.ABORT_INVOKE, new PacketWriter ().WriteId (thread).WriteInt (id));
 		}
 
+		public void SetSocketTimeouts (int send_timeout, int receive_timeout, int keepalive_interval)
+		{
+			socket.SendTimeout = send_timeout;
+			socket.ReceiveTimeout = receive_timeout;
+			SendReceive (CommandSet.VM, (int)CmdVM.SET_KEEPALIVE, new PacketWriter ().WriteId (keepalive_interval));
+		}
+
 		/*
 		 * DOMAIN
 		 */
@@ -1553,6 +1576,10 @@ namespace Mono.Debugger.Soft
 
 		public long Thread_GetId (long id) {
 			return SendReceive (CommandSet.THREAD, (int)CmdThread.GET_ID, new PacketWriter ().WriteId (id)).ReadLong ();
+		}
+
+		public long Thread_GetTID (long id) {
+			return SendReceive (CommandSet.THREAD, (int)CmdThread.GET_TID, new PacketWriter ().WriteId (id)).ReadLong ();
 		}
 
 		/*

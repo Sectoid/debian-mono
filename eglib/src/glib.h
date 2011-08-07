@@ -13,10 +13,6 @@
 #pragma include_alias(<eglib-config.h>, <eglib-config.hw>)
 #else
 #include <stdint.h>
-/* For pid_t */
-#ifndef WIN32
-#include <unistd.h>
-#endif
 #endif
 
 #include <eglib-config.h>
@@ -43,6 +39,12 @@
 #endif
 
 G_BEGIN_DECLS
+
+#ifdef G_OS_WIN32
+/* MSC and Cross-compilatin will use this */
+int vasprintf (char **strp, const char *fmt, va_list ap);
+#endif
+
 
 /*
  * Basic data types
@@ -673,7 +675,7 @@ gunichar  *g_utf16_to_ucs4 (const gunichar2 *str, glong len, glong *items_read, 
 #define u8to16(str) g_utf8_to_utf16(str, (glong)strlen(str), NULL, NULL, NULL)
 
 #ifdef G_OS_WIN32
-#define u16to8(str) g_utf16_to_utf8(str, (glong)wcslen(str), NULL, NULL, NULL)
+#define u16to8(str) g_utf16_to_utf8((gunichar2 *) (str), (glong)wcslen((wchar_t *) (str)), NULL, NULL, NULL)
 #else
 #define u16to8(str) g_utf16_to_utf8(str, (glong)strlen(str), NULL, NULL, NULL)
 #endif
@@ -715,8 +717,6 @@ typedef enum {
 	G_SPAWN_CHILD_INHERITS_STDIN   = 1 << 5,
 	G_SPAWN_FILE_AND_ARGV_ZERO     = 1 << 6
 } GSpawnFlags;
-
-typedef pid_t GPid;
 
 typedef void (*GSpawnChildSetupFunc) (gpointer user_data);
 

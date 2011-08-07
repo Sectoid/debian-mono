@@ -31,7 +31,8 @@ struct sigcontext {
 	unsigned int eip;
 };
 
-typedef void (* MonoW32ExceptionHandler) (int _dummy, EXCEPTION_RECORD *info, void *context);
+typedef void (* MonoW32ExceptionHandler) (int _dummy, EXCEPTION_POINTERS *info, void *context);
+
 void win32_seh_init(void);
 void win32_seh_cleanup(void);
 void win32_seh_set_handler(int type, MonoW32ExceptionHandler handler);
@@ -318,6 +319,7 @@ typedef struct {
 #define MONO_ARCH_HAVE_HANDLER_BLOCK_GUARD 1
 
 #define MONO_ARCH_HAVE_CARD_TABLE_WBARRIER 1
+#define MONO_ARCH_HAVE_SETUP_RESUME_FROM_SIGNAL_HANDLER_CTX 1
 #define MONO_ARCH_GC_MAPS_SUPPORTED 1
 
 gboolean

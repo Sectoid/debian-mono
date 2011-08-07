@@ -47,11 +47,11 @@ namespace Mono.CSharp
 			this.ctx = ctx;
 		}
 
-		public static Driver Create (string[] args, bool require_files, ReportPrinter printer)
+		public static Driver Create (string[] args, bool require_files, Func<string [], int, int> unknown_option_parser, ReportPrinter printer)
 		{
 			Driver d = new Driver (new CompilerContext (new Report (printer)));
 
-			if (!d.ParseArguments (args, require_files))
+			if (!d.ParseArguments (args, require_files, unknown_option_parser))
 				return null;
 
 			return d;
@@ -234,7 +234,7 @@ namespace Mono.CSharp
 		{
 			Location.InEmacs = Environment.GetEnvironmentVariable ("EMACS") == "t";
 			var crp = new ConsoleReportPrinter ();
-			Driver d = Driver.Create (args, true, crp);
+			Driver d = Driver.Create (args, true, null, crp);
 			if (d == null)
 				return 1;
 
@@ -341,7 +341,7 @@ namespace Mono.CSharp
 			Location.AddFile (Report, f);
 		}
 
-		bool ParseArguments (string[] args, bool require_files)
+		bool ParseArguments (string[] args, bool require_files, Func<string [], int, int> unknown_option_parser)
 		{
 			List<string> response_file_list = null;
 			bool parsing_options = true;
@@ -393,6 +393,14 @@ namespace Mono.CSharp
 						if (CSCParseOption (csc_opt, ref args))
 							continue;
 
+						if (unknown_option_parser != null){
+							var ret = unknown_option_parser (args, i);
+							if (ret != -1){
+								i = ret;
+								return true;
+							}
+						}
+						
 						Error_WrongOption (arg);
 						return false;
 					}
@@ -1619,7 +1627,7 @@ namespace Mono.CSharp
 		{
 			try {
 				StreamReportPrinter srp = new StreamReportPrinter (error);
-				Driver d = Driver.Create (args, true, srp);
+				Driver d = Driver.Create (args, true, null, srp);
 				if (d == null)
 					return false;
 
@@ -1649,7 +1657,7 @@ namespace Mono.CSharp
 		{
 			CSharpParser.yacc_verbose_flag = 0;
 			Location.Reset ();
-
+			
 			if (!full_flag)
 				return;
 

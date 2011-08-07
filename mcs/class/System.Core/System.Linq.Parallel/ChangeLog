@@ -1,3 +1,13 @@
+2011-02-16  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Create PLinq query tasks attached to their eventual task parent by
+	default
+
+2011-02-16  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	When choosing the number of Task to create for a PLinq query,
+	check if we are already in a running Task
+
 2010-12-02  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	[PLinq] Wrap PLinq processing task body in a try/finally so that

@@ -1,3 +1,7 @@
+2011-02-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement mono_memory_barrier () and OP_MEMORY_BARRIER for ARM.
+
 2011-01-10  Rodrigo Kumpera  <kumpera@gmail.com>
 
 	Implement mono.simd new conversion ops on amd64

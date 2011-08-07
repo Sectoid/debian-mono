@@ -564,6 +564,7 @@ decode_method_ref_with_target (MonoAotModule *module, MethodRef *ref, MonoMethod
 			int atype = decode_value (p, &p);
 
 			ref->method = mono_gc_get_managed_allocator_by_type (atype);
+			g_assert (ref->method);
 			break;
 		}
 		case MONO_WRAPPER_WRITE_BARRIER:
@@ -652,6 +653,17 @@ decode_method_ref_with_target (MonoAotModule *module, MethodRef *ref, MonoMethod
 				ref->method = target;
 			else
 				return FALSE;
+			break;
+		}
+		case MONO_WRAPPER_CASTCLASS: {
+			int subtype = decode_value (p, &p);
+
+			if (subtype == MONO_AOT_WRAPPER_CASTCLASS_WITH_CACHE)
+				ref->method = mono_marshal_get_castclass_with_cache ();
+			else if (subtype == MONO_AOT_WRAPPER_ISINST_WITH_CACHE)
+				ref->method = mono_marshal_get_isinst_with_cache ();
+			else
+				g_assert_not_reached ();
 			break;
 		}
 		default:
@@ -2348,6 +2360,7 @@ decode_patch (MonoAotModule *aot_module, MonoMemPool *mp, MonoJumpInfo *ji, guin
 	case MONO_PATCH_INFO_MONITOR_ENTER:
 	case MONO_PATCH_INFO_MONITOR_EXIT:
 	case MONO_PATCH_INFO_GC_CARD_TABLE_ADDR:
+	case MONO_PATCH_INFO_CASTCLASS_CACHE:
 		break;
 	case MONO_PATCH_INFO_RGCTX_FETCH: {
 		gboolean res;
@@ -2910,7 +2923,7 @@ mono_aot_get_method (MonoDomain *domain, MonoMethod *method)
 		}
 
 		/* Same for CompareExchange<T> */
-		if (method_index == 0xffffff && method->wrapper_type == MONO_WRAPPER_MANAGED_TO_NATIVE && method->klass->image == mono_defaults.corlib && !strcmp (method->klass->name_space, "System.Threading") && !strcmp (method->klass->name, "Interlocked") && !strcmp (method->name, "CompareExchange")) {
+		if (method_index == 0xffffff && method->wrapper_type == MONO_WRAPPER_MANAGED_TO_NATIVE && method->klass->image == mono_defaults.corlib && !strcmp (method->klass->name_space, "System.Threading") && !strcmp (method->klass->name, "Interlocked") && !strcmp (method->name, "CompareExchange") && MONO_TYPE_IS_REFERENCE (mono_method_signature (method)->params [1])) {
 			MonoMethod *m;
 			MonoGenericContext ctx;
 			MonoType *args [16];
@@ -3552,25 +3565,42 @@ mono_aot_get_imt_thunk (MonoVTable *vtable, MonoDomain *domain, MonoIMTCheckItem
 	guint32 got_offset;
 	gpointer code;
 	gpointer *buf;
-	int i;
+	int i, index, real_count;
 	MonoAotModule *amodule;
 
 	code = get_numerous_trampoline (MONO_AOT_TRAMP_IMT_THUNK, 1, &amodule, &got_offset, NULL);
 
+	real_count = 0;
+	for (i = 0; i < count; ++i) {
+		MonoIMTCheckItem *item = imt_entries [i];
+
+		if (item->is_equals)
+			real_count ++;
+	}
+
 	/* Save the entries into an array */
-	buf = mono_domain_alloc (domain, (count + 1) * 2 * sizeof (gpointer));
+	buf = mono_domain_alloc (domain, (real_count + 1) * 2 * sizeof (gpointer));
+	index = 0;
 	for (i = 0; i < count; ++i) {
 		MonoIMTCheckItem *item = imt_entries [i];		
 
-		g_assert (item->key);
-		/* FIXME: */
-		g_assert (!item->has_target_code);
+		if (!item->is_equals)
+			continue;
 
-		buf [(i * 2)] = item->key;
-		buf [(i * 2) + 1] = &(vtable->vtable [item->value.vtable_slot]);
+		g_assert (item->key);
+
+		buf [(index * 2)] = item->key;
+		if (item->has_target_code) {
+			gpointer *p = mono_domain_alloc (domain, sizeof (gpointer));
+			*p = item->value.target_code;
+			buf [(index * 2) + 1] = p;
+		} else {
+			buf [(index * 2) + 1] = &(vtable->vtable [item->value.vtable_slot]);
+		}
+		index ++;
 	}
-	buf [(count * 2)] = NULL;
-	buf [(count * 2) + 1] = fail_tramp;
+	buf [(index * 2)] = NULL;
+	buf [(index * 2) + 1] = fail_tramp;
 	
 	amodule->got [got_offset] = buf;
 

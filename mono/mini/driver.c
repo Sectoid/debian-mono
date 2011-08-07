@@ -1202,6 +1202,8 @@ static const char info[] =
 #endif
 #ifdef HAVE_EPOLL
     "\tNotifications: epoll\n"
+#elif defined(HAVE_KQUEUE)
+    "\tNotification:  kqueue\n"
 #else
     "\tNotification:  Thread + polling\n"
 #endif
@@ -1286,6 +1288,11 @@ mono_jit_parse_options (int argc, char * argv[])
  			mono_debugger_agent_parse_options (argv [i] + 17);
 			opt->mdb_optimizations = TRUE;
 			enable_debugging = TRUE;
+		} else if (!strcmp (argv [i], "--soft-breakpoints")) {
+			MonoDebugOptions *opt = mini_get_debug_options ();
+
+			opt->soft_breakpoints = TRUE;
+			opt->explicit_null_checks = TRUE;
 		} else {
 			fprintf (stderr, "Unsupported command line option: '%s'\n", argv [i]);
 			exit (1);
@@ -1393,7 +1400,7 @@ mono_main (int argc, char* argv[])
 			char *build = mono_get_runtime_build_info ();
 			char *gc_descr;
 
-			g_print ("Mono JIT compiler version %s\nCopyright (C) 2002-2010 Novell, Inc and Contributors. www.mono-project.com\n", build);
+			g_print ("Mono JIT compiler version %s\nCopyright (C) 2002-2011 Novell, Inc and Contributors. www.mono-project.com\n", build);
 			g_free (build);
 			g_print (info);
 			gc_descr = mono_gc_get_description ();

@@ -1,3 +1,28 @@
+2011-06-23  Jb Evain  <jbevain@gmail.com>
+
+	Fix queryable enumerable expression transformation
+
+2011-06-23  Jb Evain  <jbevain@gmail.com>
+
+	Don't emit null queryable constants when rewriting linq queries,
+	fix #701187
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
+2011-01-26  Jb Evain  <jbevain@gmail.com>
+
+	[linq] Fix Reverse for IList implementors
+
+2011-01-25  Jb Evain  <jbevain@gmail.com>
+
+	[linq] Fix overflow check for Count
+
+2011-01-25  Jb Evain  <jbevain@gmail.com>
+
+	[linq] fix Range extreme boundaries
+
 2010-12-30  Jb Evain  <jbevain@gmail.com>
 
 	[LINQ] Fix non generic AsQueryable issue #661462

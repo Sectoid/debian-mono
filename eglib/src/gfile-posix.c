@@ -33,9 +33,14 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #ifdef _MSC_VER
 #include <direct.h>
+#endif
+#ifdef G_OS_WIN32
 int mkstemp (char *tmp_template);
 #endif
 

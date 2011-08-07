@@ -1,3 +1,7 @@
+2011-03-09  Peter Gerbrandt  <pg@viadux.de>
+
+	Implement support for QNameIndex (0xBC) in attribute nodes.
+
 2009-07-07  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* XmlSimpleDictionaryWriterTest.cs : test WriteNode() to not skip more

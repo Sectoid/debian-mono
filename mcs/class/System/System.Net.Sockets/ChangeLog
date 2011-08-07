@@ -1,3 +1,113 @@
+2011-06-20  XTZGZoReX  <xtzgzorex@gmail.com>
+
+	Socket: Fixed a security issue when default-initialized
+	ArraySegment structs are passed in.
+
+	This is the same security issue that was recently addressed in
+	MS.NET.
+
+2011-04-28  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net.Sockets/Socket_2_1.cs: Ensure RemoteEndPoint is
+	always available after ConnectAsync (connected or not, allowed or
+	not). Ensure the Connect event is fired even if denied by policy.
+
+2011-04-28  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net.Sockets/Socket_2_1.cs: Fix some moved code (from
+	SocketAsyncEventArgs.cs) so should the references to
+	RemoteEndPoint still point to the SocketAsyncEventArgs instance.
+	Fix some moon-unit test failures
+
+2011-04-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Missed this in the backport
+
+2011-04-28  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[socket] More BeginConnect (IPAddress []) work
+
+	When trying multiple addresses, the second and sucessive calls to
+	BeginConnect(IPAddress) will cause an error which we would have to
+	ignore and then retry. Since this behavior is not documented, we
+	just close the socket and open a new one for retries is there is
+	already a pending connect attempt.
+
+2011-04-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Socket] Improved ConnectAsync
+
+	ConnectAsync() now uses the improved BeginConnect.
+
+2011-04-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	If there's a delayed exception, clear 'ares'
+
+2011-04-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Worked on linux, failed on OSX
+
+2011-04-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Reset the blocking flag as soon as possible.
+
+2011-04-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[socket] Fixed other BeginConnect overloads
+
+	The BeginConnect overload taking an IPAddress[] was not really
+	asynchronous.
+
+2011-04-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Socket] Fix BeginConnect
+
+	Windows/Linux flagged the socket as writable even when connect()
+	has not been called. On *BSD and OSX, this was not the case and we
+	waited forever.
+
+	Now, for blocking sockets, we make them blocking and call
+	connect() before adding the socket to the wait pool.
+
+2011-03-29  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Reset BytesTransferred on every reuse.
+
+2011-03-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Socket] Remove more auto-delegates
+
+2011-03-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Socket] Minimize allocations of delegates
+
+2011-03-08  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	No need to create an extra instance of Worker.
+
+2011-02-23  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Enable UDP Sockets on MOBILE platforms.
+
+	Fixes runtime part of #666736.
+
+2011-02-11  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Socket] Fix invalid cast
+
+	Fix invalid cast when canceling pending operations due to
+	socket.Close.
+
+2011-01-20  Miguel de Icaza  <miguel@gnome.org>
+
+	Do not build the Socket passing on Mobile systems
+
+2011-01-20  Miguel de Icaza  <miguel@gnome.org>
+
+	[sockets] Implement DuplicateAndClose and Socket
+	(SocketInformation) constructor for in-process socket passing
+	(AppDomains)
+
 2011-01-06  Zoltan Varga  <vargaz@gmail.com>
 
 	Change some usages of ArrayList to List<T> to avoid calls to the

@@ -1,3 +1,8 @@
+2011-01-31  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented 4.0 types
+	System.Web.Security.{MachineKey,MachineKeyProtection} plus tests
+
 2010-10-27  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Fix for bug #643847. Membership.CreateUser overloads

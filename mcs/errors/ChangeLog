@@ -1,3 +1,8 @@
+2011-01-24  Marek Safar  <marek.safar@gmail.com>
+
+	[666476] Use correct parameter count when checking ambiguous
+	params methods
+
 2011-01-11  Marek Safar  <marek.safar@gmail.com>
 
 	Use base type parameters to extract params modifier of virtual

@@ -1774,7 +1774,7 @@ namespace Mono.CSharp
 
 				c = b.left as Constant;
 				if (c != null) {
-					if (c.IsDefaultValue && (b.oper == Operator.Addition || b.oper == Operator.Subtraction || (b.oper == Operator.BitwiseOr && !(b is Nullable.LiftedBinaryOperator))))
+					if (c.IsDefaultValue && (b.oper == Operator.Addition || (b.oper == Operator.BitwiseOr && !(b is Nullable.LiftedBinaryOperator))))
 						return ReducedExpression.Create (b.right, b).Resolve (ec);
 					if (b.oper == Operator.Multiply && c.IsOneInteger)
 						return ReducedExpression.Create (b.right, b).Resolve (ec);
@@ -6609,13 +6609,13 @@ namespace Mono.CSharp
 				if (ic == null || !ic.IsDefaultValue) {
 					base.EncodeAttributeValue (rc, enc, targetType);
 				} else {
-					enc.Stream.Write (0);
+					enc.Encode (0);
 				}
 
 				return;
 			}
 
-			enc.Stream.Write ((int) array_data.Count);
+			enc.Encode (array_data.Count);
 			foreach (var element in array_data) {
 				element.EncodeAttributeValue (rc, enc, array_element_type);
 			}

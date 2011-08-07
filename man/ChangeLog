@@ -1,3 +1,71 @@
+2011-04-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Document MONO_WCF_TRACE environment variable.
+
+2011-03-14  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Debug options for disabling minor and/or major collection.
+
+2011-03-08  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Implement FileLogger . Fix #676650 .
+
+2011-03-03  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Update man page with info about FrameworkList.xml
+
+2011-02-28  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Add support for multi-targeting arbitrary frameworks.
+
+	ToolsVersion 4.0 supports targeting arbitrary frameworks defined
+	by FrameworkList.xml files and referenced by
+	$(TargetFrameworkMoniker), which is of the format:
+	Identifier,Version=<version>[,Profile=<profile>]
+
+	built as:
+	$(TargetFrameworkIdentifier),Version=$(TargetFrameworkVersion)[,Profile=$(TargetFrameworkProfile)]
+
+	eg. '.NETFramework,Version=v4.0' .
+
+	Frameworks are searched for in (order):
+
+	1. Paths specified in the environment variable
+	$XBUILD_FRAMEWORK_FOLDERS_PATH 2.
+	/Library/Frameworks/Mono.framework/External/xbuild-frameworks on
+	Mac OSX. 3. MSBuild property $(TargetFrameworkRoot) 4.
+	$prefix/lib/mono/xbuild-frameworks (default location)
+
+	.NET frameworks 2.0/3.0/3.5/4.0 have corresponding
+	FrameworkList.xml files now, which allows projects to target them.
+	Custom frameworks like MonoDroid can install suitable
+	FrameworkList.xml files, and projects can target them using the
+	correct $(TargetFrameworkIdentifier) and
+	$(TargetFrameworkVersion).
+
+	Update man page.
+
+2011-02-22  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Use the env var $MSBuildExtensionsPath before trying
+	other paths.
+
+	Change the order of the "search paths", so that the environment
+	variable can always override it. Update the man page to reflect
+	the change.
+
+2011-01-30  Miguel de Icaza  <miguel@gnome.org>
+
+	[repl] Add support for -e EXPRESSION to the csharp command
+
+2011-01-30  Miguel de Icaza  <miguel@gnome.org>
+
+	Document csharp #! support
+
+2011-01-19  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Document precise marking
+
 2011-01-17  Marek Safar  <marek.safar@gmail.com>
 
 	Add new mcs -sdk option

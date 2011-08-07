@@ -1,3 +1,70 @@
+2011-04-06  Atsushi Eno  <atsushi@ximian.com>
+
+	Looks like .NET accepts non-integer numbers as int. Smells bogus
+	though.
+
+2011-04-05  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix build, looks like ArrayList is internally available in moon.
+
+2011-04-05  Atsushi Eno  <atsushi@ximian.com>
+
+	Collection support in JSON serializer was actually for any
+	IEnumerable.
+
+2011-04-05  Atsushi Eno  <atsushi@ximian.com>
+
+	Revert PushbackReader changes (was unnecessary and actually
+	bogus).
+
+2011-04-05  Atsushi Eno  <atsushi@ximian.com>
+
+	null value also outputs "type='null' in WCF JSON writer.
+
+2011-04-05  Atsushi Eno  <atsushi@ximian.com>
+
+	Auto-detect text encoding from input stream for JsonReader. Fix
+	DBCS pushback.
+
+2011-04-05  Atsushi Eno  <atsushi@ximian.com>
+
+	IDictionary`2 serialization support was missing in
+	DataContractJsonSerializer.
+
+	Fixed bug #685042.
+
+2011-04-02  Atsushi Eno  <atsushi@ximian.com>
+
+	A bit less !NET_2_1 and !MOONLIGHT in Sys.ServiceModel.Web.
+
+2011-03-26  Atsushi Eno  <atsushi@ximian.com>
+
+	null JSON type must be handled in JsonWriter.
+
+2011-03-26  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not always assume ascii == 1 byte in JsonWriter. Fix utf-16
+	usage.
+
+2011-03-08  Miguel de Icaza  <miguel@gnome.org>
+
+	[System.Json] Fix loader.
+
+	The current loader failed with some Json strings due to the
+	implementation of the BufferedStreamReader. Removed that
+	implementation completely, and instead depend on the StreamReader
+	to do the actual BOM detection.
+
+	This removes the JavaScriptObjectDeserializer.cs file
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Work around a full-aot issue for monotouch System.Json
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	backport JavaScriptObjectDeserializer encoding detection fix.
+
 2010-10-29  Andreia Gaita  <shana@jitted.com>
 
 	[JsonWriter] Fix JsonWriter yet again. Behaviour of WriteRaw on

@@ -1,3 +1,133 @@
+2011-07-22  Atsushi Eno  <atsushieno@veritas-vos-liberabit.com>
+
+	Avoid possible duplicate xmlns output. Fixes xsp-based hosting
+	somehow.
+
+2011-07-19  Atsushi Eno  <atsushieno@veritas-vos-liberabit.com>
+
+	support action parameter in SOAP 1.2 content type. Close pull
+	request #133.
+
+2011-07-09  Atsushi Eno  <atsushieno@veritas-vos-liberabit.com>
+
+	Full equivalence comparison is unnecessary for MessageEncoder
+	ContentType.
+
+	based on https://github.com/mono/mono/pull/130
+
+2011-06-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Set "Encoder" property when Message was read from MessageEncoder.
+
+2011-06-14  Atsushi Eno  <atsushi@ximian.com>
+
+	finally implement Message.ToString() as in expected form.
+
+	Regressions on this method has caused several unpredictable
+	errors, so I avoided this for somewhat long time...
+
+2011-05-13  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement WsdlContractConversionContext, and ignore message
+	importer for now.
+
+2011-04-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Actual source directory changes after changing namespaces.
+
+2011-04-25  Atsushi Eno  <atsushi@ximian.com>
+
+	More nettcp namespace changes.
+
+2011-04-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Move NetTcp namespace to internal one.
+
+2011-04-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Empty XmlReader message caused failure on buffereed copy.
+
+2011-04-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Prepare for HostNameComparisonMode support (i.e. incomplete).
+
+	This is for bugfix #687580.
+
+2011-04-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Some argument check in TextMessageEncoder.
+
+2011-04-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Use correct MessageVersion instead of Default for empty response.
+
+	Part of bugfix #687580.
+
+2011-04-07  Atsushi Eno  <atsushi@ximian.com>
+
+	HttpRequestChannel should also return CookieContainer in NET_2_1
+	profile.
+
+	Fixed bug #683642.
+
+2011-04-02  Atsushi Eno  <atsushi@ximian.com>
+
+	fix wrong attempt to add restricted headers in HttpRequestChannel.
+
+2011-04-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Less !NET_2_1/!MOONLIGHT to improve SL4 WCF compatibility.
+
+2011-03-22  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove unexpected CWL.
+
+2011-03-17  Atsushi Eno  <atsushi@ximian.com>
+
+	net.tcp Sized message with non-binarysession encoding should work
+	now.
+
+	(Untested checkin.)
+
+2011-03-17  Atsushi Eno  <atsushi@ximian.com>
+
+	Support encoding record other than binary session in TCP channel
+	frame reader.
+
+2011-03-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement more encodings than binary frame with dictionary, in TCP
+	manager.
+
+	(not known to not regress in nunit tests..)
+
+2011-03-15  Atsushi Eno  <atsushi@ximian.com>
+
+	avoid NRE on non-binary encoding use in TcpTransport.
+
+2011-02-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Pass Actor. use IsNullOrEmpty() instead of "!= String.Empty".
+
+2011-02-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Almost eliminate wrong use of Constants.WsaNamespace.
+
+	They should be addressing-version-aware.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	PeeDuplex ChannelFactory must be opened in prior to create
+	channels.
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Avoid possible list modification error during close process.
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Make sure to close session once the client opened one.
+
 2011-01-08  Marek Safar  <marek.safar@gmail.com>
 
 	Fixed missing protected internal modifier

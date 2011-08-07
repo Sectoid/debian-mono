@@ -1,3 +1,14 @@
+2011-02-08  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[SmtpClient] Don't send empty display name.
+
+	If there's no display name, don't send '""'. Fixes bug #670475.
+
+2011-01-25  Marek Habersack  <grendel@twistedcode.net>
+
+	[system] SmtpClient implements IDisposable on 4.0 (a no-op for
+	now)
+
 2010-10-31  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Check that the default from is not empty

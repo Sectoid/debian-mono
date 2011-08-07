@@ -1,3 +1,25 @@
+2011-07-12  Nicolas Graziano  <nicolas.graziano@gmail.com>
+
+	Correct the include files Platform is not in test.
+
+2011-07-06  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	Add System/Platform.cs to *System*.dll.sources
+
+2011-07-05  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	Implemented a shared way to detect MacOSX for System.dll
+
+2011-03-20  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add some missing types to the mobile profile
+
+2011-01-20  Miguel de Icaza  <miguel@gnome.org>
+
+	[sockets] Implement DuplicateAndClose and Socket
+	(SocketInformation) constructor for in-process socket passing
+	(AppDomains)
+
 2011-01-04  Marek Habersack  <grendel@twistedcode.net>
 
 	[system] Unbreak a 4.0 System.ServiceModel test.

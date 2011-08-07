@@ -1,3 +1,23 @@
+2011-05-05  Veerapuram Varadhan  <v.varadhan@gmail.com>
+
+	* OracleConnection.cs (GetOracleVersion, GetNlsInfo): 
+	* OracleParameter.cs: Use UIntPtr for referencing size_t 
+	parameters to fix 32/64 bit - big/little-endian issues 
+	while calling native methods.
+	
+2010-02-14  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes 667855
+	* OracleParameter.cs (InferSize): For Raw types, use the appropriate 
+	methods to convert value to bytearray and use them to bind.
+	(Bind): Fix index parameters in call to Array.ConstrainedCopy. 
+	
+2010-01-30  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #667236 - Based on patch by Kalyanov.Dmitry@gmail.com
+	* OracleParameter.cs (GetOutValue): Handle OciDataType.Integer 
+	appropriately using the underlying dbType.
+	
 2009-10-29  Veerapuram Varadhan  <vvaradhan@novell.com>
 
 	** Fixes #322695
