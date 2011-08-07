@@ -121,7 +121,7 @@ mono_cli_rva_image_map (MonoImage *image, guint32 addr)
 	for (i = 0; i < top; i++){
 		if ((addr >= tables->st_virtual_address) &&
 		    (addr < tables->st_virtual_address + tables->st_raw_data_size)){
-#ifdef HOST_WIN32
+#ifdef ENABLE_COREE
 			if (image->is_module_handle)
 				return addr;
 #endif
@@ -158,7 +158,7 @@ mono_image_rva_map (MonoImage *image, guint32 addr)
 				if (!mono_image_ensure_section_idx (image, i))
 					return NULL;
 			}
-#ifdef HOST_WIN32
+#ifdef ENABLE_COREE
 			if (image->is_module_handle)
 				return image->raw_data + addr;
 #endif
@@ -196,7 +196,14 @@ mono_images_init (void)
 void
 mono_images_cleanup (void)
 {
+	GHashTableIter iter;
+	MonoImage *image;
+
 	DeleteCriticalSection (&images_mutex);
+
+	g_hash_table_iter_init (&iter, loaded_images_hash);
+	while (g_hash_table_iter_next (&iter, NULL, (void**)&image))
+		mono_trace (G_LOG_LEVEL_INFO, MONO_TRACE_ASSEMBLY, "Assembly image '%s' still loaded at shutdown.", image->name);
 
 	g_hash_table_destroy (loaded_images_hash);
 	g_hash_table_destroy (loaded_images_refonly_hash);
@@ -232,7 +239,7 @@ mono_image_ensure_section_idx (MonoImage *image, int section)
 
 	if (sect->st_raw_data_ptr + sect->st_raw_data_size > image->raw_data_len)
 		return FALSE;
-#ifdef HOST_WIN32
+#ifdef ENABLE_COREE
 	if (image->is_module_handle)
 		iinfo->cli_sections [section] = image->raw_data + sect->st_virtual_address;
 	else
@@ -621,7 +628,7 @@ mono_image_load_module (MonoImage *image, int idx)
 			if (image->modules [idx - 1]) {
 				mono_image_addref (image->modules [idx - 1]);
 				image->modules [idx - 1]->assembly = image->assembly;
-#ifdef HOST_WIN32
+#ifdef ENABLE_COREE
 				if (image->modules [idx - 1]->is_module_handle)
 					mono_image_fixup_vtable (image->modules [idx - 1]);
 #endif
@@ -695,7 +702,7 @@ do_load_header (MonoImage *image, MonoDotNetHeader *header, int offset)
 {
 	MonoDotNetHeader64 header64;
 
-#ifdef HOST_WIN32
+#ifdef ENABLE_COREE
 	if (!image->is_module_handle)
 #endif
 	if (offset + sizeof (MonoDotNetHeader32) > image->raw_data_len)
@@ -816,7 +823,7 @@ do_load_header (MonoImage *image, MonoDotNetHeader *header, int offset)
  	SWAPPDE (header->datadir.pe_cli_header);
 	SWAPPDE (header->datadir.pe_reserved);
 
-#ifdef HOST_WIN32
+#ifdef ENABLE_COREE
 	if (image->is_module_handle)
 		image->raw_data_len = header->nt.pe_image_size;
 #endif
@@ -835,7 +842,7 @@ mono_image_load_pe_data (MonoImage *image)
 	iinfo = image->image_info;
 	header = &iinfo->cli_header;
 
-#ifdef HOST_WIN32
+#ifdef ENABLE_COREE
 	if (!image->is_module_handle)
 #endif
 	if (offset + sizeof (msdos) > image->raw_data_len)
@@ -1171,7 +1178,7 @@ mono_image_open_from_data (char *data, guint32 data_len, gboolean need_copy, Mon
 	return mono_image_open_from_data_full (data, data_len, need_copy, status, FALSE);
 }
 
-#ifdef HOST_WIN32
+#ifdef ENABLE_COREE
 /* fname is not duplicated. */
 MonoImage*
 mono_image_open_from_module_handle (HMODULE module_handle, char* fname, gboolean has_entry_point, MonoImageOpenStatus* status)
@@ -1205,7 +1212,7 @@ mono_image_open_full (const char *fname, MonoImageOpenStatus *status, gboolean r
 	
 	g_return_val_if_fail (fname != NULL, NULL);
 	
-#ifdef HOST_WIN32
+#ifdef ENABLE_COREE
 	/* Load modules using LoadLibrary. */
 	if (!refonly && coree_module_handle) {
 		HMODULE module_handle;
@@ -1254,8 +1261,12 @@ mono_image_open_full (const char *fname, MonoImageOpenStatus *status, gboolean r
 			if (status) {
 				if (last_error == ERROR_BAD_EXE_FORMAT || last_error == STATUS_INVALID_IMAGE_FORMAT)
 					*status = MONO_IMAGE_IMAGE_INVALID;
-				else
-					*status = MONO_IMAGE_ERROR_ERRNO;
+				else {
+					if (last_error == ERROR_FILE_NOT_FOUND || last_error == ERROR_PATH_NOT_FOUND)
+						errno = ENOENT;
+					else
+						errno = 0;
+				}
 			}
 			return NULL;
 		}
@@ -1353,7 +1364,7 @@ mono_image_open_raw (const char *fname, MonoImageOpenStatus *status)
 void
 mono_image_fixup_vtable (MonoImage *image)
 {
-#ifdef HOST_WIN32
+#ifdef ENABLE_COREE
 	MonoCLIImageInfo *iinfo;
 	MonoPEDirEntry *de;
 	MonoVTableFixup *vtfixup;
@@ -1414,12 +1425,6 @@ free_mr_signatures (gpointer key, gpointer val, gpointer user_data)
 	mono_metadata_free_method_signature ((MonoMethodSignature*)val);
 }
 */
-
-static void
-free_remoting_wrappers (gpointer key, gpointer val, gpointer user_data)
-{
-	g_free (val);
-}
 
 static void
 free_array_cache_entry (gpointer key, gpointer val, gpointer user_data)
@@ -1497,7 +1502,7 @@ mono_image_close_except_pools (MonoImage *image)
 
 	mono_images_unlock ();
 
-#ifdef HOST_WIN32
+#ifdef ENABLE_COREE
 	if (image->is_module_handle && image->has_entry_point) {
 		mono_images_lock ();
 		if (image->ref_count == 0) {
@@ -1540,7 +1545,7 @@ mono_image_close_except_pools (MonoImage *image)
 		}
 	}
 
-#ifdef HOST_WIN32
+#ifdef ENABLE_COREE
 	mono_images_lock ();
 	if (image->is_module_handle && !image->has_entry_point)
 		FreeLibrary ((HMODULE) image->raw_data);
@@ -1603,8 +1608,7 @@ mono_image_close_except_pools (MonoImage *image)
 	free_hash (image->delegate_end_invoke_cache);
 	free_hash (image->delegate_invoke_cache);
 	free_hash (image->delegate_abstract_invoke_cache);
-	if (image->remoting_invoke_cache)
-		g_hash_table_foreach (image->remoting_invoke_cache, free_remoting_wrappers, NULL);
+	free_hash (image->delegate_bound_static_invoke_cache);
 	free_hash (image->remoting_invoke_cache);
 	free_hash (image->runtime_invoke_cache);
 	free_hash (image->runtime_invoke_direct_cache);
@@ -1621,6 +1625,8 @@ mono_image_close_except_pools (MonoImage *image)
 	free_hash (image->castclass_cache);
 	free_hash (image->proxy_isinst_cache);
 	free_hash (image->thunk_invoke_cache);
+	free_hash (image->var_cache_slow);
+	free_hash (image->mvar_cache_slow);
 
 	/* The ownership of signatures is not well defined */
 	//g_hash_table_foreach (image->memberref_signatures, free_mr_signatures, NULL);
@@ -1994,7 +2000,7 @@ mono_image_load_file_for_image (MonoImage *image, int fileidx)
 		}
 
 		image->files [fileidx - 1] = res;
-#ifdef HOST_WIN32
+#ifdef ENABLE_COREE
 		if (res->is_module_handle)
 			mono_image_fixup_vtable (res);
 #endif

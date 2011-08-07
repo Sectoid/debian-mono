@@ -1,3 +1,52 @@
+2011-05-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Add (not-working) callback instance context mode test and FIXME
+	comment.
+
+2011-04-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Get real fix for bug #687902. Revert request processor
+	IDisposable.
+
+	and handle session shutdown when creating InstanceContext. Also
+	add note on DisposeInstance(), which got me stuck.
+
+2011-04-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Add ServiceKnownTypeAttributeTest.
+
+2011-02-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Open and close client/service runtime channels in chains. Fixed
+	bug #663278.
+
+2010-11-04  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* MsmqTransportSecurityTest.cs: New test file.
+
+2010-10-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement NetTcpBinding.CanBuildChannelFactory/Listener and
+	several related stuff.
+
+	SecurityTokenParameters.InitializeSecurityTokenRequirement() needs
+	to become protected internal, so changed all overrides as well.
+
+	Some implementation in WindowsStreamSecurityBindingElement is
+	needed only for NetTcpBinding implementation.
+
+	Had to disable a test in SymmetricSecurityBindingElement that
+	depended on OneWay support (which is not yet done).
+
+2010-10-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Fill NetTcpBinding security implementation a bit.
+
+2010-09-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement some additional logic around AddServiceEndpoint() to
+	achive standard endpoint support.
+
 2010-08-18  Atsushi Eno  <atsushi@ximian.com>
 
 	Request-reply channel factory should not reject one-way operation.

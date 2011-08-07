@@ -44,7 +44,7 @@ namespace System.Collections.Generic {
 	[DebuggerDisplay ("Count={Count}")]
 	[DebuggerTypeProxy (typeof (CollectionDebuggerView<,>))]
 	public class HashSet<T> : ICollection<T>, ISerializable, IDeserializationCallback
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 							, ISet<T>
 #endif
 	{
@@ -176,26 +176,26 @@ namespace System.Collections.Generic {
 		{
 			CopyTo (array, 0, count);
 		}
-
-		public void CopyTo (T [] array, int index)
+		
+		public void CopyTo (T [] array, int arrayIndex)
 		{
-			CopyTo (array, index, count);
+			CopyTo (array, arrayIndex, count);
 		}
 
-		public void CopyTo (T [] array, int index, int count)
+		public void CopyTo (T [] array, int arrayIndex, int count)
 		{
 			if (array == null)
 				throw new ArgumentNullException ("array");
-			if (index < 0)
-				throw new ArgumentOutOfRangeException ("index");
-			if (index > array.Length)
+			if (arrayIndex < 0)
+				throw new ArgumentOutOfRangeException ("arrayIndex");
+			if (arrayIndex > array.Length)
 				throw new ArgumentException ("index larger than largest valid index of array");
-			if (array.Length - index < count)
+			if (array.Length - arrayIndex < count)
 				throw new ArgumentException ("Destination array cannot hold the requested elements!");
 
 			for (int i = 0, items = 0; i < touched && items < count; i++) {
 				if (GetLinkHashCode (i) != 0)
-					array [index++] = slots [i];
+					array [arrayIndex++] = slots [i];
 			}
 		}
 
@@ -352,17 +352,15 @@ namespace System.Collections.Generic {
 			return true;
 		}
 
-		public int RemoveWhere (Predicate<T> predicate)
+		public int RemoveWhere (Predicate<T> match)
 		{
-			if (predicate == null)
-				throw new ArgumentNullException ("predicate");
-
-			int counter = 0;
+			if (match == null)
+				throw new ArgumentNullException ("match");
 
 			var candidates = new List<T> ();
 
 			foreach (var item in this)
-				if (predicate (item)) 
+				if (match (item)) 
 					candidates.Add (item);
 
 			foreach (var item in candidates)
@@ -536,10 +534,42 @@ namespace System.Collections.Generic {
 			return CheckIsSupersetOf (other_set);
 		}
 
-		[MonoTODO]
+		class HashSetEqualityComparer : IEqualityComparer<HashSet<T>>
+		{
+			public bool Equals (HashSet<T> lhs, HashSet<T> rhs)
+			{
+				if (lhs == rhs)
+					return true;
+
+				if (lhs == null || rhs == null || lhs.Count != rhs.Count)
+					return false;
+
+				foreach (var item in lhs)
+					if (!rhs.Contains (item))
+						return false;
+
+				return true;
+			}
+
+			public int GetHashCode (HashSet<T> hashset)
+			{
+				if (hashset == null)
+					return 0;
+
+				IEqualityComparer<T> comparer = EqualityComparer<T>.Default;
+				int hash = 0;
+				foreach (var item in hashset)
+					hash ^= comparer.GetHashCode (item);
+
+				return hash;
+			}
+		}
+
+		static readonly HashSetEqualityComparer setComparer = new HashSetEqualityComparer ();
+
 		public static IEqualityComparer<HashSet<T>> CreateSetComparer ()
 		{
-			throw new NotImplementedException ();
+			return setComparer;
 		}
 
 		[MonoTODO]
@@ -565,11 +595,6 @@ namespace System.Collections.Generic {
 
 		bool ICollection<T>.IsReadOnly {
 			get { return false; }
-		}
-
-		void ICollection<T>.CopyTo (T [] array, int index)
-		{
-			CopyTo (array, index);
 		}
 
 		void ICollection<T>.Add (T item)

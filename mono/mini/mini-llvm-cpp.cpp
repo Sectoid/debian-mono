@@ -46,6 +46,10 @@
 
 #include "mini-llvm-cpp.h"
 
+#define LLVM_CHECK_VERSION(major,minor) \
+	((LLVM_MAJOR_VERSION > (major)) ||									\
+	 ((LLVM_MAJOR_VERSION == (major)) && (LLVM_MINOR_VERSION >= (minor))))
+
 extern "C" void LLVMInitializeX86TargetInfo();
 
 using namespace llvm;
@@ -260,6 +264,7 @@ void
 mono_llvm_dump_value (LLVMValueRef value)
 {
 	/* Same as LLVMDumpValue (), but print to stdout */
+	fflush (stdout);
 	outs () << (*unwrap<Value> (value));
 }
 
@@ -296,6 +301,18 @@ mono_llvm_build_store (LLVMBuilderRef builder, LLVMValueRef Val, LLVMValueRef Po
 					  gboolean is_volatile)
 {
 	return wrap(unwrap(builder)->CreateStore(unwrap(Val), unwrap(PointerVal), is_volatile));
+}
+
+LLVMValueRef 
+mono_llvm_build_aligned_store (LLVMBuilderRef builder, LLVMValueRef Val, LLVMValueRef PointerVal,
+							   gboolean is_volatile, int alignment)
+{
+	StoreInst *ins;
+
+	ins = unwrap(builder)->CreateStore(unwrap(Val), unwrap(PointerVal), is_volatile);
+	ins->setAlignment (alignment);
+
+	return wrap (ins);
 }
 
 void
@@ -376,7 +393,6 @@ force_pass_linking (void)
       (void) llvm::createLoopUnrollPass();
       (void) llvm::createLoopUnswitchPass();
       (void) llvm::createLoopRotatePass();
-      (void) llvm::createLoopIndexSplitPass();
       (void) llvm::createLowerInvokePass();
 	  /*
       (void) llvm::createLowerSetJmpPass();
@@ -472,6 +488,19 @@ mono_llvm_create_ee (LLVMModuleProviderRef MP, AllocCodeMemoryCb *alloc_cb, Func
   fpm = new FunctionPassManager (unwrap (MP));
 
   fpm->add(new TargetData(*EE->getTargetData()));
+
+#if LLVM_CHECK_VERSION(2, 9)
+  PassRegistry &Registry = *PassRegistry::getPassRegistry();
+  initializeCore(Registry);
+  initializeScalarOpts(Registry);
+  //initializeIPO(Registry);
+  initializeAnalysis(Registry);
+  initializeIPA(Registry);
+  initializeTransformUtils(Registry);
+  initializeInstCombine(Registry);
+  //initializeInstrumentation(Registry);
+  initializeTarget(Registry);
+#endif
 
   llvm::cl::ParseEnvironmentOptions("mono", "MONO_LLVM", "", false);
 

@@ -1,3 +1,22 @@
+2011-03-08  Miguel de Icaza  <miguel@gnome.org>
+
+	[System.Json] Fix loader.
+
+	The current loader failed with some Json strings due to the
+	implementation of the BufferedStreamReader. Removed that
+	implementation completely, and instead depend on the StreamReader
+	to do the actual BOM detection.
+
+	This removes the JavaScriptObjectDeserializer.cs file
+
+2010-10-14  Jb Evain  <jbevain@gmail.com>
+
+	Add pretty print support for null values in JsonObjects
+
+2010-10-14  Jb Evain  <jbevain@gmail.com>
+
+	Allow null values in JsonObjects
+
 2010-08-11  Jb Evain  <jbevain@gmail.com>
 
 	[hygiene] simplify the code dealing with internal collections

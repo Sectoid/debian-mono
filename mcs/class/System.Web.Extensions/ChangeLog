@@ -1,3 +1,27 @@
+2011-04-21  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented composite scripts support in
+	System.Web.Extensions
+
+2011-01-04  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Failing tests fixes.
+
+2011-01-04  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Added code to handle local resources copying in the test
+	suite
+
+2010-12-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implmeneted the
+	System.Web.Configuration.ScriptingRoleServiceSection type
+
+2010-10-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	Adjust System.Web.Extensions[_1.0].dll.sources wrt
+	MachineKeySectionUtils.cs move
+
 2010-04-28  Marek Habersack  <mhabersack@novell.com>
 
 	* Makefile (OTHER_LIB_MCS_FLAGS): added a reference to

@@ -1,3 +1,39 @@
+2011-03-20  Jb Evain  <jbevain@gmail.com>
+
+	[linker] always preserve System.MonoCQItem
+
+2011-01-11  Jb Evain  <jbevain@gmail.com>
+
+	Remove custom ResolutionException now that Cecil is providing one
+
+2010-11-24  Jb Evain  <jbevain@gmail.com>
+
+	[Linker] fix the moonlight tuning wrt debug symbols
+
+2010-11-24  Jb Evain  <jbevain@gmail.com>
+
+	[Linker] properly read symbols
+
+2010-11-24  Jb Evain  <jbevain@gmail.com>
+
+	[Linker] fix custom AssemblyResolver
+
+2010-11-24  Jb Evain  <jbevain@gmail.com>
+
+	[Linker] refactorize how symbols are loaded
+
+2010-11-23  Jb Evain  <jbevain@gmail.com>
+
+	More linker fixes for moonlight
+
+2010-11-23  Jb Evain  <jbevain@gmail.com>
+
+	Fix sweeping of nested types
+
+2010-10-05  Jb Evain  <jbevain@gmail.com>
+
+	Update the linker to cecil-light
+
 2010-05-31  Jb Evain  <jbevain@novell.com>
 
 	Merge the MonoTouch Linker branch.

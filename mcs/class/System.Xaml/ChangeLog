@@ -1,3 +1,135 @@
+2011-04-28  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove non-existent test source (it is only in master).
+
+2010-12-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Implemented support for attached properties in xamlreaders and
+	xamlwriters.
+
+2010-12-06  Atsushi Eno  <atsushi@ximian.com>
+
+	Implemented Reference resolution in XamlObjectWriter.
+
+2010-12-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Split internal base class into new file.
+
+2010-12-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Rename source.
+
+2010-11-30  Atsushi Eno  <atsushi@ximian.com>
+
+	Renamed test files.
+
+2010-11-30  Atsushi Eno  <atsushi@ximian.com>
+
+	Extract XamlObjectReaderTest class into another file. Files are to
+	be renamed.
+
+2010-11-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Add refresh XamlObjectWriter implementation.
+
+	This writer can process a lot more xaml inputs. It is now unified
+	to XamlXmlWriter, sharing some internals (already existed in
+	XamlXmlWriter.cs).
+
+	Had to disable a few minor tests that used to pass for invalid
+	inputs.
+
+2010-11-19  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix the build.
+
+2010-11-19  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement XamlType.CanAssignTo(). Remove extra writer state
+	members.
+
+2010-11-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Rewrote ValueSerializer.GetSerializerFor() with couple of tests.
+
+2010-11-12  Atsushi Eno  <atsushi@ximian.com>
+
+	Add support for MarkupExtension attribute in XamlXmlReader.
+
+2010-11-12  Atsushi Eno  <atsushi@ximian.com>
+
+	Add new ValueSerializerContext and use it everywhere appropriate.
+
+	This change was basically for string serialization of
+	XamlTypeName, namely PropertyDefinition serialization. Turned out
+	it should be used in a lot of places where IServiceProvider and
+	ITypeDescriptorContext is expected. IServiceProvider
+	implementations in XamlWriters are replaced.
+
+2010-11-11  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove old code (overwrite).
+
+2010-11-11  Atsushi Eno  <atsushi@ximian.com>
+
+	Split XamlNode.cs to object-reader specific code and else.
+
+2010-11-06  Atsushi Eno  <atsushi@ximian.com>
+
+	Add new XamlXmlWriter implementation. Marked some as NotWorking
+	while removed a lot.
+
+2010-11-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Extracted PrefixLookup to another file. Add more
+	XamlTypeName.ToString() tests.
+
+2010-10-29  Atsushi Eno  <atsushi@ximian.com>
+
+	(Finally) replace old XamlObjectReader implementation with new
+	one.
+
+2010-10-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Introduce new XamlObjectReader implementation.
+
+	Nodes are iterated in XamlNodeIterator which is used by
+	XamlObjectReader. It collects namespace declarations as it does in
+	the reading the objects. The new code is somewhat better, with
+	less "special" hardcoded rules.
+
+	It can be even compiled with .NET (with TypeExtensionMethods).
+
+2010-10-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Collected tested types into a new file.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
+2010-10-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Significant XamlObjectWriter rewrite for solid state transition.
+	And now it supports Array(Extension) and other MarkupExtension
+	types.
+
+2010-10-06  Atsushi Eno  <atsushi@ximian.com>
+
+	Use MarkupExtension.ProvideValue() so that XamlObjectReader can
+	return expected Result. Implement internal IXamlNameResolver for
+	Reference resolution.
+
+2010-10-04  Atsushi Eno  <atsushi@ximian.com>
+
+	remove extraneous reference to sys.configuration.
+
+2010-10-04  Atsushi Eno  <atsushi@ximian.com>
+
+	A couple of fixes around
+	XamlSchemaContext.GetXamlType(XamlTypeName) and get XamlXmlReader
+	pass with unknown type names.
+
 2010-04-15  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* System.Xaml_test.dll.sources : add XDataTest.cs.

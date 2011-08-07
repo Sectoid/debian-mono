@@ -27,7 +27,7 @@
 //
 #if NET_2_0
 using System;
-using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Runtime.Serialization.Formatters.Binary;
@@ -47,38 +47,36 @@ namespace System.Runtime.Serialization
 		bool save_id;
 		bool ignore_unknown;
 		IDataContractSurrogate surrogate;
+		DataContractResolver resolver, default_resolver; // new in 4.0
 		int max_items;
 
-		ArrayList objects = new ArrayList ();
-		Hashtable references = new Hashtable (); // preserve possibly referenced objects to ids. (new in 3.5 SP1)
+		List<object> objects = new List<object> ();
+		Dictionary<object,string> references = new Dictionary<object,string> (); // preserve possibly referenced objects to ids. (new in 3.5 SP1)
 
-		public static void Serialize (XmlDictionaryWriter writer, object graph,
-			KnownTypeCollection types,
-			bool ignoreUnknown, int maxItems, string root_ns, bool preserveObjectReferences)
+		public static void Serialize (XmlDictionaryWriter writer, object graph, Type declaredType, KnownTypeCollection types,
+			bool ignoreUnknown, int maxItems, string root_ns, bool preserveObjectReferences, DataContractResolver resolver, DataContractResolver defaultResolver)
 		{
-			new XmlFormatterSerializer (writer, types, ignoreUnknown, maxItems, root_ns, preserveObjectReferences)
-				.Serialize (graph != null ? graph.GetType () : null, graph);
+			new XmlFormatterSerializer (writer, types, ignoreUnknown, maxItems, root_ns, preserveObjectReferences, resolver, defaultResolver)
+				.Serialize (/*graph != null ? graph.GetType () : */declaredType, graph); // FIXME: I believe it should always use declaredType, but such a change brings some test breakages.
 		}
 
-		public XmlFormatterSerializer (XmlDictionaryWriter writer,
-			KnownTypeCollection types,
-			bool ignoreUnknown, int maxItems, string root_ns, bool preserveObjectReferences)
+		public XmlFormatterSerializer (XmlDictionaryWriter writer, KnownTypeCollection types, bool ignoreUnknown,
+					       int maxItems, string root_ns, bool preserveObjectReferences,
+					       DataContractResolver resolver, DataContractResolver defaultResolver)
 		{
 			this.writer = writer;
 			this.types = types;
 			ignore_unknown = ignoreUnknown;
 			max_items = maxItems;
 			PreserveObjectReferences = preserveObjectReferences;
+			this.resolver = resolver;
+			this.default_resolver = defaultResolver;
 		}
 
 		public bool PreserveObjectReferences { get; private set; }
 
-		public ArrayList SerializingObjects {
+		public List<object> SerializingObjects {
 			get { return objects; }
-		}
-
-		public IDictionary References {
-			get { return references; }
 		}
 
 		public XmlDictionaryWriter Writer {
@@ -89,14 +87,31 @@ namespace System.Runtime.Serialization
 		{
 			if (graph == null)
 				writer.WriteAttributeString ("nil", XmlSchema.InstanceNamespace, "true");
+#if !MOONLIGHT
+			else if (type == typeof (XmlElement))
+				((XmlElement) graph).WriteTo (Writer);
+			else if (type == typeof (XmlNode [])) {
+				foreach (var xn in (XmlNode []) graph)
+					xn.WriteTo (Writer);
+			}
+#endif
 			else {
+				QName resolvedQName = null;
+				if (resolver != null) {
+					XmlDictionaryString rname, rns;
+					if (resolver.TryResolveType (graph != null ? graph.GetType () : typeof (object), type, default_resolver, out rname, out rns))
+						resolvedQName = new QName (rname.Value, rns.Value);
+				}
+
 				Type actualType = graph.GetType ();
 
-				SerializationMap map = types.FindUserMap (actualType);
+				SerializationMap map;
+				map = types.FindUserMap (actualType);
 				// For some collection types, the actual type does not matter. So get nominal serialization type instead.
 				// (The code below also covers the lines above, but I don't remove above lines to avoid extra search cost.)
 				if (map == null) {
-					actualType = types.GetSerializedType (actualType);
+					// FIXME: not sure if type.IsInterface is the correct condition to determine whether items are serialized with i:type or not. (e.g. bug #675144 server response).
+					actualType = types.GetSerializedType (type.IsInterface ? type : actualType);
 					map = types.FindUserMap (actualType);
 				}
 				// If it is still unknown, then register it.
@@ -106,7 +121,7 @@ namespace System.Runtime.Serialization
 				}
 
 				if (actualType != type && (map == null || map.OutputXsiType)) {
-					QName qname = types.GetXmlName (actualType);
+					QName qname = resolvedQName ?? types.GetXmlName (actualType);
 					string name = qname.Name;
 					string ns = qname.Namespace;
 					if (qname == QName.Empty) {
@@ -116,7 +131,7 @@ namespace System.Runtime.Serialization
 						ns = XmlSchema.Namespace;
 					if (writer.LookupPrefix (ns) == null) // it goes first (extraneous, but it makes att order compatible)
 						writer.WriteXmlnsAttribute (null, ns);
-					writer.WriteStartAttribute ("type", XmlSchema.InstanceNamespace);
+					writer.WriteStartAttribute ("i", "type", XmlSchema.InstanceNamespace);
 					writer.WriteQualifiedName (name, ns);
 					writer.WriteEndAttribute ();
 				}
@@ -139,14 +154,26 @@ namespace System.Runtime.Serialization
 //			writer.WriteStartAttribute ("type", XmlSchema.InstanceNamespace);
 //			writer.WriteQualifiedName (qname.Name, qname.Namespace);
 //			writer.WriteEndAttribute ();
-			writer.WriteString (KnownTypeCollection.PredefinedTypeObjectToString (graph));
+
+			// It is the only exceptional type that does not serialize to string but serializes into complex element.
+			if (type == typeof (DateTimeOffset)) {
+				var v = (DateTimeOffset) graph;
+				writer.WriteStartElement ("DateTime", KnownTypeCollection.DefaultClrNamespaceSystem);
+				SerializePrimitive (typeof (DateTime), DateTime.SpecifyKind (v.DateTime.Subtract (v.Offset), DateTimeKind.Utc), KnownTypeCollection.GetPredefinedTypeName (typeof (DateTime)));
+				writer.WriteEndElement ();
+				writer.WriteStartElement ("OffsetMinutes", KnownTypeCollection.DefaultClrNamespaceSystem);
+				SerializePrimitive (typeof (int), v.Offset.TotalMinutes, KnownTypeCollection.GetPredefinedTypeName (typeof (int)));
+				writer.WriteEndElement ();
+			}
+			else
+				writer.WriteString (KnownTypeCollection.PredefinedTypeObjectToString (graph));
 		}
 
-		public void WriteStartElement (string rootName, string rootNamespace, string currentNamespace)
+		public void WriteStartElement (string memberName, string memberNamespace, string contentNamespace)
 		{
-			writer.WriteStartElement (rootName, rootNamespace);
-			if (!string.IsNullOrEmpty (currentNamespace) && currentNamespace != rootNamespace)
-				writer.WriteXmlnsAttribute (null, currentNamespace);
+			writer.WriteStartElement (memberName, memberNamespace);
+			if (!string.IsNullOrEmpty (contentNamespace) && contentNamespace != memberNamespace)
+				writer.WriteXmlnsAttribute (null, contentNamespace);
 		}
 
 		public void WriteEndElement ()
@@ -162,15 +189,14 @@ namespace System.Runtime.Serialization
 			if (!isMapReference && (!PreserveObjectReferences || graph == null || graph.GetType ().IsValueType))
 				return false;
 
-			label = (string) References [graph];
-			if (label != null) {
+			if (references.TryGetValue (graph, out label)) {
 				Writer.WriteAttributeString ("z", "Ref", KnownTypeCollection.MSSimpleNamespace, label);
 				label = null; // do not write label
 				return true;
 			}
 
-			label = "i" + (References.Count + 1);
-			References.Add (graph, label);
+			label = "i" + (references.Count + 1);
+			references.Add (graph, label);
 
 			return false;
 		}

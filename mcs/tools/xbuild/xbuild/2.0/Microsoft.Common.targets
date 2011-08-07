@@ -34,12 +34,17 @@
 
 	<PropertyGroup>
 		<BaseIntermediateOutputPath Condition="'$(BaseIntermediateOutputPath)' == ''">obj\</BaseIntermediateOutputPath>
+		<BaseIntermediateOutputPath Condition="'$(BaseIntermediateOutputPath)' != '' and !HasTrailingSlash('$(BaseIntermediateOutputPath)')">$(BaseIntermediateOutputPath)\</BaseIntermediateOutputPath>
 		<CleanFile Condition="'$(CleanFile)'==''">$(MSBuildProjectFile).FilesWrittenAbsolute.txt</CleanFile>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(IntermediateOutputPath)' == ''">
 		<IntermediateOutputPath Condition=" '$(PlatformName)' == 'AnyCPU'">$(BaseIntermediateOutputPath)$(Configuration)\</IntermediateOutputPath>
 		<IntermediateOutputPath Condition=" '$(PlatformName)' != 'AnyCPU'">$(BaseIntermediateOutputPath)$(PlatformName)\$(Configuration)\</IntermediateOutputPath>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<IntermediateOutputPath Condition="'$(IntermediateOutputPath)' != '' and !HasTrailingSlash('$(IntermediateOutputPath)')">$(IntermediateOutputPath)\</IntermediateOutputPath>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -52,7 +57,8 @@
 	<PropertyGroup>
 		<TargetName Condition="'$(TargetName)' == '' ">$(AssemblyName)</TargetName>
 		<TargetFileName Condition="'$(TargetFileName)' == '' ">$(TargetName)$(TargetExt)</TargetFileName>
-		<TargetPath>@(_OutDirItem->'%(FullPath)\$(TargetFileName)')</TargetPath>
+		<TargetDir Condition=" '$(TargetDir)' == '' ">@(_OutDirItem->'%(FullPath)')</TargetDir>
+		<TargetPath Condition=" '$(TargetPath)' == '' ">@(_OutDirItem->'%(FullPath)\$(TargetFileName)')</TargetPath>
 		<MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildProjectFullPath);$(MSBuildToolsPath)\Microsoft.Common.targets</MSBuildAllProjects>
 
 		<KeyOriginatorFile Condition=" '$(SignAssembly)' == 'true' ">$(AssemblyOriginatorKeyFile)</KeyOriginatorFile>
@@ -92,19 +98,22 @@
 		/>
 	</Target>
 
-	<Target Name="GetFrameworkPaths">
+	<PropertyGroup>
+		<GetFrameworkPathsDependsOn />
+	</PropertyGroup>
+	<Target Name="GetFrameworkPaths" DependsOnTargets="$(GetFrameworkPathsDependsOn)">
 		<GetFrameworkPath>
 			<Output Condition="'$(TargetFrameworkVersion)' == 'v3.5'"
 				TaskParameter="FrameworkVersion35Path"
-				ItemName="_TargetFrameworkDirectories"/>
+				ItemName="_CombinedTargetFrameworkDirectoriesItem"/>
 			<Output Condition="'$(TargetFrameworkVersion)' == 'v3.0' or '$(TargetFrameworkVersion)' == 'v3.5'" 
 				TaskParameter="FrameworkVersion30Path"
-				ItemName="_TargetFrameworkDirectories"/>
+				ItemName="_CombinedTargetFrameworkDirectoriesItem"/>
 			<Output Condition="'$(TargetFrameworkVersion)' == 'v2.0' or '$(TargetFrameworkVersion)' == 'v3.0' or '$(TargetFrameworkVersion)' == 'v3.5'" 
 				TaskParameter="FrameworkVersion20Path"
-				ItemName="_TargetFrameworkDirectories"/>
+				ItemName="_CombinedTargetFrameworkDirectoriesItem"/>
 		</GetFrameworkPath>
-		<CreateProperty Value="@(_TargetFrameworkDirectories)">
+		<CreateProperty Value="@(_CombinedTargetFrameworkDirectoriesItem)">
 			<Output TaskParameter="Value" PropertyName="TargetFrameworkDirectory"/>
 		</CreateProperty>
 
@@ -139,6 +148,11 @@
 			ResolveAssemblyReferences;
 			AfterResolveReferences
 		</ResolveReferencesDependsOn>
+
+		<ResolveAssemblyReferencesDependsOn>
+			GetFrameworkPaths;
+			PrepareForBuild
+		</ResolveAssemblyReferencesDependsOn>
 	</PropertyGroup>
 
 	<Target Name="ResolveReferences" DependsOnTargets="$(ResolveReferencesDependsOn)"/>
@@ -146,7 +160,7 @@
 	<Target Name="BeforeResolveReferences" />
 	<Target Name="AfterResolveReferences" />
 
-	<Target Name="ResolveAssemblyReferences">
+	<Target Name="ResolveAssemblyReferences" DependsOnTargets="$(ResolveAssemblyReferencesDependsOn)">
 		<ResolveAssemblyReference
 			Assemblies="@(Reference)"
 			AssemblyFiles="@(ChildProjectReferences)"

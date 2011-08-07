@@ -55,7 +55,11 @@ namespace System.ServiceModel.Discovery.Configuration
 			get { return typeof (ServiceDiscoveryBehavior); }
 		}
 		
-		protected override object CreateBehavior ()
+		protected override ConfigurationPropertyCollection Properties {
+			get { return properties; }
+		}
+		
+		protected internal override object CreateBehavior ()
 		{
 			throw new NotImplementedException ();
 		}

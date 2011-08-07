@@ -48,7 +48,7 @@ namespace System.Reflection {
 	[Serializable]
 	[ClassInterfaceAttribute (ClassInterfaceType.None)]
 
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 	public abstract class Module : ISerializable, ICustomAttributeProvider, _Module {
 #else
 	public partial class Module : ISerializable, ICustomAttributeProvider, _Module {
@@ -75,7 +75,7 @@ namespace System.Reflection {
 		}
 
 
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		protected
 #else
 		internal
@@ -291,9 +291,9 @@ namespace System.Reflection {
 		}
 
 #if NET_4_0
-		public override bool Equals (object obj)
+		public override bool Equals (object o)
 		{
-			return obj == this;
+			return o == (object) this;
 		}
 
 		public override int GetHashCode ()
@@ -312,7 +312,7 @@ namespace System.Reflection {
 
 		public static bool operator != (Module left, Module right)
 		{
-			if ((object)left != (object)right)
+			if ((object)left == (object)right)
 				return false;
 			if ((object)left == null ^ (object)right == null)
 				return true;
@@ -321,7 +321,7 @@ namespace System.Reflection {
 
 #endif
 
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 
 		public virtual Assembly Assembly {
 			get { throw CreateNIE (); }

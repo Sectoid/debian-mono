@@ -1,3 +1,15 @@
+2010-12-04  Kenneth Bell  <ken.git@chezbell.org.uk>
+
+	Implement SecurityIdentifier and improve NTAccount.
+
+	* Only translates between SecurityIdentifier and NTAccount for
+	well-known accounts.
+
+	* NTAccount changed to not upper-case values to match behaviour
+	observed in Microsoft's .NET (see also unit tests)
+
+	* Add unit tests for both classes
+
 2009-06-24  Zoltan Varga  <vargaz@gmail.com>
 
 	* *.cs: Convert all tests to new-style nunit classes/methods.

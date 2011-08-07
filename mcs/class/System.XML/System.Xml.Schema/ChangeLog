@@ -1,3 +1,58 @@
+2011-05-11  Atsushi Eno  <atsushi@ximian.com>
+
+	Fixed orders in XmlSchemaObjectTable and got some
+	S.R.Serialization tests working.
+
+2011-05-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Multiple schemas in wsdl could share same SourceUri, so check more
+	identity.
+
+	Part of bugfix #670945.
+
+2011-03-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Fixed xsd derived simpleType cast failures on uint. Fixed bug
+	#676993.
+
+2011-01-31  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix bug #661400 - fix complicated namespace resolution issue.
+
+	Namespaces in nested external schemas have to be validated against
+	immediately-containing schema. If there is a schema A with urn:x
+	targetNamespace imports a schema B with urn:y targetNamespace
+	which in turn includes another schema C, then C must be validated
+	its namespace against B, not A.
+
+2011-02-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Simple content restriction was not validated when it is in further
+	reference.
+
+	Fixed bug #595947. It was complexType [base]-> complexType
+	[base]-> simpleType.
+
+2011-02-08  Atsushi Eno  <atsushi@ximian.com>
+
+	For complexType simpleContent restriction, fill attributes from
+	base type.
+
+	Part of bugfix #595947.
+
+2010-11-30  Atsushi Eno  <atsushi@ximian.com>
+
+	Use AttributeSchemaType as it is 2.0 API. This fixes incorrectly
+	skipped type validation.
+
+2010-11-30  Atsushi Eno  <atsushi@ximian.com>
+
+	Handle more type conversion.
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System.Xml build for monodroid
+
 2010-06-14  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* XmlSchemaValidator.cs : limit validity initialization. In some

@@ -1,3 +1,35 @@
+2011-03-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Enable behaviors in mobile profiles for WebHttpBinding.
+
+2010-10-20  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf] make /js and /jsdebug dispatchers work.
+
+	There were several issues here:
+
+	- The IChannelDispatcherBoundListener was defined twice, in two
+	different namespaces, and it caused code in
+	ChannelDispatcher.Attach not to set its associated listener's
+	ChannelDispatcher property to the correct value. This, in turn,
+	caused incorrect HttpListenerManagerTable operation, where it
+	would put the "/js" and "/jsdebug" dispatchers in separate
+	HttpListenerManagers, instead of in the main (base) service's one.
+	- After fixing the above, it turned out that SvcHttpHandler
+	selected the manager based on the host's base address, when it
+	should first try to find one whose URL matches the current request
+	exactly.
+
+2010-10-15  Frank Wilhelm  <fwilhelm@nowisys.de>
+
+	Make Validate() less restrictive for contracts with explicit
+	UriTemplate.
+
+2010-09-13  Atsushi Eno  <atsushi@ximian.com>
+
+	implemented large parts of WCF standard endpoints and
+	configuration support.
+
 2010-08-11  Jb Evain  <jbevain@gmail.com>
 
 	fix the net_2_1 build

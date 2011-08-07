@@ -105,6 +105,7 @@ namespace System.IO
 		public virtual void Close ()
 		{
 			Dispose (true);
+			GC.SuppressFinalize (this);
 		}
 
 		[ComVisible (false)]
@@ -261,7 +262,7 @@ namespace System.IO
 				throw result.Exception;
 		}
 
-#if MOONLIGHT || NET_4_0
+#if MOONLIGHT || NET_4_0 || MOBILE
 		public void CopyTo (Stream destination)
 		{
 			CopyTo (destination, 16*1024);

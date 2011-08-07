@@ -13,15 +13,15 @@
 #pragma include_alias(<eglib-config.h>, <eglib-config.hw>)
 #else
 #include <stdint.h>
-/* For pid_t */
-#ifndef WIN32
-#include <unistd.h>
-#endif
 #endif
 
 #include <eglib-config.h>
 #ifndef EGLIB_NO_REMAP
 #include <eglib-remap.h>
+#endif
+
+#ifdef G_HAVE_ALLOCA_H
+#include <alloca.h>
 #endif
 
 #ifndef offsetof
@@ -39,6 +39,12 @@
 #endif
 
 G_BEGIN_DECLS
+
+#ifdef G_OS_WIN32
+/* MSC and Cross-compilatin will use this */
+int vasprintf (char **strp, const char *fmt, va_list ap);
+#endif
+
 
 /*
  * Basic data types
@@ -85,7 +91,6 @@ typedef int32_t        gboolean;
 #endif
 #endif
 
-
 /*
  * Macros
  */
@@ -123,11 +128,11 @@ typedef int32_t        gboolean;
  * Allocation
  */
 void g_free (void *ptr);
-static inline gpointer g_realloc (gpointer obj, gsize size) { if (!size) {g_free (obj); return 0;} return  realloc (obj, size);}
-static inline gpointer g_malloc (gsize x) {if (x) return malloc (x); else return 0;}
-static inline gpointer g_malloc0 (gsize x) {if (x) return calloc(1,x); else return 0;}
-#define g_try_malloc(x)         g_malloc(x)
-#define g_try_realloc(obj,size) g_realloc((obj),(size))
+gpointer g_realloc (gpointer obj, gsize size);
+gpointer g_malloc (gsize x);
+gpointer g_malloc0 (gsize x);
+gpointer g_try_malloc (gsize x);
+gpointer g_try_realloc (gpointer obj, gsize size);
 
 #define g_new(type,size)        ((type *) g_malloc (sizeof (type) * (size)))
 #define g_new0(type,size)       ((type *) g_malloc0 (sizeof (type)* (size)))
@@ -178,6 +183,14 @@ gchar*           g_win32_getlocale(void);
  * Hashtables
  */
 typedef struct _GHashTable GHashTable;
+typedef struct _GHashTableIter GHashTableIter;
+
+/* Private, but needed for stack allocation */
+struct _GHashTableIter
+{
+	gpointer dummy [8];
+};
+
 typedef void     (*GFunc)          (gpointer data, gpointer user_data);
 typedef gint     (*GCompareFunc)   (gconstpointer a, gconstpointer b);
 typedef gint     (*GCompareDataFunc) (gconstpointer a, gconstpointer b, gpointer user_data);
@@ -198,10 +211,14 @@ gboolean        g_hash_table_lookup_extended (GHashTable *hash, gconstpointer ke
 void            g_hash_table_foreach         (GHashTable *hash, GHFunc func, gpointer user_data);
 gpointer        g_hash_table_find            (GHashTable *hash, GHRFunc predicate, gpointer user_data);
 gboolean        g_hash_table_remove          (GHashTable *hash, gconstpointer key);
+void            g_hash_table_remove_all      (GHashTable *hash);
 guint           g_hash_table_foreach_remove  (GHashTable *hash, GHRFunc func, gpointer user_data);
 guint           g_hash_table_foreach_steal   (GHashTable *hash, GHRFunc func, gpointer user_data);
 void            g_hash_table_destroy         (GHashTable *hash);
 void            g_hash_table_print_stats     (GHashTable *table);
+
+void            g_hash_table_iter_init       (GHashTableIter *iter, GHashTable *hash_table);
+gboolean        g_hash_table_iter_next       (GHashTableIter *iter, gpointer *key, gpointer *value);
 
 guint           g_spaced_primes_closest      (guint x);
 
@@ -435,6 +452,20 @@ GList *g_list_sort          (GList         *sort,
 			     GCompareFunc   func);
 
 /*
+ * ByteArray
+ */
+
+typedef struct _GByteArray GByteArray;
+struct _GByteArray {
+	guint8 *data;
+	gint len;
+};
+
+GByteArray *g_byte_array_new    (void);
+GByteArray* g_byte_array_append (GByteArray *array, const guint8 *data, guint len);
+guint8*  g_byte_array_free      (GByteArray *array, gboolean free_segment);
+
+/*
  * Array
  */
 
@@ -496,6 +527,7 @@ void     g_queue_push_tail (GQueue   *queue,
 gboolean g_queue_is_empty  (GQueue   *queue);
 GQueue  *g_queue_new       (void);
 void     g_queue_free      (GQueue   *queue);
+void     g_queue_foreach   (GQueue   *queue, GFunc func, gpointer user_data);
 
 /*
  * Messages
@@ -541,6 +573,8 @@ void           g_assertion_message    (const gchar *format, ...) G_GNUC_NORETURN
 #define g_debug(...)    g_log (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, __VA_ARGS__)
 #endif  /* ndef HAVE_C99_SUPPORT */
 #define g_log_set_handler(a,b,c,d)
+
+#define G_GNUC_INTERNAL
 
 /*
  * Conversions
@@ -641,7 +675,7 @@ gunichar  *g_utf16_to_ucs4 (const gunichar2 *str, glong len, glong *items_read, 
 #define u8to16(str) g_utf8_to_utf16(str, (glong)strlen(str), NULL, NULL, NULL)
 
 #ifdef G_OS_WIN32
-#define u16to8(str) g_utf16_to_utf8(str, (glong)wcslen(str), NULL, NULL, NULL)
+#define u16to8(str) g_utf16_to_utf8((gunichar2 *) (str), (glong)wcslen((wchar_t *) (str)), NULL, NULL, NULL)
 #else
 #define u16to8(str) g_utf16_to_utf8(str, (glong)strlen(str), NULL, NULL, NULL)
 #endif
@@ -683,8 +717,6 @@ typedef enum {
 	G_SPAWN_CHILD_INHERITS_STDIN   = 1 << 5,
 	G_SPAWN_FILE_AND_ARGV_ZERO     = 1 << 6
 } GSpawnFlags;
-
-typedef pid_t GPid;
 
 typedef void (*GSpawnChildSetupFunc) (gpointer user_data);
 
@@ -891,15 +923,29 @@ glong     g_utf8_strlen        (const gchar *str, gssize max);
 #   define GUINT16_TO_LE(x) (x)
 #   define GUINT_TO_LE(x)   (x)
 #   define GUINT32_TO_BE(x) GUINT32_SWAP_LE_BE(x)
+#   define GUINT16_FROM_BE(x) GUINT16_SWAP_LE_BE(x)
 #   define GUINT32_FROM_BE(x) GUINT32_SWAP_LE_BE(x)
+#   define GUINT64_FROM_BE(x) GUINT64_SWAP_LE_BE(x)
+#   define GINT16_FROM_BE(x) GUINT16_SWAP_LE_BE(x)
+#   define GINT32_FROM_BE(x) GUINT32_SWAP_LE_BE(x)
+#   define GINT64_FROM_BE(x) GUINT64_SWAP_LE_BE(x)
 #else
 #   define GUINT32_TO_LE(x) GUINT32_SWAP_LE_BE(x)
 #   define GUINT64_TO_LE(x) GUINT64_SWAP_LE_BE(x)
 #   define GUINT16_TO_LE(x) GUINT16_SWAP_LE_BE(x)
 #   define GUINT_TO_LE(x)   GUINT32_SWAP_LE_BE(x)
 #   define GUINT32_TO_BE(x) (x)
+#   define GUINT16_FROM_BE(x) (x)
 #   define GUINT32_FROM_BE(x) (x)
+#   define GUINT64_FROM_BE(x) (x)
+#   define GINT16_FROM_BE(x) (x)
+#   define GINT32_FROM_BE(x) (x)
+#   define GINT64_FROM_BE(x) (x)
 #endif
+
+#define GINT64_FROM_LE(x)   (GUINT64_TO_LE (x))
+#define GINT32_FROM_LE(x)   (GUINT32_TO_LE (x))
+#define GINT16_FROM_LE(x)   (GUINT16_TO_LE (x))
 
 #define GUINT32_FROM_LE(x)  (GUINT32_TO_LE (x))
 #define GUINT64_FROM_LE(x)  (GUINT64_TO_LE (x))

@@ -1,3 +1,45 @@
+2011-04-06  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] CreateChildControls is internal only when compiling
+	system.web tests
+
+2011-03-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Test compilation fix for System.Web.Extensions
+
+2011-01-20  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Avoid passing duplicate assemblies on mcs command line.
+
+2011-01-10  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed another missing protected internal modifier
+
+2011-01-10  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed more protected internal modifiers
+
+2011-01-10  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed more missing protected internal modifiers
+
+2011-01-04  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Don't attempt to use System.Web resources in
+	System.Web.Extensions test build
+
+	WebTest is now a partial class and every code outside System.Web
+	that uses it can copy its own resources in addition to the common
+	ones by implementing the CopyResourcesLocal partial method.
+
+2010-12-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Test suite configuration updates for 4.0
+
+	When running the tests on the 4.0 profile, the configuration must
+	no longer include the System.Web.Extensions section declarations
+	as they are merged with machine.config right now.
+
 2010-08-11  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Adapt to new exception in threadpool behavior.

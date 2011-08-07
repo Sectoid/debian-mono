@@ -1,7 +1,262 @@
+2011-07-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Move innerExceptions internal null check at the right place.
+
+2011-07-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Makes AggregateException ToString output closer to .NET one
+
+2011-07-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix AggregateException behavior
+
+2011-07-12  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Avoid a .cctor on the initialization path.
+
+2011-03-23  Miguel de Icaza  <miguel@gnome.org>
+
+	Add Environment.IsMacOS for handling OSX specific bits in corlib
+
+2011-03-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement OperatingSystem.ServicePack. Fixes #681552.
+
+2011-03-11  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Cache NewLine per AppDomain.
+
+2011-02-05  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[threadpool] Added dynamic concurrent queue implementation
+
+	Replace the big lock around the list+array used to queue work
+	items with a dynamic concurrent queue to reduce contention.
+
+2011-02-25  Miguel de Icaza  <miguel@gnome.org>
+
+	Fix build
+
+2011-02-24  Miguel de Icaza  <miguel@gnome.org>
+
+	[TerminfoDriver] be more tolerant to failures, and fallback
+	gracefully, instead of aborting
+
+2011-02-24  Miguel de Icaza  <miguel@gnome.org>
+
+	Do not throw exceptions, instead return a sensible value, fixes
+	656468
+
+2011-02-19  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix the check for version and PublicKeyToken
+
+	When loading an assembly we were comparing Version(0,0,0,0) with
+	null and a 0 length PKT with an actual one when those two cases
+	are the default. Fixes bug #661461.
+
+2011-02-18  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* MonoCustomAttrs.cs (GetBase): Special case events when
+	retrieving the base event to lookup cattrs.
+
+2011-02-08  Miguel de Icaza  <miguel@gnome.org>
+
+	Fix Enum.HasValue, previous version crashed with negative values
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add pfx to the mobile profile
+
+2011-01-07  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Properly search overwrites for custom attributes.
+
+2011-01-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Change some usages of ArrayList to List<T> to avoid calls to the
+	slow ArrayList.ToArray(Type) method.
+
+2011-01-04  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* String.cs: Silverlight 4 use the same API as FX4 for Join
+
+2011-01-03  Miguel de Icaza  <miguel@gnome.org>
+
+	[mscorlib/getfolderpath] Special-case MacOS X.
+
+	The following changes were done to specially support OSX: *
+	MyMusic on OSX is ~/Music * MyPictures on OSX is ~/Pictures *
+	Fonts on OSX is ~/Library/Fonts * Favorites on OSX is
+	~/Library/Favorites * ProgramFiles on OSX is /Applications *
+	InternetCache on OSX is ~/Library/Caches
+
+	The documentation has been updated accordingly.
+
+2011-01-03  Miguel de Icaza  <miguel@gnome.org>
+
+	[mscorlib/getfolderpath] Remove MonoTODO
+
+2011-01-03  Miguel de Icaza  <miguel@gnome.org>
+
+	[GetFolderPath] Handful of .NET 4 changes
+
+	* Actually use the SpecialFolderPathOptions where we need them ->
+	Create is acknowledged -> DoNotVerify is ignored, as Mono
+	historically did not throw an exception on missing directories. *
+	Rename InternalGetFolderPath to UnixGetFolderPath as this is what
+	it is. * Fix existing references to the code * Fix indentation in
+	routine that was never properly formatted (ReadXdgUserDir)
+
+2011-01-03  Miguel de Icaza  <miguel@gnome.org>
+
+	[mscorlib] inside mscorlib Platform's value will be correct for
+	OSX, but userland still gets Unix.
+
+	This change allows mscorlib to get the real PlatformID, to split
+	code between OSX and general Unix. We continue to expose the value
+	4 (Unix) to usercode as changing this might break user
+	applications.
+
+2011-01-03  Marek Habersack  <grendel@twistedcode.net>
+
+	[corlib] Fix for bug #659061. Adjust size of the last group when
+	formatting numbers with group separators.
+
+	When the number format includes several groups make sure that the
+	last (leftmost) one is adjusted so that its width is not larger
+	than the number of remaining characters.
+
+2010-12-23  Marek Safar  <marek.safar@gmail.com>
+
+	Implement missing v4 attribute types
+
+2010-12-15  Jb Evain  <jbevain@gmail.com>
+
+	Make sure AppdDomain.PermissionSet doesn't return null
+
+2010-12-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add missing members in AggregateException
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Some .net 4.0 api compatibility fixes
+
+2010-12-08  Marek Safar  <marek.safar@gmail.com>
+
+	Fix parameter name
+
+2010-11-23  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* Delegate.cs (CreateDelegate): Fix visibility and make sure that
+	we fail to bind to first argument of static arguments to overloads
+	that don't pass it.
+
+2010-11-22  Marek Safar  <marek.safar@gmail.com>
+
+	Fix retrieving of StructLayoutAttribute.Pack
+
+2010-11-11  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* AppDomain.cs: Add internal SetCompatibilitySwitch so it is
+	possible to set values that will be returned by (public)
+	IsCompatibilitySwitchSet (needed by Moonlight)
+
+2010-11-09  Alex Fort  <imphasing@gmail.com>
+
+	Add support for the CancelKeyPress event on Windows
+
+	Adds a call to the Win32 function SetConsoleCtrlHandler for
+	Windows, which adds the DoWindowsConsoleCancelEvent wrapper for
+	DoConsoleCancelEvent to the Ctrl-C handler when an event handler
+	is added, and removes the handler once all event handlers are
+	removed.
+
+2010-11-09  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* String.cs (LastIndexOf): All all overloads to be compatible with
+	MS with empty strings.
+
+	* String.cs (LastIndexOfAny): Ditto.
+
+2010-11-08  Marek Safar  <marek.safar@gmail.com>
+
+	API compatibility work
+
+2010-11-04  Marek Safar  <marek.safar@gmail.com>
+
+	For some strange reason Console.Write(Line) allows null params
+	formatter arguments
+
+2010-11-02  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Revert change in FromBinary
+
+2010-10-25  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* Environment.cs: Since an icall signature has changed, we must
+	bump corlib version.
+
+2010-10-24  Marek Habersack  <grendel@twistedcode.net>
+
+	[corlib] added a few missing Environment.SpecialFolder definitions
+	to InternalGetFolderPath (4.0)
+
+2010-10-23  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix another regression in the Array.Sort () methods, allow keys
+	and items to be of different length. Fixes #648828.
+
+2010-10-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	FromBinary does not need ToLocalTime
+
+	When converting to DateTime from a long, we don't need
+	ToLocalTime(). Setting the kind to Local is enough. Patch from
+	Mig.
+
+	Fixes bug #648252.
+
+2010-10-20  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Able to read MS serialized nullable<primitive>
+
+	Handle boxed primitive types for nullable fields. Fixes bug
+	#646556.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Warnings cleanup
+
+2010-09-23  Marek Safar  <marek.safar@gmail.com>
+
+	[641146] Implemented IStructuralComparable.CompareTo
+
 2010-09-15  Rodrigo Kumpera  <kumpera@gmail.com>
 
 	* Type.cs (GetTypeCodeImpl): If the type is a TypeBuilder call
 	into specific code.
+
+2010-09-02  Jb Evain  <jbevain@gmail.com>
+
+	[Fix] fix regression in Delegate.CreateDelegate
+
+	2ec0ab59fe4aecf5507a81846a66de1a658bbfd2 caused a regression in
+	Create.Delegate where the overload which doesn't take a
+	firstArgument could be used to create closed over null delegates
+	while this overload doesn't allow it.
+
+2010-09-01  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Add missing DT format
+
+	The datetime format having a numeric timezone after the
+	milliseconds was missing. Fixes bug #479061.
 
 2010-08-25  Rodrigo Kumpera  <kumpera@gmail.com>
 

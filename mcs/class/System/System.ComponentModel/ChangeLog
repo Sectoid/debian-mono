@@ -1,3 +1,67 @@
+2010-09-20  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* TypeDescriptor.cs: Implement AddProviderTransparent and
+	RemoveProviderTransparent - we only call to the already existing
+	AddProvider and RemoveProvider methods respectively.
+
+2010-09-14  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* TypeConverter.cs: The constructors of SimplePropertyDescriptor
+	are protected in 4.0.
+
+2010-09-14  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* TypeDescriptor.cs: Implement 4.0 InterfaceType property, which
+	seems to be a simple dummy and empty class in .Net, internally
+	used to represent all interfaces.
+
+2010-09-14  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* TypeDescriptor.cs: Remove the NET_2_0 directives, as we don't
+	need them anymore.
+
+2010-09-13  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* TypeDescriptionProvider.cs: Implement 4.0 IsSupportedType,
+	GetExtenderProviders and GetRuntimeType methods.
+
+2010-09-13  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* TypeDescriptionProvider.cs: Remove the NET_2_0 directive.
+
+2010-09-10  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* DateTimeOffsetConverter.cs: Use the same DateTimeOffset .ctor
+	that .net uses when converting to a InstanceDescriptor.
+
+2010-09-07  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* DateTimeOffsetConverter.cs: Implement new 4.0 class.
+
+2010-09-05  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* CultureInfoConverter.cs: Implement GetCultureName.
+
+2010-09-03  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* CultureInfoConverter.cs: Remove the NET_2_0 directive.
+
+2010-09-03  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* AttributeCollection.cs: Add 4.0 Attributes property as well as a
+	new parameterless ctor.
+
+2010-09-03  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* AttributeCollection.cs: Remove the NET_2_0 directives, as well
+	as the else case for it (we are always NET_2_0 now).
+
+2011-05-05  Veerapuram Varadhan  <v.varadhan@gmail.com>
+
+	** Fixes #663287
+	* NullableConverter.cs (ConvertTo): Compare the type of value
+	against underlyingType instead of nullableType.
+	
 2010-07-19  Marek Habersack  <mhabersack@novell.com>
 
 	* MultilineStringConverter.cs: implemented

@@ -12,9 +12,6 @@
 using System;
 using System.Text;
 using System.Collections.Generic;
-using System.Reflection;
-using System.Reflection.Emit;
-using System.Diagnostics;
 
 namespace Mono.CSharp
 {
@@ -471,6 +468,7 @@ namespace Mono.CSharp
 			CurrentUsageVector.SetFieldAssigned (vi, name);
 		}
 
+#if DEBUG
 		public override string ToString ()
 		{
 			StringBuilder sb = new StringBuilder ();
@@ -493,6 +491,7 @@ namespace Mono.CSharp
 			sb.Append (")");
 			return sb.ToString ();
 		}
+#endif
 
 		public string Name {
 			get { return String.Format ("{0} ({1}:{2}:{3})", GetType (), id, Type, Location); }
@@ -639,7 +638,7 @@ namespace Mono.CSharp
 	{
 		Iterator iterator;
 		public FlowBranchingIterator (FlowBranching parent, Iterator iterator)
-			: base (parent, BranchingType.Iterator, SiblingType.Block, null, iterator.Location)
+			: base (parent, BranchingType.Iterator, SiblingType.Block, iterator.Block, iterator.Location)
 		{
 			this.iterator = iterator;
 		}
@@ -655,7 +654,7 @@ namespace Mono.CSharp
 	{
 		UsageVector return_origins;
 
-		public FlowBranchingToplevel (FlowBranching parent, ToplevelBlock stmt)
+		public FlowBranchingToplevel (FlowBranching parent, ParametersBlock stmt)
 			: base (parent, BranchingType.Toplevel, SiblingType.Conditional, stmt, stmt.loc)
 		{
 		}
@@ -714,10 +713,10 @@ namespace Mono.CSharp
 		protected override UsageVector Merge ()
 		{
 			for (UsageVector origin = return_origins; origin != null; origin = origin.Next)
-				Block.Toplevel.CheckOutParameters (origin, origin.Location);
+				Block.ParametersBlock.CheckOutParameters (origin, origin.Location);
 
 			UsageVector vector = base.Merge ();
-			Block.Toplevel.CheckOutParameters (vector, Block.loc);
+			Block.ParametersBlock.CheckOutParameters (vector, Block.loc);
 			// Note: we _do_not_ merge in the return origins
 			return vector;
 		}
@@ -1067,39 +1066,11 @@ namespace Mono.CSharp
 			return info;
 		}
 
-		public static TypeInfo GetTypeInfo (TypeContainer tc)
-		{
-			TypeInfo info;
-			if (type_hash.TryGetValue (tc.Definition, out info))
-				return info;
-
-			info = new TypeInfo (tc);
-			type_hash.Add (tc.Definition, info);
-			return info;
-		}
-
 		private TypeInfo (TypeSpec type)
 		{
 			this.Type = type;
 
 			struct_info = StructInfo.GetStructInfo (type);
-			if (struct_info != null) {
-				Length = struct_info.Length;
-				TotalLength = struct_info.TotalLength;
-				SubStructInfo = struct_info.StructFields;
-				IsStruct = true;
-			} else {
-				Length = 0;
-				TotalLength = 1;
-				IsStruct = false;
-			}
-		}
-
-		private TypeInfo (TypeContainer tc)
-		{
-			this.Type = tc.Definition;
-
-			struct_info = StructInfo.GetStructInfo (tc);
 			if (struct_info != null) {
 				Length = struct_info.Length;
 				TotalLength = struct_info.TotalLength;
@@ -1156,7 +1127,7 @@ namespace Mono.CSharp
 				if (!branching.IsFieldAssigned (vi, field.Name)) {
 					if (field.MemberDefinition is Property.BackingField) {
 						ec.Report.Error (843, loc,
-							"An automatically implemented property `{0}' must be fully assigned before control leaves the constructor. Consider calling default contructor",
+							"An automatically implemented property `{0}' must be fully assigned before control leaves the constructor. Consider calling the default struct contructor from a constructor initializer",
 							field.GetSignatureForError ());
 					} else {
 						ec.Report.Error (171, loc,
@@ -1289,11 +1260,7 @@ namespace Mono.CSharp
 
 			public static StructInfo GetStructInfo (TypeSpec type)
 			{
-				if (!TypeManager.IsValueType (type) || TypeManager.IsEnumType (type) ||
-				    TypeManager.IsBuiltinType (type))
-					return null;
-
-				if (TypeManager.IsGenericParameter (type))
+				if (!type.IsStruct || TypeManager.IsBuiltinType (type))
 					return null;
 
 				StructInfo info;
@@ -1301,15 +1268,6 @@ namespace Mono.CSharp
 					return info;
 
 				return new StructInfo (type);
-			}
-
-			public static StructInfo GetStructInfo (TypeContainer tc)
-			{
-				StructInfo info;
-				if (field_type_hash.TryGetValue (tc.Definition, out info))
-					return info;
-
-				return new StructInfo (tc.Definition);
 			}
 		}
 	}
@@ -1341,7 +1299,7 @@ namespace Mono.CSharp
 		// </summary>
 		public readonly bool IsParameter;
 
-		public readonly LocalInfo LocalInfo;
+		public readonly LocalVariable LocalInfo;
 
 		readonly VariableInfo Parent;
 		VariableInfo[] sub_info;
@@ -1389,8 +1347,8 @@ namespace Mono.CSharp
 				sub_info = new VariableInfo [0];
 		}
 
-		public VariableInfo (LocalInfo local_info, int offset)
-			: this (local_info.Name, local_info.VariableType, offset)
+		public VariableInfo (LocalVariable local_info, int offset)
+			: this (local_info.Name, local_info.Type, offset)
 		{
 			this.LocalInfo = local_info;
 			this.IsParameter = false;
@@ -1405,7 +1363,7 @@ namespace Mono.CSharp
 		public bool IsAssigned (ResolveContext ec)
 		{
 			return !ec.DoFlowAnalysis ||
-				ec.OmitStructFlowAnalysis && TypeInfo.IsStruct ||
+				(ec.OmitStructFlowAnalysis && TypeInfo.Type.IsStruct) ||
 				ec.CurrentBranching.IsAssigned (this);
 		}
 
@@ -1738,7 +1696,7 @@ namespace Mono.CSharp
 		public void SetRange (int offset, int length)
 		{
 			if (offset > Count || offset + length > Count)
-				throw new ArgumentOutOfRangeException ();
+				throw new ArgumentOutOfRangeException ("flow-analysis");
 
 			if (shared == null && vector == null)
 				return;

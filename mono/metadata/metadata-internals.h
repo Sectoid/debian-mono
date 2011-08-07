@@ -39,6 +39,12 @@ struct _MonoType {
 
 #define MONO_PUBLIC_KEY_TOKEN_LENGTH	17
 
+#define PROCESSOR_ARCHITECTURE_NONE 0
+#define PROCESSOR_ARCHITECTURE_MSIL 1
+#define PROCESSOR_ARCHITECTURE_X86 2
+#define PROCESSOR_ARCHITECTURE_IA64 3
+#define PROCESSOR_ARCHITECTURE_AMD64 4
+
 struct _MonoAssemblyName {
 	const char *name;
 	const char *culture;
@@ -49,7 +55,7 @@ struct _MonoAssemblyName {
 	uint32_t hash_alg;
 	uint32_t hash_len;
 	uint32_t flags;
-	uint16_t major, minor, build, revision;
+	uint16_t major, minor, build, revision, arch;
 };
 
 struct MonoTypeNameParse {
@@ -80,6 +86,10 @@ struct _MonoAssembly {
 	guint8 dynamic;
 	guint8 corlib_internal;
 	gboolean ref_only;
+	guint8 wrap_non_exception_throws;
+	guint8 wrap_non_exception_throws_inited;
+	guint8 jit_optimizer_disabled;
+	guint8 jit_optimizer_disabled_inited;
 	/* security manager flags (one bit is for lazy initialization) */
 	guint32 ecma:2;		/* Has the ECMA key */
 	guint32 aptc:2;		/* Has the [AllowPartiallyTrustedCallers] attributes */
@@ -251,6 +261,10 @@ struct _MonoImage {
 	GHashTable *delegate_abstract_invoke_cache;
 
 	/*
+	 * indexed by SignatureMethodPair
+	 */
+	GHashTable *delegate_bound_static_invoke_cache;
+	/*
 	 * indexed by MonoMethod pointers 
 	 */
 	GHashTable *runtime_invoke_direct_cache;
@@ -299,6 +313,12 @@ struct _MonoImage {
 
 	/* List of image sets containing this image */
 	GSList *image_sets;
+
+	/* Caches for MonoClass-es representing anon generic params */
+	MonoClass **var_cache_fast;
+	MonoClass **mvar_cache_fast;
+	GHashTable *var_cache_slow;
+	GHashTable *mvar_cache_slow;
 
 	/*
 	 * No other runtime locks must be taken while holding this lock.
@@ -430,6 +450,7 @@ typedef struct _MonoAssemblyBindingInfo {
 	guint has_old_version_top : 1;
 	guint has_new_version : 1;
 	guint is_valid : 1;
+	gint32 domain_id; /*Needed to unload per-domain binding*/
 } MonoAssemblyBindingInfo;
 
 struct _MonoMethodHeader {
@@ -490,6 +511,8 @@ mono_image_alloc  (MonoImage *image, guint size) MONO_INTERNAL;
 gpointer
 mono_image_alloc0 (MonoImage *image, guint size) MONO_INTERNAL;
 
+#define mono_image_new0(image,type,size) ((type *) mono_image_alloc0 (image, sizeof (type)* (size)))
+
 char*
 mono_image_strdup (MonoImage *image, const char *s) MONO_INTERNAL;
 
@@ -527,6 +550,17 @@ mono_install_image_unload_hook (MonoImageUnloadFunc func, gpointer user_data) MO
 
 void
 mono_remove_image_unload_hook (MonoImageUnloadFunc func, gpointer user_data) MONO_INTERNAL;
+
+gpointer
+mono_image_set_alloc  (MonoImageSet *set, guint size) MONO_INTERNAL;
+
+gpointer
+mono_image_set_alloc0 (MonoImageSet *set, guint size) MONO_INTERNAL;
+
+char*
+mono_image_set_strdup (MonoImageSet *set, const char *s) MONO_INTERNAL;
+
+#define mono_image_set_new0(image,type,size) ((type *) mono_image_set_alloc0 (image, sizeof (type)* (size)))
 
 MonoType*
 mono_metadata_get_shared_type (MonoType *type) MONO_INTERNAL;
@@ -694,6 +728,8 @@ MonoImage *mono_image_open_raw (const char *fname, MonoImageOpenStatus *status) 
 MonoException *mono_get_exception_field_access_msg (const char *msg) MONO_INTERNAL;
 
 MonoException *mono_get_exception_method_access_msg (const char *msg) MONO_INTERNAL;
+
+MonoMethod* method_from_method_def_or_ref (MonoImage *m, guint32 tok, MonoGenericContext *context) MONO_INTERNAL;
 
 #endif /* __MONO_METADATA_INTERNALS_H__ */
 

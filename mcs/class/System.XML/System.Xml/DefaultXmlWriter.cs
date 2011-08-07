@@ -17,6 +17,7 @@ namespace System.Xml
 		XmlWriter writer;
 		WriteState state = WriteState.Start;
 		bool delegate_write_state;
+		bool supports_lookup;
 
 		public DefaultXmlWriter (XmlWriter writer)
 			: this (writer, true)
@@ -27,6 +28,7 @@ namespace System.Xml
 		{
 			this.writer = writer;
 			delegate_write_state = delegateWriteState;
+			supports_lookup = true;
 		}
 	
 		protected XmlWriter Writer {
@@ -40,7 +42,8 @@ namespace System.Xml
 
 		public override void Close ()
 		{
-			writer.Close ();
+			if (state != WriteState.Closed)
+				writer.Close ();
 			state = WriteState.Closed;
 		}
 	
@@ -51,7 +54,16 @@ namespace System.Xml
 	
 		public override string LookupPrefix (string ns)
 		{
-			return writer.LookupPrefix (ns);
+			if (!supports_lookup)
+				return String.Empty;
+			try {
+				return writer.LookupPrefix (ns);
+			} catch (NotSupportedException ex) {
+				supports_lookup = false;
+				return String.Empty;
+			} catch (Exception ex) {
+				throw;
+			}
 		}
 	
 		public override void WriteBase64 (byte [] buffer, int index, int count)

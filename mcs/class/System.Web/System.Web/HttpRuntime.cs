@@ -120,6 +120,7 @@ namespace System.Web
 		static bool assemblyMappingEnabled;
 		static object assemblyMappingLock = new object ();
 		static object appOfflineLock = new object ();
+		static HttpRuntimeSection runtime_section;
 		
 		public HttpRuntime ()
 		{
@@ -131,11 +132,13 @@ namespace System.Web
 		{
 #if !TARGET_J2EE
 			firstRun = true;
+
 			try {
 				WebConfigurationManager.Init ();
 #if MONOWEB_DEP
 				SettingsMappingManager.Init ();
 #endif
+				runtime_section = (HttpRuntimeSection) WebConfigurationManager.GetSection ("system.web/httpRuntime");
 			} catch (Exception ex) {
 				initialException = ex;
 			}
@@ -144,12 +147,24 @@ namespace System.Web
 			// and TraceManager are below. The constructors themselves MUST NOT throw any exceptions - we MUST be sure
 			// the objects are created here. The exceptions will be dealt with below, in RealProcessRequest.
 			queue_manager = new QueueManager ();
-			if (queue_manager.HasException)
-				initialException = queue_manager.InitialException;
+			if (queue_manager.HasException) {
+				if (initialException == null)
+					initialException = queue_manager.InitialException;
+				else {
+					Console.Error.WriteLine ("Exception during QueueManager initialization:");
+					Console.Error.WriteLine (queue_manager.InitialException);
+				}
+			}
 
 			trace_manager = new TraceManager ();
-			if (trace_manager.HasException)
+			if (trace_manager.HasException) {
+				if (initialException == null)
 					initialException = trace_manager.InitialException;
+				else {
+					Console.Error.WriteLine ("Exception during TraceManager initialization:");
+					Console.Error.WriteLine (trace_manager.InitialException);
+				}
+			}
 
 			cache = new Cache ();
 			internalCache = new Cache ();
@@ -305,6 +320,8 @@ namespace System.Web
 			}
 		}
 
+		internal static HttpRuntimeSection Section { get { return runtime_section; } }
+
 		public static bool UsingIntegratedPipeline { get { return false; } }
 		
 		[SecurityPermission (SecurityAction.Demand, UnmanagedCode = true)]
@@ -411,7 +428,6 @@ namespace System.Web
 				RenamedEventHandler reh = new RenamedEventHandler (AppOfflineFileRenamed);
 
 				string app_dir = AppDomainAppPath;
-				ArrayList watchers = new ArrayList ();
 				FileSystemWatcher watcher;
 				string offlineFile = null, tmp;
 				
@@ -425,8 +441,6 @@ namespace System.Web
 					watcher.Created += seh;
 					watcher.Renamed += reh;
 					watcher.EnableRaisingEvents = true;
-					
-					watchers.Add (watcher);
 
 					tmp = Path.Combine (app_dir, f);
 					if (File.Exists (tmp))
@@ -441,6 +455,11 @@ namespace System.Web
 		
 		static void RealProcessRequest (object o)
 		{
+			if (domainUnloading) {
+				Console.Error.WriteLine ("Domain is unloading, not processing the request.");
+				return;
+			}
+
 			HttpWorkerRequest req = (HttpWorkerRequest) o;
 			bool started_internally = req.StartedInternally;
 			do {
@@ -451,6 +470,7 @@ namespace System.Web
 
 		static void Process (HttpWorkerRequest req)
 		{
+			bool error = false;
 #if TARGET_J2EE
 			HttpContext context = HttpContext.Current;
 			if (context == null)
@@ -458,20 +478,18 @@ namespace System.Web
 			else
 				context.SetWorkerRequest (req);
 #else
-			HttpContext context = new HttpContext (req);
-#endif
-			HttpContext.Current = context;
-			bool error = false;
-#if !TARGET_J2EE
 			if (firstRun) {
-				SetupOfflineWatch ();
 				firstRun = false;
 				if (initialException != null) {
 					FinishWithException (req, HttpException.NewWithCode ("Initial exception", initialException, WebEventCodes.RuntimeErrorRequestAbort));
 					error = true;
 				}
+				SetupOfflineWatch ();
 			}
-
+			HttpContext context = new HttpContext (req);
+#endif
+			HttpContext.Current = context;
+#if !TARGET_J2EE
 			if (AppIsOffline (context))
 				return;
 #endif
@@ -584,6 +602,7 @@ namespace System.Web
 			// TODO: call ReleaseResources
 			//
 			domainUnloading = true;
+			HttpApplicationFactory.DisableWatchers ();
 			ThreadPool.QueueUserWorkItem (delegate {
 				try {
 					ShutdownAppDomain ();

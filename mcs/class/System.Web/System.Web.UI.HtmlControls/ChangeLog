@@ -1,3 +1,28 @@
+2011-03-25  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] HtmlForum.Name rendering updates + test updates
+
+2011-03-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fixes bug #676008. HtmlForm 'name' attribute rendering
+	fixes.
+
+	The 'name' attribute is rendered using the static ID of
+	'aspnetForm' if the form is in a naming container other than the
+	Page control. Inside Page, the form's ID is rendered. The
+	attribute is output in .NET 4.0 only if control rendering
+	compatibility is less than 4.0
+
+2011-01-11  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #662918. Do not create the HtmlTitle child
+	control for HtmlHead if <title> wasn't used in the page code.
+
+2010-10-30  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #650050. HtmlSelect must render non-standard
+	attributes of every ListItem.
+
 2010-07-09  Marek Habersack  <mhabersack@novell.com>
 
 	* HtmlInputButton.cs: if ServerClick handler is found, do NOT

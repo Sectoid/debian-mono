@@ -11,6 +11,8 @@
 #ifdef WIN32
 #include <windows.h>
 #include "initguid.h"
+#else
+#include <pthread.h>
 #endif
 
 #ifdef WIN32
@@ -339,6 +341,39 @@ mono_test_marshal_char_array (gunichar2 *s)
 
 	g_free (s2);
 }
+
+LIBTEST_API int STDCALL
+mono_test_marshal_ansi_char_array (char *s)
+{
+	const char m[] = "abcdef";
+
+	if (strncmp ("qwer", s, 4))
+		return 1;
+
+	memcpy (s, m, sizeof (m));
+	return 0;
+}
+
+LIBTEST_API int STDCALL
+mono_test_marshal_unicode_char_array (gunichar2 *s)
+{
+	const char m[] = "abcdef";
+	const char expected[] = "qwer";
+	gunichar2 *s1, *s2;
+	glong len1, len2;
+
+	s1 = g_utf8_to_utf16 (m, -1, NULL, &len1, NULL);
+	s2 = g_utf8_to_utf16 (expected, -1, NULL, &len2, NULL);
+	len1 = (len1 * 2);
+	len2 = (len2 * 2);
+
+	if (memcmp (s, s2, len2))
+		return 1;
+
+	memcpy (s, s1, len1);
+	return 0;
+}
+
 
 LIBTEST_API int STDCALL 
 mono_test_empty_pinvoke (int i)
@@ -4985,4 +5020,29 @@ mono_test_marshal_safearray_mixed(
 
 #endif
 
+static int call_managed_res;
 
+static void
+call_managed (gpointer arg)
+{
+	SimpleDelegate del = arg;
+
+	call_managed_res = del (42);
+}
+
+LIBTEST_API int STDCALL 
+mono_test_marshal_thread_attach (SimpleDelegate del)
+{
+#ifdef WIN32
+	return 43;
+#else
+	int res;
+	pthread_t t;
+
+	res = pthread_create (&t, NULL, (gpointer)call_managed, del);
+	g_assert (res == 0);
+	pthread_join (t, NULL);
+
+	return call_managed_res;
+#endif
+}

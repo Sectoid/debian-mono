@@ -1,3 +1,51 @@
+2011-06-28  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement support for Stream param with WebHttpBinding raw content
+	format.
+
+2011-06-13  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix 2.0 build.
+
+2011-06-13  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement OnWriteBodyContents() and add message buffer support for
+	RawMessage.
+
+2011-04-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Return null for empty message in WebMessageFormatter. Useful eror
+	messages.
+
+2011-01-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Read body content if required. Fixed all issues in bug #656020.
+
+	Now it considers message content format and
+	IsWrapped[Request|Response] to retrieve XmlObjectSerializer.
+
+2011-01-19  Atsushi Eno  <atsushi@ximian.com>
+
+	Enable duplicate "UriMatched" error check, with couple of FIXMEs.
+
+	.NET is very unclear about those UriTemplate behavior. Too minor
+	to mind.
+
+2011-01-19  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix template match logic to first check HTTP-method-matching ones.
+
+	Part of the fix for bug #656020.
+
+2011-01-19  Atsushi Eno  <atsushi@ximian.com>
+
+	Serialize non-mapped message parameter as body content. Part of
+	bug #656020 fix.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
 2010-07-14  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* WebMessageFormatter.cs : do not depend on WebOperationContext.

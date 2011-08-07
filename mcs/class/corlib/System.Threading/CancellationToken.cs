@@ -27,16 +27,23 @@
 using System;
 using System.Threading;
 
-#if NET_4_0 || BOOTSTRAP_NET_4_0
+#if NET_4_0 || MOBILE
 namespace System.Threading
 {
+	[System.Diagnostics.DebuggerDisplay ("IsCancellationRequested = {IsCancellationRequested}")]
 	public struct CancellationToken
 	{
+		bool canBeCanceled;
+		bool initialized;
+		CancellationTokenSource source;
+
 		public CancellationToken (bool canceled)
 			: this ()
 		{
-			// dummy, this is actually set by CancellationTokenSource when the token is created
-			Source = null;
+			initialized = true;
+			canBeCanceled = canceled;
+			// This is correctly set later if token originates from a Source
+			source = canceled ? CancellationTokenSource.CanceledSource : CancellationTokenSource.NoneSource;
 		}
 
 		public static CancellationToken None {
@@ -73,7 +80,8 @@ namespace System.Threading
 
 		public void ThrowIfCancellationRequested ()
 		{
-			Source.ThrowIfCancellationRequested ();
+			if (initialized && Source.IsCancellationRequested)
+				throw new OperationCanceledException (this);
 		}
 
 		public bool Equals (CancellationToken other)
@@ -81,9 +89,9 @@ namespace System.Threading
 			return this.Source == other.Source;
 		}
 
-		public override bool Equals (object obj)
+		public override bool Equals (object other)
 		{
-			return (obj is CancellationToken) ? Equals ((CancellationToken)obj) : false;
+			return (other is CancellationToken) ? Equals ((CancellationToken)other) : false;
 		}
 
 		public override int GetHashCode ()
@@ -91,25 +99,25 @@ namespace System.Threading
 			return Source.GetHashCode ();
 		}
 
-		public static bool operator == (CancellationToken lhs, CancellationToken rhs)
+		public static bool operator == (CancellationToken left, CancellationToken right)
 		{
-			return lhs.Equals (rhs);
+			return left.Equals (right);
 		}
 
-		public static bool operator != (CancellationToken lhs, CancellationToken rhs)
+		public static bool operator != (CancellationToken left, CancellationToken right)
 		{
-			return !lhs.Equals (rhs);
+			return !left.Equals (right);
 		}
 
 		public bool CanBeCanceled {
 			get {
-				return true;
+				return canBeCanceled;
 			}
 		}
 
 		public bool IsCancellationRequested {
 			get {
-				return Source.IsCancellationRequested;
+				return initialized && Source.IsCancellationRequested;
 			}
 		}
 
@@ -120,8 +128,20 @@ namespace System.Threading
 		}
 
 		internal CancellationTokenSource Source {
-			get;
-			set;
+			get {
+				if (!initialized)
+					CorrectlyInitialize ();
+				return source;
+			}
+			set {
+				source = value;
+			}
+		}
+
+		void CorrectlyInitialize ()
+		{
+			Source = CancellationTokenSource.NoneSource;
+			initialized = true;
 		}
 	}
 }

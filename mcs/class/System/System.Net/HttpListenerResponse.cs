@@ -331,8 +331,8 @@ namespace System.Net {
 
 		void Close (bool force)
 		{
-			context.Connection.Close (force);
 			disposed = true;
+			context.Connection.Close (force);
 		}
 
 		public void Close ()
@@ -393,13 +393,12 @@ namespace System.Net {
 
 		internal void SendHeaders (bool closing, MemoryStream ms)
 		{
-			//TODO: When do we send KeepAlive?
 			Encoding encoding = content_encoding;
 			if (encoding == null)
 				encoding = Encoding.Default;
 
 			if (content_type != null) {
-				if (content_encoding != null && content_type.IndexOf ("charset=") == -1) {
+				if (content_encoding != null && content_type.IndexOf ("charset=", StringComparison.Ordinal) == -1) {
 					string enc_name = content_encoding.WebName;
 					headers.SetInternal ("Content-Type", content_type + "; charset=" + enc_name);
 				} else {
@@ -441,46 +440,47 @@ namespace System.Net {
 					status_code == 413 || status_code == 414 || status_code == 500 ||
 					status_code == 503);
 
-			if (conn_close == false) {
-				conn_close = (context.Request.Headers ["connection"] == "close");
-				conn_close |= (v <= HttpVersion.Version10);
-			}
+			if (conn_close == false)
+				conn_close = !context.Request.KeepAlive;
 
 			// They sent both KeepAlive: true and Connection: close!?
-			if (!keep_alive || conn_close)
+			if (!keep_alive || conn_close) {
 				headers.SetInternal ("Connection", "close");
+				conn_close = true;
+			}
 
 			if (chunked)
 				headers.SetInternal ("Transfer-Encoding", "chunked");
 
-			int chunked_uses = context.Connection.ChunkedUses;
-			if (chunked_uses >= 100) {
+			int reuses = context.Connection.Reuses;
+			if (reuses >= 100) {
 				force_close_chunked = true;
-				if (!conn_close)
+				if (!conn_close) {
 					headers.SetInternal ("Connection", "close");
+					conn_close = true;
+				}
+			}
+
+			if (!conn_close) {
+				headers.SetInternal ("Keep-Alive", String.Format ("timeout=15,max={0}", 100 - reuses));
+				if (context.Request.ProtocolVersion <= HttpVersion.Version10)
+					headers.SetInternal ("Connection", "keep-alive");
 			}
 
 			if (location != null)
 				headers.SetInternal ("Location", location);
 
 			if (cookies != null) {
-				bool firstDone = false;
-				StringBuilder cookieSB = new StringBuilder ();
-				foreach (Cookie cookie in cookies) {
-					if (firstDone)
-						cookieSB.Append (",");
-					firstDone = true;
-					cookieSB.Append (cookie.ToClientString ());
-				}
-				headers.SetInternal("Set-Cookie2", cookieSB.ToString ());
+				foreach (Cookie cookie in cookies)
+					headers.SetInternal ("Set-Cookie", cookie.ToClientString ());
 			}
 
-			StreamWriter writer = new StreamWriter (ms, encoding);
+			StreamWriter writer = new StreamWriter (ms, encoding, 256);
 			writer.Write ("HTTP/{0} {1} {2}\r\n", version, status_code, status_description);
-			string headers_str = headers.ToString ();
+			string headers_str = headers.ToStringMultiValue ();
 			writer.Write (headers_str);
 			writer.Flush ();
-			int preamble = encoding.GetPreamble ().Length;
+			int preamble = (encoding.CodePage == 65001) ? 3 : encoding.GetPreamble ().Length;
 			if (output_stream == null)
 				output_stream = context.Connection.GetResponseStream ();
 

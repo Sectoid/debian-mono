@@ -1,3 +1,22 @@
+2011-01-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix .NET 4 API
+
+2010-12-09  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Refactor Add/Take/TryAdd/TryTake methods into a common block in
+	BlockingCollection
+
+2010-12-09  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix GetConsumingEnumerable exception handling in
+	BlockingCollection
+
+2010-12-07  Guillaume Pouillet  <nekresh@gmail.com>
+
+	Fix bug in BlockingCollection<T>.TryTake Add corresponding unit
+	test
+
 2010-08-27  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Don't PopTop from our personnal bag in ConcurrentBag.

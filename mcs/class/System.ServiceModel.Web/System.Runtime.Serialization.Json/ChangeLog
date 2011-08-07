@@ -1,3 +1,107 @@
+2011-04-06  Atsushi Eno  <atsushi@ximian.com>
+
+	Looks like .NET accepts non-integer numbers as int. Smells bogus
+	though.
+
+2011-04-05  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix build, looks like ArrayList is internally available in moon.
+
+2011-04-05  Atsushi Eno  <atsushi@ximian.com>
+
+	Collection support in JSON serializer was actually for any
+	IEnumerable.
+
+2011-04-05  Atsushi Eno  <atsushi@ximian.com>
+
+	Revert PushbackReader changes (was unnecessary and actually
+	bogus).
+
+2011-04-05  Atsushi Eno  <atsushi@ximian.com>
+
+	null value also outputs "type='null' in WCF JSON writer.
+
+2011-04-05  Atsushi Eno  <atsushi@ximian.com>
+
+	Auto-detect text encoding from input stream for JsonReader. Fix
+	DBCS pushback.
+
+2011-04-05  Atsushi Eno  <atsushi@ximian.com>
+
+	IDictionary`2 serialization support was missing in
+	DataContractJsonSerializer.
+
+	Fixed bug #685042.
+
+2011-04-02  Atsushi Eno  <atsushi@ximian.com>
+
+	A bit less !NET_2_1 and !MOONLIGHT in Sys.ServiceModel.Web.
+
+2011-03-26  Atsushi Eno  <atsushi@ximian.com>
+
+	null JSON type must be handled in JsonWriter.
+
+2011-03-26  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not always assume ascii == 1 byte in JsonWriter. Fix utf-16
+	usage.
+
+2011-03-08  Miguel de Icaza  <miguel@gnome.org>
+
+	[System.Json] Fix loader.
+
+	The current loader failed with some Json strings due to the
+	implementation of the BufferedStreamReader. Removed that
+	implementation completely, and instead depend on the StreamReader
+	to do the actual BOM detection.
+
+	This removes the JavaScriptObjectDeserializer.cs file
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Work around a full-aot issue for monotouch System.Json
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	backport JavaScriptObjectDeserializer encoding detection fix.
+
+2010-10-29  Andreia Gaita  <shana@jitted.com>
+
+	[JsonWriter] Fix JsonWriter yet again. Behaviour of WriteRaw on
+	.net and sl is different, so ifdef to make everyone happy!
+
+2010-10-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix JsonWriterTest.WriteRaw() regression. WriteRaw() is (looking)
+	almost identical to WriteString() here.
+
+2010-10-15  Andreia Gaita  <shana@jitted.com>
+
+	[Json] Add support for calling external json (de)serialization
+	methods
+
+	On Moonlight, ScriptObject types have custom (de)serialization
+	methods that need to be called whenever a user object includes
+	properties of that type. This patch creates a TypeMap subclass
+	(ExternalTypeMap) and exposes a method that can be called from
+	moon's System.Windows.Browser to register custom serialization and
+	deserialization methods, keyed by type. These are called whenever
+	a property is found with a type (or base type) that has custom
+	methods registered.
+
+2010-10-15  Andreia Gaita  <shana@jitted.com>
+
+	[Json] Fix decimal type serialization
+
+2010-09-30  Andreia Gaita  <shana@jitted.com>
+
+	[Json] Fix uint type conversion when reading, should be mapped to
+	long, not int
+
+2010-09-24  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	JsonSerializationWriter: handle char values
+
 2010-07-27  Andreia Gaita  <avidigal@novell.com>
 
 	* JsonSerializationReader.cs: Add Char type to the switch. Reads the

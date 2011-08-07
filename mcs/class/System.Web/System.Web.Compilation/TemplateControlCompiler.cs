@@ -189,7 +189,7 @@ namespace System.Web.Compilation
 			currentLocation = builder.Location;
 			bool inBuildControlTree = builder is RootBuilder;
 			string tailname = (inBuildControlTree ? "Tree" : ("_" + builder.ID));
-			bool isProperty = builder.IsProperty;
+//			bool isProperty = builder.IsProperty;
 			CodeMemberMethod method = new CodeMemberMethod ();
 			builder.Method = method;
 			builder.MethodStatements = method.Statements;
@@ -957,9 +957,12 @@ namespace System.Web.Compilation
 			string inputFile = parser.InputFile;
 			string physPath = HttpContext.Current.Request.PhysicalApplicationPath;
 	
-			if (StrUtils.StartsWith (inputFile, physPath))
+			if (StrUtils.StartsWith (inputFile, physPath)) {
+				string appVirtualPath = HttpRuntime.AppDomainAppVirtualPath;
 				inputFile = parser.InputFile.Substring (physPath.Length - 1);
-			else
+				if (appVirtualPath != "/")
+					inputFile = appVirtualPath + inputFile;
+			} else
 				return;
 
 			char dsc = System.IO.Path.DirectorySeparatorChar;

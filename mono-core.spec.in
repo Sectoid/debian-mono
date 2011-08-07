@@ -148,7 +148,6 @@ rm -rf %buildroot
 %dir %_prefix/lib/mono/3.5
 %dir %_prefix/lib/mono/4.0
 %dir %_prefix/lib/mono/compat-2.0
-%dir %_prefix/lib/mono/compat-4.0
 %dir %_prefix/lib/mono/gac
 %dir %_sysconfdir/mono
 %dir %_sysconfdir/mono/2.0
@@ -206,6 +205,7 @@ rm -rf %buildroot
 %_prefix/lib/mono/2.0/System.Configuration.dll
 %_prefix/lib/mono/2.0/System.Core.dll
 %_prefix/lib/mono/2.0/System.Drawing.dll
+%_prefix/lib/mono/2.0/System.Net.dll
 %_prefix/lib/mono/2.0/System.Security.dll
 %_prefix/lib/mono/2.0/System.Xml.Linq.dll
 %_prefix/lib/mono/2.0/System.Xml.dll
@@ -215,6 +215,7 @@ rm -rf %buildroot
 %_prefix/lib/mono/2.0/csharp.exe*
 %_prefix/lib/mono/2.0/gacutil.exe*
 %_prefix/lib/mono/2.0/gmcs.exe*
+%_prefix/lib/mono/2.0/mcs.exe*
 %_prefix/lib/mono/2.0/mscorlib.dll*
 %_prefix/lib/mono/4.0/Commons.Xml.Relaxng.dll
 %_prefix/lib/mono/4.0/CustomMarshalers.dll
@@ -237,6 +238,7 @@ rm -rf %buildroot
 %_prefix/lib/mono/4.0/System.Core.dll
 %_prefix/lib/mono/4.0/System.Drawing.dll
 %_prefix/lib/mono/4.0/System.Dynamic.dll
+%_prefix/lib/mono/4.0/System.Net.dll
 %_prefix/lib/mono/4.0/System.Numerics.dll
 %_prefix/lib/mono/4.0/System.Security.dll
 %_prefix/lib/mono/4.0/System.Xml.Linq.dll
@@ -254,7 +256,6 @@ rm -rf %buildroot
 %_prefix/lib/mono/4.0/setreg.exe*
 %_prefix/lib/mono/4.0/sn.exe*
 %_prefix/lib/mono/compat-2.0/ICSharpCode.SharpZipLib.dll
-%_prefix/lib/mono/compat-4.0/ICSharpCode.SharpZipLib.dll
 %_prefix/lib/mono/gac/Commons.Xml.Relaxng
 %_prefix/lib/mono/gac/CustomMarshalers
 %_prefix/lib/mono/gac/I18N
@@ -279,6 +280,7 @@ rm -rf %buildroot
 %_prefix/lib/mono/gac/System.Core
 %_prefix/lib/mono/gac/System.Drawing
 %_prefix/lib/mono/gac/System.Dynamic
+%_prefix/lib/mono/gac/System.Net
 %_prefix/lib/mono/gac/System.Numerics
 %_prefix/lib/mono/gac/System.Security
 %_prefix/lib/mono/gac/System.Xml
@@ -325,6 +327,7 @@ Development files for libmono.
 
 %files -n libmono-2_0-devel
 %defattr(-, root, root)
+%_bindir/mono-gdb.py
 %_includedir/mono-2.0
 %_libdir/libmono-2.0.a
 %_libdir/libmono-2.0.so
@@ -358,6 +361,7 @@ License:        LGPL v2.1 only
 Summary:	Development files for libmonosgen
 Group:          Development/Languages/Mono
 Requires:       mono-core == %version-%release
+Requires:       libmono-2_0-devel
 
 %description -n libmonosgen-2_0-devel
 The Mono Project is an open development initiative that is working to
@@ -370,8 +374,10 @@ Development files for libmonosgen.
 
 %files -n libmonosgen-2_0-devel
 %defattr(-, root, root)
+%_bindir/mono-sgen-gdb.py
 %_libdir/libmonosgen-2.0.a
 %_libdir/libmonosgen-2.0.so
+%_libdir/pkgconfig/monosgen-2.pc
 %endif
 
 %if %llvm == yes
@@ -481,6 +487,7 @@ Database connectivity for Mono.
 %_prefix/lib/mono/4.0/System.EnterpriseServices.dll
 %_prefix/lib/mono/4.0/System.Runtime.Serialization.dll
 %_prefix/lib/mono/4.0/System.Transactions.dll
+%_prefix/lib/mono/4.0/WebMatrix.Data.dll
 %_prefix/lib/mono/4.0/sqlmetal.exe*
 %_prefix/lib/mono/4.0/sqlsharp.exe*
 %_prefix/lib/mono/gac/Mono.Data.Tds
@@ -492,6 +499,7 @@ Database connectivity for Mono.
 %_prefix/lib/mono/gac/System.EnterpriseServices
 %_prefix/lib/mono/gac/System.Runtime.Serialization
 %_prefix/lib/mono/gac/System.Transactions
+%_prefix/lib/mono/gac/WebMatrix.Data
 
 %package -n mono-winforms
 License:        LGPL v2.1 only
@@ -700,7 +708,9 @@ Mono implementation of core WinFX APIs
 
 %files -n mono-winfxcore
 %defattr(-, root, root)
+%_prefix/lib/mono/2.0/System.Data.Services.Client.dll*
 %_prefix/lib/mono/2.0/WindowsBase.dll*
+%_prefix/lib/mono/4.0/System.Data.Services.Client.dll*
 %_prefix/lib/mono/4.0/WindowsBase.dll*
 %_prefix/lib/mono/gac/System.Data.Services.Client
 %_prefix/lib/mono/gac/WindowsBase
@@ -764,6 +774,7 @@ Mono implementation of ASP.NET, Remoting and Web Services.
 %_prefix/lib/mono/2.0/System.Web.dll
 %_prefix/lib/mono/2.0/wsdl.exe*
 %_prefix/lib/mono/2.0/xsd.exe*
+%_prefix/lib/mono/4.0/Microsoft.Web.Infrastructure.dll
 %_prefix/lib/mono/4.0/Mono.Http.dll
 %_prefix/lib/mono/4.0/Mono.Web.dll
 %_prefix/lib/mono/4.0/System.ComponentModel.Composition.dll
@@ -780,6 +791,7 @@ Mono implementation of ASP.NET, Remoting and Web Services.
 %_prefix/lib/mono/4.0/soapsuds.exe*
 %_prefix/lib/mono/4.0/wsdl.exe*
 %_prefix/lib/mono/4.0/xsd.exe*
+%_prefix/lib/mono/gac/Microsoft.Web.Infrastructure
 %_prefix/lib/mono/gac/Mono.Http
 %_prefix/lib/mono/gac/Mono.Web
 %_prefix/lib/mono/gac/System.ComponentModel.Composition
@@ -817,7 +829,6 @@ Mono implementation of ASP.NET MVC.
 %_prefix/lib/mono/2.0/System.Web.Extensions.Design.dll
 %_prefix/lib/mono/2.0/System.Web.Extensions.dll
 %_prefix/lib/mono/2.0/System.Web.Mvc.dll
-%_prefix/lib/mono/3.5/System.Web.Extensions.Design.dll
 %_prefix/lib/mono/4.0/System.Web.DynamicData.dll
 %_prefix/lib/mono/4.0/System.Web.Extensions.Design.dll
 %_prefix/lib/mono/4.0/System.Web.Extensions.dll
@@ -976,7 +987,6 @@ Mono development tools.
 %_bindir/mono-cil-strip
 %_bindir/mono-find-provides
 %_bindir/mono-find-requires
-%_bindir/mono-gdb.py
 %_bindir/mono-heapviz
 %_bindir/mono-shlib-cop
 %_bindir/mono-xmltool
@@ -985,6 +995,7 @@ Mono development tools.
 %_bindir/monolinker
 %_bindir/monop
 %_bindir/monop2
+%_bindir/mprof-report
 %_bindir/pdb2mdb
 %_bindir/pedump
 %_bindir/permview
@@ -999,10 +1010,7 @@ Mono development tools.
 %dir %_datadir/mono-2.0/mono
 %dir %_datadir/mono-2.0/mono/cil
 %_datadir/mono-2.0/mono/cil/cil-opcodes.xml
-%_libdir/libmono-profiler-aot.*
-%_libdir/libmono-profiler-cov.*
-%_libdir/libmono-profiler-iomap.*
-%_libdir/libmono-profiler-logging.*
+%_libdir/libmono-profiler-*.*
 %_libdir/pkgconfig/cecil.pc
 %_libdir/pkgconfig/dotnet.pc
 %_libdir/pkgconfig/dotnet35.pc
@@ -1028,6 +1036,7 @@ Mono development tools.
 %_mandir/man1/monodis.1%ext_man
 %_mandir/man1/monolinker.1%ext_man
 %_mandir/man1/monop.1%ext_man
+%_mandir/man1/mprof-report.1%ext_man
 %_mandir/man1/pdb2mdb.1%ext_man
 %_mandir/man1/permview.1%ext_man
 %_mandir/man1/prj2make.1%ext_man
@@ -1080,6 +1089,7 @@ Mono development tools.
 %_prefix/lib/mono/4.0/Microsoft.Common.tasks
 %_prefix/lib/mono/4.0/Microsoft.VisualBasic.targets
 %_prefix/lib/mono/4.0/Mono.CodeContracts.dll
+%_prefix/lib/mono/4.0/Mono.Debugger.Soft.dll
 %_prefix/lib/mono/4.0/PEAPI.dll
 %_prefix/lib/mono/4.0/caspol.exe*
 %_prefix/lib/mono/4.0/ccrewrite.exe*
@@ -1121,6 +1131,7 @@ Mono development tools.
 %_prefix/lib/mono/gac/Mono.Debugger.Soft
 %_prefix/lib/mono/gac/PEAPI
 %_prefix/lib/mono/xbuild
+%_prefix/lib/mono/xbuild-frameworks
 
 %package -n monodoc-core
 License:        LGPL v2.1 only
@@ -1161,7 +1172,7 @@ Monodoc-core contains documentation tools for C#.
 %_mandir/man1/monodocer.1%ext_man
 %_mandir/man1/monodocs2html.1%ext_man
 %_mandir/man5/mdoc.5%ext_man
-%_prefix/lib/mono/4.0/mdoc.exe*
+%_prefix/lib/mono/2.0/mdoc.exe*
 %_prefix/lib/mono/4.0/mod.exe*
 %_prefix/lib/mono/gac/monodoc
 %_prefix/lib/mono/monodoc
@@ -1209,6 +1220,5 @@ not install anything from outside the mono source (XSP, mono-basic, etc.).
 %files -n mono-complete
 %defattr(-, root, root)
 %dir %_prefix/lib/mono/compat-2.0
-%dir %_prefix/lib/mono/compat-4.0
 
 %changelog

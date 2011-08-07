@@ -1,6 +1,101 @@
+2011-02-03  Marek Safar  <marek.safar@gmail.com>
+
+	Don't even try to import type when its context is wrong
+
+2011-02-02  Marek Safar  <marek.safar@gmail.com>
+
+	Add handling of broken Convert callsite from Orchard Project
+
+2010-12-07  Marek Safar  <marek.safar@gmail.com>
+
+	Add IKVM.Reflection support
+
+2010-12-02  Marek Safar  <marek.safar@gmail.com>
+
+	Update setting of buildin internal types
+
+2010-12-02  Marek Safar  <marek.safar@gmail.com>
+
+	Removed InitOptionalCoreTypes
+
+2010-12-02  Marek Safar  <marek.safar@gmail.com>
+
+	Clean-up module indirections
+
+2010-11-30  Marek Safar  <marek.safar@gmail.com>
+
+	Move core predefined types into a new class
+
+2010-11-30  Marek Safar  <marek.safar@gmail.com>
+
+	Add initial reflection dependant code
+
+2010-11-30  Marek Safar  <marek.safar@gmail.com>
+
+	Move metadata importer out of compiler context finally
+
+2010-11-21  Marek Safar  <marek.safar@gmail.com>
+
+	Improve handling of netmodules. Fixes #504085
+
+2010-11-19  Marek Safar  <marek.safar@gmail.com>
+
+	Add AssemblySpec to handle all assembly attributes in same way.
+
+2010-11-15  Marek Safar  <marek.safar@gmail.com>
+
+	Remove old accessibility check routine
+
+2010-11-10  Marek Safar  <marek.safar@gmail.com>
+
+	False user-operator has priority over logical not user-operator
+
+2010-11-10  Marek Safar  <marek.safar@gmail.com>
+
+	Reorder logic in DMO type conversion
+
+2010-11-09  Marek Safar  <marek.safar@gmail.com>
+
+	Logical binary operarions with dynamic arguments have to be
+	unfolded
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	Pass checked context to compound member access setters
+
+2010-11-02  Marek Safar  <marek.safar@gmail.com>
+
+	Implements indirect delegates invocation via dynamic member
+	dispatch
+
+2010-10-18  Marek Safar  <marek.safar@gmail.com>
+
+	Pass modifier when used with named argument
+
+2010-10-12  Marek Safar  <marek.safar@gmail.com>
+
+	Do not create a constant null value for runtime types.
+
+2010-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	Implement compound assignment over null value
+
+2010-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	Dynamic compound assignment breaks standard C# result conversion
+	rules
+
+2010-09-30  Marek Safar  <marek.safar@gmail.com>
+
+	Null constant cannot be used for ref/out variables
+
 2010-09-16  Marek Safar  <marek.safar@gmail.com>
 
 	[639407] Clean up more static stuff to fix repl instances.
+
+2010-09-10  Marek Safar  <marek.safar@gmail.com>
+
+	Update to the latest dmcs
 
 2010-08-26  Marek Safar  <marek.safar@gmail.com>
 

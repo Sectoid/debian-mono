@@ -266,12 +266,12 @@ namespace System.IO
 		{
 			if (searchOption == SearchOption.TopDirectoryOnly)
 				return GetDirectories (path, searchPattern);
-			ArrayList all = new ArrayList ();
+			var all = new List<string> ();
 			GetDirectoriesRecurse (path, searchPattern, all);
-			return (string []) all.ToArray (typeof (string));
+			return all.ToArray ();
 		}
 		
-		static void GetDirectoriesRecurse (string path, string searchPattern, ArrayList all)
+		static void GetDirectoriesRecurse (string path, string searchPattern, List<string> all)
 		{
 			all.AddRange (GetDirectories (path, searchPattern));
 			foreach (string dir in GetDirectories (path))
@@ -303,12 +303,12 @@ namespace System.IO
 		{
 			if (searchOption == SearchOption.TopDirectoryOnly)
 				return GetFiles (path, searchPattern);
-			ArrayList all = new ArrayList ();
+			var all = new List<string> ();
 			GetFilesRecurse (path, searchPattern, all);
-			return (string []) all.ToArray (typeof (string));
+			return all.ToArray ();
 		}
 		
-		static void GetFilesRecurse (string path, string searchPattern, ArrayList all)
+		static void GetFilesRecurse (string path, string searchPattern, List<string> all)
 		{
 			all.AddRange (GetFiles (path, searchPattern));
 			foreach (string dir in GetDirectories (path))
@@ -461,11 +461,9 @@ namespace System.IO
 			MonoIOError error;
 			if (!MonoIO.ExistsDirectory (wildpath, out error)) {
 				if (error == MonoIOError.ERROR_SUCCESS) {
-					MonoIOError file_error;
-					if (MonoIO.ExistsFile (wildpath, out file_error)) {
-						stop = true;
-						return wildpath;
-					}
+				 	MonoIOError file_error;
+				 	if (MonoIO.ExistsFile (wildpath, out file_error))
+						throw new IOException ("The directory name is invalid.");
 				}
 
 				if (error != MonoIOError.ERROR_PATH_NOT_FOUND)
@@ -503,7 +501,7 @@ namespace System.IO
 			return result;
 		}
 
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		public static string[] GetFileSystemEntries (string path, string searchPattern, SearchOption searchOption)
 		{
 			// Take the simple way home:

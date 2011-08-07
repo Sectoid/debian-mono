@@ -23,6 +23,20 @@
 #include <mono/utils/strenc.h>
 #include <mono/utils/mono-proclib.h>
 #include <mono/io-layer/io-layer.h>
+#if defined (MINGW_CROSS_COMPILE) && defined (HAVE_GETPROCESSID)
+#undef HAVE_GETPROCESSID
+#endif
+#ifndef HAVE_GETPROCESSID
+#if defined(_MSC_VER) || defined(HAVE_WINTERNL_H)
+#include <winternl.h>
+#ifndef NT_SUCCESS
+#define NT_SUCCESS(status) ((NTSTATUS) (status) >= 0)
+#endif /* !NT_SUCCESS */
+#else /* ! (defined(_MSC_VER) || defined(HAVE_WINTERNL_H)) */
+#include <ddk/ntddk.h>
+#include <ddk/ntapi.h>
+#endif /* (defined(_MSC_VER) || defined(HAVE_WINTERNL_H)) */
+#endif /* !HAVE_GETPROCESSID */
 /* FIXME: fix this code to not depend so much on the inetrnals */
 #include <mono/metadata/class-internals.h>
 
@@ -65,7 +79,7 @@ void ves_icall_System_Diagnostics_Process_Process_free_internal (MonoObject *thi
 	g_message ("%s: Closing process %p, handle %p", __func__, this, process);
 #endif
 
-#if TARGET_WIN32
+#if defined(TARGET_WIN32) || defined(HOST_WIN32)
 	CloseHandle (process);
 #else
 	CloseProcess (process);
@@ -514,10 +528,6 @@ complete_path (const gunichar2 *appname, gchar **completed)
 	return TRUE;
 }
 
-#if defined (MINGW_CROSS_COMPILE) && defined (HAVE_GETPROCESSID)
-#undef HAVE_GETPROCESSID
-#endif
-
 #ifndef HAVE_GETPROCESSID
 /* Run-time GetProcessId detection for Windows */
 #ifdef TARGET_WIN32
@@ -891,25 +901,38 @@ MonoArray *ves_icall_System_Diagnostics_Process_GetProcesses_internal (void)
 	MonoArray *procs;
 	gboolean ret;
 	DWORD needed;
-	guint32 count, i;
-	DWORD pids[1024];
+	guint32 count;
+	guint32 *pids;
 
 	MONO_ARCH_SAVE_REGS;
 
-	ret=EnumProcesses (pids, sizeof(pids), &needed);
-	if(ret==FALSE) {
-		/* FIXME: throw an exception */
-		return(NULL);
-	}
+	count = 512;
+	do {
+		pids = g_new0 (guint32, count);
+		ret = EnumProcesses (pids, count * sizeof (guint32), &needed);
+		if (ret == FALSE) {
+			MonoException *exc;
+
+			g_free (pids);
+			pids = NULL;
+			exc = mono_get_exception_not_supported ("This system does not support EnumProcesses");
+			mono_raise_exception (exc);
+			g_assert_not_reached ();
+		}
+		if (needed < (count * sizeof (guint32)))
+			break;
+		g_free (pids);
+		pids = NULL;
+		count = (count * 3) / 2;
+	} while (TRUE);
+
+	count = needed / sizeof (guint32);
+	procs = mono_array_new (mono_domain_get (), mono_get_int32_class (), count);
+	memcpy (mono_array_addr (procs, guint32, 0), pids, needed);
+	g_free (pids);
+	pids = NULL;
 	
-	count=needed/sizeof(DWORD);
-	procs=mono_array_new (mono_domain_get (), mono_get_int32_class (),
-			      count);
-	for(i=0; i<count; i++) {
-		mono_array_set (procs, guint32, i, pids[i]);
-	}
-	
-	return(procs);
+	return procs;
 }
 
 MonoBoolean ves_icall_System_Diagnostics_Process_GetWorkingSet_internal (HANDLE process, guint32 *min, guint32 *max)

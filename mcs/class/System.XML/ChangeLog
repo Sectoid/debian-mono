@@ -1,3 +1,20 @@
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Switch to single mcs compiler for all managed code build
+
+2010-12-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[System.Xml] Enable existing API under 4.0 profile too
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Factorize the System.Xml monotouch and monodroid sources into a
+	mobile.sources
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System.Xml build for monodroid
+
 2010-06-30  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* System.Xml.dll.sources,

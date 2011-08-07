@@ -26,7 +26,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_4_0 || BOOTSTRAP_NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 using System;
 using System.Collections;
 
@@ -110,7 +110,6 @@ namespace System.Runtime.CompilerServices
 
 		public void Add (TKey key, TValue value)
 		{
-			TValue tmp;
 			if (key == default (TKey))
 				throw new ArgumentNullException ("Null key", "key");
 

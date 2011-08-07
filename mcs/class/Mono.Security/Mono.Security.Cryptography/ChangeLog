@@ -1,3 +1,7 @@
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Simplify ifdefs specifics to MOONLIGHT
+
 2010-07-16  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* MD2Managed.cs:

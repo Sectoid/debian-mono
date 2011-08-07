@@ -1,3 +1,72 @@
+2011-02-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not write empty items in Probe message.
+
+2011-02-24  Atsushi Eno  <atsushi@ximian.com>
+
+	To header rewrite only happens in Adhoc mode.
+
+	Update contracts to comply with that and make it consistent
+	between versions.
+
+2011-02-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix infinite loop in DiscoveryMessageSequence equality comparison.
+
+2011-02-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix wrong element name (AppSequenceType->AppSequence).
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	support UdpTranspoerSettings.MulticastInterfaceId. This should fix
+	bug #669328.
+
+2011-02-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix a couple of addressing namespace fixes (found in April2005
+	version).
+
+2011-02-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Recent ContractDescription fix uncovered wrong contracts in
+	discovery.
+
+2011-01-08  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed missing protected internal modifier
+
+2010-09-29  Atsushi Eno  <atsushi@ximian.com>
+
+	[wcf discovery] Use appropriate MessageVersion defined in
+	DiscoveryVersion.
+
+2010-09-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix (isolate) internal namespace for Udp transport.
+
+2010-09-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Cosmetic warning cleanups.
+
+2010-09-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Ongoing Discovery duplex (UDP) implementation (not working yet).
+
+2010-09-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Fill Duration value. Got managed mode use case working.
+
+2010-09-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Couple of fixes in FindCriteria and relevant contract types for
+	Find operation.
+
+2010-09-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Add a bunch of missing configuration members etc. based on
+	corcompare results.
+
 2010-09-01  Atsushi Eno  <atsushi@ximian.com>
 
 	implement Find operation in request-reply contract in Discovery

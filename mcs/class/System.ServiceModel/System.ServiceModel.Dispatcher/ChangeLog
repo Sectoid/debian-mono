@@ -1,3 +1,152 @@
+2011-06-28  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement support for Stream param with WebHttpBinding raw content
+	format.
+
+2011-04-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Enable environment-controled output on non-moon profile too. Add
+	error logging.
+
+2011-04-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Get real fix for bug #687902. Revert request processor
+	IDisposable.
+
+	and handle session shutdown when creating InstanceContext. Also
+	add note on DisposeInstance(), which got me stuck.
+
+2011-04-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Ongoing service channel closing fix and session management in
+	ChannelDispatcher.
+
+	It is part of bugfix 687902.
+
+	To get the bug fixed, the new "using" sections in
+	ChannelDispatcher.cs to explicitly dispose channels. But this
+	causes regression in PerSession-based tests. So some new session
+	management code is (likely) required as well.
+
+	It will also alter "mixed" MaxConcurrentCalls and
+	MaxConcurrentSessions with correct management code.
+
+2011-04-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Add XmlSerializerFormatAttribute support in mobile profiles.
+
+	Unlike moonlight, XmlSerializer is in the framework lib (sys.xml),
+	so we don't have to split them out to Sys.Xml.Serialization.dll.
+
+2011-04-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Split XmlMessagesFormatter out. It is for use in
+	Sys.Xml.Serialization.dll.
+
+	XmlMessagesFormatter will be used in Sys.Xml.Serialization.dll and
+	this type should not be excluded by !NET_2_1 or !MOONLIGHT. It is
+	not doable if this class is in BaseMessagesFormatter.cs.
+
+2011-04-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Some XmlSerializerFormatAttribute and
+	XmlSerializerOperationBehavior refactoring.
+
+2011-03-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Add endpoint behavior support in NET_2_1, which involved not a few
+	additions.
+
+2011-03-14  Peter Gerbrandt  <pg@viadux.de>
+
+	Apply DataContractSerializerOperationBehavior.
+
+2011-03-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Replace SRE-based client proxy generator with RealProxy.
+
+	Now PE verified workaround should be unnecessary.
+
+2011-02-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Another fix to not write null header. Add UniqueId deserialization
+	workaround.
+
+2011-02-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not try to serialize null header item.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Message headers are now serialized and deserialized for
+	MessageHeaderDescription.
+
+2011-02-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Support ServiceKnownTypes. Fixed another case on bug #652331.
+
+2011-02-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Open and close client/service runtime channels in chains. Fixed
+	bug #663278.
+
+2011-02-07  Atsushi Eno  <atsushi@ximian.com>
+
+	handle IsTerminating.
+
+2011-02-04  Atsushi Eno  <atsushi@ximian.com>
+
+	Callback contract should be distinguished from others for
+	DispatchOperation.
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix regression, avoid null key.
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	And rename source file name.
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Rename InstanceBhavior, too ambiguous among IXxxBehavior
+	interfaces.
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Sessions should not be keyed by MessageId but be done by channel
+	SessionId.
+
+2010-10-20  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf] make /js and /jsdebug dispatchers work.
+
+	There were several issues here:
+
+	- The IChannelDispatcherBoundListener was defined twice, in two
+	different namespaces, and it caused code in
+	ChannelDispatcher.Attach not to set its associated listener's
+	ChannelDispatcher property to the correct value. This, in turn,
+	caused incorrect HttpListenerManagerTable operation, where it
+	would put the "/js" and "/jsdebug" dispatchers in separate
+	HttpListenerManagers, instead of in the main (base) service's one.
+	- After fixing the above, it turned out that SvcHttpHandler
+	selected the manager based on the host's base address, when it
+	should first try to find one whose URL matches the current request
+	exactly.
+
+2010-09-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix the issue that callback contract often gets confused by
+	picking unexpected contract type.
+
+	The problem is that DispatchRuntime.Type is a service
+	implementation type that could implement two or more contract
+	interfaces, and it was in random order how ServiceProxyGenerator
+	picks up the contract type. Now it looks for correct contract type
+	instead of the service type by exactly looking for the target
+	contract in the endpoint (dispatcher).
+
 2010-07-12  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* InputOrReplyProcessor.cs : remove SecurityHandler. WS-Trust must

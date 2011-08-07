@@ -8,9 +8,9 @@ RESOURCE_FILES = \
 
 LIBRARY = System.ServiceModel.dll
 LIB_MCS_FLAGS = \
-		/d:USE_DATA_CONTRACT_IMPORTER \
 		/nowarn:414,169,67,3005,436,219,618 \
 		/unsafe \
+		/d:TRACE \
 	        /r:System.dll \
 	        /r:System.Xml.dll \
 		/r:System.Core.dll \
@@ -45,6 +45,7 @@ TEST_EXTRA_FILES = \
 	System.ServiceModel_test_net_3_0.dll.config \
 	Test/config/* \
 	Test/Resources/* \
+	Test/XmlFiles/* \
 	Test/System.ServiceModel.Description/dump.xml
 
 EXTRA_DISTFILES = $(RESOURCE_FILES) $(TEST_EXTRA_FILES)

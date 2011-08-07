@@ -1,3 +1,17 @@
+2010-11-12  Marek Safar  <marek.safar@gmail.com>
+
+	Fix QueuePathDialog signature
+
+2010-09-26  Marek Habersack  <grendel@twistedcode.net>
+
+	[Messaging] Conditionally drop dependency on Wnforms
+
+	If you pass the option MESSAGING_NO_WINFORMS=1 to make,
+	System.Messaging will be compiled without the dependency to
+	System.Windows.Forms. The dependency is needed just by the
+	System.Messaging.Design.QueuePathDialog class which is both a stub
+	and not used anywhere by Mono.
+
 2004-06-02  Gert Driesen <drieseng@users.sourceforge.net>
 
 	* MessageFormatterConverter.cs: added file

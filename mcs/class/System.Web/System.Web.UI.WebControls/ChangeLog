@@ -1,3 +1,46 @@
+2011-03-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #670714. Menu is rendered correctly in 4.0
+	now (highlighting works)
+
+2011-03-16  Jason Cohen  <web23-sles@steltek.com>
+
+	[asp.net] Fix for bug #678705. Menu list rendered properly closes
+	the list now.
+
+2010-10-29  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #646505. BoundField must not assume the
+	sender of the OnDataBindField is DataControlFieldCell.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
+2010-09-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Menu 4.0 List rendering mode JavaScript fixes
+
+	This makes the new script work correctly with IE, which has a
+	different way of hooking up of events and cancelling of their
+	bubling. Previously the mouse-over handler would be called for
+	each and every submenu causing the leaf menus not to appear. With
+	this fix the handler is called only once.
+
+2010-09-08  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Onobtrusive JavaScript for the 4.0 Menu control List
+	mode
+
+2010-08-19  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Menu 4.0 List mode rendering
+
+2010-09-04  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Made GetExtension static and internal, so that it can be
+	used from code outsude Unit
+
 2010-09-07  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Fix for bug #636475. A typo caused ads not to be matched

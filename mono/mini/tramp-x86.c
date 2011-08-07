@@ -17,6 +17,7 @@
 #include <mono/metadata/mono-debug.h>
 #include <mono/metadata/mono-debug-debugger.h>
 #include <mono/metadata/monitor.h>
+#include <mono/metadata/gc-internal.h>
 #include <mono/arch/x86/x86-codegen.h>
 
 #include <mono/utils/memcheck.h>
@@ -28,7 +29,6 @@ static guint8* nullified_class_init_trampoline;
 
 /*
  * mono_arch_get_unbox_trampoline:
- * @gsctx: the generic sharing context
  * @m: method pointer
  * @addr: pointer to native code for @m
  *
@@ -37,7 +37,7 @@ static guint8* nullified_class_init_trampoline;
  * unboxing before calling the method
  */
 gpointer
-mono_arch_get_unbox_trampoline (MonoGenericSharingContext *gsctx, MonoMethod *m, gpointer addr)
+mono_arch_get_unbox_trampoline (MonoMethod *m, gpointer addr)
 {
 	guint8 *code, *start;
 	int this_pos = 4;
@@ -48,6 +48,8 @@ mono_arch_get_unbox_trampoline (MonoGenericSharingContext *gsctx, MonoMethod *m,
 	x86_alu_membase_imm (code, X86_ADD, X86_ESP, this_pos, sizeof (MonoObject));
 	x86_jump_code (code, addr);
 	g_assert ((code - start) < 16);
+
+	nacl_domain_code_validate (domain, &start, 16, &code);
 
 	return start;
 }
@@ -68,6 +70,7 @@ mono_arch_get_static_rgctx_trampoline (MonoMethod *m, MonoMethodRuntimeGenericCo
 	x86_jump_code (code, addr);
 	g_assert ((code - start) <= buf_len);
 
+	nacl_domain_code_validate (domain, &start, buf_len, &code);
 	mono_arch_flush_icache (start, code - start);
 
 	return start;
@@ -96,6 +99,8 @@ mono_arch_get_llvm_imt_trampoline (MonoDomain *domain, MonoMethod *m, int vt_off
 
 	g_assert ((code - start) < buf_len);
 
+	nacl_domain_code_validate (domain, &start, buf_len, &code);
+
 	mono_arch_flush_icache (start, code - start);
 
 	return start;
@@ -104,6 +109,7 @@ mono_arch_get_llvm_imt_trampoline (MonoDomain *domain, MonoMethod *m, int vt_off
 void
 mono_arch_patch_callsite (guint8 *method_start, guint8 *orig_code, guint8 *addr)
 {
+#if defined(__default_codegen__)
 	guint8 *code;
 	guint8 buf [8];
 	gboolean can_write = mono_breakpoint_clean_code (method_start, orig_code, 8, buf, sizeof (buf));
@@ -135,6 +141,23 @@ mono_arch_patch_callsite (guint8 *method_start, guint8 *orig_code, guint8 *addr)
 				code [4], code [5], code [6]);
 		g_assert_not_reached ();
 	}
+#elif defined(__native_client__)
+	/* Target must be bundle-aligned */
+	g_assert (((guint32)addr & kNaClAlignmentMask) == 0);
+
+	/* 0xe8 = call <DISP>, 0xe9 = jump <DISP> */
+	if ((orig_code [-5] == 0xe8) || orig_code [-6] == 0xe9) {
+		int ret;
+		gint32 offset = (gint32)addr - (gint32)orig_code;
+		guint8 buf[sizeof(gint32)];
+		*((gint32*)(buf)) = offset;
+		ret = nacl_dyncode_modify (orig_code - sizeof(gint32), buf, sizeof(gint32));
+		g_assert (ret == 0);
+	} else {
+		printf ("Invalid trampoline sequence %p: %02x %02x %02x %02x %02x\n", orig_code, orig_code [-5], orig_code [-4], orig_code [-3], orig_code [-2], orig_code[-1]);
+		g_assert_not_reached ();
+	}
+#endif
 }
 
 void
@@ -154,7 +177,7 @@ mono_arch_patch_plt_entry (guint8 *code, gpointer *got, mgreg_t *regs, guint8 *a
 	g_assert (code [1] == 0x8b);
 
 	offset = *(guint32*)(code + 2);
-#else
+#elif defined(__default_codegen__)
 	/* A PLT entry: jmp *<DISP>(%ebx) */
 	g_assert (code [0] == 0xff);
 	g_assert (code [1] == 0xa3);
@@ -222,6 +245,7 @@ mono_arch_nullify_class_init_trampoline (guint8 *code, mgreg_t *regs)
 
 	code -= 5;
 	if (code [0] == 0xe8) {
+#if defined(__default_codegen__)
 		if (!mono_running_on_valgrind ()) {
 			guint32 ops;
 			/*
@@ -248,6 +272,9 @@ mono_arch_nullify_class_init_trampoline (guint8 *code, mgreg_t *regs)
 			/* Tell valgrind to recompile the patched code */
 			//VALGRIND_DISCARD_TRANSLATIONS (code, 8);
 		}
+#elif defined(__native_client_codegen__)
+		mono_arch_patch_callsite (code, code + 5, nullified_class_init_trampoline);
+#endif
 	} else if (code [0] == 0x90 || code [0] == 0xeb) {
 		/* Already changed by another thread */
 		;
@@ -499,6 +526,7 @@ mono_arch_create_generic_trampoline (MonoTrampolineType tramp_type, MonoTrampInf
 
 	x86_ret (code);
 
+	nacl_global_codeman_validate (&buf, 256, &code);
 	g_assert ((code - buf) <= 256);
 
 	if (info)
@@ -516,14 +544,20 @@ gpointer
 mono_arch_get_nullified_class_init_trampoline (MonoTrampInfo **info)
 {
 	guint8 *code, *buf;
+	int tramp_size = NACL_SIZE (16, kNaClAlignment);		
 
-	code = buf = mono_global_codeman_reserve (16);
+	code = buf = mono_global_codeman_reserve (tramp_size);
 	x86_ret (code);
+
+	nacl_global_codeman_validate (&buf, tramp_size, &code);
 
 	mono_arch_flush_icache (buf, code - buf);
 
 	if (info)
 		*info = mono_tramp_info_create (g_strdup_printf ("nullified_class_init_trampoline"), buf, code - buf, NULL, NULL);
+
+	if (mono_jit_map_is_enabled ())
+		mono_emit_jit_tramp (buf, code - buf, "nullified_class_init_trampoline");
 
 	return buf;
 }
@@ -542,6 +576,8 @@ mono_arch_create_specific_trampoline (gpointer arg1, MonoTrampolineType tramp_ty
 	x86_push_imm (buf, arg1);
 	x86_jump_code (buf, tramp);
 	g_assert ((buf - code) <= TRAMPOLINE_SIZE);
+
+	nacl_domain_code_validate (domain, &code, NACL_SIZE (4, kNaClAlignment), &buf);
 
 	mono_arch_flush_icache (code, buf - code);
 
@@ -578,13 +614,12 @@ mono_arch_create_rgctx_lazy_fetch_trampoline (guint32 slot, MonoTrampInfo **info
 		index -= size - 1;
 	}
 
-#ifdef __native_client_codegen__
-	/* TODO: align for Native Client */
-	tramp_size = (aot ? 64 : 36) + 2 * kNaClAlignment +
-		6 * (depth + kNaClAlignment);
-#else
+#if defined(__default_codegen__)
 	tramp_size = (aot ? 64 : 36) + 6 * depth;
-#endif  /* __native_client_codegen__ */
+#elif defined(__native_client_codegen__)
+	tramp_size = (aot ? 64 : 36) + 2 * kNaClAlignment +
+	  6 * (depth + kNaClAlignment);
+#endif
 
 	code = buf = mono_global_codeman_reserve (tramp_size);
 
@@ -642,6 +677,7 @@ mono_arch_create_rgctx_lazy_fetch_trampoline (guint32 slot, MonoTrampInfo **info
 		x86_jump_code (code, tramp);
 	}
 
+	nacl_global_codeman_validate (&buf, tramp_size, &code);
 	mono_arch_flush_icache (buf, code - buf);
 
 	g_assert (code - buf <= tramp_size);
@@ -700,6 +736,9 @@ mono_arch_create_generic_class_init_trampoline (MonoTrampInfo **info, gboolean a
 #ifdef __native_client_codegen__
 	g_assert (code - buf <= kNaClAlignment);
 #endif
+
+	nacl_global_codeman_validate (&buf, tramp_size, &code);
+
 	if (info)
 		*info = mono_tramp_info_create (g_strdup_printf ("generic_class_init_trampoline"), buf, code - buf, ji, unwind_ops);
 
@@ -730,7 +769,7 @@ mono_arch_create_monitor_enter_trampoline (MonoTrampInfo **info, gboolean aot)
 {
 	guint8 *tramp = mono_get_trampoline_code (MONO_TRAMPOLINE_MONITOR_ENTER);
 	guint8 *code, *buf;
-	guint8 *jump_obj_null, *jump_sync_null, *jump_other_owner, *jump_cmpxchg_failed, *jump_tid;
+	guint8 *jump_obj_null, *jump_sync_null, *jump_other_owner, *jump_cmpxchg_failed, *jump_tid, *jump_sync_thin_hash = NULL;
 	int tramp_size;
 	int owner_offset, nest_offset, dummy;
 	MonoJumpInfo *ji = NULL;
@@ -744,7 +783,7 @@ mono_arch_create_monitor_enter_trampoline (MonoTrampInfo **info, gboolean aot)
 	owner_offset = MONO_THREADS_SYNC_MEMBER_OFFSET (owner_offset);
 	nest_offset = MONO_THREADS_SYNC_MEMBER_OFFSET (nest_offset);
 
-	tramp_size = NACL_SIZE (64, 128);
+	tramp_size = NACL_SIZE (96, 128);
 
 	code = buf = mono_global_codeman_reserve (tramp_size);
 
@@ -758,8 +797,21 @@ mono_arch_create_monitor_enter_trampoline (MonoTrampInfo **info, gboolean aot)
 
 		/* load obj->synchronization to ECX */
 		x86_mov_reg_membase (code, X86_ECX, X86_EAX, G_STRUCT_OFFSET (MonoObject, synchronisation), 4);
+
+		if (mono_gc_is_moving ()) {
+			/*if bit zero is set it's a thin hash*/
+			/*FIXME use testb encoding*/
+			x86_test_reg_imm (code, X86_ECX, 0x01);
+			jump_sync_thin_hash = code;
+			x86_branch8 (code, X86_CC_NE, -1, 1);
+
+			/*clear bits used by the gc*/
+			x86_alu_reg_imm (code, X86_AND, X86_ECX, ~0x3);
+		}
+
 		/* is synchronization null? */
 		x86_test_reg_reg (code, X86_ECX, X86_ECX);
+
 		/* if yes, jump to actual trampoline */
 		jump_sync_null = code;
 		x86_branch8 (code, X86_CC_Z, -1, 1);
@@ -804,6 +856,8 @@ mono_arch_create_monitor_enter_trampoline (MonoTrampInfo **info, gboolean aot)
 
 		/* push obj */
 		x86_patch (jump_obj_null, code);
+		if (jump_sync_thin_hash)
+			x86_patch (jump_sync_thin_hash, code);
 		x86_patch (jump_sync_null, code);
 		x86_patch (jump_other_owner, code);
 		x86_push_reg (code, X86_EAX);
@@ -832,6 +886,8 @@ mono_arch_create_monitor_enter_trampoline (MonoTrampInfo **info, gboolean aot)
 	mono_arch_flush_icache (buf, code - buf);
 	g_assert (code - buf <= tramp_size);
 
+	nacl_global_codeman_validate (&buf, tramp_size, &code);
+
 	if (info)
 		*info = mono_tramp_info_create (g_strdup_printf ("monitor_enter_trampoline"), buf, code - buf, ji, unwind_ops);
 
@@ -843,7 +899,7 @@ mono_arch_create_monitor_exit_trampoline (MonoTrampInfo **info, gboolean aot)
 {
 	guint8 *tramp = mono_get_trampoline_code (MONO_TRAMPOLINE_MONITOR_EXIT);
 	guint8 *code, *buf;
-	guint8 *jump_obj_null, *jump_have_waiters, *jump_sync_null, *jump_not_owned;
+	guint8 *jump_obj_null, *jump_have_waiters, *jump_sync_null, *jump_not_owned, *jump_sync_thin_hash = NULL;
 	guint8 *jump_next;
 	int tramp_size;
 	int owner_offset, nest_offset, entry_count_offset;
@@ -860,7 +916,7 @@ mono_arch_create_monitor_exit_trampoline (MonoTrampInfo **info, gboolean aot)
 	nest_offset = MONO_THREADS_SYNC_MEMBER_OFFSET (nest_offset);
 	entry_count_offset = MONO_THREADS_SYNC_MEMBER_OFFSET (entry_count_offset);
 
-	tramp_size = NACL_SIZE (64, 128);
+	tramp_size = NACL_SIZE (96, 128);
 
 	code = buf = mono_global_codeman_reserve (tramp_size);
 
@@ -874,6 +930,18 @@ mono_arch_create_monitor_exit_trampoline (MonoTrampInfo **info, gboolean aot)
 
 		/* load obj->synchronization to ECX */
 		x86_mov_reg_membase (code, X86_ECX, X86_EAX, G_STRUCT_OFFSET (MonoObject, synchronisation), 4);
+
+		if (mono_gc_is_moving ()) {
+			/*if bit zero is set it's a thin hash*/
+			/*FIXME use testb encoding*/
+			x86_test_reg_imm (code, X86_ECX, 0x01);
+			jump_sync_thin_hash = code;
+			x86_branch8 (code, X86_CC_NE, -1, 1);
+
+			/*clear bits used by the gc*/
+			x86_alu_reg_imm (code, X86_AND, X86_ECX, ~0x3);
+		}
+
 		/* is synchronization null? */
 		x86_test_reg_reg (code, X86_ECX, X86_ECX);
 		/* if yes, jump to actual trampoline */
@@ -914,6 +982,8 @@ mono_arch_create_monitor_exit_trampoline (MonoTrampInfo **info, gboolean aot)
 
 		/* push obj and jump to the actual trampoline */
 		x86_patch (jump_obj_null, code);
+		if (jump_sync_thin_hash)
+			x86_patch (jump_sync_thin_hash, code);
 		x86_patch (jump_have_waiters, code);
 		x86_patch (jump_not_owned, code);
 		x86_patch (jump_sync_null, code);
@@ -927,6 +997,8 @@ mono_arch_create_monitor_exit_trampoline (MonoTrampInfo **info, gboolean aot)
 	} else {
 		x86_jump_code (code, tramp);
 	}
+
+	nacl_global_codeman_validate (&buf, tramp_size, &code);
 
 	mono_arch_flush_icache (buf, code - buf);
 	g_assert (code - buf <= tramp_size);
@@ -988,17 +1060,25 @@ mono_arch_create_handler_block_trampoline (void)
 		code = mono_x86_emit_tls_get (code, X86_EAX, mono_get_jit_tls_offset ());
 		x86_mov_reg_membase (code, X86_EAX, X86_EAX, G_STRUCT_OFFSET (MonoJitTlsData, handler_block_return_address), 4);
 		/*simulate a call*/
+		/*Fix stack alignment*/
+		x86_alu_reg_imm (code, X86_SUB, X86_ESP, 0x8);
 		x86_push_reg (code, X86_EAX);
 		x86_jump_code (code, tramp);
 	} else {
 		/*Slow path uses a c helper*/
+		x86_alu_reg_imm (code, X86_SUB, X86_ESP, 0x8);
 		x86_push_reg (code, X86_ESP);
 		x86_push_imm (code, tramp);
 		x86_jump_code (code, handler_block_trampoline_helper);
 	}
 
+	nacl_global_codeman_validate (&buf, tramp_size, &code);
+
 	mono_arch_flush_icache (buf, code - buf);
 	g_assert (code - buf <= tramp_size);
+
+	if (mono_jit_map_is_enabled ())
+		mono_emit_jit_tramp (buf, code - buf, "handler_block_trampoline");
 
 	return buf;
 }

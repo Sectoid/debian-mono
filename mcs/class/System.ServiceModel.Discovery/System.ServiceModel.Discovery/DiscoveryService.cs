@@ -82,6 +82,11 @@ namespace System.ServiceModel.Discovery
 		MessageContracts11.FindResponse IDiscoveryProxyContract11.EndFind (IAsyncResult result)
 		{
 			OnEndFind (result);
+			return CreateFindResponse11 ();
+		}
+
+		MessageContracts11.FindResponse CreateFindResponse11 ()
+		{
 			var l = new MessageContracts11.FindResponse11 ();
 			foreach (var edm in find_context.Endpoints)
 				l.Add (new EndpointDiscoveryMetadata11 (edm));
@@ -112,6 +117,11 @@ namespace System.ServiceModel.Discovery
 		MessageContractsApril2005.FindResponse IDiscoveryProxyContractApril2005.EndFind (IAsyncResult result)
 		{
 			OnEndFind (result);
+			return CreateFindResponseApril2005 ();
+		}
+
+		MessageContractsApril2005.FindResponse CreateFindResponseApril2005 ()
+		{
 			var l = new MessageContractsApril2005.FindResponseApril2005 ();
 			foreach (var edm in find_context.Endpoints)
 				l.Add (new EndpointDiscoveryMetadataApril2005 (edm));
@@ -142,6 +152,11 @@ namespace System.ServiceModel.Discovery
 		MessageContractsCD1.FindResponse IDiscoveryProxyContractCD1.EndFind (IAsyncResult result)
 		{
 			OnEndFind (result);
+			return CreateFindResponseCD1 ();
+		}
+
+		MessageContractsCD1.FindResponse CreateFindResponseCD1 ()
+		{
 			var l = new MessageContractsCD1.FindResponseCD1 ();
 			foreach (var edm in find_context.Endpoints)
 				l.Add (new EndpointDiscoveryMetadataCD1 (edm));
@@ -163,25 +178,15 @@ namespace System.ServiceModel.Discovery
 		// IDiscoveryTargetContract11
 		IAsyncResult IDiscoveryTargetContract11.BeginFind (MessageContracts11.FindRequest message, AsyncCallback callback, object state)
 		{
+			find_context = new DefaultFindRequestContext (message.Body.ToFindCriteria ());
 			return OnBeginFind (new DefaultFindRequestContext (message.Body.ToFindCriteria ()), callback, state);
 		}
 
 		void IDiscoveryTargetContract11.EndFind (IAsyncResult result)
 		{
 			OnEndFind (result);
-			throw new NotImplementedException ();
-		}
-
-		IAsyncResult IDiscoveryTargetContract11.BeginReplyFind (MessageContracts11.FindResponse message, AsyncCallback callback, object state)
-		{
-			// is it expected to be invoked??
-			throw new NotImplementedException ();
-		}
-
-		void IDiscoveryTargetContract11.EndReplyFind (IAsyncResult result)
-		{
-			// is it expected to be invoked??
-			throw new NotImplementedException ();
+			var cb = OperationContext.Current.GetCallbackChannel<IDiscoveryTargetCallbackContract11> ();
+			cb.ReplyFind (CreateFindResponse11 ());
 		}
 
 		IAsyncResult IDiscoveryTargetContract11.BeginResolve (MessageContracts11.ResolveRequest message, AsyncCallback callback, object state)
@@ -192,18 +197,6 @@ namespace System.ServiceModel.Discovery
 		void IDiscoveryTargetContract11.EndResolve (IAsyncResult result)
 		{
 			OnEndResolve (result);
-		}
-
-		IAsyncResult IDiscoveryTargetContract11.BeginReplyResolve (MessageContracts11.ResolveResponse message, AsyncCallback callback, object state)
-		{
-			// is it expected to be invoked??
-			throw new NotImplementedException ();
-		}
-
-		void IDiscoveryTargetContract11.EndReplyResolve (IAsyncResult result)
-		{
-			// is it expected to be invoked??
-			throw new NotImplementedException ();
 		}
 
 		IAsyncResult IDiscoveryTargetContract11.BeginOnlineAnnouncement (MessageContracts11.OnlineAnnouncement message, AsyncCallback callback, object state)
@@ -221,24 +214,15 @@ namespace System.ServiceModel.Discovery
 		// IDiscoveryTargetContractApril2005
 		IAsyncResult IDiscoveryTargetContractApril2005.BeginFind (MessageContractsApril2005.FindRequest message, AsyncCallback callback, object state)
 		{
+			find_context = new DefaultFindRequestContext (message.Body.ToFindCriteria ());
 			return OnBeginFind (new DefaultFindRequestContext (message.Body.ToFindCriteria ()), callback, state);
 		}
 
 		void IDiscoveryTargetContractApril2005.EndFind (IAsyncResult result)
 		{
 			OnEndFind (result);
-		}
-
-		IAsyncResult IDiscoveryTargetContractApril2005.BeginReplyFind (MessageContractsApril2005.FindResponse message, AsyncCallback callback, object state)
-		{
-			// is it expected to be invoked??
-			throw new NotImplementedException ();
-		}
-
-		void IDiscoveryTargetContractApril2005.EndReplyFind (IAsyncResult result)
-		{
-			// is it expected to be invoked??
-			throw new NotImplementedException ();
+			var cb = OperationContext.Current.GetCallbackChannel<IDiscoveryTargetCallbackContractApril2005> ();
+			cb.ReplyFind (CreateFindResponseApril2005 ());
 		}
 
 		IAsyncResult IDiscoveryTargetContractApril2005.BeginResolve (MessageContractsApril2005.ResolveRequest message, AsyncCallback callback, object state)
@@ -249,18 +233,6 @@ namespace System.ServiceModel.Discovery
 		void IDiscoveryTargetContractApril2005.EndResolve (IAsyncResult result)
 		{
 			OnEndResolve (result);
-		}
-
-		IAsyncResult IDiscoveryTargetContractApril2005.BeginReplyResolve (MessageContractsApril2005.ResolveResponse message, AsyncCallback callback, object state)
-		{
-			// is it expected to be invoked??
-			throw new NotImplementedException ();
-		}
-
-		void IDiscoveryTargetContractApril2005.EndReplyResolve (IAsyncResult result)
-		{
-			// is it expected to be invoked??
-			throw new NotImplementedException ();
 		}
 
 		IAsyncResult IDiscoveryTargetContractApril2005.BeginOnlineAnnouncement (MessageContractsApril2005.OnlineAnnouncement message, AsyncCallback callback, object state)
@@ -278,24 +250,15 @@ namespace System.ServiceModel.Discovery
 		// IDiscoveryTargetContractCD1
 		IAsyncResult IDiscoveryTargetContractCD1.BeginFind (MessageContractsCD1.FindRequest message, AsyncCallback callback, object state)
 		{
+			find_context = new DefaultFindRequestContext (message.Body.ToFindCriteria ());
 			return OnBeginFind (new DefaultFindRequestContext (message.Body.ToFindCriteria ()), callback, state);
 		}
 
 		void IDiscoveryTargetContractCD1.EndFind (IAsyncResult result)
 		{
 			OnEndFind (result);
-		}
-
-		IAsyncResult IDiscoveryTargetContractCD1.BeginReplyFind (MessageContractsCD1.FindResponse message, AsyncCallback callback, object state)
-		{
-			// is it expected to be invoked??
-			throw new NotImplementedException ();
-		}
-
-		void IDiscoveryTargetContractCD1.EndReplyFind (IAsyncResult result)
-		{
-			// is it expected to be invoked??
-			throw new NotImplementedException ();
+			var cb = OperationContext.Current.GetCallbackChannel<IDiscoveryTargetCallbackContractCD1> ();
+			cb.ReplyFind (CreateFindResponseCD1 ());
 		}
 
 		IAsyncResult IDiscoveryTargetContractCD1.BeginResolve (MessageContractsCD1.ResolveRequest message, AsyncCallback callback, object state)
@@ -306,18 +269,6 @@ namespace System.ServiceModel.Discovery
 		void IDiscoveryTargetContractCD1.EndResolve (IAsyncResult result)
 		{
 			OnEndResolve (result);
-		}
-
-		IAsyncResult IDiscoveryTargetContractCD1.BeginReplyResolve (MessageContractsCD1.ResolveResponse message, AsyncCallback callback, object state)
-		{
-			// is it expected to be invoked??
-			throw new NotImplementedException ();
-		}
-
-		void IDiscoveryTargetContractCD1.EndReplyResolve (IAsyncResult result)
-		{
-			// is it expected to be invoked??
-			throw new NotImplementedException ();
 		}
 
 		IAsyncResult IDiscoveryTargetContractCD1.BeginOnlineAnnouncement (MessageContractsCD1.OnlineAnnouncement message, AsyncCallback callback, object state)
@@ -369,6 +320,12 @@ namespace System.ServiceModel.Discovery
 			default:
 				break;
 			}
+
+			var oc = OperationContext.Current;
+			var rmp = oc.IncomingMessageProperties [RemoteEndpointMessageProperty.Name] as RemoteEndpointMessageProperty;
+			if (rmp != null)
+				// FIXME: use appropriate port. Client does not listen at the sending port.
+				oc.OutgoingMessageProperties.Add (RemoteEndpointMessageProperty.Name, new RemoteEndpointMessageProperty (rmp.Address, rmp.Port));
 		}
 
 		protected override IAsyncResult OnBeginResolve (ResolveCriteria resolveCriteria, AsyncCallback callback, object state)

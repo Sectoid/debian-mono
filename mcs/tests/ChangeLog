@@ -1,3 +1,717 @@
+2011-07-20  Martinho Fernandes  <martinho.fernandes@gmail.com>
+
+	Test for bug #706877
+
+2011-01-26  Marek Safar  <marek.safar@gmail.com>
+
+	Optimized constructor readonly access has to be inside same
+	declarting type
+
+2011-01-08  Marek Safar  <marek.safar@gmail.com>
+
+	Test update
+
+2011-01-07  Marek Safar  <marek.safar@gmail.com>
+
+	Tests update
+
+2011-01-06  Marek Safar  <marek.safar@gmail.com>
+
+	Tests update
+
+2011-01-05  Marek Safar  <marek.safar@gmail.com>
+
+	[662440] Don't expand nested type builders of non-generic types
+
+2011-01-04  Marek Safar  <marek.safar@gmail.com>
+
+	New test
+
+2011-01-04  Marek Safar  <marek.safar@gmail.com>
+
+	Cleanup isinst expression resolver
+
+2011-01-04  Marek Safar  <marek.safar@gmail.com>
+
+	Use reduced expression for transparent is check
+
+2010-12-20  Marek Safar  <marek.safar@gmail.com>
+
+	Disable ikvm exception optimization until it's fixed
+
+2010-12-20  Marek Safar  <marek.safar@gmail.com>
+
+	[660260] A static method is inaccessible from a nested type with
+	explicit generic args
+
+2010-12-20  Marek Safar  <marek.safar@gmail.com>
+
+	[660255] Keep inflated non-inflated method info independently
+
+2010-12-17  Marek Safar  <marek.safar@gmail.com>
+
+	[660077] Setup class interfaces for defined types in same way as
+	for imported types
+
+2010-12-17  Marek Safar  <marek.safar@gmail.com>
+
+	Made SecurityAction predefined type
+
+2010-12-17  Marek Safar  <marek.safar@gmail.com>
+
+	[657601] Fixes parsing pragma warning when encounter eof
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	[659970] Close anonymous method scope also for top-level blocks
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	New test
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed cloning of default switch case
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	New tests.
+
+2010-12-14  Marek Safar  <marek.safar@gmail.com>
+
+	[653710] Check type parameter reference type constraint
+	recursively
+
+2010-12-14  Marek Safar  <marek.safar@gmail.com>
+
+	[656918] Implement expression tree access to hoisted variable
+	reference
+
+2010-12-14  Marek Safar  <marek.safar@gmail.com>
+
+	[656918] Emit instance expression for ET delegate creation
+
+2010-12-14  Marek Safar  <marek.safar@gmail.com>
+
+	[655284] Implemented automatic assembly version numbers
+
+2010-12-14  Marek Safar  <marek.safar@gmail.com>
+
+	[657623] Fix incorrect logic in value type parameter `is' check
+
+2010-12-14  Marek Safar  <marek.safar@gmail.com>
+
+	[657797] Expand type member cache using secondary constraints as
+	well.
+
+2010-12-13  Marek Safar  <marek.safar@gmail.com>
+
+	New test.
+
+2010-12-13  Marek Safar  <marek.safar@gmail.com>
+
+	[659038] Check interface hierarchy before reporting ambiguous
+	errors
+
+2010-12-13  Marek Safar  <marek.safar@gmail.com>
+
+	[657862] Correctly scan for parent of base method override
+
+2010-12-13  Marek Safar  <marek.safar@gmail.com>
+
+	[659022] Resolve reduced expressions
+
+2010-12-09  Marek Safar  <marek.safar@gmail.com>
+
+	New test
+
+2010-12-07  Marek Safar  <marek.safar@gmail.com>
+
+	Test update
+
+2010-12-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a 'check' target to mcs/tests.
+
+2010-12-03  Marek Safar  <marek.safar@gmail.com>
+
+	Test files update
+
+2010-11-30  Marek Safar  <marek.safar@gmail.com>
+
+	Tests update
+
+2010-11-30  Marek Safar  <marek.safar@gmail.com>
+
+	Emit optional default value-type parameter using nullref
+
+2010-11-30  Marek Safar  <marek.safar@gmail.com>
+
+	New test
+
+2010-11-26  Marek Safar  <marek.safar@gmail.com>
+
+	Removed few custom attribute IsDefined calls
+
+2010-11-26  Marek Safar  <marek.safar@gmail.com>
+
+	Import constants using their raw values only
+
+2010-11-26  Marek Safar  <marek.safar@gmail.com>
+
+	New test
+
+2010-11-24  Marek Safar  <marek.safar@gmail.com>
+
+	Inflate imported type arguments types with type definition type
+	arguments
+
+2010-11-24  Jb Evain  <jbevain@gmail.com>
+
+	Port mcs/tests to cecil-light
+
+2010-11-23  Marek Safar  <marek.safar@gmail.com>
+
+	Remove typeof comparisons
+
+2010-11-22  Marek Safar  <marek.safar@gmail.com>
+
+	Don't multiply fixed buffer size (it's done by runtime). Fixes
+	#654058
+
+2010-11-22  Marek Safar  <marek.safar@gmail.com>
+
+	Emit fixed buffers using standard api only
+
+2010-11-22  Marek Safar  <marek.safar@gmail.com>
+
+	group all fixed buffer tests
+
+2010-11-22  Marek Safar  <marek.safar@gmail.com>
+
+	Updated mcs tests failures
+
+2010-11-21  Marek Safar  <marek.safar@gmail.com>
+
+	Make generated assembly attributes container name unique
+
+2010-11-21  Marek Safar  <marek.safar@gmail.com>
+
+	Improve handling of netmodules. Fixes #504085
+
+2010-11-19  Marek Safar  <marek.safar@gmail.com>
+
+	Add AssemblySpec to handle all assembly attributes in same way.
+
+2010-11-12  Marek Safar  <marek.safar@gmail.com>
+
+	New tests
+
+2010-11-12  Marek Safar  <marek.safar@gmail.com>
+
+	Inflate nested non-generic interfaces inside generic type
+
+2010-11-11  Marek Safar  <marek.safar@gmail.com>
+
+	New tests.
+
+2010-11-11  Marek Safar  <marek.safar@gmail.com>
+
+	[650850] Inflate all hoisted type parameter constraints
+
+2010-11-11  Marek Safar  <marek.safar@gmail.com>
+
+	Synchronize event add/remove using CAS
+
+2010-11-10  Marek Safar  <marek.safar@gmail.com>
+
+	Implement dynamic mutator over dynamic indexer
+
+2010-11-10  Marek Safar  <marek.safar@gmail.com>
+
+	More tweaks for nullable binary operation
+
+2010-11-10  Marek Safar  <marek.safar@gmail.com>
+
+	False user-operator has priority over logical not user-operator
+
+2010-11-10  Marek Safar  <marek.safar@gmail.com>
+
+	Fixes a logic error in filtering out operators like methods
+
+2010-11-09  Marek Safar  <marek.safar@gmail.com>
+
+	Logical binary operarions with dynamic arguments have to be
+	unfolded
+
+2010-11-09  Marek Safar  <marek.safar@gmail.com>
+
+	Import declaring type base type when walking up the tree
+
+2010-11-08  Marek Safar  <marek.safar@gmail.com>
+
+	Emit correctly EndInvoke parameters attributes and names
+
+2010-11-08  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed ambiguity for overload resolution between params and
+	optional parameter of same type
+
+2010-11-08  Marek Safar  <marek.safar@gmail.com>
+
+	[651547] Check definitely assigned struct this access correctly.
+
+2010-11-05  Marek Safar  <marek.safar@gmail.com>
+
+	Only when importing nested types definition base type cannot be
+	setup
+
+2010-11-04  Marek Safar  <marek.safar@gmail.com>
+
+	Allow liften null as a given number of bit positions for shift
+	operator
+
+2010-11-04  Marek Safar  <marek.safar@gmail.com>
+
+	Add boxing for dynamic nullable conversion of coalescing operator
+
+2010-11-04  Marek Safar  <marek.safar@gmail.com>
+
+	Reject inaccessible members based on declaring type in dynamic
+	context
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	Inflate also event backing field
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	Another missing full dynamic type equality check
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	Implement lock statement over generic type parameter
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	Reset lock_taken before entering Monitor.Enter
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	ExclusiveOr is not nullable bitwise boolean operator
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	A candidate method can use dynamic in expanded form at non-first
+	position
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	typeof expression does not need unsafe context for pointer types
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	Pass checked context to compound member access setters
+
+2010-11-02  Marek Safar  <marek.safar@gmail.com>
+
+	Emit lock statement using Monitor.Enter (object, ref bool) when
+	available
+
+2010-11-02  Marek Safar  <marek.safar@gmail.com>
+
+	Implements indirect delegates invocation via dynamic member
+	dispatch
+
+2010-11-01  Marek Safar  <marek.safar@gmail.com>
+
+	Pass value type dynamic members as by-ref to persist member side
+	effects
+
+2010-11-01  Marek Safar  <marek.safar@gmail.com>
+
+	Convert dynamic assignment in checked context when set
+
+2010-11-01  Marek Safar  <marek.safar@gmail.com>
+
+	Check for unfixed type arguments before calling overload
+	resolution for inferred return type
+
+2010-11-01  Marek Safar  <marek.safar@gmail.com>
+
+	Set correct result type for chained folded enum subtraction
+
+2010-10-29  Marek Safar  <marek.safar@gmail.com>
+
+	Make dynamic array access index expresions in checked context
+
+2010-10-29  Marek Safar  <marek.safar@gmail.com>
+
+	Ignore private methods in batch import
+
+2010-10-28  Marek Safar  <marek.safar@gmail.com>
+
+	Fix emitted code for predefined or/and operation between bool? and
+	bool
+
+2010-10-28  Marek Safar  <marek.safar@gmail.com>
+
+	Add more type parameter checks for inherited constraints.
+
+2010-10-27  Marek Safar  <marek.safar@gmail.com>
+
+	New test.
+
+2010-10-27  Marek Safar  <marek.safar@gmail.com>
+
+	Implement type inference of dynamic arguments used as unknown
+	types
+
+2010-10-27  Marek Safar  <marek.safar@gmail.com>
+
+	More tests
+
+2010-10-27  Marek Safar  <marek.safar@gmail.com>
+
+	[649448] Compare original goto block for cloned blocks.
+
+2010-10-27  Marek Safar  <marek.safar@gmail.com>
+
+	[648360] When inflating nested generic type use same type
+	arguments to not inflate already inflated type
+
+2010-10-26  Marek Safar  <marek.safar@gmail.com>
+
+	Check nested declaring types when testing member overrides
+
+2010-10-23  Marek Safar  <marek.safar@gmail.com>
+
+	New test.
+
+2010-10-22  Marek Safar  <marek.safar@gmail.com>
+
+	Use faster MemberKind when checking for a nested type
+
+2010-10-22  Marek Safar  <marek.safar@gmail.com>
+
+	Include parent type parameters when inflating nested type
+	parameter constraint of type parameter type
+
+2010-10-21  Marek Safar  <marek.safar@gmail.com>
+
+	Add dynamic conversion to coalescing operator
+
+2010-10-21  Marek Safar  <marek.safar@gmail.com>
+
+	Implement closest override return type matching
+
+2010-10-20  Marek Safar  <marek.safar@gmail.com>
+
+	Forget to re-add this test file
+
+2010-10-20  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	README.tests was deleted in d9c8bdf
+
+2010-10-20  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up test files
+
+2010-10-20  Marek Safar  <marek.safar@gmail.com>
+
+	[601801] Fixes for parsing nant documentation
+
+	Gleb Golubitsky <rush.william@gmail.com>
+
+2010-10-20  Marek Safar  <marek.safar@gmail.com>
+
+	[647845] Don't skip parent types when looking for simple name
+
+2010-10-20  Marek Safar  <marek.safar@gmail.com>
+
+	More work on ambiguous named arguments
+
+2010-10-19  Marek Safar  <marek.safar@gmail.com>
+
+	More optional parameter VB compatibility fixes
+
+2010-10-19  Marek Safar  <marek.safar@gmail.com>
+
+	Restore altered arguments when overload resolution ends up in
+	dynamic dispatch
+
+2010-10-18  Marek Safar  <marek.safar@gmail.com>
+
+	[512754] Overload resolution with named or optional arguments has
+	to use closest member parameters
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	[646997] Correctly emit platform ILOnly flag
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Add more dynamic conversion restrictions
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	More tweaks to dynamic overload resolution
+
+2010-10-14  Marek Safar  <marek.safar@gmail.com>
+
+	A conditional expression with either dynamic side is always of
+	dynamic type
+
+2010-10-14  Marek Safar  <marek.safar@gmail.com>
+
+	More conversion tweaks for dynamic in using statement
+
+2010-10-13  Marek Safar  <marek.safar@gmail.com>
+
+	Use 2 phase dynamic load only for compound operations
+
+2010-10-13  Marek Safar  <marek.safar@gmail.com>
+
+	[645992] When importing dynamic type arguments dynamic custom
+	attribute flag has to be checked
+
+2010-10-13  Marek Safar  <marek.safar@gmail.com>
+
+	Dynamic type is never better than other types in overload
+	resolution
+
+2010-10-12  Marek Safar  <marek.safar@gmail.com>
+
+	More fixes for implicit conversions of nullable types with
+	nullable arguments
+
+2010-10-12  Marek Safar  <marek.safar@gmail.com>
+
+	[645572] Import more type as possible dynamic types.
+
+2010-10-12  Marek Safar  <marek.safar@gmail.com>
+
+	Do not create a constant null value for runtime types.
+
+2010-10-12  Marek Safar  <marek.safar@gmail.com>
+
+	Report correct error message for compound lifted binary operations
+
+2010-10-12  Marek Safar  <marek.safar@gmail.com>
+
+	Fold duplex conversion casts into a expression to emit single
+	convert for expression trees
+
+2010-10-11  Marek Safar  <marek.safar@gmail.com>
+
+	Compound assignments over reference type array cannot use ldelema
+
+2010-10-10  Marek Safar  <marek.safar@gmail.com>
+
+	[645232] Implement ITypeDefinition for internal types.
+
+2010-10-08  Marek Safar  <marek.safar@gmail.com>
+
+	Don't assume the system.object does not have any fields
+
+2010-10-08  Marek Safar  <marek.safar@gmail.com>
+
+	[642975] Fix initializer of partially static multidimensional
+	arrays
+
+2010-10-07  Marek Safar  <marek.safar@gmail.com>
+
+	Fix compound event assigments with dynamic side effect
+
+2010-10-07  Marek Safar  <marek.safar@gmail.com>
+
+	[644507] Don't use nested type cache until declaring type is
+	setup.
+
+2010-10-07  Marek Safar  <marek.safar@gmail.com>
+
+	Fix compound assigments with dynamic side effect
+
+2010-10-06  Marek Safar  <marek.safar@gmail.com>
+
+	Verify type parameter constraints type parameters
+
+2010-10-05  Marek Safar  <marek.safar@gmail.com>
+
+	New test.
+
+2010-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	ref/out arguments are always of static type
+
+2010-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	Keep imported indexer parameters (they can contain non-inflated
+	type parameters)
+
+2010-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	Implement compound assignment over null value
+
+2010-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	New test
+
+2010-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	Dynamic compound assignment breaks standard C# result conversion
+	rules
+
+2010-09-30  Marek Safar  <marek.safar@gmail.com>
+
+	Null constant cannot be used for ref/out variables
+
+2010-09-30  Marek Safar  <marek.safar@gmail.com>
+
+	More awkward nullable binary expressions which are not lifted even
+	though they should be
+
+2010-09-29  Marek Safar  <marek.safar@gmail.com>
+
+	Implement binary user operators over nullable not lifted
+	expressions.
+
+2010-09-29  Marek Safar  <marek.safar@gmail.com>
+
+	Dynamic compound assignment can be used as an expression as well.
+
+2010-09-29  Marek Safar  <marek.safar@gmail.com>
+
+	New test.
+
+2010-09-29  Marek Safar  <marek.safar@gmail.com>
+
+	New test.
+
+2010-09-29  Marek Safar  <marek.safar@gmail.com>
+
+	Skip inaccessible nested types for member access expressions.
+
+2010-09-29  Marek Safar  <marek.safar@gmail.com>
+
+	Inflate custom site container delegates correctly.
+
+2010-09-28  Marek Safar  <marek.safar@gmail.com>
+
+	Optional parameters can be of a user value type
+
+2010-09-28  Marek Safar  <marek.safar@gmail.com>
+
+	Ignore imported not visible internal types
+
+2010-09-25  Marek Safar  <marek.safar@gmail.com>
+
+	Implemented more combinations of nullable boolean logical
+	operators
+
+2010-09-21  Marek Safar  <marek.safar@gmail.com>
+
+	New tests.
+
+2010-09-20  Marek Safar  <marek.safar@gmail.com>
+
+	Implement postfix operations involving an implicit user operator.
+
+2010-09-20  Marek Safar  <marek.safar@gmail.com>
+
+	Don't check inferred dynamic type arguments against best candidate
+	constraints.
+
+2010-09-20  Marek Safar  <marek.safar@gmail.com>
+
+	[640285] Initialize this in current block instead of original
+	block
+
+2010-09-20  Marek Safar  <marek.safar@gmail.com>
+
+	Parse secondary static like expression as a non-cast
+
+2010-09-17  Marek Safar  <marek.safar@gmail.com>
+
+	User operators are resolved in a batch, pick up the foremost
+
+2010-09-17  Marek Safar  <marek.safar@gmail.com>
+
+	Fixes preference of a user-defined conversion operators over
+	lifted conversion operators
+
+2010-09-17  Marek Safar  <marek.safar@gmail.com>
+
+	Fixes cloning of a variable declarator.
+
+2010-09-17  Marek Safar  <marek.safar@gmail.com>
+
+	Implement predefined binary enum operators involving an implicit
+	user conversion
+
+2010-09-15  Marek Safar  <marek.safar@gmail.com>
+
+	New test.
+
+2010-09-14  Marek Safar  <marek.safar@gmail.com>
+
+	Encode correctly all constants into a payload
+
+2010-09-13  Marek Safar  <marek.safar@gmail.com>
+
+	Add a test for arrays with dynamic elements.
+
+2010-09-13  Marek Safar  <marek.safar@gmail.com>
+
+	Implement foreach over nullable values.
+
+2010-09-13  Marek Safar  <marek.safar@gmail.com>
+
+	Keep only 1 using implementation and handle all nullable and
+	dynamic cases there.
+
+2010-09-10  Marek Safar  <marek.safar@gmail.com>
+
+	Always compare original block for cloned versions.
+
+2010-09-10  Marek Safar  <marek.safar@gmail.com>
+
+	New test.
+
+2010-09-10  Marek Safar  <marek.safar@gmail.com>
+
+	Converting the switch statement into normal statement (the block
+	part).
+
+2010-09-10  Marek Safar  <marek.safar@gmail.com>
+
+	When doing member access left side lookup the arity value is
+	actually the exact value.
+
+2010-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	Don't recreate top-level destructor block, it carries precious
+	stuff
+
+2010-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	The first push to make flow-analysis work for complex blocks.
+
+	All blocks are now strictly hierachical which greatly simplifies
+	many things and fixes many subtle bugs with local names. Removing
+	the block cross references helps scalling when compiling deeply
+	nested blocks or large method bodies including linq. Prepared
+	possible dynamic statements to work with variable declarators.
+
+2010-09-06  Jonathan Pobst  <monkey@jpobst.com>
+
+	Normalize line endings.
+
+2010-09-01  Marek Safar  <marek.safar@gmail.com>
+
+	Add ctor block to field initializers to avoid member lookup at
+	wrong block
+
 2010-08-31  Marek Safar  <marek.safar@gmail.com>
 
 	Add support for indirect pointer type constants.

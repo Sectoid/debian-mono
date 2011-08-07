@@ -1,3 +1,46 @@
+2011-02-03  Marek Habersack  <grendel@twistedcode.net>
+
+	[reflection] Default binder's AdjustArguments method treats
+	ParamArray parameters which are already arrays properly
+
+	Such parameters are not adjusted as it would lead to an
+	InvalidCastException whenever an attempt to set an array index's
+	value would be made.
+
+2011-01-05  Marek Safar  <marek.safar@gmail.com>
+
+	Fix invalid test constraint
+
+2010-11-25  Sebastien Pouliot  <sebastien@ximian.com>
+
+	Test case for security issue
+
+2010-11-25  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add regression test for #655847
+
+2010-11-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Add support for the processorArchitecture field in assembly names.
+	Fixes #655096.
+
+2010-10-04  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* MonoGenericClassTest.cs: Add regression test.
+
+2010-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the setting of pointer type fields using reflection. Fixes
+	#641590.
+
+2010-09-20  Jb Evain  <jbevain@gmail.com>
+
+	Ignor test since its fix has been reverted
+
+2010-09-10  Jb Evain  <jbevain@gmail.com>
+
+	Add test for #636939
+
 2010-08-25  Rodrigo Kumpera  <kumpera@gmail.com>
 
 	Add test for #633671

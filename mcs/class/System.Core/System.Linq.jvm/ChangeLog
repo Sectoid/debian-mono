@@ -1,3 +1,21 @@
+2010-10-13  Jb Evain  <jbevain@gmail.com>
+
+	Add support for hoisted variables in the ET interpreter
+
+	This fixes #645765.
+
+2010-10-12  Jb Evain  <jbevain@gmail.com>
+
+	Fix parameterless Action case
+
+2010-10-12  Jb Evain  <jbevain@gmail.com>
+
+	[Fix] fix the ET interpreter to deal with user defined delegates.
+
+	The Expression Tree interpreter was previously limited to lambda
+	expression for either an Action or a Func delegate. This fix
+	removes this limitation. Fixes #645770.
+
 2008-09-23  Jb Evain  <jbevain@novell.com>
 
 	* ExpressionInterpreter.cs

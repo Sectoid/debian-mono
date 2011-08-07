@@ -39,7 +39,6 @@ using System.ComponentModel.Design;
 using System.ComponentModel.Design.Serialization;
 using System.Globalization;
 using System.IO;
-using System.Security.Cryptography;
 using System.Security.Permissions;
 using System.Security.Principal;
 using System.Text;
@@ -48,6 +47,7 @@ using System.Web;
 using System.Web.Caching;
 using System.Web.Compilation;
 using System.Web.Configuration;
+using System.Web.Hosting;
 using System.Web.SessionState;
 using System.Web.Util;
 using System.Web.UI.Adapters;
@@ -69,7 +69,7 @@ namespace System.Web.UI
 [DesignerSerializer ("Microsoft.VisualStudio.Web.WebForms.WebFormCodeDomSerializer, " + Consts.AssemblyMicrosoft_VisualStudio_Web, "System.ComponentModel.Design.Serialization.TypeCodeDomSerializer, System.Design, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
 public partial class Page : TemplateControl, IHttpHandler
 {
-	static string machineKeyConfigPath = "system.web/machineKey";
+//	static string machineKeyConfigPath = "system.web/machineKey";
 	bool _eventValidation = true;
 	object [] _savedControlState;
 	bool _doLoadPreviousPage;
@@ -460,10 +460,14 @@ public partial class Page : TemplateControl, IHttpHandler
 		get {
 			if (_request == null)
 				throw new HttpException("Request is not available in this context.");
-			return _request;
+			return RequestInternal;
 		}
 	}
 
+	internal HttpRequest RequestInternal {
+		get { return _request; }
+	}
+	
 	[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 	[Browsable (false)]
 	public HttpResponse Response {
@@ -933,6 +937,10 @@ public partial class Page : TemplateControl, IHttpHandler
 					       OutputCacheLocation location,
 					       string varyByParam)
 	{
+		if (duration <= 0)
+			// No need to do anything, cache will be ineffective anyway
+			return;
+		
 		HttpResponse response = Response;
 		HttpCachePolicy cache = response.Cache;
 		bool set_vary = false;
@@ -2375,74 +2383,6 @@ public partial class Page : TemplateControl, IHttpHandler
 		controlRegisteredForViewStateEncryption = true;
 	}
 
-	static byte [] AES_IV = null;
-	static byte [] TripleDES_IV = null;
-	static object locker = new object ();
-	static bool isEncryptionInitialized = false;
-
-	static void InitializeEncryption () 
-	{
-		if (isEncryptionInitialized)
-			return;
-
-		lock (locker) {
-			if (isEncryptionInitialized)
-				return;
-
-			string iv_string = "0BA48A9E-736D-40f8-954B-B2F62241F282";
-			AES_IV = new byte [16];
-			TripleDES_IV = new byte [8];
-
-			int i;
-			for (i = 0; i < AES_IV.Length; i++) {
-				AES_IV [i] = (byte) iv_string [i];
-			}
-
-			for (i = 0; i < TripleDES_IV.Length; i++) {
-				TripleDES_IV [i] = (byte) iv_string [i];
-			}
-
-			isEncryptionInitialized = true;
-		}
-	}
-
-	internal ICryptoTransform GetCryptoTransform (CryptoStreamMode cryptoStreamMode) 
-	{
-		ICryptoTransform transform = null;
-		MachineKeySection config = (MachineKeySection) WebConfigurationManager.GetSection (machineKeyConfigPath);
-		byte [] vk = MachineKeySectionUtils.ValidationKeyBytes (config);
-
-		switch (config.Validation) {
-			case MachineKeyValidation.SHA1:
-				transform = SHA1.Create ();
-				break;
-
-			case MachineKeyValidation.MD5:
-				transform = MD5.Create ();
-				break;
-
-			case MachineKeyValidation.AES:
-				InitializeEncryption ();
-				if (cryptoStreamMode == CryptoStreamMode.Read){
-					transform = Rijndael.Create().CreateDecryptor(vk, AES_IV);
-				} else {
-					transform = Rijndael.Create().CreateEncryptor(vk, AES_IV);
-				}
-				break;
-
-			case MachineKeyValidation.TripleDES:
-				InitializeEncryption ();
-				if (cryptoStreamMode == CryptoStreamMode.Read){
-					transform = TripleDES.Create().CreateDecryptor(vk, TripleDES_IV);
-				} else {
-					transform = TripleDES.Create().CreateEncryptor(vk, TripleDES_IV);
-				}
-				break;
-		}
-
-		return transform;
-	}
-
 	internal bool NeedViewStateEncryption {
 		get {
 			return (ViewStateEncryptionMode == ViewStateEncryptionMode.Always ||
@@ -2455,14 +2395,14 @@ public partial class Page : TemplateControl, IHttpHandler
 	void ApplyMasterPage ()
 	{
 		if (masterPageFile != null && masterPageFile.Length > 0) {
-			List <string> appliedMasterPageFiles = new List <string> ();
-
-			if (Master != null) {
-				MasterPage.ApplyMasterPageRecursive (Master, appliedMasterPageFiles);
-
-				Master.Page = this;
+			MasterPage master = Master;
+			
+			if (master != null) {
+				var appliedMasterPageFiles = new Dictionary <string, bool> (StringComparer.Ordinal);
+				MasterPage.ApplyMasterPageRecursive (Request.CurrentExecutionFilePath, HostingEnvironment.VirtualPathProvider, master, appliedMasterPageFiles);
+				master.Page = this;
 				Controls.Clear ();
-				Controls.Add (Master);
+				Controls.Add (master);
 			}
 		}
 	}
@@ -2706,27 +2646,45 @@ public partial class Page : TemplateControl, IHttpHandler
 		return dataItemCtx.Peek ();
 	}
 
+	void AddStyleSheets (PageTheme theme, ref List <string> links)
+	{
+		if (theme == null)
+			return;
+
+		string[] tmpThemes = theme != null ? theme.GetStyleSheets () : null;
+		if (tmpThemes == null || tmpThemes.Length == 0)
+			return;
+
+		if (links == null)
+			links = new List <string> ();
+
+		links.AddRange (tmpThemes);
+	}
+	
 	protected internal override void OnInit (EventArgs e)
 	{
 		base.OnInit (e);
 
-		var themes = new List <string> ();
+		List <string> themes = null;
+		AddStyleSheets (StyleSheetPageTheme, ref themes);
+		AddStyleSheets (PageTheme, ref themes);
 
-		if (StyleSheetPageTheme != null && StyleSheetPageTheme.GetStyleSheets () != null)
-			themes.AddRange (StyleSheetPageTheme.GetStyleSheets ());
+		if (themes == null)
+			return;
 		
-		if (PageTheme != null && PageTheme.GetStyleSheets () != null)
-			themes.AddRange (PageTheme.GetStyleSheets ());
-
-		if (themes.Count > 0 && Header == null)
+		HtmlHead header = Header;
+		if (themes != null && header == null)
 			throw new InvalidOperationException ("Using themed css files requires a header control on the page.");
-
-		foreach (string lss in themes) {
+		
+		ControlCollection headerControls = header.Controls;
+		string lss;
+		for (int i = themes.Count - 1; i >= 0; i--) {
+			lss = themes [i];
 			HtmlLink hl = new HtmlLink ();
 			hl.Href = lss;
 			hl.Attributes["type"] = "text/css";
 			hl.Attributes["rel"] = "stylesheet";
-			Header.Controls.Add (hl);
+			headerControls.AddAt (0, hl);
 		}
 	}
 

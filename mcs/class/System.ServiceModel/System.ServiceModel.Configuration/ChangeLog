@@ -1,3 +1,119 @@
+2011-04-04  Atsushi Eno  <atsushi@ximian.com>
+
+	Add WCF diagnostics implementation (not working yet).
+
+2011-04-01  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf] Unbreak the build (Assembly.IsDynamic is a 4.0 thing)
+
+2011-04-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement ConfigurationName support for ChannelFactory.
+
+	It is required for MoonlightDrtViewer bugfixing.
+
+2011-02-17  Atsushi Eno  <atsushi@ximian.com>
+
+	get out from NET_4_0.
+
+2011-02-17  Atsushi Eno  <atsushi@ximian.com>
+
+	Fill a couple of missing ServiceAuthorizationElement
+	implementation.
+
+2011-02-01  Atsushi Eno  <atsushi@ximian.com>
+
+	standard endpoint and protocol mapping support were lacking at
+	client side.
+
+	Turned out that they had nothing to do with #668089..
+
+2010-10-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Forgot #if NET_4_0.
+
+2010-10-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Add ExtendedProtectionPolicy members. Required by .config files by
+	.NET svcutil.
+
+2010-10-05  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not overwrite properly configured ServiceBehaviorElement.Name.
+
+2010-09-28  Marek Habersack  <grendel@twistedcode.net>
+
+	* NamedServiceModelExtensionCollectionElement.cs: minimum length
+	of the Name property value is 0 for 4.0 *
+	ServiceBehaviorElementCollection.cs: added an override of BaseAdd
+	which makes sure that the element being added has its Name set to
+	String.Empty if the element's name is null * ServiceHostBase.cs:
+	support for simplified behavior configuration. Refactored behavior
+	addition code to a separate method. Check whether behavior is not
+	in the collection before adding it.
+
+2010-09-27  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf]
+	System.ServiceModel.Configuration.CustomBindignCollectionElement.GetDefault
+	returns an instance of CustomBinding
+
+2010-09-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Add missing Properties property.
+
+2010-09-18  Atsushi Eno  <atsushi@ximian.com>
+
+	ProtocolMapping needed config section, default items and support
+	in ServiceHostBase.
+
+2010-09-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Add ProtocolMapping support.
+
+2010-09-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Return new instance.
+
+2010-09-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Add the trickiest line that had me; AddElementName is not on
+	ConfigurationProperty here.
+
+2010-09-15  Atsushi Eno  <atsushi@ximian.com>
+
+	add more NET_4_0.
+
+2010-09-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Add NET_4_0.
+
+2010-09-14  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing standard endpoint configuration support work.
+
+2010-09-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Add new properties in 4.0.
+
+2010-09-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Avoid crash by missing config attributes.
+
+2010-09-13  Atsushi Eno  <atsushi@ximian.com>
+
+	implemented large parts of WCF standard endpoints and
+	configuration support.
+
+2010-09-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Add missing members and implement most of it.
+
+2010-09-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Add IdentityElement implementation and some supplemental extension
+	methods for discovery.
+
 2010-08-02  atsushieno  <atsushi@ximian.com>
 
 	Add build fix (not sure if it is correct; MSDN does not tell it

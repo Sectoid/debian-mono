@@ -71,20 +71,24 @@ namespace System.Xaml
 			return sw.ToString ();
 		}
 
+#if !NET_2_1
 		public static void Save (string fileName, object instance)
 		{
-			using (var xw = XmlWriter.Create (fileName, new XmlWriterSettings () { OmitXmlDeclaration = true }))
+			using (var xw = XmlWriter.Create (fileName, new XmlWriterSettings () { OmitXmlDeclaration = true, Indent = true }))
 				Save (xw, instance);
 		}
+#endif
 
 		public static void Save (Stream stream, object instance)
 		{
-			Save (new XamlXmlWriter (stream, new XamlSchemaContext ()), instance);
+			using (var xw = XmlWriter.Create (stream, new XmlWriterSettings () { OmitXmlDeclaration = true, Indent = true }))
+				Save (xw, instance);
 		}
 
 		public static void Save (TextWriter textWriter, object instance)
 		{
-			Save (new XamlXmlWriter (textWriter, new XamlSchemaContext ()), instance);
+			using (var xw = XmlWriter.Create (textWriter, new XmlWriterSettings () { OmitXmlDeclaration = true, Indent = true }))
+				Save (xw, instance);
 		}
 
 		public static void Save (XmlWriter xmlWriter, object instance)

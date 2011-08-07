@@ -11,7 +11,12 @@
 
 using System;
 using System.Collections.Generic;
+
+#if STATIC
+using IKVM.Reflection.Emit;
+#else
 using System.Reflection.Emit;
+#endif
 
 namespace Mono.CSharp
 {
@@ -35,12 +40,15 @@ namespace Mono.CSharp
 		// A member definition of the context. For partial types definition use
 		// CurrentTypeDefinition.PartialContainer otherwise the context is local
 		//
+		// TODO: Obsolete it in this context, dynamic context cannot guarantee sensible value
+		//
 		MemberCore CurrentMemberDefinition { get; }
 
 		bool IsObsolete { get; }
 		bool IsUnsafe { get; }
 		bool IsStatic { get; }
 		bool HasUnresolvedConstraints { get; }
+		ModuleContainer Module { get; }
 
 		string GetSignatureForError ();
 
@@ -48,6 +56,7 @@ namespace Mono.CSharp
 		FullNamedExpression LookupNamespaceOrType (string name, int arity, Location loc, bool ignore_cs0104);
 		FullNamedExpression LookupNamespaceAlias (string name);
 
+		// TODO: It has been replaced by module
 		CompilerContext Compiler { get; }
 	}
 
@@ -71,6 +80,8 @@ namespace Mono.CSharp
 		/// </summary>
 		public bool HasReturnLabel;
 
+		public int FlowOffset;
+
 		public BlockContext (IMemberContext mc, ExplicitBlock block, TypeSpec returnType)
 			: base (mc)
 		{
@@ -81,6 +92,16 @@ namespace Mono.CSharp
 
 			// TODO: check for null value
 			CurrentBlock = block;
+		}
+
+		public BlockContext (ResolveContext rc, ExplicitBlock block, TypeSpec returnType)
+			: this (rc.MemberContext, block, returnType)
+		{
+			if (rc.IsUnsafe)
+				flags |= ResolveContext.Options.UnsafeScope;
+
+			if (rc.HasSet (ResolveContext.Options.CheckedScope))
+				flags |= ResolveContext.Options.CheckedScope;
 		}
 
 		public override FlowBranching CurrentBranching {
@@ -130,14 +151,14 @@ namespace Mono.CSharp
 			return branching;
 		}
 
-		public FlowBranchingIterator StartFlowBranching (Iterator iterator)
+		public FlowBranchingIterator StartFlowBranching (Iterator iterator, FlowBranching parent)
 		{
-			FlowBranchingIterator branching = new FlowBranchingIterator (CurrentBranching, iterator);
+			FlowBranchingIterator branching = new FlowBranchingIterator (parent, iterator);
 			current_flow_branching = branching;
 			return branching;
 		}
 
-		public FlowBranchingToplevel StartFlowBranching (ToplevelBlock stmt, FlowBranching parent)
+		public FlowBranchingToplevel StartFlowBranching (ParametersBlock stmt, FlowBranching parent)
 		{
 			FlowBranchingToplevel branching = new FlowBranchingToplevel (parent, stmt);
 			current_flow_branching = branching;
@@ -236,6 +257,8 @@ namespace Mono.CSharp
 
 			ConstructorScope = 1 << 11,
 
+			UsingInitializerScope = 1 << 12,
+
 			/// <summary>
 			///   Whether control flow analysis is enabled
 			/// </summary>
@@ -298,7 +321,7 @@ namespace Mono.CSharp
 			}
 		}
 
-		Options flags;
+		protected Options flags;
 
 		//
 		// Whether we are inside an anonymous method.
@@ -312,7 +335,7 @@ namespace Mono.CSharp
 
 		public Block CurrentBlock;
 
-		public IMemberContext MemberContext;
+		public readonly IMemberContext MemberContext;
 
 		/// <summary>
 		///   If this is non-null, points to the current switch statement
@@ -346,6 +369,12 @@ namespace Mono.CSharp
 
 		public CompilerContext Compiler {
 			get { return MemberContext.Compiler; }
+		}
+
+		public virtual ExplicitBlock ConstructorBlock {
+			get {
+				return CurrentBlock.Explicit;
+			}
 		}
 
 		public virtual FlowBranching CurrentBranching {
@@ -393,19 +422,17 @@ namespace Mono.CSharp
 			}
 		}
 
+		public ModuleContainer Module {
+			get {
+				return MemberContext.Module;
+			}
+		}
+
 		public bool OmitStructFlowAnalysis {
 			get { return (flags & Options.OmitStructFlowAnalysis) != 0; }
 		}
 
-		// TODO: Merge with CompilerGeneratedThis
-		public Expression GetThis (Location loc)
-		{
-			This my_this = new This (loc);
-			my_this.ResolveBase (this);
-			return my_this;
-		}
-
-		public bool MustCaptureVariable (LocalInfo local)
+		public bool MustCaptureVariable (INamedBlockVariable local)
 		{
 			if (CurrentAnonymousMethod == null)
 				return false;
@@ -415,7 +442,7 @@ namespace Mono.CSharp
 			if (CurrentAnonymousMethod.IsIterator)
 				return true;
 
-			return local.Block.Toplevel != CurrentBlock.Toplevel;
+			return local.Block.ParametersBlock != CurrentBlock.ParametersBlock.Original;
 		}
 
 		public bool HasSet (Options options)
@@ -496,7 +523,6 @@ namespace Mono.CSharp
 	public class CloneContext
 	{
 		Dictionary<Block, Block> block_map = new Dictionary<Block, Block> ();
-		Dictionary<LocalInfo, LocalInfo> variable_map;
 
 		public void AddBlockMap (Block from, Block to)
 		{
@@ -524,25 +550,6 @@ namespace Mono.CSharp
 
 			return mapped_to;
 		}
-
-		public void AddVariableMap (LocalInfo from, LocalInfo to)
-		{
-			if (variable_map == null)
-				variable_map = new Dictionary<LocalInfo, LocalInfo> ();
-			else if (variable_map.ContainsKey (from))
-				return;
-
-			variable_map[from] = to;
-		}
-
-		public LocalInfo LookupVariable (LocalInfo from)
-		{
-			try {
-				return variable_map[from];
-			} catch (KeyNotFoundException) {
-				throw new Exception ("LookupVariable: looking up a variable that has not been registered yet");
-			}
-		}
 	}
 
 	//
@@ -551,44 +558,31 @@ namespace Mono.CSharp
 	public class CompilerContext
 	{
 		readonly Report report;
-		readonly ReflectionMetaImporter meta_importer;
-		readonly PredefinedAttributes attributes;
-		readonly GlobalRootNamespace root;
+		readonly BuildinTypes buildin_types;
 
-		public CompilerContext (ReflectionMetaImporter metaImporter, Report report)
+		public CompilerContext (Report report)
 		{
-			this.meta_importer = metaImporter;
 			this.report = report;
-
-			this.attributes = new PredefinedAttributes ();
-			this.root = new GlobalRootNamespace ();
+			this.buildin_types = new BuildinTypes ();
 		}
 
-		public GlobalRootNamespace GlobalRootNamespace {
+		#region Properties
+
+		public BuildinTypes BuildinTypes {
 			get {
-				return root;
+				return buildin_types;
 			}
 		}
 
 		public bool IsRuntimeBinder { get; set; }
-
-		public ReflectionMetaImporter MetaImporter {
-			get {
-				return meta_importer;
-			}
-		}
-
-		public PredefinedAttributes PredefinedAttributes {
-			get {
-				return attributes;
-			}
-		}
 
 		public Report Report {
 			get {
 				return report;
 			}
 		}
+
+		#endregion
 	}
 
 	//
@@ -649,6 +643,15 @@ namespace Mono.CSharp
 			{
 				ec.flags = (ec.flags & invmask) | oldval;
 			}
+		}
+
+		public BuilderContext ()
+		{
+			//
+			// The default setting comes from the command line option
+			//
+			if (RootContext.Checked)
+				flags |= Options.CheckedScope;
 		}
 
 		Options flags;

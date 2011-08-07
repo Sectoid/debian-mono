@@ -74,6 +74,11 @@ namespace Mono.Debugger.Soft
 		EventSet current_es;
 		int current_es_index;
 
+		/*
+		 * It is impossible to determine when to resume when using this method, since
+		 * the debuggee is suspended only once per event-set, not event.
+		 */
+		[Obsolete ("Use GetNextEventSet () instead")]
 		public Event GetNextEvent () {
 			lock (queue_monitor) {
 				if (current_es == null || current_es_index == current_es.Events.Length) {
@@ -102,6 +107,7 @@ namespace Mono.Debugger.Soft
 			}
 		}
 
+		[Obsolete ("Use GetNextEventSet () instead")]
 		public T GetNextEvent<T> () where T : Event {
 			return GetNextEvent () as T;
 		}
@@ -155,6 +161,16 @@ namespace Mono.Debugger.Soft
 		}
 
 		//
+		// Enable send and receive timeouts on the connection and send a keepalive event
+		// every 'keepalive_interval' milliseconds.
+		//
+
+		public void SetSocketTimeouts (int send_timeout, int receive_timeout, int keepalive_interval)
+		{
+			conn.SetSocketTimeouts (send_timeout, receive_timeout, keepalive_interval);
+		}
+
+		//
 		// Methods to create event request objects
 		//
 		public BreakpointEventRequest CreateBreakpointRequest (MethodMirror method, long il_offset) {
@@ -188,9 +204,16 @@ namespace Mono.Debugger.Soft
 			return new ExceptionEventRequest (this, exc_type, caught, uncaught);
 		}
 
+		public AssemblyLoadEventRequest CreateAssemblyLoadRequest () {
+			return new AssemblyLoadEventRequest (this);
+		}
+
 		public void EnableEvents (params EventType[] events) {
-			foreach (EventType etype in events)
+			foreach (EventType etype in events) {
+				if (etype == EventType.Breakpoint || etype == EventType.Step)
+					throw new ArgumentException ("Breakpoint/Step events cannot be requested using EnableEvents", "events");
 				conn.EnableEvent (etype, SuspendPolicy.All, null);
+			}
 		}
 
 		public BreakpointEventRequest SetBreakpoint (MethodMirror method, long il_offset) {
@@ -224,6 +247,8 @@ namespace Mono.Debugger.Soft
 				throw new NotSupportedException ("This request is not supported by the protocol version implemented by the debuggee.");
 			case ErrorCode.ABSENT_INFORMATION:
 				throw new AbsentInformationException ();
+			case ErrorCode.NO_SEQ_POINT_AT_IL_OFFSET:
+				throw new ArgumentException ("Cannot set breakpoint on the specified IL offset.");
 			default:
 				throw new CommandException (args.ErrorCode);
 			}

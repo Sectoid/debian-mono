@@ -27,7 +27,6 @@
 //
 using System;
 using System.IO;
-using System.Net.Mime;
 using System.Runtime.Serialization.Json;
 using System.ServiceModel;
 using System.ServiceModel.Dispatcher;
@@ -64,6 +63,13 @@ namespace System.ServiceModel.Channels
 			get { return MessageVersion.None; }
 		}
 
+		public override bool IsContentTypeSupported (string contentType)
+		{
+			if (contentType == null)
+				throw new ArgumentNullException ("contentType");
+			return true; // anything is accepted.
+		}
+
 		public override Message ReadMessage (ArraySegment<byte> buffer, BufferManager bufferManager, string contentType)
 		{
 			throw new NotImplementedException ();
@@ -77,7 +83,7 @@ namespace System.ServiceModel.Channels
 			contentType = contentType ?? "application/octet-stream";
 
 			Encoding enc = Encoding.UTF8;
-			ContentType ct = new ContentType (contentType);
+			var ct = new System.Net.Mime.ContentType (contentType);
 			if (ct.CharSet != null)
 				enc = Encoding.GetEncoding (ct.CharSet);
 
@@ -124,6 +130,7 @@ namespace System.ServiceModel.Channels
 			}
 			if (wp != null)
 				msg.Properties.Add (WebBodyFormatMessageProperty.Name, wp);
+			msg.Properties.Encoder = this;
 			return msg;
 		}
 

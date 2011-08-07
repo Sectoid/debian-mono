@@ -1,3 +1,16 @@
+2011-03-22  Veerapuram Varadhan  <v.varadhan@gmail.com>
+
+	** Fixes #676368 - Patch by 0richardkk.novell@chiark.greenend.org.uk
+	* OdbcConnection.cs: Make linking/unlinking of OdbcCommands thread safe.
+	* OdbcCommand.cs: Check generation object from connection in order to 
+	free the associated statement handle.
+
+2010-12-07  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #456234 - Patch by amc1999@gmail.com
+	* OdbcDataReader.cs (GetValue): Handle SQL_NO_TOTAL sanely and 
+	use corresponding Decoder.GetChars instead of Encoding.GetString.
+	
 2010-06-15 Jonathan Chambers  <joncham@gmail.com>
 
 	* OdbcDataReader.cs: Remove unneeded cast on ref parameter

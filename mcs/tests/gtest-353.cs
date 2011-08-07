@@ -1,46 +1,27 @@
-// Compiler options: -unsafe
-
 using System;
-using System.Runtime.InteropServices;
 
-namespace Bug
+class A<D1, D2, D3>
 {
-	[StructLayout (LayoutKind.Sequential, Pack = 1)]
-	public unsafe struct xxx
+	public virtual void Foo<T> () where T : D2
 	{
-		internal fixed byte zzz [5];
-	}
-
-	internal class RedSkyTimeCode
-	{
-		public unsafe void CopyTo (xxx* dest)
-		{
-			fixed (ulong* p = &_rep) {
-				byte* pb = (byte*) p;
-				dest->zzz [0] = pb [0];
-				dest->zzz [1] = pb [1];
-				dest->zzz [2] = pb [2];
-				dest->zzz [3] = pb [3];
-				dest->zzz [4] = pb [4];
-			}
-		}
-		
-		public static unsafe void Convert (xxx* src, ulong* dest)
-		{
-			byte* pb = (byte*) dest;
-			*dest = 0L;
-			pb [0] = src->zzz [0];
-			pb [1] = src->zzz [1];
-			pb [2] = src->zzz [2];
-			pb [3] = src->zzz [3];
-			pb [4] = src->zzz [4];
-		}
-		
-		private ulong _rep;
-		
-		public static void Main ()
-		{
-		}
 	}
 }
 
+class B<DD2> : A<int, DD2, short>
+{
+}
+
+class C : B<string>
+{
+	public override void Foo<T> ()
+	{
+	}
+}
+
+public class Program
+{
+	static void Main ()
+	{
+		new C ().Foo<string> ();
+	}
+}

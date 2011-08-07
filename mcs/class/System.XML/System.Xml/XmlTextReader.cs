@@ -424,6 +424,7 @@ namespace System.Xml
 
 		private int GetIndexOfQualifiedAttribute (string localName, string namespaceURI)
 		{
+			namespaceURI = namespaceURI ?? String.Empty;
 			for (int i = 0; i < attributeCount; i++) {
 				XmlAttributeTokenInfo ti = attributeTokens [i];
 				if (ti.LocalName == localName && ti.NamespaceURI == namespaceURI)
@@ -2924,11 +2925,6 @@ namespace System.Xml
 				case -1:
 					throw NotWFError ("Unexpected end of xml.");
 				case '<':
-					if (i + 1 == length)
-						// if it does not end here,
-						// it cannot store another
-						// character, so stop here.
-						return i;
 					Advance (c);
 					if (PeekChar () != '/') {
 						nestLevel++;

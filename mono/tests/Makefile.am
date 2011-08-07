@@ -42,6 +42,8 @@ STRESS_TESTS_SRC=	\
 	process-stress.cs	\
 	assembly-load-stress.cs
 
+# Disabled until ?mcs is fixed
+#	bug-331958.cs
 BASE_TEST_CS_SRC=		\
 	array-init.cs		\
 	arraylist.cs		\
@@ -228,7 +230,6 @@ BASE_TEST_CS_SRC=		\
 	bug-78656.cs		\
 	bug-77127.cs		\
 	bug-323114.cs		\
-	bug-331958.cs		\
 	interlocked.cs		\
 	cross-domain.cs		\
 	appdomain-exit.cs	\
@@ -369,20 +370,28 @@ BASE_TEST_CS_SRC=		\
 	bug-562150.cs	\
 	bug-575941.cs	\
 	bug-599469.cs	\
-	bug-389886-3.cs
+	bug-389886-3.cs \
+	monitor.cs
 
 TEST_CS_SRC_DIST=	\
 	$(BASE_TEST_CS_SRC)	\
 	async-exc-compilation.cs \
-	filter-stack.cs
+	filter-stack.cs	\
+	finally_guard.cs
+
+TEST_CS_SRC_GEN = \
+	runtime-invoke.gen.cs \
+	imt_big_iface_test.cs
 
 if AMD64
-TEST_CS_SRC = $(BASE_TEST_CS_SRC) async-exc-compilation.cs
+TEST_CS_SRC = $(BASE_TEST_CS_SRC) $(TEST_CS_SRC_GEN) async-exc-compilation.cs finally_guard.cs
+# #651684
+PLATFORM_DISABLED_TESTS = finally_guard.exe
 else
 if X86
-TEST_CS_SRC = $(BASE_TEST_CS_SRC) async-exc-compilation.cs
+TEST_CS_SRC = $(BASE_TEST_CS_SRC) $(TEST_CS_SRC_GEN) async-exc-compilation.cs finally_guard.cs
 else
-TEST_CS_SRC = $(BASE_TEST_CS_SRC)
+TEST_CS_SRC = $(BASE_TEST_CS_SRC) $(TEST_CS_SRC_GEN)
 endif
 endif
 
@@ -491,9 +500,9 @@ TEST_IL_SRC=			\
 	bug-481403.il	\
 	interface-with-static-method.il	\
 	bug-515884.il	\
-	bug-633291.il
-
-#	bug-318677.il
+	bug-633291.il	\
+	delegate-with-null-target.il	\
+	bug-318677.il
 
 # pre-requisite test sources: files that are not test themselves
 # but that need to be compiled
@@ -520,7 +529,7 @@ EXTRA_DIST=test-driver $(TEST_CS_SRC_DIST) $(TEST_IL_SRC) \
 
 # mkbundle works on ppc, but the pkg-config POC doesn't when run with make test
 if POWERPC
-test_platform:	testbundle
+test_platform:
 else
 # Can't use mkbundle on win32 since there is no static build there
 # Can't run test-unhandled-exception on Windows because of all the debug popups...
@@ -532,6 +541,21 @@ else
 test_platform:	test-iomap-regression
 endif
 endif
+
+if X86
+if HOST_WIN32
+else
+test_platform: test-eglib-remap
+endif
+endif
+
+#
+# Test that no symbols are missed in eglib-remap.h
+#
+OK_G_SYMBOLS='g_list\|g_slist\|g_concat_dir_and_file'
+test-eglib-remap:
+	@echo "Testing eglib remap..."
+	@if which nm > /dev/null; then if nm $(top_builddir)/mono/mini/mono | grep -v $(OK_G_SYMBOLS) | grep 't g_'; then exit 1; else exit 0; fi; fi
 
 #
 # Tests that the internals in mono/io-layer/messages.c are ok by triggering the 
@@ -549,7 +573,7 @@ endif
 
 # test_messages fails on the buildbots
 #test: assemblyresolve/test/asm.dll testjit test-type-load test-generic-sharing test_platform test_2_1 test_messages
-test: assemblyresolve/test/asm.dll testjit test-type-load test-generic-sharing test_platform test-runtime-invoke test-imt-big-iface test_2_1 test-process-exit
+test: assemblyresolve/test/asm.dll testjit test-generic-sharing test-type-load test_platform test_2_1 test-process-exit
 
 assemblyresolve/test/asm.dll:
 	$(MAKE) -C assemblyresolve prereq
@@ -671,18 +695,14 @@ test-type-load: TestDriver.dll
 
 # Generated tests for runtime invoke
 EXTRA_DIST += gen-runtime-invoke.cs
-test-runtime-invoke: TestDriver.dll gen-runtime-invoke.exe
-	@$(RUNTIME) gen-runtime-invoke.exe > runtime-invoke.gen.cs
-	@$(MCS) -out:runtime-invoke.gen.exe -r:TestDriver.dll runtime-invoke.gen.cs
-	@echo "Testing runtime-invoke.gen.exe..."
-	@$(RUNTIME) runtime-invoke.gen.exe > runtime-invoke.gen.exe.stdout 2> runtime-invoke.gen.exe.stderr
+runtime-invoke.gen.exe: TestDriver.dll gen-runtime-invoke.exe
+	$(RUNTIME) gen-runtime-invoke.exe > runtime-invoke.gen.cs
+	$(MCS) -out:runtime-invoke.gen.exe -r:TestDriver.dll runtime-invoke.gen.cs
 
 EXTRA_DIST += make-imt-test.cs
-test-imt-big-iface: TestDriver.dll make-imt-test.exe
-	@$(RUNTIME) make-imt-test.exe > imt_big_iface_test.cs
-	@$(MCS) -out:imt_big_iface_test.exe -r:TestDriver.dll imt_big_iface_test.cs
-	@echo "Testing imt_big_iface_test.exe..."
-	@$(RUNTIME) imt_big_iface_test.exe > imt_big_iface_test.exe.stdout 2> imt_big_iface_test.exe.stderr
+imt_big_iface_test.exe: TestDriver.dll make-imt-test.exe
+	$(RUNTIME) make-imt-test.exe > imt_big_iface_test.cs
+	$(MCS) -out:imt_big_iface_test.exe -r:TestDriver.dll imt_big_iface_test.cs
 
 EXTRA_DIST += test-inline-call-stack-library.cs test-inline-call-stack.cs
 test-inline-call-stack-library.dll: TestDriver.dll $(srcdir)/test-inline-call-stack-library.cs
@@ -870,6 +890,20 @@ test-process-exit:
 	@echo "Testing bug-438454.exe..."
 	@$(RUNTIME) bug-438454.exe > bug-438454.exe.stdout
 	@diff bug-438454.exe.stdout $(srcdir)/bug-438454.exe.stdout.expected
+
+OOM_TESTS =	\
+	gc-oom-handling.exe	\
+	gc-oom-handling2.exe
+
+
+test-oom: $(OOM_TESTS)
+	@for fn in $+ ; do	\
+		echo "Testing $$fn ...";	\
+		MONO_GC_PARAMS=max-heap-size=16m,major=marksweep-par MONO_ENV_OPTIONS="--gc=sgen" $(RUNTIME) $$fn > $$fn.stdout || exit 1;	\
+		MONO_GC_PARAMS=max-heap-size=16m MONO_ENV_OPTIONS="--gc=sgen"                     $(RUNTIME) $$fn > $$fn.stdout || exit 1;	\
+		MONO_GC_PARAMS=max-heap-size=16m                                                  $(RUNTIME) $$fn > $$fn.stdout || exit 1;	\
+	done
+
 
 noinst_LTLIBRARIES = libtest.la
 

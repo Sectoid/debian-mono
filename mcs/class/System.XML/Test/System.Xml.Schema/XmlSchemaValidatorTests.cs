@@ -297,6 +297,82 @@ namespace MonoTests.System.Xml
 			Validate (File.ReadAllText ("Test/XmlFiles/xsd/584664a.xml"), File.ReadAllText ("Test/XmlFiles/xsd/584664a.xsd"));
 			Validate (File.ReadAllText ("Test/XmlFiles/xsd/584664b.xml"), File.ReadAllText ("Test/XmlFiles/xsd/584664b.xsd"));
 		}
+
+		[Test]
+		public void MultipleMissingIds ()
+		{
+			var schema = XmlSchema.Read (new StringReader (@"<?xml version=""1.0"" encoding=""utf-8""?>
+<xs:schema targetNamespace=""urn:multiple-ids"" elementFormDefault=""qualified"" xmlns=""urn:multiple-ids"" xmlns:xs=""http://www.w3.org/2001/XMLSchema"">
+	<xs:element name=""root"">
+		<xs:complexType>
+			<xs:sequence minOccurs=""0"" maxOccurs=""unbounded"">
+				<xs:element name=""item"">
+					<xs:complexType>
+						<xs:attribute name=""id"" type=""xs:ID"" />
+						<xs:attribute name=""parent"" type=""xs:IDREF"" />
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>"), null);
+			var xml = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<root xmlns=""urn:multiple-ids"">
+	<item id=""id2"" parent=""id1"" />
+	<item id=""id3"" parent=""id1"" />
+	<item id=""id1"" parent=""id1"" />
+</root>";
+			var document = new XmlDocument ();
+			document.LoadXml (xml);
+			document.Schemas = new XmlSchemaSet ();
+			document.Schemas.Add (schema);
+			document.Validate (null);
+		}
+
+		[Test]
+		public void FacetsOnBaseSimpleContentRestriction ()
+		{
+			XmlReaderSettings settings = new XmlReaderSettings ();
+			settings.Schemas.Add (null, "Test/XmlFiles/595947.xsd");
+			settings.ValidationType = ValidationType.Schema;
+			settings.Schemas.Compile ();
+
+			Validate ("TEST 1.1", 1, "0123456789", "0123456789", settings, false);
+			Validate ("TEST 1.2", 1, "0123456789***", "0123456789", settings, true);
+			Validate ("TEST 1.3", 1, "0123456789", "0123456789***", settings, true);
+
+			Validate ("TEST 2.1", 2, "0123456789", "0123456789", settings, false);
+			Validate ("TEST 2.2", 2, "0123456789***", "0123456789", settings, true);
+			Validate ("TEST 2.3", 2, "0123456789", "0123456789***", settings, true);
+
+			Validate ("TEST 3.1", 3, "0123456789", "0123456789", settings, false);
+			Validate ("TEST 3.2", 3, "0123456789***", "0123456789", settings, true);
+			Validate ("TEST 3.3", 3, "0123456789", "0123456789***", settings, true);
+		}
+
+		void Validate (string testName, int testNumber, string idValue, string elementValue, XmlReaderSettings settings, bool shouldFail)
+		{
+			string content = string.Format ("<MyTest{0} Id=\"{1}\">{2}</MyTest{0}>", testNumber, idValue, elementValue);
+			try
+			{
+				XmlReader reader = XmlReader.Create (new StringReader (content), settings);
+				XmlDocument document = new XmlDocument ();
+				document.Load (reader);
+				document.Validate (null);
+			} catch (Exception e) {
+				if (!shouldFail)
+					throw;
+				return;
+			}
+			if (shouldFail)
+				Assert.Fail (testName + " should fail");
+		}
+
+		[Test]
+		public void Bug676993 ()
+		{
+			Validate (File.ReadAllText ("Test/XmlFiles/676993.xml"), File.ReadAllText ("Test/XmlFiles/676993.xsd"));
+		}
 	}
 }
 

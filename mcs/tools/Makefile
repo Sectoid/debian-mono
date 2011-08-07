@@ -20,7 +20,6 @@ net_4_0_dirs := \
 	$(per_profile_dirs) \
 	corcompare	\
 	mono-xmltool	\
-	mdoc		\
 	mono-shlib-cop	\
 	sgen		\
 	mconfig		\
@@ -47,20 +46,19 @@ net_4_0_dirs := \
 net_2_0_dirs := \
 	$(per_profile_dirs) \
 	monodoc		\
+	mdoc		\
 	compiler-tester
 
 moonlight_dirs := \
 	compiler-tester
 
-basic_SUBDIRS = gacutil security
-net_2_0_bootstrap_SUBDIRS = resgen culevel
+basic_SUBDIRS = gacutil resgen security culevel
 net_2_0_SUBDIRS := $(basic_SUBDIRS) $(net_2_0_dirs)
 moonlight_raw_SUBDIRS := $(moonlight_dirs)
 moonlight_SUBDIRS := $(moonlight_dirs)
-net_4_0_bootstrap_SUBDIRS = resgen culevel
 net_4_0_SUBDIRS := $(net_4_0_dirs) $(basic_SUBDIRS)
 
-SUBDIRS = $(basic_SUBDIRS) $(net_2_0_bootstrap_SUBDIRS) $(net_2_0_SUBDIRS) $(moonlight_SUBDIRS)
+SUBDIRS = $(basic_SUBDIRS) $(net_2_0_SUBDIRS) $(moonlight_SUBDIRS)
 DIST_SUBDIRS = $(SUBDIRS) $(net_4_0_dirs)
 
 include ../build/rules.make

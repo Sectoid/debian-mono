@@ -1,3 +1,19 @@
+2011-01-07  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[monodroid] Look for zlib support functions from __Internal.
+
+	Partial fix for #660928; the rest of the fix will require
+	embedding the zlib functions within libmonodroid.so.
+
+2010-10-24  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Throw exceptions here instead of in DeflateStream
+
+	To get the same stack trace as in bug #647948, we need to set the
+	underlying DeflateStream to null and throw the
+	ObjectDisposedException from this class. Same applies to the
+	NotSupportedException.
+
 2010-04-14 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* DeflateStream.cs: the delegate uses Cdecl calling convention on

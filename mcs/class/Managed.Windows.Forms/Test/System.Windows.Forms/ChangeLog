@@ -1,3 +1,36 @@
+2011-01-07  Thomas Goldstein  <stifu@free.fr>
+
+	Add new NumericUpDown tests.
+
+2011-01-07  Thomas Goldstein  <stifu@free.fr>
+
+	Add unit test for bug 661750.
+
+2011-01-07  Thomas Goldstein  <stifu@free.fr>
+
+	Remove NumericUpDownTest.cs from the -crlf list (file line-ending
+	encoding converted by mistake)
+
+2011-01-05  Thomas Goldstein  <stifu@free.fr>
+
+	Remove #if NET_2_0 flags.
+
+2011-01-05  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed WinFormsTest System.Drawing namespace reference
+
+2011-01-01  Thomas Goldstein  <stifu@free.fr>
+
+	Add unit tests for bug 661753.
+
+2010-12-21  Thomas Goldstein  <stifu@free.fr>
+
+	Add unit test for bug 660294.
+
+2010-09-15  Raja R Harinath  <harinath@hurrynot.org>
+
+	Fix a few CRLF issues
+
 2010-08-15  Thomas Goldstein  <stifu@free.fr>
 
 	* ListControlTest.cs: New test for #620326 - actual values being

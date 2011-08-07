@@ -1,3 +1,408 @@
+2011-03-29  Vincent Povirk  <madewokherd@gmail.com>
+
+	System.Windows.Forms.Mime: Use freedesktop.org only on Unix
+	platforms.
+
+2011-02-11  Miguel de Icaza  <miguel@gnome.org>
+
+	[fix] changing Form.Enabled sometimes can change the list of
+	OpenForms, fixes 671098
+
+2011-02-01  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Avoid a stack overflow when deactivating a window
+
+2011-01-06  Thomas Goldstein  <stifu@free.fr>
+
+	Replace decimal to hex string conversion code with a much more
+	simple alternative (suggested by Oliver Thimm). Fixes bug 661750.
+
+2011-01-06  Thomas Goldstein  <stifu@free.fr>
+
+	Remove #if NET_2_0.
+
+2011-01-01  Thomas Goldstein  <stifu@free.fr>
+
+	Add missing properties that should be copied when cloning a
+	TreeNode. Fixes bug 661753.
+
+2010-12-22  Thomas Goldstein  <stifu@free.fr>
+
+	Remove null check in ComboBox.SelectedText setter (now handled in
+	TextBoxBase).
+
+2010-12-22  Thomas Goldstein  <stifu@free.fr>
+
+	If SelectedText is given a null value, set it to String.Empty.
+
+2010-12-21  Thomas Goldstein  <stifu@free.fr>
+
+	When ComboBox.SelectedText is given a null value, set it to
+	String.Empty. Fixes bug 660294.
+
+2010-12-16  Jonathan Pobst  <monkey@jpobst.com>
+
+	Move line inside if () to fix 2 tests.
+
+	Broke by 9aa23d8ebec0f5c60ae66fee3df8a3c6c39cf191.
+
+2010-12-16  Miguel de Icaza  <miguel@gnome.org>
+
+	[winforms] undo accidental removal of a line
+
+2010-12-16  Miguel de Icaza  <miguel@gnome.org>
+
+	[winforms] revert patch, it regresses the test suite:
+	https://github.com/mono/mono/commit/8334fe3a56c978ffe7f8cb199536f9b3234afdbe
+
+2010-12-12  Miguel de Icaza  <miguel@gnome.org>
+
+	[winforms] Pass 4 of removing NET_2_0 from winforms
+
+2010-12-12  Miguel de Icaza  <miguel@gnome.org>
+
+	[winforms] Pass 3 of removing NET_2_0 from winforms
+
+2010-12-12  Miguel de Icaza  <miguel@gnome.org>
+
+	[winforms] Pass 3 of removing NET_2_0 from winforms
+
+2010-12-12  Miguel de Icaza  <miguel@gnome.org>
+
+	[winforms] Pass 2 of removing NET_2_0 from winforms
+
+2010-12-12  Miguel de Icaza  <miguel@gnome.org>
+
+	[winforms] Pass 2 of removing NET_2_0 from winforms
+
+2010-12-12  Miguel de Icaza  <miguel@gnome.org>
+
+	Pass 1 of removing NET_2_0 from winforms
+
+2010-12-11  Thomas Goldstein  <stifu@free.fr>
+
+	[winforms] Small optimizations, use properties that do not compute
+	values
+
+2010-12-10  Miguel de Icaza  <miguel@gnome.org>
+
+	[winforms] Style, braces
+
+2010-12-10  Miguel de Icaza  <miguel@gnome.org>
+
+	[winforms] Use conditional attributes, not ifdefs to insert
+	conditional code
+
+2010-12-10  Miguel de Icaza  <miguel@gnome.org>
+
+	[winforms] Use conditional attributes, not ifdefs to insert
+	conditional code
+
+2010-12-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Line endings
+
+2010-12-10  Ralph Leckett  <rleckett@gmail.com>
+
+	[winforms] Fix graphics leak
+
+2010-12-10  Ralph Leckett  <rleckett@gmail.com>
+
+	[winforms] Fix graphics leak
+
+2010-12-10  Ralph Leckett  <rleckett@gmail.com>
+
+	[winforms] For what it appeared to be a crasher from the
+	JumboPatch
+
+2010-12-10  Ralph Leckett  <rleckett@gmail.com>
+
+	[winforms] Reorder code a bit
+
+2010-12-10  Ralph Leckett  <rleckett@gmail.com>
+
+	[winforms] Avoid leaking the Graphics
+
+2010-12-10  Ralph Leckett  <rleckett@gmail.com>
+
+	[winforms] Avoid leaking the Graphics + style
+
+2010-12-10  Ralph Leckett  <rleckett@gmail.com>
+
+	[winforms] Cope with null current regions
+
+2010-12-10  Ralph Leckett  <rleckett@gmail.com>
+
+	[winforms] Cope with small windows
+
+2010-12-10  Ralph Leckett  <rleckett@gmail.com>
+
+	[winforms] Style
+
+2010-12-10  Ralph Leckett  <rleckett@gmail.com>
+
+	[winforms] Style
+
+2010-12-10  Ralph Leckett  <rleckett@gmail.com>
+
+	[winforms] Style, reduce full sizes of common types
+
+2010-12-10  Ralph Leckett  <rleckett@gmail.com>
+
+	[winforms] Do not leak Graphics in Invalidate + some Style
+
+2010-12-10  Miguel de Icaza  <miguel@gnome.org>
+
+	[winforms] style, and NET_2_0 dropped
+
+2010-12-10  Ralph Leckett  <rleckett@gmail.com>
+
+	[winforms] Style
+
+2010-12-10  Ralph Leckett  <rleckett@gmail.com>
+
+	[winforms] Cope with null Hwnd value from Hwnd.ObjectFromHandle
+
+2010-12-10  Ralph Leckett  <rleckett@gmail.com>
+
+	[winforms] Win32 fixes for window class name
+
+	This is extracted from Ralph Leckett's jumbo-patch to winforms
+
+2010-12-10  Thomas Goldstein  <stifu@free.fr>
+
+	[winforms] quick cleanup patches for a few WinForms classes
+
+2010-12-10  Miguel de Icaza  <miguel@gnome.org>
+
+	[winforms] Prepare for Gnome 3, by not depending on libgnomeui
+
+2010-12-10  Tom Hindle  <tom_hindle@sil.org>
+
+	[winforms] Fix ContextMenuStrip vertical position can be wrong.
+
+	Fixes #658945
+
+	This can lead to the top of the context menu being off the screen.
+	This only happens with context menus with lots of items.
+
+2010-12-10  Tom Hindle  <tom_hindle@sil.org>
+
+	[winforms] WM_SETFOCUS is sent before Keyboard Focus is changed.
+
+	Switches Keyboard focus so that it occurs before WM_SETFOCUS is
+	sent.
+
+	This means that the wrong keyboard im is selected while process
+	winform events caused by WM_SETFOCUS.
+
+	Attaching patch that changes this so that keyboard im is focused
+	before WM_SETFOCUS is sent.
+
+	Fixes: #557277
+
+2010-12-10  Tom Hindle  <tom_hindle@sil.org>
+
+	* XplatUIStructs.cs: Added user messages WM_XIM_PREEDITSTART,
+	WM_XIM_PREEDITDONE, WM_XIM_PREEDITDRAW, WM_XIM_PREEDITCARET *
+	X11Keyboard.cs: Changed preedit callbacks to emit WM_XIM_*
+	messages * X11Structs.cs: Added XIMFeedbackStruct and XIMFeedback
+	enum.
+
+	Here is some sample code which make use of this feature:
+
+	/// <summary> /// Proof on concept implementation of a user
+	defined TextBox that does on-the-spot /// input method editing.
+	/// There is a number of know flaws - eg. doesn't end preedit when
+	user moves cursor with mouse. /// Need to run with
+	MONO_WINFORMS_XIM_STYLE=on-the-spot mono /// </summary> public
+	class OnTheSpotTextBox : TextBox, XIM.IPreedit { // store text
+	before preedit. string backup;
+
+	#region IPreedit implementation public int PreeditStart (IntPtr
+	clientData, IntPtr callData) { Console.WriteLine ("PreeditStart");
+	backup = Text; return 100; }
+
+	public int PreeditDone (IntPtr clientData, IntPtr callData) {
+	Clear (); AppendText (backup); return 0; }
+
+	public int PreeditDraw (IntPtr clientData, IntPtr callData) {
+	XIM.PreeditDrawInfo info = new XIM.PreeditDrawInfo (callData);
+	Console.WriteLine ("PreeditDraw PreeditDrawInfo {0}", info); if
+	(info.ChangeLength > 0) { Clear (); AppendText (backup); } if
+	(info.Caret > 0) AppendText (info.Text); return 0; }
+
+	public int PreeditCaret (IntPtr clientData, IntPtr callData) {
+	XIM.PreeditCaretInfo info = new XIM.PreeditCaretInfo (clientData);
+	Console.WriteLine ("PreeditCaret PreeditCaretInfo {0}", info);
+	return 0; }
+
+	protected override void WndProc (ref Message m) { switch (m.Msg) {
+
+	case /*WM_USER*/0x400 + 0x1d00: // WM_XIM_PREEDITSTART // The
+	WParam value identifies what is occurring. PreeditStart (m.WParam,
+	m.LParam); break; case /*WM_USER*/0x400 + 0x1d01: //
+	WM_XIM_PREEDITDONE PreeditDone (m.WParam, m.LParam); break; case
+	/*WM_USER*/0x400 + 0x1d02: // WM_XIM_PREEDITDRAW PreeditDraw
+	(m.WParam, m.LParam); break; case /*WM_USER*/0x400 + 0x1d03: //
+	WM_XIM_PREEDITCARET PreeditCaret (m.WParam, m.LParam); break; }
+	base.WndProc (ref m); }
+
+	#endregion
+
+	}
+
+2010-12-10  Tom Hindle  <tom_hindle@sil.org>
+
+	[winforms] Add modal support to Forms
+
+	This fixes 614850 "Modal dialogs should prevent closing their
+	parent windows."
+
+2010-12-10  Tom Hindle  <tom_hindle@sil.org>
+
+	[winforms] DataGridView.cs : Made MoveCurrentCell not attempt
+	access Column index -1.
+
+	Fixes #516960
+
+2010-12-10  Tom Hindle  <tom_hindle@sil.org>
+
+	[winforms,fix] Prevent Clipboard APIs from running any Idle
+	handlers
+
+	Fixes: 641756
+
+	This prevents idle methods to be invoked when calling the
+	Clipboard APIs on X11, which is not the expected behavior.
+
+	The description from the bug report is:
+
+	Mono X11 Clipboard handling calls UpdateMessageQueue, which has
+	the side affect of potentially calling Idle handlers.
+
+	If any Idle handlers call Clipboard functions, this can cause idle
+	handler reentry.
+
+	See attached test case.
+
+	Incidentally removing the reentry check from the idle handler will
+	actually cause mono to segfault.
+
+	I will attach a patch shortly which fixes this by overloading
+	UpdateMessageQueue to allow Clipboard methods to call a version
+	that doesn't run idle processing.
+
+2010-12-10  Thomas Goldstein  <stifu@free.fr>
+
+	[winforms, fix] Keep the carret in sync with changes to the text
+	entry value
+
+	Patch from Thomas Goldstein for bug #621475
+
+	The IndexOutOfRangeException is apparently a caret position bug.
+	As a workaround, doing textbox.SelectionStart = 0; before
+	resetting the Text avoids the bug.
+
+	Here's a patch to fix the bug. Basically, it applies the same
+	caret updates whether the Text is null/empty or not. I hope I can
+	get away with the minor style updates without having to submit
+	them as a separate patch...
+
+2010-12-10  Andy Hume  <andyhume32@yahoo.co.uk>
+
+	[fix, winforms] Fix the ProgressBar speed in Marquee situations
+
+	This issue was identified as:
+
+	Marquee speed is very weird, changing between very very fast and
+	very very very very fast, and in inverse to the speed setting?
+
+	In https://bugzilla.novell.com/show_bug.cgi?id=440220
+
+	Also fixes this bug which was the test case isolated:
+
+	https://bugzilla.novell.com/show_bug.cgi?id=655797
+
+2010-12-10  Nagappan Alagappan  <nagappan@gmail.com>
+
+	[winforms, datagrid, fix] fixes crasher reported in 416111
+
+2010-10-31  Miguel de Icaza  <miguel@gnome.org>
+
+	Expose some of our internals to the Mono.Winforms assembly
+
+2010-10-31  Miguel de Icaza  <miguel@gnome.org>
+
+	Fix broken patch
+
+2010-10-31  Miguel de Icaza  <miguel@gnome.org>
+
+	Allow this file to expose its types as public if needed
+
+2010-10-25  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* ComboBox.cs: Fire the Mouse* events when using the child
+	TextBox. Fixes #647689.
+
+2010-10-25  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* ListView.cs: When updating the Z-order for our controls don't
+	forget to add the implicit scrollbars we well. Fixes #648449.
+
+2010-10-24  Marek Safar  <marek.safar@gmail.com>
+
+	Warnings cleanup.
+
+2010-10-20  Latif Khalifa  <lkalif@openmetaverse.org>
+
+	Avoid nullref when clearing TextBox that has not yet been
+	displayed
+
+2010-09-27  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* Form.cs: When setting DialogResult call RaiseCloseEvents instead
+	of directly setting 'closing', since we need to have our
+	FormClosing event invoked *before* the form dissapears, so the
+	user can properly cancel the close operation if desired. Fixes
+	#631810.
+
+2010-09-26  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* X11Keyboard.cs: Manually handle the conversion of the string
+	returned by XLookupString, just as we were already doing for XIM
+	support - using StringBuilder directly was somehow returning a
+	corrupt buffer from time to time. Fixes #639939.
+
+2010-09-21  acken  <acken@acken.no>
+
+	Had an issue where the linklabel was clicked, the form was redrawn
+	with some changes and some internal behavior called the OnGotFocus
+	where sorted_links now was null and focused_index was 0. Don't
+	know wheter that is wrong but solved the issue with a nullcheck
+
+2010-08-31  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* ListBox.cs: Invalidate the selection border when horizontally
+	scrolling - the call to ScrollWindow is not enough, so we need to
+	update by ourselves the new margin of the selection border by a
+	quite small offset. Fixes #512136.
+
+2010-08-31  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* NotifyIcon.cs: Use SystemColors.Menu to paint the background of
+	the control, since at least in gnome the menu and the panel share
+	the back color (unfortunately we can't just leave the rectangle
+	transparent, as some window managers use a default white). Fixes
+	#581287.
+
+2010-08-31  Tom Hindle  <tom_hindle@sil.org>
+
+	* TreeView.cs: Create a new method to check that the new valid for
+	the vertical scroll is in the valid range - this is specially
+	important when the size of the TreeView can show less than one
+	element. Fixes #624915.
+
 2010-08-16  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
 
 	* DataGridView.cs: When refreshing the scrolling info, set the

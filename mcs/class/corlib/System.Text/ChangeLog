@@ -1,3 +1,7 @@
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
 2010-08-10  Atsushi Eno  <atsushi@ximian.com>
 
 	EncoderFallback support in UTF8Encoding. Fixed bug #565129 and

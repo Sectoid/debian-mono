@@ -1352,6 +1352,19 @@ ncells ) {
 			return 1;
 	}
 
+	struct AStruct2 {
+		public int i;
+		public int j;
+	}
+
+	static float pass_vtype_return_float (AStruct2 s) {
+		return s.i + s.j == 6 ? 1.0f : -1.0f;
+	}
+
+	public static int test_0_vtype_arg_soft_float () {
+		return pass_vtype_return_float (new AStruct2 () { i = 2, j = 4 }) > 0.0 ? 0 : 1;
+	}
+
 	static int range_check_strlen (int i, string s) {
 		if (i < 0 || i > s.Length)
 			return 1;
@@ -1393,6 +1406,8 @@ ncells ) {
 		return array [1].val;
 	}
 
+	/* mcs can't compile this (#646744) */
+#if FALSE
 	static void InitMe (out Gamma noMercyWithTheStack) {
 		noMercyWithTheStack = new Gamma ();
 	}
@@ -1433,6 +1448,7 @@ ncells ) {
 			return 1;
 		return 0;
 	}
+#endif
 
 	struct VTypePhi {
 		public int i;
@@ -1484,5 +1500,29 @@ ncells ) {
 		return 0;
 	}
 
+	public static bool flag;
+
+	class B {
+
+		internal static B[] d;
+
+		static B () {
+			flag = true;
+		}
+	}
+
+	[MethodImplAttribute (MethodImplOptions.NoInlining)]
+	static int regress_679467_inner () {
+		if (flag == true)
+			return 1;
+		var o = B.d;
+		var o2 = B.d;
+		return 0;
+	}
+
+	static int test_0_multiple_cctor_calls_regress_679467 () {
+		flag = false;
+		return regress_679467_inner ();
+	}
 }
 

@@ -233,6 +233,8 @@ $(the_lib): $(build_lib)
 	$(Q) test ! -f $(build_lib:.dll=.pdb) || mv $(build_lib:.dll=.pdb) $(the_lib:.dll=.pdb)
 endif
 
+library_CLEAN_FILES += $(PROFILE)_aot.log
+
 ifdef PLATFORM_AOT_SUFFIX
 Q_AOT=$(if $(V),,@echo "AOT [$(PROFILE)] $(notdir $(@))";)
 $(the_lib)$(PLATFORM_AOT_SUFFIX): $(the_lib)
@@ -250,7 +252,7 @@ endif
 makefrag = $(depsdir)/$(PROFILE)_$(LIBRARY).makefrag
 library_CLEAN_FILES += $(makefrag)
 $(makefrag): $(sourcefile)
-	@echo Creating $@ ...
+#	@echo Creating $@ ...
 	@sed 's,^,$(build_lib): ,' $< >$@
 	@if test ! -f $(sourcefile).makefrag; then :; else \
 	   cat $(sourcefile).makefrag >> $@ ; \
@@ -268,7 +270,7 @@ $(response): $(sourcefile)
 	@echo Converting $(sourcefile) to $@ ...
 	@cat $(sourcefile) | $(PLATFORM_CHANGE_SEPARATOR_CMD) >$@
 endif
-	
+
 endif
 
 -include $(makefrag)

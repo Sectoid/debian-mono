@@ -1,3 +1,7 @@
+2010-11-29  Jb Evain  <jbevain@gmail.com>
+
+	Add MakeBinary test for ArrayIndex expressions
+
 2010-05-19  Jb Evain  <jbevain@novell.com>
 
 	* ExpressionTest_Constant.cs: add tests for nullable constants.

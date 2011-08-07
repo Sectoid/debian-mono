@@ -4,7 +4,7 @@
  * Authors:
  *   Geoff Norton (gnorton@novell.com)
  *
- * (C) 2010 Ximian, Inc.
+ * (C) 2010 Novell, Inc.
  */
 
 #include <config.h>
@@ -67,14 +67,14 @@ mono_mach_arch_get_thread_state (thread_port_t thread, thread_state_t state, mac
 }
 
 void *
-mono_mach_arch_get_tls_value_from_thread (thread_port_t thread, guint32 key)
+mono_mach_arch_get_tls_value_from_thread (pthread_t thread, guint32 key)
 {
 	/* OSX stores TLS values in a hidden array inside the pthread_t structure
 	 * They are keyed off a giant array offset 0x48 into the pointer.  This value
 	 * is baked into their pthread_getspecific implementation
 	 */
-	intptr_t *p = (intptr_t *) pthread_from_mach_thread_np (thread);
-	intptr_t **tsd = (intptr_t **) (p + 0x48);
+	intptr_t *p = (intptr_t *) thread;
+	intptr_t **tsd = (intptr_t **) ((char*)p + 0x48);
 
 	return (void *) tsd [key];
 }

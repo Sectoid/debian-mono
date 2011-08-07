@@ -1,3 +1,37 @@
+2011-07-25  Miguel de Icaza  <miguel@gnome.org>
+
+	Fix invocation to syslog
+
+2011-03-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[windows] Get rid of a lot of warnings
+
+2011-02-12  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[gzip] Allow partial flush
+
+	When Flush() is called explicitly, do a Z_PARTIAL_FLUSH to force
+	gzip into giving us whatever is available. Less efficient, but
+	compatible with MS.
+
+2010-11-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove the unused and incomplete CMake build scripts for now.
+
+2010-10-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Update mappings after latest changes to Mono.Posix
+
+	New mappings created for the epoll code.
+
+2010-10-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Update
+
+2010-10-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Update zlib to version 1.2.5
+
 2010-06-28  Zoltan Varga  <vargaz@gmail.com>
 
 	* Makefile.am (patch-libtool): Fix this up after the dolt changes.

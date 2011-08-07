@@ -162,6 +162,13 @@ static MonoRuntimeCallbacks callbacks;
 void
 mono_thread_set_main (MonoThread *thread)
 {
+	static gboolean registered = FALSE;
+
+	if (!registered) {
+		MONO_GC_REGISTER_ROOT_SINGLE (main_thread);
+		registered = TRUE;
+	}
+
 	main_thread = thread;
 }
 
@@ -276,7 +283,9 @@ mono_runtime_class_init_full (MonoVTable *vtable, gboolean raise_exception)
 			MonoVTable *module_vtable = mono_class_vtable_full (vtable->domain, module_klass, raise_exception);
 			if (!module_vtable)
 				return NULL;
-			mono_runtime_class_init (module_vtable);
+			exc = mono_runtime_class_init_full (module_vtable, raise_exception);
+			if (exc)
+				return exc;
 		}
 	}
 	method = mono_class_get_cctor (klass);
@@ -1528,6 +1537,12 @@ mono_method_alloc_generic_virtual_thunk (MonoDomain *domain, int size)
 	p = mono_domain_code_reserve (domain, size);
 	*p = size;
 
+	mono_domain_lock (domain);
+	if (!domain->generic_virtual_thunks)
+		domain->generic_virtual_thunks = g_hash_table_new (NULL, NULL);
+	g_hash_table_insert (domain->generic_virtual_thunks, p, p);
+	mono_domain_unlock (domain);
+
 	return p + 1;
 }
 
@@ -1539,7 +1554,18 @@ invalidate_generic_virtual_thunk (MonoDomain *domain, gpointer code)
 {
 	guint32 *p = code;
 	MonoThunkFreeList *l = (MonoThunkFreeList*)(p - 1);
+	gboolean found = FALSE;
 
+	mono_domain_lock (domain);
+	if (!domain->generic_virtual_thunks)
+		domain->generic_virtual_thunks = g_hash_table_new (NULL, NULL);
+	if (g_hash_table_lookup (domain->generic_virtual_thunks, l))
+		found = TRUE;
+	mono_domain_unlock (domain);
+
+	if (!found)
+		/* Not allocated by mono_method_alloc_generic_virtual_thunk (), i.e. AOT */
+		return;
 	init_thunk_free_lists (domain);
 
 	while (domain->thunk_free_lists [0] && domain->thunk_free_lists [0]->length >= MAX_WAIT_LENGTH) {
@@ -1707,8 +1733,12 @@ mono_method_add_generic_virtual_invocation (MonoDomain *domain, MonoVTable *vtab
 			g_ptr_array_free (sorted, TRUE);
 		}
 
+#ifndef __native_client__
+		/* We don't re-use any thunks as there is a lot of overhead */
+		/* to deleting and re-using code in Native Client.          */
 		if (old_thunk != vtable_trampoline && old_thunk != imt_trampoline)
 			invalidate_generic_virtual_thunk (domain, old_thunk);
+#endif
 	}
 
 	mono_domain_unlock (domain);
@@ -1841,6 +1871,12 @@ mono_class_create_runtime_vtable (MonoDomain *domain, MonoClass *class, gboolean
 	 */
 	if (!class->vtable_size)
 		mono_class_setup_vtable (class);
+
+	if (class->generic_class && !class->vtable)
+		mono_class_check_vtable_constraints (class, NULL);
+
+	/* Initialize klass->has_finalize */
+	mono_class_has_finalizer (class);
 
 	if (class->exception_type) {
 		mono_domain_unlock (domain);
@@ -2072,21 +2108,11 @@ mono_class_create_runtime_vtable (MonoDomain *domain, MonoClass *class, gboolean
 
 	/*FIXME check for OOM*/
 	vt->type = mono_type_get_object (domain, &class->byval_arg);
-#if HAVE_SGEN_GC
-	if (mono_object_get_class (vt->type) != mono_defaults.monotype_class) {
-		static void *type_desc = NULL;
-
-		if (!type_desc) {
-			gsize bmap = 1;
-			type_desc = mono_gc_make_descr_from_bitmap (&bmap, 1);
-		}
-
+	if (mono_object_get_class (vt->type) != mono_defaults.monotype_class)
 		/* This is unregistered in
 		   unregister_vtable_reflection_type() in
 		   domain.c. */
-		mono_gc_register_root ((char*)&vt->type, sizeof (gpointer), type_desc);
-	}
-#endif
+		MONO_GC_REGISTER_ROOT_IF_MOVING(vt->type);
 	if (class->contextbound)
 		vt->remote = 1;
 	else
@@ -2292,6 +2318,25 @@ mono_class_field_is_special_static (MonoClassField *field)
 			return TRUE;
 	}
 	return FALSE;
+}
+
+/**
+ * mono_class_field_get_special_static_type:
+ * @field: The MonoClassField describing the field.
+ *
+ * Returns: SPECIAL_STATIC_THREAD if the field is thread static, SPECIAL_STATIC_CONTEXT if it is context static,
+ * SPECIAL_STATIC_NONE otherwise.
+ */
+guint32
+mono_class_field_get_special_static_type (MonoClassField *field)
+{
+	if (!(field->type->attrs & FIELD_ATTRIBUTE_STATIC))
+		return SPECIAL_STATIC_NONE;
+	if (mono_field_is_deleted (field))
+		return SPECIAL_STATIC_NONE;
+	if (!(field->type->attrs & FIELD_ATTRIBUTE_LITERAL))
+		return field_is_special_static (field->parent, field);
+	return SPECIAL_STATIC_NONE;
 }
 
 /**
@@ -2909,7 +2954,11 @@ mono_field_static_set_value (MonoVTable *vt, MonoClassField *field, void *value)
 
 	if (field->offset == -1) {
 		/* Special static */
-		gpointer addr = g_hash_table_lookup (vt->domain->special_static_fields, field);
+		gpointer addr;
+
+		mono_domain_lock (vt->domain);
+		addr = g_hash_table_lookup (vt->domain->special_static_fields, field);
+		mono_domain_unlock (vt->domain);
 		dest = mono_get_special_static_data (GPOINTER_TO_UINT (addr));
 	} else {
 		dest = (char*)vt->data + field->offset;
@@ -2932,7 +2981,11 @@ mono_field_get_addr (MonoObject *obj, MonoVTable *vt, MonoClassField *field)
 	if (field->type->attrs & FIELD_ATTRIBUTE_STATIC) {
 		if (field->offset == -1) {
 			/* Special static */
-			gpointer addr = g_hash_table_lookup (vt->domain->special_static_fields, field);
+			gpointer addr;
+
+			mono_domain_lock (vt->domain);
+			addr = g_hash_table_lookup (vt->domain->special_static_fields, field);
+			mono_domain_unlock (vt->domain);
 			src = mono_get_special_static_data (GPOINTER_TO_UINT (addr));
 		} else {
 			src = (guint8*)vt->data + field->offset;
@@ -2994,6 +3047,7 @@ mono_field_get_value_object (MonoDomain *domain, MonoClassField *field, MonoObje
 	gboolean is_static = FALSE;
 	gboolean is_ref = FALSE;
 	gboolean is_literal = FALSE;
+	gboolean is_ptr = FALSE;
 	MonoError error;
 	MonoType *type = mono_field_get_type_checked (field, &error);
 
@@ -3027,6 +3081,9 @@ mono_field_get_value_object (MonoDomain *domain, MonoClassField *field, MonoObje
 		break;
 	case MONO_TYPE_GENERICINST:
 		is_ref = !mono_type_generic_inst_is_valuetype (type);
+		break;
+	case MONO_TYPE_PTR:
+		is_ptr = TRUE;
 		break;
 	default:
 		g_error ("type 0x%x not handled in "
@@ -3065,6 +3122,34 @@ mono_field_get_value_object (MonoDomain *domain, MonoClassField *field, MonoObje
 			mono_field_get_value (obj, field, &o);
 		}
 		return o;
+	}
+
+	if (is_ptr) {
+		static MonoMethod *m;
+		gpointer args [2];
+		gpointer *ptr;
+		gpointer v;
+
+		if (!m) {
+			MonoClass *ptr_klass = mono_class_from_name_cached (mono_defaults.corlib, "System.Reflection", "Pointer");
+			m = mono_class_get_method_from_name_flags (ptr_klass, "Box", 2, METHOD_ATTRIBUTE_STATIC);
+			g_assert (m);
+		}
+
+		v = &ptr;
+		if (is_literal) {
+			get_default_field_value (domain, field, v);
+		} else if (is_static) {
+			mono_field_static_get_value (vtable, field, v);
+		} else {
+			mono_field_get_value (obj, field, v);
+		}
+
+		/* MONO_TYPE_PTR is passed by value to runtime_invoke () */
+		args [0] = *ptr;
+		args [1] = mono_type_get_object (mono_domain_get (), type);
+
+		return mono_runtime_invoke (m, NULL, args, NULL);
 	}
 
 	/* boxed value type */
@@ -3142,6 +3227,28 @@ get_default_field_value (MonoDomain* domain, MonoClassField *field, void *value)
 	mono_get_constant_value_from_blob (domain, def_type, data, value);
 }
 
+void
+mono_field_static_get_value_for_thread (MonoInternalThread *thread, MonoVTable *vt, MonoClassField *field, void *value)
+{
+	void *src;
+
+	g_return_if_fail (field->type->attrs & FIELD_ATTRIBUTE_STATIC);
+	
+	if (field->type->attrs & FIELD_ATTRIBUTE_LITERAL) {
+		get_default_field_value (vt->domain, field, value);
+		return;
+	}
+
+	if (field->offset == -1) {
+		/* Special static */
+		gpointer addr = g_hash_table_lookup (vt->domain->special_static_fields, field);
+		src = mono_get_special_static_data_for_thread (thread, GPOINTER_TO_UINT (addr));
+	} else {
+		src = (char*)vt->data + field->offset;
+	}
+	set_value (field->type, value, src, TRUE);
+}
+
 /**
  * mono_field_static_get_value:
  * @vt: vtable to the object
@@ -3161,23 +3268,7 @@ get_default_field_value (MonoDomain* domain, MonoClassField *field, void *value)
 void
 mono_field_static_get_value (MonoVTable *vt, MonoClassField *field, void *value)
 {
-	void *src;
-
-	g_return_if_fail (field->type->attrs & FIELD_ATTRIBUTE_STATIC);
-	
-	if (field->type->attrs & FIELD_ATTRIBUTE_LITERAL) {
-		get_default_field_value (vt->domain, field, value);
-		return;
-	}
-
-	if (field->offset == -1) {
-		/* Special static */
-		gpointer addr = g_hash_table_lookup (vt->domain->special_static_fields, field);
-		src = mono_get_special_static_data (GPOINTER_TO_UINT (addr));
-	} else {
-		src = (char*)vt->data + field->offset;
-	}
-	set_value (field->type, value, src, TRUE);
+	return mono_field_static_get_value_for_thread (mono_thread_internal_current (), vt, field, value);
 }
 
 /**
@@ -3385,6 +3476,7 @@ mono_runtime_run_main (MonoMethod *method, int argc, char* argv[],
 	MonoArray *args = NULL;
 	MonoDomain *domain = mono_domain_get ();
 	gchar *utf8_fullpath;
+	MonoMethodSignature *sig;
 
 	g_assert (method != NULL);
 	
@@ -3439,7 +3531,14 @@ mono_runtime_run_main (MonoMethod *method, int argc, char* argv[],
 	}
 	argc--;
 	argv++;
-	if (mono_method_signature (method)->param_count) {
+
+	sig = mono_method_signature (method);
+	if (!sig) {
+		g_print ("Unable to load Main method.\n");
+		exit (-1);
+	}
+
+	if (sig->param_count) {
 		args = (MonoArray*)mono_array_new (domain, mono_defaults.string_class, argc);
 		for (i = 0; i < argc; ++i) {
 			/* The encodings should all work, given that
@@ -4155,6 +4254,29 @@ mono_object_new (MonoDomain *domain, MonoClass *klass)
 }
 
 /**
+ * mono_object_new_pinned:
+ *
+ *   Same as mono_object_new, but the returned object will be pinned.
+ * For SGEN, these objects will only be freed at appdomain unload.
+ */
+MonoObject *
+mono_object_new_pinned (MonoDomain *domain, MonoClass *klass)
+{
+	MonoVTable *vtable;
+
+	MONO_ARCH_SAVE_REGS;
+	vtable = mono_class_vtable (domain, klass);
+	if (!vtable)
+		return NULL;
+
+#ifdef HAVE_SGEN_GC
+	return mono_gc_alloc_pinned_obj (vtable, mono_class_instance_size (klass));
+#else
+	return mono_object_new_specific (vtable);
+#endif
+}
+
+/**
  * mono_object_new_specific:
  * @vtable: the vtable of the object that we want to create
  *
@@ -4273,7 +4395,7 @@ mono_class_get_allocation_ftn (MonoVTable *vtable, gboolean for_box, gboolean *p
 	if (!(mono_profiler_get_events () & MONO_PROFILE_ALLOCATIONS))
 		profile_allocs = FALSE;
 
-	if (vtable->klass->has_finalize || vtable->klass->marshalbyref || (mono_profiler_get_events () & MONO_PROFILE_ALLOCATIONS))
+	if (mono_class_has_finalizer (vtable->klass) || vtable->klass->marshalbyref || (mono_profiler_get_events () & MONO_PROFILE_ALLOCATIONS))
 		return mono_object_new_specific;
 
 	if (!vtable->klass->has_references) {
@@ -4334,6 +4456,9 @@ mono_object_clone (MonoObject *obj)
 {
 	MonoObject *o;
 	int size = obj->vtable->klass->instance_size;
+
+	if (obj->vtable->klass->rank)
+		return (MonoObject*)mono_array_clone ((MonoArray*)obj);
 
 	o = mono_object_allocate (size, obj->vtable);
 
@@ -5105,8 +5230,10 @@ mono_string_get_pinned (MonoString *str)
 	MonoString *news;
 	size = sizeof (MonoString) + 2 * (mono_string_length (str) + 1);
 	news = mono_gc_alloc_pinned_obj (((MonoObject*)str)->vtable, size);
-	memcpy (mono_string_chars (news), mono_string_chars (str), mono_string_length (str) * 2);
-	news->length = mono_string_length (str);
+	if (news) {
+		memcpy (mono_string_chars (news), mono_string_chars (str), mono_string_length (str) * 2);
+		news->length = mono_string_length (str);
+	}
 	return news;
 }
 
@@ -5130,7 +5257,8 @@ mono_string_is_interned_lookup (MonoString *str, int insert)
 	}
 	if (insert) {
 		str = mono_string_get_pinned (str);
-		mono_g_hash_table_insert (ldstr_table, str, str);
+		if (str)
+			mono_g_hash_table_insert (ldstr_table, str, str);
 		ldstr_unlock ();
 		return str;
 	} else {
@@ -5239,7 +5367,8 @@ mono_ldstr_metadata_sig (MonoDomain *domain, const char* sig)
 	}
 
 	o = mono_string_get_pinned (o);
-	mono_g_hash_table_insert (domain->ldstr_table, o, o);
+	if (o)
+		mono_g_hash_table_insert (domain->ldstr_table, o, o);
 	ldstr_unlock ();
 
 	return o;
@@ -5765,14 +5894,18 @@ mono_print_unhandled_exception (MonoObject *exc)
 	gboolean free_message = FALSE;
 	MonoError error;
 
-	str = mono_object_to_string (exc, NULL);
-	if (str) {
-		message = mono_string_to_utf8_checked (str, &error);
-		if (!mono_error_ok (&error)) {
-			mono_error_cleanup (&error);
-			message = (char *) "";
-		} else {
-			free_message = TRUE;
+	if (exc == (MonoObject*)mono_object_domain (exc)->out_of_memory_ex) {
+		message = g_strdup ("OutOfMemoryException");
+	} else {
+		str = mono_object_to_string (exc, NULL);
+		if (str) {
+			message = mono_string_to_utf8_checked (str, &error);
+			if (!mono_error_ok (&error)) {
+				mono_error_cleanup (&error);
+				message = (char *) "";
+			} else {
+				free_message = TRUE;
+			}
 		}
 	}
 

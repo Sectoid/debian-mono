@@ -50,7 +50,7 @@ namespace System.Xaml.Schema
 		void ThrowIfUnknown ()
 		{
 			if (type.UnderlyingType == null)
-				throw new InvalidOperationException (String.Format ("Current operation is valid only when the underlying type on a XamlType is known, but it is unknown for '{0}'", type));
+				throw new NotSupportedException (String.Format ("Current operation is valid only when the underlying type on a XamlType is known, but it is unknown for '{0}'", type));
 		}
 
 		public EventHandler<XamlSetMarkupExtensionEventArgs> SetMarkupExtensionHandler {
@@ -67,6 +67,11 @@ namespace System.Xaml.Schema
 				throw new ArgumentNullException ("instance");
 
 			var t = instance.GetType ();
+			if (type.UnderlyingType != null) {
+				if (!type.SchemaContext.GetXamlType (t).IsCollection) // not sure why this check is done only when UnderlyingType exists...
+					throw new NotSupportedException (String.Format ("Non-collection type '{0}' does not support this operation", t));
+			}
+
 			MethodInfo mi;
 			if (t.IsGenericType)
 				mi = instance.GetType ().GetMethod ("Add", t.GetGenericArguments ());
@@ -105,7 +110,9 @@ namespace System.Xaml.Schema
 		}
 		public virtual IEnumerator GetItems (object instance)
 		{
-			throw new NotImplementedException ();
+			if (instance == null)
+				throw new ArgumentNullException ("instance");
+			return ((IEnumerable) instance).GetEnumerator ();
 		}
 	}
 }

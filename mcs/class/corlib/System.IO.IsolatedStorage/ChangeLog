@@ -1,3 +1,44 @@
+2011-03-20  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add some missing types to the mobile profile
+
+2011-01-03  Miguel de Icaza  <miguel@gnome.org>
+
+	[GetFolderPath] Handful of .NET 4 changes
+
+	* Actually use the SpecialFolderPathOptions where we need them ->
+	Create is acknowledged -> DoNotVerify is ignored, as Mono
+	historically did not throw an exception on missing directories. *
+	Rename InternalGetFolderPath to UnixGetFolderPath as this is what
+	it is. * Fix existing references to the code * Fix indentation in
+	routine that was never properly formatted (ReadXdgUserDir)
+
+2010-12-15  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* MoonIsolatedStorageFile.cs: Return true, instead of throwing a
+	NIE, for IsEnabled since this is the behavior for Silverlight 3
+	(i.e. always enabled) even if the call is new in SL4 (but part of
+	ML3 ;-)
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Some .net 4.0 api compatibility fixes
+
+2010-10-11  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Fix IsolatedStorageFile.GetUserStoreForApplication() for MOBILE.
+
+	IsolatedStorageFile.GetUserStoreForApplication() would previously
+	throw an IsolatedStorageException because no ApplicationIdentity
+	was provided by the AppDomain.
+
+	We would like to provide this method in a workable fashion to
+	facilitate code portability with Windows Phone 7, which exposes
+	only this method for saving files to stable storage.
+
+	Thus, skip the ApplicationIdentity and code identity checks for
+	MOBILE (MonoDroid, MonoTouch) so that IsolatedStorage Just Works.
+
 2010-06-18  Rolf Bjarne Kvinge  <RKvinge@novell.com>
 
 	* MoonIsolatedStorageFile.cs: Add IsEnabled.

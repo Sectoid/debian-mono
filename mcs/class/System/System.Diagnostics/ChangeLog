@@ -1,3 +1,70 @@
+2011-04-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix wrapper elements. It should be <TraceData><DataItem>...
+
+2011-04-21  Atsushi Eno  <atsushi@ximian.com>
+
+	XmlWriterTraceListener supports XPathNavigator as non-escaped xml
+	output.
+
+2011-04-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Flush XmlWriter and TextWriter so that incomplete changes are not
+	lost.
+
+2011-04-13  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix wrong TraceEventType values passed.
+
+2011-03-30  Louis Salin  <louis@lonestardevs.com>
+
+	TraceData and TraceEvent methods must pass a new instance of
+	TraceEventCache
+
+2010-10-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Remove arbitrary 1024 limit in GetProcesses
+
+	Reallocate the array of PIDs if EnumProcesses used all of it and
+	try again.
+
+2010-10-18  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Don't load app.config when we're processing app.config
+
+	Fixes #605033.
+
+	'cause stack overflow is back, mkay?
+
+	at System.Diagnostics.TraceImpl.InitOnce () <0x0005b> at
+	System.Diagnostics.TraceImpl.get_IndentLevel () <0x0000b> at
+	System.Diagnostics.TraceListenerCollection.InitializeListener
+	(System.Diagnostics.TraceListener) <0x0000f> at
+	System.Diagnostics.TraceListenerCollection.Add
+	(System.Diagnostics.TraceListener) <0x00017> at
+	System.Diagnostics.TraceListenerCollection..ctor (bool) <0x0007f>
+	at System.Diagnostics.TraceListenerCollection..ctor () <0x00013>
+	at
+	System.Diagnostics.DiagnosticsConfigurationHandler.GetSharedListeners
+	(System.Collections.IDictionary) <0x00083> at
+	System.Diagnostics.DiagnosticsConfigurationHandler.Create
+	(object,object,System.Xml.XmlNode) <0x003cf> at
+	System.Configuration.ConfigurationSection.GetRuntimeObject ()
+	<0x0033d> at
+	System.Configuration.ClientConfigurationSystem.System.Configuration.Internal.IInternalConfigSystem.GetSection
+	(string) <0x00041> at
+	System.Configuration.ConfigurationManager.GetSection (string)
+	<0x00030> at System.Configuration.ConfigurationSettings.GetConfig
+	(string) <0x0000f> at
+	System.Diagnostics.DiagnosticsConfiguration.get_Settings ()
+	<0x00043> at System.Diagnostics.TraceImpl.InitOnce () <0x0005b>
+
+	Thus, when we're getting the <sharedListeners/> element, we
+	shouldn't call the TraceListenerCollection default constructor, as
+	that will attempt to add the DefaultTraceListener (which isn't
+	needed anyway, as the DefaultTraceListener is explicitly added by
+	TraceImplSettings).
+
 2010-09-15  Miguel de Icaza  <miguel@gnome.org>
 
 	Revert
@@ -13,6 +80,10 @@
 	we were only exposing the value as an int32. The good news is that
 	the code is not really used right now, but could cause problems in
 	the future as we extend Process.
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System build for monodroid
 
 2010-07-06 Gonzalo Paniagua Javier <gonzalo@novell.com>
 

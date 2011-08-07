@@ -20,6 +20,12 @@ namespace MonoTests.System.Reflection
 		One,
 		Two
 	}
+
+	class ParamsArrayTest
+	{
+		public ParamsArrayTest (params string[] strings)
+		{}
+	}
 	
 	class SampleClass {
 		public static void SampleMethod (object o) { }
@@ -100,6 +106,14 @@ namespace MonoTests.System.Reflection
 	{
 		Binder binder = Type.DefaultBinder;
 
+		[Test]
+		public void ParamsArrayTestCast ()
+		{
+			string[] test_args = { "one", "two", "three" };
+			var o = Activator.CreateInstance (typeof (ParamsArrayTest), new object[] { test_args });
+			Assert.IsNotNull (o, "#A1");
+		}
+		
 		[Test]
 		[ExpectedException (typeof (ArgumentException))]
 		public void SelectPropertyTestNull1 ()
@@ -1332,5 +1346,27 @@ namespace MonoTests.System.Reflection
 	
 			AssertingBinder.Instance.SelectMethod (flags, new MethodBase [] {m0, m1}, new Type[] { typeof (int) }, null);
 	 	}
+
+		public static string Bug636939 (IFormatProvider provider, string pattern, params object [] args)
+		{
+			return string.Format (pattern, args);
+		}
+
+		[Test] // bug #636939
+		[Category ("NotWorking")]
+		public void SelectMethodWithParamArrayAndNonEqualTypeArguments ()
+		{
+            const BindingFlags flags =
+                BindingFlags.IgnoreCase | BindingFlags.Instance |
+                BindingFlags.Static | BindingFlags.Public |
+                BindingFlags.FlattenHierarchy | BindingFlags.InvokeMethod;
+
+			Assert.AreEqual ("foobarbaz", typeof (BinderTest).InvokeMember (
+				"bug636939",
+				flags,
+				null, // binder
+				null, // target
+				new object [] { CultureInfo.CurrentCulture, "foo{0}{1}", "bar", "baz" }));
+		}
 	}
 }

@@ -1,3 +1,33 @@
+2011-04-16  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] MinimizableAttributeTypeConverter only converts from
+	strings.
+
+	It returns a boolean 'false' when the passed string matches
+	(case-insensitively) 'false' or is empty, returns 'true'
+	otherwise. All the other types (and a null value) cause it to
+	throw the NotSupportedException.
+
+2011-01-10  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed more missing protected internal modifiers
+
+2010-10-29  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #649551. The LosFormatter (bool, string)
+	constructor does not expect a base64-encoded string.
+
+	Telerik controls pass the string "string" as the macKeyModifier
+	parameter to the constructor. Tests show that .NET accepts such
+	input without throwing an error. The passed string is now
+	converted into a byte array and passed to the LosFormatter (bool,
+	byte[]) constructor.
+
+2010-10-08  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System.Web.UI/LosFormatterTest.cs: Add some rountrip test
+	cases with the different ctors
+
 2010-04-07  Marek Habersack  <mhabersack@novell.com>
 
 	* ControlTest.cs: added test for bug #594238

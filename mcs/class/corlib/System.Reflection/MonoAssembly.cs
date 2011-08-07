@@ -31,11 +31,11 @@ using System.Collections;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Reflection.Emit;
-
+using System.Collections.Generic;
 
 namespace System.Reflection {
 
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 	[ComVisible (true)]
 	[ComDefaultInterfaceAttribute (typeof (_Assembly))]
 	[Serializable]
@@ -45,7 +45,7 @@ namespace System.Reflection {
 	public partial class Assembly {
 #endif
 		public
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		override
 #endif
 		Type GetType (string name, bool throwOnError, bool ignoreCase)
@@ -57,7 +57,7 @@ namespace System.Reflection {
 			throw new ArgumentException ("name", "Name cannot be empty");
 
 			res = InternalGetType (null, name, throwOnError, ignoreCase);
-#if !(NET_4_0 || MOONLIGHT)
+#if !(NET_4_0 || MOONLIGHT || MOBILE)
 			if (res is TypeBuilder) {
 				if (throwOnError)
 					throw new TypeLoadException (string.Format ("Could not load type '{0}' from assembly '{1}'", name, this));
@@ -68,7 +68,7 @@ namespace System.Reflection {
 		}
 
 		public
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		override
 #endif
 		Module GetModule (String name)
@@ -88,7 +88,7 @@ namespace System.Reflection {
 		}
 
 		public
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		override
 #endif
 		AssemblyName[] GetReferencedAssemblies () {
@@ -96,18 +96,18 @@ namespace System.Reflection {
 		}
 
 		public
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		override
 #endif
 		Module[] GetModules (bool getResourceModules) {
 			Module[] modules = GetModulesInternal ();
 
 			if (!getResourceModules) {
-				ArrayList result = new ArrayList (modules.Length);
+				var result = new List<Module> (modules.Length);
 				foreach (Module m in modules)
 					if (!m.IsResource ())
 						result.Add (m);
-				return (Module[])result.ToArray (typeof (Module));
+				return result.ToArray ();
 			}
 			else
 				return modules;
@@ -115,7 +115,7 @@ namespace System.Reflection {
 
 		[MonoTODO ("Always returns the same as GetModules")]
 		public
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		override
 #endif
 		Module[] GetLoadedModules (bool getResourceModules)
@@ -124,7 +124,7 @@ namespace System.Reflection {
 		}
 
 		public
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		override
 #endif
 		Assembly GetSatelliteAssembly (CultureInfo culture)
@@ -133,7 +133,7 @@ namespace System.Reflection {
 		}
 
 		public
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		override
 #endif
 		Assembly GetSatelliteAssembly (CultureInfo culture, Version version)
@@ -144,7 +144,7 @@ namespace System.Reflection {
 		//FIXME remove GetManifestModule under v4, it's a v2 artifact
 		[ComVisible (false)]
 		public
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		override
 #endif
 		Module ManifestModule {

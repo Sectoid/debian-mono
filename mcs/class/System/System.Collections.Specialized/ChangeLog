@@ -1,3 +1,22 @@
+2011-04-01  Marek Habersack  <grendel@twistedcode.net>
+
+	[system] Part of fix for bug #683339. NameValueCollection.Add
+	(NameValueCollection) must call the Get* overloads instead of
+	BaseGet*
+
+	Otherwise classes wrapping NameValueCollection will not be able to
+	intercept the Add call which leads to errors in MVC3's
+	FormCollection.
+
+2011-03-20  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add some missing types to the mobile profile
+
+2010-11-18  Marek Habersack  <grendel@twistedcode.net>
+
+	[system] NameObjectCollections.Init clears the items container and
+	array before reallocating them.
+
 2009-11-02  Miguel de Icaza  <miguel@novell.com>
 
 	* Copy some collections from WindowsBase here for 4.0 support.

@@ -1,7 +1,11 @@
-2010-09-17  Atsushi Eno  <atsushi@ximian.com>
+2011-02-01  Geoff Norton  <grompf@sublimeintervention.com>
 
-	(merge master 3a7d8b3) Avoid crash for use of deprecated
-	InstallTrackingHandler in Snow Leopard.
+	Avoid a stack overflow when deactivating a window
+
+2010-09-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Avoid crash for use of deprecated InstallTrackingHandler in Snow
+	Leopard.
 
 2009-06-26  Atsushi Enomoto  <atsushi@ximian.com>
 

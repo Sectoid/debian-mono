@@ -24,8 +24,14 @@ using System;
 
 namespace System.Windows.Markup
 {
+	// This type affects on serialization by XamlXmlWriter.
+	// It does not affect on XamlObjectReader - it returns the content
+	// member regardless of this attribute.
+
 	[AttributeUsage (AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
+#if !NET_2_1
 	[System.Runtime.CompilerServices.TypeForwardedFrom (Consts.AssemblyWindowsBase)]
+#endif
 	public sealed class ContentPropertyAttribute : Attribute
 	{
 		public ContentPropertyAttribute ()

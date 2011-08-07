@@ -48,6 +48,7 @@ namespace System.Windows.Forms {
 		// Internal members available to the event handler sub-system
 		internal static IntPtr FocusWindow;
 		internal static IntPtr ActiveWindow;
+		internal static IntPtr UnactiveWindow;
 		internal static IntPtr ReverseWindow;
 		internal static IntPtr CaretWindow;
 
@@ -785,6 +786,7 @@ namespace System.Windows.Forms {
 
 		internal override void Activate(IntPtr handle) {
 			if (ActiveWindow != IntPtr.Zero) {
+				UnactiveWindow = ActiveWindow;
 				ActivateWindow (HIViewGetWindow (ActiveWindow), false);
 			}
 			ActivateWindow (HIViewGetWindow (handle), true);
@@ -1079,7 +1081,7 @@ namespace System.Windows.Forms {
 			create_params.Width = Width;
 			create_params.Height = Height;
 
-			create_params.ClassName=XplatUI.DefaultClassName;
+			create_params.ClassName=XplatUI.GetDefaultClassName (GetType ());
 			create_params.ClassStyle = 0;
 			create_params.ExStyle=0;
 			create_params.Parent=IntPtr.Zero;
@@ -2071,13 +2073,11 @@ namespace System.Windows.Forms {
 			throw new NotImplementedException();
 		}
 
-#if NET_2_0
 		[MonoTODO]
 		internal override void SystrayBalloon(IntPtr hwnd, int timeout, string title, string text, ToolTipIcon icon)
 		{
 			throw new NotImplementedException ();
 		}
-#endif
 		
 		internal override bool Text(IntPtr handle, string text) {
 			Hwnd hwnd = Hwnd.ObjectFromHandle (handle);

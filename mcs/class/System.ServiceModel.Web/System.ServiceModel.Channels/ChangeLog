@@ -1,3 +1,25 @@
+2011-07-19  Atsushi Eno  <atsushieno@veritas-vos-liberabit.com>
+
+	fix build regarding ContentType.
+
+2011-06-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Set "Encoder" property when Message was read from MessageEncoder.
+
+2011-04-02  Atsushi Eno  <atsushi@ximian.com>
+
+	A bit less !NET_2_1 and !MOONLIGHT in Sys.ServiceModel.Web.
+
+2010-09-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Override IsContentTypeSupported() in per-encoding-binding-element
+	implementation to work as expected.
+
+2010-09-13  Atsushi Eno  <atsushi@ximian.com>
+
+	implemented large parts of WCF standard endpoints and
+	configuration support.
+
 2010-07-14  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* WebMessageEncoder.cs : support Raw message in ReadMessage() too.

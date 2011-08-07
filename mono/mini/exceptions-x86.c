@@ -39,10 +39,16 @@ static MonoW32ExceptionHandler fpe_handler;
 static MonoW32ExceptionHandler ill_handler;
 static MonoW32ExceptionHandler segv_handler;
 
-static LPTOP_LEVEL_EXCEPTION_FILTER old_handler;
+LPTOP_LEVEL_EXCEPTION_FILTER mono_old_win_toplevel_exception_filter;
+guint64 mono_win_chained_exception_filter_result;
+gboolean mono_win_chained_exception_filter_didrun;
+
+#ifndef PROCESS_CALLBACK_FILTER_ENABLED
+#	define PROCESS_CALLBACK_FILTER_ENABLED 1
+#endif
 
 #define W32_SEH_HANDLE_EX(_ex) \
-	if (_ex##_handler) _ex##_handler(0, er, sctx)
+	if (_ex##_handler) _ex##_handler(0, ep, sctx)
 
 /*
  * mono_win32_get_handle_stackoverflow (void):
@@ -138,7 +144,7 @@ win32_handle_stack_overflow (EXCEPTION_POINTERS* ep, struct sigcontext *sctx)
 	do {
 		MonoContext new_ctx;
 
-		mono_arch_find_jit_info_ext (domain, jit_tls, &rji, &ctx, &new_ctx, &lmf, &frame);
+		mono_arch_find_jit_info (domain, jit_tls, &rji, &ctx, &new_ctx, &lmf, NULL, &frame);
 		if (!frame.ji) {
 			g_warning ("Exception inside function without unwind info");
 			g_assert_not_reached ();
@@ -172,6 +178,7 @@ LONG CALLBACK seh_handler(EXCEPTION_POINTERS* ep)
 	struct sigcontext* sctx;
 	LONG res;
 
+	mono_win_chained_exception_filter_didrun = FALSE;
 	res = EXCEPTION_CONTINUE_EXECUTION;
 
 	er = ep->ExceptionRecord;
@@ -224,6 +231,9 @@ LONG CALLBACK seh_handler(EXCEPTION_POINTERS* ep)
 
 	g_free (sctx);
 
+	if (mono_win_chained_exception_filter_didrun)
+		res = mono_win_chained_exception_filter_result;
+
 	return res;
 }
 
@@ -233,12 +243,12 @@ void win32_seh_init()
 	if (!restore_stack)
 		restore_stack = mono_win32_get_handle_stackoverflow ();
 
-	old_handler = SetUnhandledExceptionFilter(seh_handler);
+	mono_old_win_toplevel_exception_filter = SetUnhandledExceptionFilter(seh_handler);
 }
 
 void win32_seh_cleanup()
 {
-	if (old_handler) SetUnhandledExceptionFilter(old_handler);
+	if (mono_old_win_toplevel_exception_filter) SetUnhandledExceptionFilter(mono_old_win_toplevel_exception_filter);
 }
 
 void win32_seh_set_handler(int type, MonoW32ExceptionHandler handler)
@@ -304,8 +314,17 @@ mono_arch_get_restore_context (MonoTrampInfo **info, gboolean aot)
 	/* jump to the saved IP */
 	x86_ret (code);
 
+	nacl_global_codeman_validate(&start, 128, &code);
+
 	if (info)
 		*info = mono_tramp_info_create (g_strdup_printf ("restore_context"), start, code - start, ji, unwind_ops);
+	else {
+		GSList *l;
+
+		for (l = unwind_ops; l; l = l->next)
+			g_free (l->data);
+		g_slist_free (unwind_ops);
+	}
 
 	return start;
 }
@@ -324,11 +343,7 @@ mono_arch_get_call_filter (MonoTrampInfo **info, gboolean aot)
 	guint8 *code;
 	MonoJumpInfo *ji = NULL;
 	GSList *unwind_ops = NULL;
-#ifdef __native_client_codegen__
-	guint kMaxCodeSize = 128;
-#else
-	guint kMaxCodeSize = 64;
-#endif  /* __native_client_codegen__ */
+	guint kMaxCodeSize = NACL_SIZE (64, 128);
 
 	/* call_filter (MonoContext *ctx, unsigned long eip) */
 	start = code = mono_global_codeman_reserve (kMaxCodeSize);
@@ -376,8 +391,17 @@ mono_arch_get_call_filter (MonoTrampInfo **info, gboolean aot)
 	x86_leave (code);
 	x86_ret (code);
 
+	nacl_global_codeman_validate(&start, kMaxCodeSize, &code);
+
 	if (info)
 		*info = mono_tramp_info_create (g_strdup_printf ("call_filter"), start, code - start, ji, unwind_ops);
+	else {
+		GSList *l;
+
+		for (l = unwind_ops; l; l = l->next)
+			g_free (l->data);
+		g_slist_free (unwind_ops);
+	}
 
 	g_assert ((code - start) < kMaxCodeSize);
 	return start;
@@ -497,11 +521,8 @@ get_throw_trampoline (const char *name, gboolean rethrow, gboolean llvm, gboolea
 	int i, stack_size, stack_offset, arg_offsets [5], regs_offset;
 	MonoJumpInfo *ji = NULL;
 	GSList *unwind_ops = NULL;
-#ifdef __native_client_codegen__
-	guint kMaxCodeSize = 256;
-#else
-	guint kMaxCodeSize = 128;
-#endif
+	guint kMaxCodeSize = NACL_SIZE (128, 256);
+
 	start = code = mono_global_codeman_reserve (kMaxCodeSize);
 
 	stack_size = 128;
@@ -551,11 +572,14 @@ get_throw_trampoline (const char *name, gboolean rethrow, gboolean llvm, gboolea
 			/* We don't generate stack alignment code on osx to save space */
 #endif
 		} else {
-			/* One argument */
+			/* One argument + stack alignment */
 			stack_offset = stack_size + 4 + 4;
 #ifdef __APPLE__
 			/* Pop the alignment added by OP_THROW too */
 			stack_offset += MONO_ARCH_FRAME_ALIGNMENT - 4;
+#else
+			if (mono_do_x86_stack_align)
+				stack_offset += MONO_ARCH_FRAME_ALIGNMENT - 4;
 #endif
 		}
 	}
@@ -608,10 +632,19 @@ get_throw_trampoline (const char *name, gboolean rethrow, gboolean llvm, gboolea
 	}
 	x86_breakpoint (code);
 
+	nacl_global_codeman_validate(&start, kMaxCodeSize, &code);
+
 	g_assert ((code - start) < kMaxCodeSize);
 
 	if (info)
 		*info = mono_tramp_info_create (g_strdup (name), start, code - start, ji, unwind_ops);
+	else {
+		GSList *l;
+
+		for (l = unwind_ops; l; l = l->next)
+			g_free (l->data);
+		g_slist_free (unwind_ops);
+	}
 
 	return start;
 }
@@ -661,6 +694,27 @@ mono_arch_exceptions_init (void)
 {
 	guint8 *tramp;
 
+/* 
+ * If we're running WoW64, we need to set the usermode exception policy 
+ * for SEHs to behave. This requires hotfix http://support.microsoft.com/kb/976038
+ * or (eventually) Windows 7 SP1.
+ */
+#ifdef HOST_WIN32
+	DWORD flags;
+	FARPROC getter;
+	FARPROC setter;
+	HMODULE kernel32 = LoadLibraryW (L"kernel32.dll");
+
+	if (kernel32) {
+		getter = GetProcAddress (kernel32, "GetProcessUserModeExceptionPolicy");
+		setter = GetProcAddress (kernel32, "SetProcessUserModeExceptionPolicy");
+		if (getter && setter) {
+			if (getter (&flags))
+				setter (flags & ~PROCESS_CALLBACK_FILTER_ENABLED);
+		}
+	}
+#endif
+
 	if (mono_aot_only) {
 		signal_exception_trampoline = mono_aot_get_trampoline ("x86_signal_exception_trampoline");
 		return;
@@ -686,14 +740,15 @@ mono_arch_exceptions_init (void)
 }
 
 /*
- * mono_arch_find_jit_info_ext:
+ * mono_arch_find_jit_info:
  *
  * See exceptions-amd64.c for docs.
  */
 gboolean
-mono_arch_find_jit_info_ext (MonoDomain *domain, MonoJitTlsData *jit_tls, 
+mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, 
 							 MonoJitInfo *ji, MonoContext *ctx, 
-							 MonoContext *new_ctx, MonoLMF **lmf, 
+							 MonoContext *new_ctx, MonoLMF **lmf,
+							 mgreg_t **save_locations,
 							 StackFrameInfo *frame)
 {
 	gpointer ip = MONO_CONTEXT_GET_IP (ctx);
@@ -732,7 +787,8 @@ mono_arch_find_jit_info_ext (MonoDomain *domain, MonoJitTlsData *jit_tls,
 
 		mono_unwind_frame (unwind_info, unwind_info_len, ji->code_start, 
 						   (guint8*)ji->code_start + ji->code_size,
-						   ip, regs, MONO_MAX_IREGS + 1, &cfa);
+						   ip, regs, MONO_MAX_IREGS + 1,
+						   save_locations, MONO_MAX_IREGS, &cfa);
 
 		new_ctx->eax = regs [X86_EAX];
 		new_ctx->ebx = regs [X86_EBX];
@@ -795,6 +851,7 @@ mono_arch_find_jit_info_ext (MonoDomain *domain, MonoJitTlsData *jit_tls,
 			if (!((guint32)((*lmf)->previous_lmf) & 1))
 				/* Top LMF entry */
 				return FALSE;
+			g_assert_not_reached ();
 			/* Trampoline lmf frame */
 			frame->method = (*lmf)->method;
 		}
@@ -1009,6 +1066,13 @@ mono_x86_get_signal_exception_trampoline (MonoTrampInfo **info, gboolean aot)
 
 	if (info)
 		*info = mono_tramp_info_create (g_strdup ("x86_signal_exception_trampoline"), start, code - start, ji, unwind_ops);
+	else {
+		GSList *l;
+
+		for (l = unwind_ops; l; l = l->next)
+			g_free (l->data);
+		g_slist_free (unwind_ops);
+	}
 
 	return start;
 }
@@ -1237,3 +1301,18 @@ mono_tasklets_arch_restore (void)
 }
 #endif
 
+/*
+ * mono_arch_setup_resume_sighandler_ctx:
+ *
+ *   Setup CTX so execution continues at FUNC.
+ */
+void
+mono_arch_setup_resume_sighandler_ctx (MonoContext *ctx, gpointer func)
+{
+	int align = (((gint32)MONO_CONTEXT_GET_SP (ctx)) % MONO_ARCH_FRAME_ALIGNMENT + 4);
+
+	if (align != 0)
+		MONO_CONTEXT_SET_SP (ctx, (gsize)MONO_CONTEXT_GET_SP (ctx) - align);
+
+	MONO_CONTEXT_SET_IP (ctx, func);
+}

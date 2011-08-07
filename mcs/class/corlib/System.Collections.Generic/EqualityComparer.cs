@@ -35,12 +35,15 @@ namespace System.Collections.Generic {
 		
 		static EqualityComparer ()
 		{
+			if (typeof (T) == typeof (string)){
+				_default = (EqualityComparer<T>) (object) new InternalStringComparer ();
+				return;
+			}
 			if (typeof (IEquatable <T>).IsAssignableFrom (typeof (T)))
 				_default = (EqualityComparer <T>) Activator.CreateInstance (typeof (GenericEqualityComparer <>).MakeGenericType (typeof (T)));
 			else
 				_default = new DefaultComparer ();
 		}
-		
 		
 		public abstract int GetHashCode (T obj);
 		public abstract bool Equals (T x, T y);
@@ -55,11 +58,23 @@ namespace System.Collections.Generic {
 
 		int IEqualityComparer.GetHashCode (object obj)
 		{
+			if (obj == null)
+				return 0;
+
+			if (!(obj is T))
+				throw new ArgumentException ("Argument is not compatible", "obj");
+
 			return GetHashCode ((T)obj);
 		}
 
 		bool IEqualityComparer.Equals (object x, object y)
 		{
+			if (x == y)
+				return true;
+
+			if (x == null || y == null)
+				return false;
+
 			if (!(x is T))
 				throw new ArgumentException ("Argument is not compatible", "x");
 			if (!(y is T))
@@ -81,16 +96,35 @@ namespace System.Collections.Generic {
 			{
 				if (x == null)
 					return y == null;
-				
+
 				return x.Equals (y);
 			}
 		}
 	}
 	
 	[Serializable]
-#if MONOTOUCH
-	internal
-#endif
+	sealed class InternalStringComparer : EqualityComparer<string> {
+	
+		public override int GetHashCode (string obj)
+		{
+			if (obj == null)
+				return 0;
+			return obj.GetHashCode ();
+		}
+	
+		public override bool Equals (string x, string y)
+		{
+			if (x == null)
+				return y == null;
+
+			if ((object) x == (object) y)
+				return true;
+				
+			return x.Equals (y);
+		}
+	}
+
+	[Serializable]
 	sealed class GenericEqualityComparer <T> : EqualityComparer <T> where T : IEquatable <T> {
 
 		public override int GetHashCode (T obj)

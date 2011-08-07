@@ -1,3 +1,39 @@
+2011-04-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fail gracefully when CancellationToken has been created
+	uninitialized by user.
+
+	Also add corresponding unit test.
+
+2011-04-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add CancellationToken unit tests
+
+2011-04-15  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	[corlib] Ensure Thread.ManagedThreadId is unique per thread.
+
+	This fixes bug #667329.
+
+	The problem was that ManagedThreadId was created from a
+	per-appdomain counter, but stored in a per-thread storage, so if
+	two threads could end up with the same ManagedThreadId if a second
+	appdomain executed on the second thread first.
+
+2011-01-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Avoid random failure in CountdownEvent unit test
+
+2011-01-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Update ThreadLocal to use default(T) for initialization with
+	parameterless ctor following comment on
+	https://connect.microsoft.com/VisualStudio/feedback/details/630350/threadlocal-documentation-and-actual-behavior-mismatch
+
+2010-12-09  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix semantic of CountdownEvent Reset methods. Fix #658244.
+
 2010-08-13  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Force usage of 2 threads in one of ManualResetEventSlim unit test.

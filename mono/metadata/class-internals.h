@@ -199,7 +199,8 @@ enum {
 	MONO_EXCEPTION_FIELD_ACCESS = 10,
 	MONO_EXCEPTION_GENERIC_SHARING_FAILED = 11,
 	MONO_EXCEPTION_BAD_IMAGE = 12,
-	MONO_EXCEPTION_OBJECT_SUPPLIED = 13 /*The exception object is already created.*/
+	MONO_EXCEPTION_OBJECT_SUPPLIED = 13, /*The exception object is already created.*/
+	MONO_EXCEPTION_OUT_OF_MEMORY = 14
 	/* add other exception type */
 };
 
@@ -226,7 +227,8 @@ enum {
 	MONO_RGCTX_INFO_METHOD_RGCTX,
 	MONO_RGCTX_INFO_METHOD_CONTEXT,
 	MONO_RGCTX_INFO_REMOTING_INVOKE_WITH_CHECK,
-	MONO_RGCTX_INFO_METHOD_DELEGATE_CODE
+	MONO_RGCTX_INFO_METHOD_DELEGATE_CODE,
+	MONO_RGCTX_INFO_CAST_CACHE
 };
 
 typedef struct _MonoRuntimeGenericContextOtherInfoTemplate {
@@ -348,6 +350,8 @@ struct _MonoClass {
 	guint simd_type : 1; /* class is a simd intrinsic type */
 	guint is_generic : 1; /* class is a generic type definition */
 	guint is_inflated : 1; /* class is a generic instance */
+	/* next byte */
+	guint has_finalize_inited    : 1; /* has_finalize is initialized */
 
 	guint8     exception_type;	/* MONO_EXCEPTION_* */
 
@@ -530,6 +534,13 @@ struct _MonoGenericClass {
 	guint is_dynamic  : 1;		/* We're a MonoDynamicGenericClass */
 	guint is_tb_open  : 1;		/* This is the fully open instantiation for a type_builder. Quite ugly, but it's temporary.*/
 	MonoClass *cached_class;	/* if present, the MonoClass corresponding to the instantiation.  */
+
+	/* 
+	 * The image set which owns this generic class. Memory owned by the generic class
+	 * including cached_class should be allocated from the mempool of the image set,
+	 * so it is easy to free.
+	 */
+	MonoImageSet *owner;
 };
 
 /*
@@ -538,10 +549,6 @@ struct _MonoGenericClass {
  */
 struct _MonoDynamicGenericClass {
 	MonoGenericClass generic_class;
-	int count_methods;
-	MonoMethod **methods;
-	int count_ctors;
-	MonoMethod **ctors;
 	int count_fields;
 	MonoClassField *fields;
 	guint initialized;
@@ -865,7 +872,7 @@ void
 mono_class_setup_interface_offsets (MonoClass *klass) MONO_INTERNAL;
 
 void
-mono_class_setup_vtable_general (MonoClass *klass, MonoMethod **overrides, int onum) MONO_INTERNAL;
+mono_class_setup_vtable_general (MonoClass *klass, MonoMethod **overrides, int onum, GList *in_setup) MONO_INTERNAL;
 
 void
 mono_class_setup_vtable (MonoClass *klass) MONO_INTERNAL;
@@ -915,6 +922,9 @@ mono_class_needs_cctor_run (MonoClass *klass, MonoMethod *caller) MONO_INTERNAL;
 
 gboolean
 mono_class_field_is_special_static (MonoClassField *field) MONO_INTERNAL;
+
+guint32
+mono_class_field_get_special_static_type (MonoClassField *field) MONO_INTERNAL;
 
 gboolean
 mono_class_has_special_static_fields (MonoClass *klass) MONO_INTERNAL;
@@ -1281,4 +1291,14 @@ mono_field_get_type_checked (MonoClassField *field, MonoError *error) MONO_INTER
 
 MonoClassField*
 mono_class_get_fields_lazy (MonoClass* klass, gpointer *iter) MONO_INTERNAL;
+
+gboolean
+mono_class_check_vtable_constraints (MonoClass *class, GList *in_setup) MONO_INTERNAL;
+
+gboolean
+mono_class_has_finalizer (MonoClass *klass) MONO_INTERNAL;
+
+void
+mono_unload_interface_id (MonoClass *class) MONO_INTERNAL;
+
 #endif /* __MONO_METADATA_CLASS_INTERBALS_H__ */

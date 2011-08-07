@@ -1,3 +1,23 @@
+2010-11-10  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf] .NET allows for service contract methods to be decorated
+	only by Web{Get,Invoke}Attribute
+
+	Usually WCF requires that each service method is marked with the
+	OperationContract attribute with the exception of methods
+	decorated with the Web{Get,Invoke}Attribute attributes which are
+	defined in System.ServiceModel.Web. This patch adds a simple way
+	to extend the ContractDescriptionGenerator in order to provide
+	this functionality without circular dependency of
+	System.ServiceModel on System.ServiceModel.Web. Several extenders
+	can be registered with the description generator and they will be
+	invoked in the registration order until any of them returns
+	'true'. Extenders are passed a reference to the OperationContract
+	attribute with which the current method is decorated - if the
+	reference is null, the extender should create a default instance
+	of the attribute so that the description generator considers the
+	method as one to be included in the contract description.
+
 2010-05-21  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* WebScriptServiceHostFactory.cs : similarly to ServiceDebugBehavior

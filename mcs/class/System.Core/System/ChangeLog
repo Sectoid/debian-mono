@@ -1,3 +1,61 @@
+2011-03-10  Duane Wandless  <dwandless@pixmaclt10.local>
+
+	GetApplicableRule returns NULL in TimeZoneInfo.cs yet the code
+	does not always handle a NULL return value. This change fixes this
+	issue and allows timezones like China Standard Time to work.
+
+2011-01-31  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Fix the basic-profile build.
+
+2011-01-31  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Fix the MonoDroid build.
+
+	Most System.TimeZoneInfo members weren't being included.
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fix the mobile build
+
+2010-12-16  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[monodroid] Add support for the Android TimeZone file format.
+
+	Fixes #657609.
+
+	Android uses "ye standard" timezone file format, but instead of
+	using a directory + file structure as libc uses, they throw
+	everything into two files, a "zoneinfo.dat" and a "zoneinfo.idx",
+	where "zoneinfo.dat" is the concatenation of all the TZIF files
+	and "zoneinfo.idx" contains the timezone names and offsets into
+	"zoneinfo.dat". From the ZoneInfoDB documentation:
+
+	However, to conserve disk space the data for all time zones are
+	concatenated into a single file, and a second file is used to
+	indicate the starting position of each time zone record. A third
+	file indicates the version of the zoneinfo databse used to
+	generate the data.
+
+	TimeZoneInfo.Android.cs is a C# port of the corresponding Android
+	ZoneInfoDB type so that Mono can use Android's timezone DB.
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Some .net 4.0 api compatibility fixes
+
+2010-12-08  Marek Safar  <marek.safar@gmail.com>
+
+	Fix parameter name
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System.Core build for monodroid
+
 2010-08-23  Marek Safar  <marek.safar@gmail.com>
 
 	Fixed typo in T14 argument

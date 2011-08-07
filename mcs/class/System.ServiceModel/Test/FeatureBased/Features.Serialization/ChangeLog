@@ -1,3 +1,10 @@
+2010-10-05  Atsushi Eno  <atsushi@ximian.com>
+
+	When finding SerializationMap for resolved type, use type as the
+	key rather than name.
+
+	Make the fixed WCF test show more specific failure details.
+
 2010-05-19  Andreia Gaita  <avidigal@novell.com>
 
 	* DataContractSerializerTest.cs: Add test for deserializing objects

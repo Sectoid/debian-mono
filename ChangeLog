@@ -1,6 +1,539 @@
+2011-07-27  Alex Corrado  <alexc@xamarin.com>
+
+	2.10.3
+
+2011-02-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fix configure check for darwin to support all variants
+
+2011-07-12  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add shared_perfcounters option to enable minimal.
+
+2011-06-28  Zoltan Varga  <vargaz@gmail.com>
+
+	Really fix the -Wno-unused-but-set-variable check.
+
+2011-06-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Clean up the cross-compile configure.in code. Add a TARGET_ANDROID
+	define.
+
+2011-06-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the check for the -Wno-unused-but-set-variable gcc option.
+
+2011-05-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable the -Wunused-by-set-variable warning supported by newer
+	gcc versions.
+
+2011-06-03  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Allow Android'd support_boehm=no to work.
+
+	The AC_ARG_ENABLE(boehm, ..., ..., support_boehm=yes) resulted in
+	support_boehm always being 'yes', even for
+	`--host=arm-linux-androidabi`, which was not the intention. Using
+	`support_boehm=${support_boehm:-yes}` generates correct behavior.
+
+2011-06-03  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Simplify building with the Android NDK.
+
+	Check --host against *-*-linux-android* for Android-specific
+	configure fixes, and improve **/Makefile.am to simplify Android
+	support:
+
+	./configure \ --build=`./config.guess` \
+	--host=armv5-linux-androideabi \ --target=armv5-linux-androideabi
+	\ --enable-nls=no --with-mcs-docs=no --enable-mcs-build=no \
+	CC="/path/to/ndk/arm-linux-androideabi-gcc
+	--sysroot=/path/to/sysroot" \ AR="..." AS="..." CPP="..."
+	CXX="..." LD="..." RANLIB="..." STRIP="..."
+	CFLAGS="-DARM_FPU_NONE=1" CXXFLAGS="-DARM_FPU_NONE=1"
+
+	See also Android NDK docs/STANDALONE-TOOLCHAIN.html.
+
+	The Android NDK/bionic is "interesting", in that it's lacking
+	header files and macros normally present on Linux which otherwise
+	break the build (e.g. no <link.h> which breaks Boehm support).
+	Using --host with an android target works around the known issues,
+	simplifying the building of libmonosgen-2.0.so with the Android
+	NDK toolchain.
+
+2011-04-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Pass HAVE_ARMV6 to libgc on darwin too.
+
+2011-04-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a membar to libgc's UNLOCK () on arm. Fixes #683409.
+
+2011-03-28  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Bump to 2.10.2
+
+2011-03-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	.gitignore
+
+2011-02-19  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[threadpool] Add support for kqueue asynch. IO.
+
+2011-03-07  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Fix up devel packages in spec file
+
+2011-03-01  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	add xbuild-frameworks to rpm
+
+2011-02-24  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Enable ARMv6 for arm*-darwin
+
+2011-02-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Only use memory barriers on arm when running on armv6 or later.
+
+2011-02-22  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Version 2.10.1
+
+2011-02-10  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Mono.Debugger.Soft.dll is installed for 4.0 also.
+
+2011-02-08  Marek Habersack  <grendel@twistedcode.net>
+
+	[cross-compilation] Added some flexibility regarding the location
+	of development packages
+
+	The script now supports an extra cross-compilation directory in
+	which you can unpack the library and development packages
+	necessary for the build to succeed (glib, zlib etc). Also
+	supported now is specifying the location at which Mono will be
+	installed on Windows. Replaced SVN and GIT-SVN version checks with
+	git checks.
+
+2010-06-14  Hib Eris  <hib@hiberis.nl>
+
+	Fix build-mingw32.sh for CROSS_PKG_CONFIG_DIR without *.pc files
+
+2010-06-14  Hib Eris  <hib@hiberis.nl>
+
+	No longer include glib binaries in build-mingw32.sh builds.
+
+	By default, Mono now uses an embedded glib implementation, so
+	there is no need to ship external glib libraries anymore.
+
+2010-06-14  Hib Eris  <hib@hiberis.nl>
+
+	Let build-mingw32.sh script also work on dist tarballs
+
+2011-02-07  Hib Eris  <hib@hiberis.nl>
+
+	Use winternl.h instead of ddk (when available)
+
+	These changes are nescessary for compiling with a mingw-w64
+	compiler.
+
+2011-01-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Applied patch from Burkhard Linke
+	<blinke@cebitec.uni-bielefeld.de>. Add support for newer boehm-gc
+	versions.
+
+2011-01-26  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Add 2.0 and 4.0 S.D.S.C
+
+2011-01-24  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Add WebMatrix.Data to spec
+
+2011-01-19  Mark Probst  <mark.probst@gmail.com>
+
+	[build] pkg-config support for libmonosgen.
+
+2011-01-21  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Oops, Microsoft.Web.Infrastructure, not System.
+
+2011-01-21  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	add Microsoft.Web.Infrastructure
+
+2011-01-19  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Dist more files needed by MSVC build
+
+2011-01-13  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	2.10
+
+2011-01-11  Marek Safar  <marek.safar@gmail.com>
+
+	Install new ikvm based C# compiler as mcs
+
+2011-01-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable system AOT when using the loaded llvm, as it seems to
+	cause crashes on the x86 buildbot.
+
+2011-01-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Force a build.
+
+2011-01-03  barkerm  <michael.barker@lmax.com>
+
+	Ignore files ending in '~'
+
+2011-01-05  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Bump winconfig version
+
+2011-01-04  Elijah Taylor  <elijahtaylor@google.com>
+
+	change first batch of __native_client_codegen__ && TARGET_AMD64 to
+	__mono_ilp32__ where appropriate
+
+2011-01-05  Marek Habersack  <grendel@twistedcode.net>
+
+	[runtime] Include the al script in temporary installation
+	directory
+
+	This is needed as the 4.0 profile calls 'al' (which is defaults to
+	4.0) and not 'al2' and if Mono older than 2.8 is installed on the
+	machine, 'al' coming from it will fail to work with the current
+	Mono and thus some tests will fail.
+
+	The commit should fix the 300+ failing tests on the build bots.
+
+2011-01-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove glib dependencies from the embed samples. Fixes #660117.
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	.gitignore
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	.gitignore.
+
+2010-12-23  Miguel de Icaza  <miguel@gnome.org>
+
+	Update README
+
+2010-12-22  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Package the new mcs.exe instead of gmcs.exe
+
+2010-12-20  Elijah Taylor  <elijahtaylor@google.com>
+
+	Merge selective files from fsa branch
+
+2010-12-21  Andreia Gaita  <shana@jitted.com>
+
+	Moonlight build fixes and cleanup
+
+2010-12-20  Elijah Taylor  <elijahtaylor@google.com>
+
+	Add back SHARED_MONO line that got deleted accidentally, always
+	enable shared mono for NaCl
+
+2010-12-20  Elijah Taylor  <elijahtaylor@google.com>
+
+	Changes to get NaCl builds working minimally
+
+2010-12-20  Elijah Taylor  <elijahtaylor@google.com>
+
+	NaCl build and test scripts
+
+2010-12-17  Andreia Gaita  <shana@jitted.com>
+
+	Fix moonlight build
+
+2010-12-17  Andreia Gaita  <shana@jitted.com>
+
+	Document the new --with-moon-gc flag on the README
+
+2010-12-17  Andreia Gaita  <shana@jitted.com>
+
+	Add --with-moon-gc to select the gc to use with moon (boehm/sgen)
+
+2010-12-16  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	get-monolite-latest now pulls a versioned archive
+
+	In order to ensure that monolite actually works you need to ensure
+	that the corlib in it has the same version as your runtime.
+	Monolite archives are now versioned
+	monolite-MONO_CORLIB_VERSION-DATE.
+
+2010-12-16  Elijah Taylor  <elijahtaylor@google.com>
+
+	Merged in rest of Native Client changes, untested
+
+2010-12-16  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[monodroid] Add support for the Android TimeZone file format.
+
+	Fixes #657609.
+
+	Android uses "ye standard" timezone file format, but instead of
+	using a directory + file structure as libc uses, they throw
+	everything into two files, a "zoneinfo.dat" and a "zoneinfo.idx",
+	where "zoneinfo.dat" is the concatenation of all the TZIF files
+	and "zoneinfo.idx" contains the timezone names and offsets into
+	"zoneinfo.dat". From the ZoneInfoDB documentation:
+
+	However, to conserve disk space the data for all time zones are
+	concatenated into a single file, and a second file is used to
+	indicate the starting position of each time zone record. A third
+	file indicates the version of the zoneinfo databse used to
+	generate the data.
+
+	TimeZoneInfo.Android.cs is a C# port of the corresponding Android
+	ZoneInfoDB type so that Mono can use Android's timezone DB.
+
+2010-12-16  Miguel de Icaza  <miguel@gnome.org>
+
+	Update instructions
+
+2010-12-16  Miguel de Icaza  <miguel@gnome.org>
+
+	Undo adding of README2 test file
+
+2010-12-16  Miguel de Icaza  <miguel@gnome.org>
+
+	Update COPYING file with MS-PL and Apache2 texts
+
+2010-12-14  Miguel de Icaza  <miguel@gnome.org>
+
+	Add README2
+
+2010-12-14  Elijah Taylor  <elijahtaylor@google.com>
+
+	Merge mono/io-layer, mono/metadata, mono/arch/x86 and configure.in
+	for Native Client
+
+2010-12-13  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Simplify the profiler line in the spec file
+
+	Stuff sometimes appears or disappears here, just use a wildcard.
+
+2010-12-12  Bojan Rajkovic  <bojan@airpoweranalytics.com>
+
+	Add FreeBSD to the list of supported platforms for SGen on i386
+	and x86_64.
+
+2010-12-03  Andreia Gaita  <shana@jitted.com>
+
+	[Moon] include cecil when building mono for moon
+
+2010-11-29  Paolo Molaro  <lupus@oddwiz.org>
+
+	Log profiler: portability checks.
+
+2010-11-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Use $build instead of $target in a few places in configure.in,
+	$target is about building cross compilers, not cross compiling
+	itself.
+
+2010-11-24  Andreia Gaita  <shana@jitted.com>
+
+	[Moon] Speed up the moonlight build by stripping it down to the
+	bare basics
+
+2010-11-20  Miguel de Icaza  <miguel@gnome.org>
+
+	Remove experimental from the name
+
+2010-11-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove the unused and incomplete CMake build scripts for now.
+
+2010-11-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix build breakage on platforms without execvp.
+
+2010-11-12  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Add new profiler to mono-devel package
+
+2010-11-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid 'sgen not supported' warnings when no --with-sgen=yes
+	argument was passed to configure.
+
+2010-11-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove obsolete cygwin glib checks.
+
+2010-11-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Pass -mno-cygwin to eglib's configure.
+
+2010-11-11  Paolo Molaro  <lupus@oddwiz.org>
+
+	Added a proper define for the external zlib and check for
+	sched_getcpu().
+
+2010-11-10  Geoff Norton  <grompf@sublimeintervention.com>
+
+	[OSX] Dont use nested functions to determine if we can use the
+	system zlib
+
+2010-11-10  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Remove compat-4.0 dir (nothing there anymore)
+
+2010-11-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Tidy up the configure output a bit.
+
+2010-10-18  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Dump Mark&Sweep heap occupancy.
+
+	For each block size dump the occupancy to the heap-dump file.
+
+2010-11-05  Marek Safar  <marek.safar@gmail.com>
+
+	Add *.xml to ignore list
+
+2010-11-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	a5
+
+2010-11-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	a4
+
+2010-11-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	a3
+
+2010-11-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	a2
+
+2010-11-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	iii
+
+2010-11-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	i
+
+2010-11-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Last
+
+2010-11-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Test 5
+
+2010-11-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Last test
+
+2010-11-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Test 3
+
+2010-11-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Test 2
+
+2010-11-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	TEST
+
+2010-10-28  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Move version to 2.9 (next to be 2.10)
+
+2010-10-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Unbreak the world
+
+2010-10-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Remove 'web' directory
+
+2010-10-12  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Updated notes on using get-monolite-latest
+
 2010-09-23  Andrew Jorgensen  <ajorgensen@novell.com>
 
 	move DynamicData to mvc because it depends on Extensions
+
+2010-09-23  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid extracting tar.gz files in the get-cygwin-deps.sh script, we
+	download only zip files now.
+
+2010-09-22  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Do not build mcs/docs if the 4.0 build is disabled.
+
+2010-09-22  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Revert "mdoc 2.0-only profile build support, take 3!"
+
+	We'll instead just disable the docs build entirely if
+	--with-profile4=no is specified [future commit, not this one].
+
+2010-09-22  Jonathan Pryor  <jonpryor@vt.edu>
+
+	mdoc 2.0-only profile build support, take 3!
+
+	Further discussion suggested that, even if mdoc 2.0 works, it
+	hasn't gotten widespread testing (as it's been a 4.0 app for
+	months), so it would be preferable to keep it as a 4.0 app.
+
+	However, it still needs to be built under 2.0 so that a
+	--with-profile4=no build can...build...without errors.
+
+	Thus, the compromise: build mdoc twice, once for each profile.
+	This will ensure that *some* version of mdoc is around when
+	mcs/docs is built.
+
+	Unfortunately we can't place mdoc into $(per_profile_dirs), as
+	these are built before $(net_2_0_dirs) (and thus before monodoc,
+	which needs to be built before mdoc). Thus the compromise of
+	listing mdoc in *both* $(net_2_0_dirs) and $(net_4_0_dirs),
+	allowing build dependencies to be met.
+
+2010-09-22  Marek Habersack  <grendel@twistedcode.net>
+
+	Revert "mdoc 2.0-only profile build support, take 2!"
+
+	This reverts commit 313633fc67cf1479514019a56143e5ad1643d28f
+	because it breaks the build.
+
+2010-09-21  Jonathan Pryor  <jonpryor@vt.edu>
+
+	mdoc 2.0-only profile build support, take 2!
+
+	Further discussion suggested that, even if mdoc 2.0 works, it
+	hasn't gotten widespread testing (as it's been a 4.0 app for
+	months), so it would be preferable to keep it as a 4.0 app.
+
+	However, it still needs to be built under 2.0 so that a
+	--with-profile4=no build can...build...without errors.
+
+	Thus, the compromise: build mdoc twice, once for each profile.
+	This will ensure that *some* version of mdoc is around when
+	mcs/docs is built.
 
 2010-09-20  Andrew Jorgensen  <ajorgensen@novell.com>
 
@@ -9,23 +542,81 @@
 
 2010-09-17  Andrew Jorgensen  <ajorgensen@novell.com>
 
-	errant file
+	3.5 version of Sys.Web.Ext is gone
 
 2010-09-16  Andrew Jorgensen  <ajorgensen@novell.com>
 
 	More .spec reorgs
 
+2010-09-16  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	Add a configure option to disable building the shared libmono
+	library
+
+2010-09-15  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	Disable assembly remapping for moonlight
+
+2010-09-15  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	Add configure option for disabling assembly remapping
+
+2010-09-16  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Make mdoc a 2.0 app, not a 4.0 app.
+
+	The problem is build sanity: it's possible to disable the 4.0
+	profile (--with-profile4=no) while not disabling documentation
+	building (--with-mcs-docs=yes is the default). The result would be
+	a 4.0-less build, and thus no mdoc, and thus no mdoc to assemble
+	the documentation, and thus a build break as we attempted to use
+	an app during the build which didn't exist.
+
+	Oops.
+
+	mdoc doesn't need to be a 4.0 app anyway...
+
+2010-09-15  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Add System.Net (4.0 and 2.0) to mono-core in .spec
+
+2010-09-15  Marek Safar  <marek.safar@gmail.com>
+
+	Remove copying of misplaced duplicate of
+	System.Web.Extensions.Design.dll
+
 2010-09-15  Andrew Jorgensen  <ajorgensen@novell.com>
 
 	mono-configuration-crypto is a 4.0 assembly, not 2.0
+
+2010-09-14  Chris Toshok  <toshok@gmail.com>
+
+	built a separate libmonoruntime for moonlight, so we can do
+	-DMOONLIGHT just in the moonlight lib instead of globally.
+
+2010-09-09  Chris Toshok  <toshok@gmail.com>
+
+	if we're building with moonlight enabled, don't build mdb.
+
+2010-09-14  Marek Safar  <marek.safar@gmail.com>
+
+	Fixes mixed line ending.
 
 2010-09-09  Andrew Jorgensen  <ajorgensen@novell.com>
 
 	Various cleanup and addition
 
-2010-08-31  Andrew Jorgensen  <ajorgensen@novell.com>
+2010-09-09  Jb Evain  <jbevain@gmail.com>
 
-	Version 2.8
+	add mono-abi-info to gitignore
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the mcs monodroid build from mono's configure
+
+2010-09-02  Zoltan Varga  <vargaz@gmail.com>
+
+	Enable system aot by default only on x86/amd64 linux.
 
 2010-08-31  Zoltan Varga  <vargaz@gmail.com>
 

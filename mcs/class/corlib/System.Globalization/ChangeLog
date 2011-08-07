@@ -1,3 +1,16 @@
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
+2011-01-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Change some usages of ArrayList to List<T> to avoid calls to the
+	slow ArrayList.ToArray(Type) method.
+
+2010-12-22  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed NumberFormatInfo.InvariantInfo currency symbol
+
 2010-06-21  Jb Evain  <jbevain@novell.com>
 
 	* CharUnicodeInfo.cs: make static.

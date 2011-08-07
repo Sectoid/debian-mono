@@ -25,32 +25,33 @@
 using System;
 using System.Diagnostics;
 
-#if NET_4_0
+#if NET_4_0 || MOBILE
 namespace System.Threading
 {
+	[System.Diagnostics.DebuggerDisplayAttribute ("Current Count = {currCount}")]
 	public class SemaphoreSlim : IDisposable
 	{
 		const int spinCount = 10;
 		const int deepSleepTime = 20;
 
-		readonly int max;
+		readonly int maxCount;
 		int currCount;
 		bool isDisposed;
 
 		EventWaitHandle handle;
 
-		public SemaphoreSlim (int initial) : this (initial, int.MaxValue)
+		public SemaphoreSlim (int initialCount) : this (initialCount, int.MaxValue)
 		{
 		}
 
-		public SemaphoreSlim (int initial, int max)
+		public SemaphoreSlim (int initialCount, int maxCount)
 		{
-			if (initial < 0 || initial > max || max < 0)
-				throw new ArgumentOutOfRangeException ("The initial  argument is negative, initial is greater than max, or max is not positive.");
+			if (initialCount < 0 || initialCount > maxCount || maxCount < 0)
+				throw new ArgumentOutOfRangeException ("The initialCount  argument is negative, initialCount is greater than maxCount, or maxCount is not positive.");
 
-			this.max = max;
-			this.currCount = initial;
-			this.handle = new ManualResetEvent (initial == 0);
+			this.maxCount = maxCount;
+			this.currCount = initialCount;
+			this.handle = new ManualResetEvent (initialCount == 0);
 		}
 
 		~SemaphoreSlim ()
@@ -63,7 +64,7 @@ namespace System.Threading
 			Dispose(true);
 		}
 
-		protected virtual void Dispose (bool managedRes)
+		protected virtual void Dispose (bool disposing)
 		{
 			isDisposed = true;
 		}
@@ -96,7 +97,7 @@ namespace System.Threading
 			do {
 				oldValue = currCount;
 				newValue = (currCount + releaseCount);
-				newValue = newValue > max ? max : newValue;
+				newValue = newValue > maxCount ? maxCount : newValue;
 			} while (Interlocked.CompareExchange (ref currCount, newValue, oldValue) != oldValue);
 
 			handle.Set ();
@@ -109,9 +110,9 @@ namespace System.Threading
 			Wait (CancellationToken.None);
 		}
 
-		public bool Wait (TimeSpan ts)
+		public bool Wait (TimeSpan timeout)
 		{
-			return Wait ((int)ts.TotalMilliseconds, CancellationToken.None);
+			return Wait ((int)timeout.TotalMilliseconds, CancellationToken.None);
 		}
 
 		public bool Wait (int millisecondsTimeout)
@@ -119,18 +120,18 @@ namespace System.Threading
 			return Wait (millisecondsTimeout, CancellationToken.None);
 		}
 
-		public void Wait (CancellationToken token)
+		public void Wait (CancellationToken cancellationToken)
 		{
-			Wait (-1, token);
+			Wait (-1, cancellationToken);
 		}
 
-		public bool Wait (TimeSpan ts, CancellationToken token)
+		public bool Wait (TimeSpan timeout, CancellationToken cancellationToken)
 		{
 			CheckState();
-			return Wait ((int)ts.TotalMilliseconds, token);
+			return Wait ((int)timeout.TotalMilliseconds, cancellationToken);
 		}
 
-		public bool Wait (int millisecondsTimeout, CancellationToken token)
+		public bool Wait (int millisecondsTimeout, CancellationToken cancellationToken)
 		{
 			CheckState ();
 			if (millisecondsTimeout < -1)
@@ -146,7 +147,7 @@ namespace System.Threading
 				int result;
 
 				do {
-					token.ThrowIfCancellationRequested ();
+					cancellationToken.ThrowIfCancellationRequested ();
 					if (stopCondition ())
 						return false;
 
@@ -168,7 +169,7 @@ namespace System.Threading
 				SpinWait wait = new SpinWait ();
 
 				while (Thread.VolatileRead (ref currCount) <= 0) {
-					token.ThrowIfCancellationRequested ();
+					cancellationToken.ThrowIfCancellationRequested ();
 					if (stopCondition ())
 						return false;
 

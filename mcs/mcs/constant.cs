@@ -10,7 +10,12 @@
 //
 
 using System;
+
+#if STATIC
+using IKVM.Reflection.Emit;
+#else
 using System.Reflection.Emit;
+#endif
 
 namespace Mono.CSharp {
 
@@ -45,10 +50,15 @@ namespace Mono.CSharp {
 		/// </summary>
 		public abstract object GetValue ();
 
+#if !STATIC
+		//
+		// Returns an object value which is typed to contant type
+		//
 		public virtual object GetTypedValue ()
 		{
 			return GetValue ();
 		}
+#endif
 
 		public override void Error_ValueCannotBeConverted (ResolveContext ec, Location loc, TypeSpec target, bool expl)
 		{
@@ -180,7 +190,7 @@ namespace Mono.CSharp {
 					Error_ValueCannotBeConverted (ec, loc, target_type, false);
 				}
 
-				return New.Constantify (target_type).Resolve (ec);
+				return New.Constantify (target_type, loc).Resolve (ec);
 			}
 		}
 
@@ -262,7 +272,11 @@ namespace Mono.CSharp {
 
 		public override System.Linq.Expressions.Expression MakeExpression (BuilderContext ctx)
 		{
+#if STATIC
+			return base.MakeExpression (ctx);
+#else
 			return System.Linq.Expressions.Expression.Constant (GetTypedValue (), type.GetMetaInfo ());
+#endif
 		}
 
 		public new Constant Resolve (ResolveContext rc)
@@ -338,7 +352,7 @@ namespace Mono.CSharp {
 
 		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
 		{
-			enc.Stream.Write (Value);
+			enc.Encode (Value);
 		}
 		
 		public override void Emit (EmitContext ec)
@@ -383,7 +397,7 @@ namespace Mono.CSharp {
 
 		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
 		{
-			enc.Stream.Write (Value);
+			enc.Encode (Value);
 		}
 
 		public override void Emit (EmitContext ec)
@@ -488,7 +502,7 @@ namespace Mono.CSharp {
 
 		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
 		{
-			enc.Stream.Write ((ushort) Value);
+			enc.Encode ((ushort) Value);
 		}
 
 		public override void Emit (EmitContext ec)
@@ -612,7 +626,7 @@ namespace Mono.CSharp {
 
 		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
 		{
-			enc.Stream.Write (Value);
+			enc.Encode (Value);
 		}
 
 		public override void Emit (EmitContext ec)
@@ -718,7 +732,7 @@ namespace Mono.CSharp {
 
 		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
 		{
-			enc.Stream.Write (Value);
+			enc.Encode (Value);
 		}
 
 		public override void Emit (EmitContext ec)
@@ -836,7 +850,7 @@ namespace Mono.CSharp {
 
 		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
 		{
-			enc.Stream.Write (Value);
+			enc.Encode (Value);
 		}
 
 		public override void Emit (EmitContext ec)
@@ -948,7 +962,7 @@ namespace Mono.CSharp {
 
 		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
 		{
-			enc.Stream.Write (Value);
+			enc.Encode (Value);
 		}
 
 		public override void Emit (EmitContext ec)
@@ -1129,7 +1143,7 @@ namespace Mono.CSharp {
 
 		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
 		{
-			enc.Stream.Write (Value);
+			enc.Encode (Value);
 		}
 
 		public override void Emit (EmitContext ec)
@@ -1252,7 +1266,7 @@ namespace Mono.CSharp {
 
 		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
 		{
-			enc.Stream.Write (Value);
+			enc.Encode (Value);
 		}
 
 		public override void Emit (EmitContext ec)
@@ -1391,7 +1405,7 @@ namespace Mono.CSharp {
 
 		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
 		{
-			enc.Stream.Write (Value);
+			enc.Encode (Value);
 		}
 
 		public override void Emit (EmitContext ec)
@@ -1508,7 +1522,7 @@ namespace Mono.CSharp {
 
 		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
 		{
-			enc.Stream.Write (Value);
+			enc.Encode (Value);
 		}
 
 		public override void Emit (EmitContext ec)
@@ -1631,7 +1645,7 @@ namespace Mono.CSharp {
 
 		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
 		{
-			enc.Stream.Write (Value);
+			enc.Encode (Value);
 		}
 
 		public override void Emit (EmitContext ec)
@@ -1990,9 +2004,9 @@ namespace Mono.CSharp {
 				if (ac.Rank != 1 || ac.Element.IsArray)
 					base.EncodeAttributeValue (rc, enc, targetType);
 				else
-					enc.Stream.Write (uint.MaxValue);
+					enc.Encode (uint.MaxValue);
 			} else {
-				enc.Stream.Write (byte.MaxValue);
+				enc.Encode (byte.MaxValue);
 			}
 		}
 

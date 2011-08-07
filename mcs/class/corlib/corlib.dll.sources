@@ -197,6 +197,7 @@ System/MissingFieldException.cs
 System/MissingMemberException.cs
 System/MissingMethodException.cs
 System/MonoAsyncCall.cs
+System/MonoCQItem.cs
 System/MonoCustomAttrs.cs
 System/MonoListItem.cs
 System/MonoType.cs
@@ -251,6 +252,7 @@ System/TimeSpan.cs
 System/TimeZone.cs
 ../System.Core/System/TimeZoneInfo.cs
 ../System.Core/System/TimeZoneInfo.AdjustmentRule.cs
+../System.Core/System/TimeZoneInfo.Android.cs
 ../System.Core/System/TimeZoneInfo.TransitionTime.cs
 System/TimeZoneNotFoundException.cs
 System/TimeoutException.cs
@@ -660,6 +662,8 @@ System.Runtime.ConstrainedExecution/CER.cs
 System.Runtime.ConstrainedExecution/Consistency.cs
 System.Runtime.ConstrainedExecution/PrePrepareMethodAttribute.cs
 System.Runtime.ConstrainedExecution/ReliabilityContractAttribute.cs
+System.Runtime.ExceptionServices/FirstChanceExceptionEventArgs.cs
+System.Runtime.ExceptionServices/HandleProcessCorruptedStateExceptionsAttribute.cs
 System.Runtime.Hosting/ActivationArguments.cs
 System.Runtime.Hosting/ApplicationActivator.cs
 System.Runtime.InteropServices/_Activator.cs
@@ -1112,6 +1116,8 @@ System.Runtime.Serialization.Formatters.Binary/CodeGenerator.cs
 System.Runtime.Serialization.Formatters.Binary/ObjectReader.cs
 System.Runtime.Serialization.Formatters.Binary/ObjectWriter.cs
 System.Runtime.Serialization.Formatters.Binary/MessageFormatter.cs
+System.Runtime.Versioning/ComponentGuaranteesAttribute.cs
+System.Runtime.Versioning/ComponentGuaranteesOptions.cs
 System.Runtime.Versioning/ResourceConsumptionAttribute.cs
 System.Runtime.Versioning/ResourceExposureAttribute.cs
 System.Runtime.Versioning/ResourceScope.cs
@@ -1215,6 +1221,7 @@ System.Security.AccessControl/RegistryAuditRule.cs
 System.Security.AccessControl/RegistryRights.cs
 System.Security.AccessControl/RegistrySecurity.cs
 System.Security.AccessControl/ResourceType.cs
+System.Security.AccessControl/SddlAccessRight.cs
 System.Security.AccessControl/SecurityInfos.cs
 System.Security.AccessControl/SystemAcl.cs
 ../System.Core/System.Security.Cryptography/Aes.cs
@@ -1418,6 +1425,7 @@ System.Security.Principal/PrincipalPolicy.cs
 System.Security.Principal/SecurityIdentifier.cs
 System.Security.Principal/TokenAccessLevels.cs
 System.Security.Principal/TokenImpersonationLevel.cs
+System.Security.Principal/WellKnownAccount.cs
 System.Security.Principal/WellKnownSidType.cs
 System.Security.Principal/WindowsAccountType.cs
 System.Security.Principal/WindowsBuiltInRole.cs
@@ -1528,7 +1536,6 @@ System.Threading.Tasks/TaskCreationOptions.cs
 System.Threading.Tasks/ThreadWorker.cs
 System.Threading.Tasks/SchedulerProxy.cs
 System.Threading.Tasks/Scheduler.cs
-System.Threading.Tasks/IScheduler.cs
 System.Threading.Tasks/CyclicDeque.cs
 System.Threading.Tasks/TaskScheduler.cs
 System.Threading.Tasks/TaskContinuationOptions.cs
@@ -1541,18 +1548,17 @@ System.Collections.Concurrent/OrderablePartitioner.cs
 System.Collections.Concurrent/ConcurrentDictionary.cs
 System.Collections.Concurrent/Partitioner.cs
 System.Collections.Concurrent/ConcurrentQueue.cs
-System.Collections.Concurrent/ConcurrentSkipList.cs
-System.Collections.Concurrent/Partitioners/ListPartitioner.cs
-System.Collections.Concurrent/Partitioners/EnumerablePartitioner.cs
+System.Collections.Concurrent.Partitioners/ListPartitioner.cs
+System.Collections.Concurrent.Partitioners/EnumerablePartitioner.cs
+System.Collections.Concurrent.Partitioners/UserRangePartitioner.cs
 System.Collections.Concurrent/IProducerConsumerCollection.cs
 System.Collections.Concurrent/ConcurrentStack.cs
 System.Collections.Concurrent/SplitOrderedList.cs
+System.Collections.Concurrent/ConcurrentOrderedList.cs
 System.Threading/LazyInitializer.cs
 System.Threading/CountdownEvent.cs
 System.Threading/CancellationTokenSource.cs
-System.Threading/Snzi.cs
 System.Threading/CancellationToken.cs
-System.Threading/CSnzi.cs
 System.Threading/SpinWait.cs
 System.Threading/SemaphoreSlim.cs
 System.Threading/CancellationTokenRegistration.cs
@@ -1567,4 +1573,6 @@ System.Threading.Tasks/ParallelLoopResult.cs
 System.Threading.Tasks/ParallelLoopState.cs
 System/AggregateException.cs
 System.Threading.Tasks/SimpleConcurrentBag.cs
+System.Threading.Tasks/SynchronizationContextScheduler.cs
 System.Threading.Tasks/UnobservedTaskExceptionEventArgs.cs
+System.Threading.Tasks/TpScheduler.cs

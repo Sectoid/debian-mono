@@ -179,6 +179,12 @@ namespace System.Xml
 			get { return implementation; }
 		}
 
+#if NET_4_0
+		public override string InnerText {
+			set { throw new InvalidOperationException (); }
+		}
+#endif
+
 		public override string InnerXml {
 			get {
 				return base.InnerXml;
@@ -632,7 +638,7 @@ namespace System.Xml
 				return df;
 
 			case XmlNodeType.DocumentType:
-				throw new XmlException ("DocumentType cannot be imported.");
+				return ((XmlDocumentType) node).CloneNode (deep);
 
 			case XmlNodeType.Element:
 				XmlElement src = (XmlElement)node;

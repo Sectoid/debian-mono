@@ -1,3 +1,16 @@
+2011-01-04  Veerapuram Varadhan  <v.varadhan@gmail.com>
+
+	* assembly.c (framework_assemblies): Map System.Transactions to
+	4.0 framework assemblies.
+
+	Fixes #635335
+
+2010-11-03  Martin Baulig  <martin@ximian.com>
+
+	* mono-debug.c (mono_register_symfile_for_assembly): New method.
+	This is used together with mono_register_bundled_assemblies() and
+	mono_register_config_for_assembly() to support bundles.
+
 2010-07-30  Mark Probst  <mark.probst@gmail.com>
 
 	* sgen-archdep.h (ARCH_COPY_SIGCTX_REGS): Add casts to fix

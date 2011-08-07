@@ -1,4 +1,4 @@
-﻿//
+//
 // RuntimeBinderContext.cs
 //
 // Authors:
@@ -34,19 +34,40 @@ namespace Microsoft.CSharp.RuntimeBinder
 {
 	class RuntimeBinderContext : Compiler.IMemberContext
 	{
-		readonly Compiler.CompilerContext ctx;
-		readonly Compiler.TypeSpec currentType;
+		readonly Compiler.ModuleContainer module;
+		readonly Type callingType;
+		readonly DynamicContext ctx;
+		Compiler.TypeSpec callingTypeImported;
 
-		public RuntimeBinderContext (DynamicContext ctx, Compiler.TypeSpec currentType)
+		public RuntimeBinderContext (DynamicContext ctx, Compiler.TypeSpec callingType)
 		{
-			this.ctx = ctx.CompilerContext;
-			this.currentType = currentType;
+			this.ctx = ctx;
+			this.module = ctx.Module;
+			this.callingTypeImported = callingType;
+		}
+
+		public RuntimeBinderContext (DynamicContext ctx, Type callingType)
+		{
+			this.ctx = ctx;
+			this.module = ctx.Module;
+			this.callingType = callingType;
 		}
 
 		#region IMemberContext Members
 
 		public Compiler.TypeSpec CurrentType {
-			get { return currentType; }
+			get {
+				//
+				// Delay importing of calling type to be compatible with .net
+				// Some libraries are setting it to null which is invalid
+				// but the NullReferenceException is thrown only when the context
+				// is used and not during initialization
+				//
+				if (callingTypeImported == null && callingType != null)
+					callingTypeImported = ctx.ImportType (callingType);
+
+				return callingTypeImported;
+			}
 		}
 
 		public Compiler.TypeParameter[] CurrentTypeParameters {
@@ -55,8 +76,7 @@ namespace Microsoft.CSharp.RuntimeBinder
 
 		public Compiler.MemberCore CurrentMemberDefinition {
 			get {
-				// For operators and methods
-				return new Compiler.ModuleContainer (currentType.Assembly);
+				return null;
 			}
 		}
 
@@ -81,7 +101,15 @@ namespace Microsoft.CSharp.RuntimeBinder
 		}
 
 		public bool IsStatic {
-			get { throw new NotImplementedException (); }
+			get {
+				throw new NotImplementedException ();
+			}
+		}
+
+		public Compiler.ModuleContainer Module {
+			get {
+				return module;
+			}
 		}
 
 		public string GetSignatureForError ()
@@ -107,7 +135,7 @@ namespace Microsoft.CSharp.RuntimeBinder
 		}
 
 		public Compiler.CompilerContext Compiler {
-			get { return ctx; }
+			get { return module.Compiler; }
 		}
 
 		#endregion

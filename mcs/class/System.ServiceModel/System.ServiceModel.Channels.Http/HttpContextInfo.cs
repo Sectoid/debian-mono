@@ -164,6 +164,8 @@ namespace System.ServiceModel.Channels.Http
 		public abstract string ContentType { get; }
 		public abstract string HttpMethod { get; }
 		public abstract Stream InputStream { get; }
+		public abstract string ClientIPAddress { get; }
+		public abstract int ClientPort { get; }
 	}
 
 	class HttpStandaloneRequestInfo : HttpRequestInfo
@@ -196,6 +198,12 @@ namespace System.ServiceModel.Channels.Http
 		public override Stream InputStream {
 			get { return req.InputStream; }
 		}
+		public override string ClientIPAddress {
+			get { return req.RemoteEndPoint.Address.ToString (); }
+		}
+		public override int ClientPort {
+			get { return req.RemoteEndPoint.Port; }
+		}
 	}
 
 	class AspNetHttpRequestInfo : HttpRequestInfo
@@ -227,6 +235,12 @@ namespace System.ServiceModel.Channels.Http
 		}
 		public override Stream InputStream {
 			get { return req.InputStream; }
+		}
+		public override string ClientIPAddress {
+			get { return req.UserHostAddress; }
+		}
+		public override int ClientPort {
+			get { return -1; } // cannot retrieve
 		}
 	}
 	
@@ -325,14 +339,15 @@ namespace System.ServiceModel.Channels.Http
 		
 		public override void Abort ()
 		{
-			res.Flush ();
-			res.Close ();
+			res.End ();
 		}
 		
 		public override void Close ()
 		{
-			res.Flush ();
-			res.Close ();
+			// We must not close the response here, as everything is taking place in the
+			// HttpApplication's pipeline context and the output is sent to the client
+			// _after_ we leave this method. Closing the response here will stop any
+			// output from reaching the client.
 		}
 		
 		public override void SetLength (long value)

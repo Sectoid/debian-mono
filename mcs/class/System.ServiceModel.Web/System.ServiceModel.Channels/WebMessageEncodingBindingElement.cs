@@ -41,7 +41,6 @@ namespace System.ServiceModel.Channels
 #endif
 	{
 		Encoding write_encoding;
-		XmlDictionaryReaderQuotas reader_quotas;
 		WebContentTypeMapper content_type_mapper;
 		int max_read_pool_size = 0x10000, max_write_pool_size = 0x10000;
 
@@ -57,9 +56,7 @@ namespace System.ServiceModel.Channels
 			if (writeEncoding == null)
 				throw new ArgumentNullException ("writeEncoding");
 			WriteEncoding = writeEncoding;
-#if !NET_2_1
-			reader_quotas = new XmlDictionaryReaderQuotas ();
-#endif
+			ReaderQuotas = new XmlDictionaryReaderQuotas ();
 		}
 
 		// Properties
@@ -91,9 +88,7 @@ namespace System.ServiceModel.Channels
 			}
 		}
 
-		public XmlDictionaryReaderQuotas ReaderQuotas {
-			get { return reader_quotas; }
-		}
+		public XmlDictionaryReaderQuotas ReaderQuotas { get; internal set; }
 
 		public Encoding WriteEncoding {
 			get { return write_encoding; }

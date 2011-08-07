@@ -1,3 +1,42 @@
+2011-03-12  Lucas Meijer  <lucas@unity3d.com>
+
+	Implmement a private BinaryFormatter.DefaultSurrogateSelector,
+	which enables embedders who want to make a sandbox, to specify a
+	default surrogate selector, which is required to get
+	System.Serialization be able to operate within a CoreCLR
+	environment.
+
+2010-09-24  Kyle Ambroff  <kyle@ambroff.com>
+
+	version tolerant serialization fails with missing primitive
+	members
+
+	Modifies ObjectReader so that when it encounters a primitive typed
+	member in an object stream which has no corresponding member in
+	the app domain, it will read the value anyway and throw it away.
+	That way it can read the next block from the stream.
+
+	Added a unit test which passes with the changes to ObjectReader.
+
+	Fixes bug #641821.
+
+2010-10-20  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Able to read MS serialized nullable<primitive>
+
+	Handle boxed primitive types for nullable fields. Fixes bug
+	#646556.
+
+2010-09-21  Andrés G. Aragoneses  <knocte@gmail.com>
+
+	[corlib] Prevent BinaryFormatter to throw on missing fields
+
+	This commit includes unit tests that were run in MS.NET > 2.0. The
+	old behaviour of MS.NET 1.1 is still included in the patch as an
+	ONLY_1_1 define, to be backport-friendly to other branches (but
+	can be removed from now on in next commits, as mono master doesn't
+	include this profile anymore). Fixes BNC#324144.
+
 2010-08-30  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
 
 	* ObjectWriter.cs: Actually take SerializationBinder.BindToName

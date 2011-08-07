@@ -99,11 +99,12 @@ typedef struct {
 
 void          mono_register_bundled_assemblies (const MonoBundledAssembly **assemblies);
 void          mono_register_config_for_assembly (const char* assembly_name, const char* config_xml);
+void          mono_register_symfile_for_assembly (const char* assembly_name, const mono_byte *raw_contents, int size);
 void	      mono_register_machine_config (const char *config_xml);
 
 void          mono_set_rootdir (void);
 void          mono_set_dirs (const char *assembly_dir, const char *config_dir);
-
+void          mono_set_assemblies_path (const char* path);
 MONO_END_DECLS
 
 #endif

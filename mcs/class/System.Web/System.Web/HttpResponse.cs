@@ -99,6 +99,7 @@ namespace System.Web
 		internal bool use_chunked;
 		
 		bool closed;
+		bool completed;
 		internal bool suppress_content;
 
 		//
@@ -143,7 +144,7 @@ namespace System.Web
 			get {
 				if (!version_header_checked && version_header == null) {
 					version_header_checked = true;
-					HttpRuntimeSection config = WebConfigurationManager.GetWebApplicationSection ("system.web/httpRuntime") as HttpRuntimeSection;
+					HttpRuntimeSection config = HttpRuntime.Section;
 					if (config != null && config.EnableVersionHeader)
 						version_header = Environment.Version.ToString (3);
 				}
@@ -801,6 +802,9 @@ namespace System.Web
 
 		internal void Flush (bool final_flush)
 		{
+			if (completed)
+				throw new HttpException ("Server cannot flush a completed response");
+			
 			DoFilter (final_flush);
 			if (!headers_sent){
 				if (final_flush || status_code != 200)
@@ -814,9 +818,11 @@ namespace System.Web
 				output_stream.Clear ();
 				if (WorkerRequest != null)
 					output_stream.Flush (WorkerRequest, true); // ignore final_flush here.
+				completed = true;
 				return;
 			}
-
+			completed = final_flush;
+			
 			if (!headers_sent)
 				WriteHeaders (final_flush);
 
@@ -871,13 +877,19 @@ namespace System.Web
 				isFullyQualified = false;
 
 			if (!isFullyQualified) {
-				HttpRuntimeSection config = WebConfigurationManager.GetWebApplicationSection ("system.web/httpRuntime") as HttpRuntimeSection;
+				HttpRuntimeSection config = HttpRuntime.Section;
 				if (config != null && config.UseFullyQualifiedRedirectUrl) {
 					var ub = new UriBuilder (context.Request.Url);
-					ub.Path = url;
+					int qpos = url.IndexOf ('?');
+					if (qpos == -1) {
+						ub.Path = url;
+						ub.Query = null;
+					} else {
+						ub.Path = url.Substring (0, qpos);
+						ub.Query = url.Substring (qpos + 1);
+					}
 					ub.Fragment = null;
 					ub.Password = null;
-					ub.Query = null;
 					ub.UserName = null;
 					url = ub.Uri.ToString ();
 				}
@@ -1071,6 +1083,37 @@ namespace System.Web
 			writer.Write (buffer, index, count);
 		}
 
+		bool IsFileSystemDirSeparator (char ch)
+		{
+			return ch == '\\' || ch == '/';
+		}
+		
+		string GetNormalizedFileName (string fn)
+		{
+			if (String.IsNullOrEmpty (fn))
+				return fn;
+
+			// On Linux we don't change \ to / since filenames with \ are valid. We also
+			// don't remove drive: designator for the same reason.
+			int len = fn.Length;
+			if (len >= 3 && fn [1] == ':' && IsFileSystemDirSeparator (fn [2]))
+				return Path.GetFullPath (fn); // drive-qualified absolute file path
+
+			bool startsWithDirSeparator = IsFileSystemDirSeparator (fn [0]);
+			if (len >= 2 && startsWithDirSeparator && IsFileSystemDirSeparator (fn [1]))
+				return Path.GetFullPath (fn); // UNC path
+
+			if (!startsWithDirSeparator) {
+				HttpContext ctx = context ?? HttpContext.Current;
+				HttpRequest req = ctx != null ? ctx.Request : null;
+				
+				if (req != null)
+					return req.MapPath (fn);
+			}
+			
+			return fn; // Or should we rather throw?
+		}
+		
 		internal void WriteFile (FileStream fs, long offset, long size)
 		{
 			byte [] buffer = new byte [32*1024];
@@ -1096,12 +1139,13 @@ namespace System.Web
 			if (filename == null)
 				throw new ArgumentNullException ("filename");
 
+			string fn = GetNormalizedFileName (filename);
 			if (readIntoMemory){
-				using (FileStream fs = File.OpenRead (filename))
+				using (FileStream fs = File.OpenRead (fn))
 					WriteFile (fs, 0, fs.Length);
 			} else {
-				FileInfo fi = new FileInfo (filename);
-				output_stream.WriteFile (filename, 0, fi.Length);
+				FileInfo fi = new FileInfo (fn);
+				output_stream.WriteFile (fn, 0, fi.Length);
 			}
 			if (buffer)
 				return;
@@ -1321,8 +1365,12 @@ namespace System.Web
 
 		internal void ReleaseResources ()
 		{
+			if (completed)
+				return;
+			
 			output_stream.ReleaseResources (true);
-			output_stream = null;
+			Close ();
+			completed = true;
 		}
 	}
 

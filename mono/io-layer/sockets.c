@@ -7,9 +7,10 @@
  * (C) 2002 Ximian, Inc.
  */
 
+#include <config.h>
+
 #ifndef DISABLE_SOCKETS
 
-#include <config.h>
 #include <glib.h>
 #include <pthread.h>
 #include <errno.h>
@@ -53,6 +54,7 @@
 #undef DEBUG
 
 static guint32 startup_count=0;
+static guint32 in_cleanup = 0;
 
 static void socket_close (gpointer handle, gpointer data);
 
@@ -81,7 +83,7 @@ static void socket_close (gpointer handle, gpointer data)
 	g_message ("%s: closing socket handle %p", __func__, handle);
 #endif
 
-	if (startup_count == 0) {
+	if (startup_count == 0 && !in_cleanup) {
 		WSASetLastError (WSANOTINITIALISED);
 		return;
 	}
@@ -102,10 +104,12 @@ static void socket_close (gpointer handle, gpointer data)
 		g_message ("%s: close error: %s", __func__, strerror (errno));
 #endif
 		errnum = errno_to_WSA (errnum, __func__);
-		WSASetLastError (errnum);
+		if (!in_cleanup)
+			WSASetLastError (errnum);
 	}
 
-	socket_handle->saved_error = 0;
+	if (!in_cleanup)
+		socket_handle->saved_error = 0;
 }
 
 int WSAStartup(guint32 requested, WapiWSAData *data)
@@ -155,7 +159,9 @@ int WSACleanup(void)
 		return(0);
 	}
 
+	in_cleanup = 1;
 	_wapi_handle_foreach (WAPI_HANDLE_SOCKET, cleanup_close, NULL);
+	in_cleanup = 0;
 	return(0);
 }
 
@@ -716,15 +722,15 @@ int _wapi_send(guint32 fd, const void *msg, size_t len, int send_flags)
 		g_message ("%s: send error: %s", __func__, strerror (errno));
 #endif
 
+#ifdef O_NONBLOCK
 		/* At least linux returns EAGAIN/EWOULDBLOCK when the timeout has been set on
 		 * a blocking socket. See bug #599488 */
 		if (errnum == EAGAIN) {
-			gboolean nonblock;
-
-			ret = ioctlsocket (fd, FIONBIO, (gulong *) &nonblock);
-			if (ret != SOCKET_ERROR && !nonblock)
+			ret = fcntl (fd, F_GETFL, 0);
+			if (ret != -1 && (ret & O_NONBLOCK) == 0)
 				errnum = ETIMEDOUT;
 		}
+#endif /* O_NONBLOCK */
 		errnum = errno_to_WSA (errnum, __func__);
 		WSASetLastError (errnum);
 		

@@ -517,12 +517,9 @@ mono_arch_get_argument_info (MonoMethodSignature *csig, int param_count, MonoJit
 
 
 gpointer
-mono_arch_get_this_arg_from_call (MonoGenericSharingContext *gsctx, MonoMethodSignature *sig, mgreg_t *regs, guint8 *code)
+mono_arch_get_this_arg_from_call (mgreg_t *regs, guint8 *code)
 {
-	/* FIXME: handle returning a struct */
 	g_assert(regs);
-	if (sig && MONO_TYPE_ISSTRUCT (sig->ret))
-		return (gpointer)regs [mips_a1];
 	return (gpointer)regs [mips_a0];
 }
 
@@ -4388,7 +4385,7 @@ mono_arch_register_lowlevel_calls (void)
 }
 
 void
-mono_arch_patch_code (MonoMethod *method, MonoDomain *domain, guint8 *code, MonoJumpInfo *ji, gboolean run_cctors)
+mono_arch_patch_code (MonoMethod *method, MonoDomain *domain, guint8 *code, MonoJumpInfo *ji, MonoCodeManager *dyn_code_mp, gboolean run_cctors)
 {
 	MonoJumpInfo *patch_info;
 
@@ -5267,6 +5264,8 @@ exception_id_by_name (const char *name)
 		return MONO_EXC_NULL_REF;
 	if (strcmp (name, "ArrayTypeMismatchException") == 0)
 		return MONO_EXC_ARRAY_TYPE_MISMATCH;
+	if (strcmp (name, "ArgumentException") == 0)
+		return MONO_EXC_ARGUMENT;
 	g_error ("Unknown intrinsic exception %s\n", name);
 	return 0;
 }

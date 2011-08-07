@@ -25,6 +25,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -59,6 +60,24 @@ namespace System.Web.Caching
 			InitDebugMode ();
 		}
 
+		void ResizeHeap (int newSize)
+		{
+			CacheItem[] oldHeap = heap;
+			Array.Resize <CacheItem> (ref heap, newSize);
+			heapSize = newSize;
+			
+			// TODO: The code helps the GC in case the array is pinned. In such instance clearing
+			// the old array will release references to the CacheItems stored in there. If the
+			// array is not pinned, otoh, this is a waste of time.
+			// Currently we don't know if the array is pinned or not so it's safer to always clear it.
+			// However when we have more precise stack scanning the code should be
+			// revisited.
+			if (oldHeap != null) {
+				((IList)oldHeap).Clear ();
+				oldHeap = null;
+			}
+		}
+		
 		CacheItem[] GetHeapWithGrow ()
 		{
 			if (heap == null) {
@@ -68,10 +87,8 @@ namespace System.Web.Caching
 				return heap;
 			}
 
-			if (heapCount >= heapSize) {
-				heapSize <<= 1;
-				Array.Resize <CacheItem> (ref heap, heapSize);
-			}
+			if (heapCount >= heapSize)
+				ResizeHeap (heapSize <<= 1);
 
 			return heap;
 		}
@@ -85,7 +102,7 @@ namespace System.Web.Caching
 				int halfTheSize = heapSize >> 1;
 
 				if (heapCount < halfTheSize)
-					Array.Resize <CacheItem> (ref heap, halfTheSize + (heapCount / 3));
+					ResizeHeap (halfTheSize + (heapCount / 3));
 			}
 			
 			return heap;

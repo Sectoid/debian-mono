@@ -133,7 +133,7 @@
 # include <errno.h>
 #endif
 
-#ifdef UNIX_LIKE
+#if defined( UNIX_LIKE ) || defined(NACL)
 # include <fcntl.h>
 #endif
 
@@ -392,7 +392,7 @@ static void *tiny_sbrk(ptrdiff_t increment)
 #define sbrk tiny_sbrk
 # endif /* ECOS */
 
-#if (defined(NETBSD) || defined(OPENBSD)) && defined(__ELF__)
+#if defined(NETBSD) && defined(__ELF__)
   ptr_t GC_data_start;
 
   void GC_init_netbsd_elf()
@@ -403,6 +403,102 @@ static void *tiny_sbrk(ptrdiff_t increment)
 	/* some versions.						*/
     GC_data_start = GC_find_limit((ptr_t)&environ, FALSE);
   }
+#endif
+
+#if defined(OPENBSD)
+  static struct sigaction old_segv_act;
+  sigjmp_buf GC_jmp_buf_openbsd;
+
+# if defined(GC_OPENBSD_THREADS)
+#   include <sys/syscall.h>
+    sigset_t __syscall(quad_t, ...);
+# endif
+
+  /*
+   * Dont use GC_find_limit() because siglongjmp out of the
+   * signal handler by-passes our userland pthreads lib, leaving
+   * SIGSEGV and SIGPROF masked. Instead use this custom one
+   * that works-around the issues.
+   */
+
+    /*ARGSUSED*/
+    void GC_fault_handler_openbsd(int sig)
+    {
+       siglongjmp(GC_jmp_buf_openbsd, 1);
+    }
+
+    /* Return the first nonaddressible location > p or bound   */
+    /* Requires allocation lock.                               */
+    ptr_t GC_find_limit_openbsd(ptr_t p, ptr_t bound)
+    {
+        static volatile ptr_t result;
+               /* Safer if static, since otherwise it may not be       */
+               /* preserved across the longjmp.  Can safely be         */
+               /* static since it's only called with the               */
+               /* allocation lock held.                                */
+        struct sigaction act;
+       size_t pgsz = (size_t)sysconf(_SC_PAGESIZE);
+
+       GC_ASSERT(I_HOLD_LOCK());
+
+        act.sa_handler = GC_fault_handler_openbsd;
+        sigemptyset(&act.sa_mask);
+        act.sa_flags = SA_NODEFER | SA_RESTART;
+        sigaction(SIGSEGV, &act, &old_segv_act);
+
+       if (sigsetjmp(GC_jmp_buf_openbsd, 1) == 0) {
+           result = (ptr_t)(((word)(p)) & ~(pgsz-1));
+           for (;;) {
+               result += pgsz;
+               if (result >= bound) {
+                   result = bound;
+                   break;
+               }
+               GC_noop1((word)(*result));
+           }
+       }
+
+# if defined(GC_OPENBSD_THREADS)
+       /* due to the siglongjump we need to manually unmask SIGPROF */
+       __syscall(SYS_sigprocmask, SIG_UNBLOCK, sigmask(SIGPROF));
+# endif
+
+       sigaction(SIGSEGV, &old_segv_act, 0);
+
+       return(result);
+    }
+
+    /* Return first addressable location > p or bound */
+    /* Requires allocation lock. */
+    ptr_t GC_skip_hole_openbsd(ptr_t p, ptr_t bound)
+    {
+        static volatile ptr_t result;
+        struct sigaction act;
+       size_t pgsz = (size_t)sysconf(_SC_PAGESIZE);
+       static volatile int firstpass;
+
+       GC_ASSERT(I_HOLD_LOCK());
+
+        act.sa_handler = GC_fault_handler_openbsd;
+        sigemptyset(&act.sa_mask);
+        act.sa_flags = SA_NODEFER | SA_RESTART;
+        sigaction(SIGSEGV, &act, &old_segv_act);
+
+       firstpass = 1;
+       result = (ptr_t)(((word)(p)) & ~(pgsz-1));
+       if (sigsetjmp(GC_jmp_buf_openbsd, 1) != 0 || firstpass) {
+           firstpass = 0;
+           result += pgsz;
+           if (result >= bound) {
+               result = bound;
+           } else
+               GC_noop1((word)(*result));
+        }
+
+       sigaction(SIGSEGV, &old_segv_act, 0);
+
+       return(result);
+    }
 #endif
 
 # ifdef OS2
@@ -522,6 +618,12 @@ void GC_enable_signals(void)
     	  /* longjmp implementations.  Most systems appear not to have	*/
     	  /* a signal 32.						*/
 #	define SIGSETMASK(old, new) (old) = sigsetmask(new)
+#   elif defined(NACL)
+	/* We don't use signals in NaCl. */
+#	define SIGSET_T int
+#	define SIG_DEL(set, signal)
+#	define SIG_FILL(set)
+#	define SIGSETMASK(old, new)
 #   else
 	/* Use POSIX/SYSV interface	*/
 #	define SIGSET_T sigset_t
@@ -1021,7 +1123,8 @@ void *GC_set_stackbottom = NULL;
 #endif /* FREEBSD_STACKBOTTOM */
 
 #if !defined(BEOS) && !defined(AMIGA) && !defined(MSWIN32) \
-    && !defined(MSWINCE) && !defined(OS2) && !defined(NOSYS) && !defined(ECOS)
+    && !defined(MSWINCE) && !defined(OS2) && !defined(NOSYS) && !defined(ECOS) \
+    && !defined(GC_OPENBSD_THREADS)
 
 ptr_t GC_get_stack_base()
 {
@@ -1080,6 +1183,25 @@ ptr_t GC_get_stack_base()
 }
 
 # endif /* ! AMIGA, !OS 2, ! MS Windows, !BEOS, !NOSYS, !ECOS */
+
+#if defined(GC_OPENBSD_THREADS)
+
+/* Find the stack using pthread_stackseg_np() */
+
+# include <sys/signal.h>
+# include <pthread.h>
+# include <pthread_np.h>
+        
+#define HAVE_GET_STACK_BASE
+
+ptr_t GC_get_stack_base()
+{
+    stack_t stack;
+    pthread_stackseg_np(pthread_self(), &stack);
+    return stack.ss_sp;
+}
+
+#endif /* GC_OPENBSD_THREADS */
 
 /*
  * Register static data segment(s) as roots.
@@ -1445,6 +1567,31 @@ int * etext_addr;
 
 #else /* !OS2 && !Windows && !AMIGA */
 
+#if defined(OPENBSD)
+
+/*
+ * Depending on arch alignment there can be multiple holes
+ * between DATASTART & DATAEND. Scan from DATASTART - DATAEND
+ * and register each region.
+ */
+void GC_register_data_segments(void)
+{
+  ptr_t region_start, region_end;
+
+  region_start = DATASTART;
+
+  for(;;) {
+    region_end = GC_find_limit_openbsd(region_start, DATAEND);
+    GC_add_roots_inner(region_start, region_end, FALSE);
+    if (region_end < DATAEND)
+       region_start = GC_skip_hole_openbsd(region_end, DATAEND);
+    else
+       break;
+  }
+}
+
+# else /* !OS2 && !Windows && !AMIGA && !OPENBSD */
+
 void GC_register_data_segments()
 {
 #   if !defined(PCR) && !defined(SRC_M3) && !defined(MACOS)
@@ -1504,6 +1651,7 @@ void GC_register_data_segments()
     /* change.								*/
 }
 
+# endif  /* ! OPENBSD */
 # endif  /* ! AMIGA */
 # endif  /* ! MSWIN32 && ! MSWINCE*/
 # endif  /* ! OS2 */
@@ -1925,8 +2073,21 @@ void GC_remap(ptr_t start, word bytes)
       int result; 
 
       if (0 == start_addr) return;
+#ifdef NACL
+      {
+	/* NaCl doesn't expose mprotect, but mmap should work fine */
+	void * mmap_result;
+        mmap_result = mmap(start_addr, len, PROT_READ | PROT_WRITE | OPT_PROT_EXEC,
+		      MAP_PRIVATE | MAP_FIXED | OPT_MAP_ANON,
+		      zero_fd, 0/* offset */);
+        if (mmap_result != (void *)start_addr) ABORT("mmap as mprotect failed");
+        /* Fake the return value as if mprotect succeeded. */
+        result = 0;
+      }
+#else /* NACL */
       result = mprotect(start_addr, len,
 		        PROT_READ | PROT_WRITE | OPT_PROT_EXEC);
+#endif /* NACL */
       if (result != 0) {
 	  GC_err_printf3(
 		"Mprotect failed at 0x%lx (length %ld) with errno %ld\n",
@@ -1970,7 +2131,14 @@ void GC_unmap_gap(ptr_t start1, word bytes1, ptr_t start2, word bytes2)
 	  len -= free_len;
       }
 #   else
-      if (len != 0 && munmap(start_addr, len) != 0) ABORT("munmap failed");
+      if (len != 0) {
+        /* Immediately remap as above. */
+        void * result;
+        result = mmap(start_addr, len, PROT_NONE,
+                      MAP_PRIVATE | MAP_FIXED | OPT_MAP_ANON,
+                      zero_fd, 0/* offset */);
+        if (result != (void *)start_addr) ABORT("mmap(...PROT_NONE...) failed");
+      }
       GC_unmapped_bytes += len;
 #   endif
 }

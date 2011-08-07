@@ -1,3 +1,29 @@
+2011-01-05  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Disabled a racy test
+
+2011-01-05  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Rewrote CacheItemPriorityQueue tests generator to
+	produce simpler test case.
+
+	The new test case uses arrays and postpones creation of
+	CacheItemPriorityQueueTestItem and TestCacheItem instances till
+	the actual test is ran. This reduces complexity of the
+	CacheItemPrioritQueueTest class constructor and allows the code to
+	run successfully on 32 bit machines.
+
+2010-11-19  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Disabled array clearing on heap resize in
+	CacheItemPriorityQueue as it causes NREX to be thrown with > 8192
+	items in the queue.
+
+	- Rewrote the CacheItem priority queue test generator to generate
+	better code. - CacheItem in System.Web doesn't have the unused
+	Guid field now (the field is used only for tests) - Added a huge
+	sequence to CacheItem priority queue tests (10k entries)
+
 2010-02-03  Marek Habersack  <mhabersack@novell.com>
 
 	* CacheItemPriorityQueueTest_generated.cs: added

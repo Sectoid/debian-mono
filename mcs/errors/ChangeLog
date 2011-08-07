@@ -1,3 +1,377 @@
+2011-01-24  Marek Safar  <marek.safar@gmail.com>
+
+	[666476] Use correct parameter count when checking ambiguous
+	params methods
+
+2011-01-11  Marek Safar  <marek.safar@gmail.com>
+
+	Use base type parameters to extract params modifier of virtual
+	method
+
+2011-01-10  Marek Safar  <marek.safar@gmail.com>
+
+	Report correct base modifier for inaccessible protected internal
+	members
+
+2011-01-08  Marek Safar  <marek.safar@gmail.com>
+
+	[663059] Add check for protected modifier in InternalsVisibleTo
+	assembly
+
+2011-01-07  Marek Safar  <marek.safar@gmail.com>
+
+	Better anonymous methods require same parameter types
+
+2011-01-05  Marek Safar  <marek.safar@gmail.com>
+
+	Unify naming convention for all 2.0 files
+
+2011-01-04  Marek Safar  <marek.safar@gmail.com>
+
+	Set build-in types modifiers
+
+2010-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	Update issues error list
+
+2010-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	Implements checking of referenced members with missing references
+
+2010-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	New tests
+
+2010-12-23  Marek Safar  <marek.safar@gmail.com>
+
+	Add new tests
+
+2010-12-22  Marek Safar  <marek.safar@gmail.com>
+
+	Report obsolete warning for generic methods which base
+	implementation constraints are obsolete
+
+2010-12-22  Marek Safar  <marek.safar@gmail.com>
+
+	[660553] Fixed delegate name hiding.
+
+2010-12-14  Marek Safar  <marek.safar@gmail.com>
+
+	Reject automatic version number at major and minor positions
+
+2010-12-14  Marek Safar  <marek.safar@gmail.com>
+
+	[655284] Implemented automatic assembly version numbers
+
+2010-12-14  Marek Safar  <marek.safar@gmail.com>
+
+	[655770] Emit unused members warning for nested types as well
+
+2010-12-14  Marek Safar  <marek.safar@gmail.com>
+
+	Add more restrictions to custom attribute encoding
+
+2010-12-10  Marek Safar  <marek.safar@gmail.com>
+
+	Resolve entire base initializer block in correct context
+
+2010-12-07  Marek Safar  <marek.safar@gmail.com>
+
+	New test
+
+2010-12-06  Marek Safar  <marek.safar@gmail.com>
+
+	Refactor assemblies loading into a base class
+
+2010-12-02  Marek Safar  <marek.safar@gmail.com>
+
+	Don't try to parse invalid namespace declarations, it does more
+	harm than good
+
+2010-12-02  Marek Safar  <marek.safar@gmail.com>
+
+	Move all predefined types to module to work with any mscorlib
+
+2010-12-01  Marek Safar  <marek.safar@gmail.com>
+
+	Move references loading into a new class
+
+2010-11-24  Marek Safar  <marek.safar@gmail.com>
+
+	Recover from broken for statement
+
+2010-11-22  Marek Safar  <marek.safar@gmail.com>
+
+	Updated mcs tests failures
+
+2010-11-21  Marek Safar  <marek.safar@gmail.com>
+
+	Improve handling of netmodules. Fixes #504085
+
+2010-11-19  Marek Safar  <marek.safar@gmail.com>
+
+	Add AssemblySpec to handle all assembly attributes in same way.
+
+2010-11-10  Marek Safar  <marek.safar@gmail.com>
+
+	Unwraped equality operators cannot use a user operator of
+	different types
+
+2010-11-10  Marek Safar  <marek.safar@gmail.com>
+
+	New test.
+
+2010-11-09  Marek Safar  <marek.safar@gmail.com>
+
+	Don't crash on liften null left/right shift
+
+2010-11-08  Marek Safar  <marek.safar@gmail.com>
+
+	New test
+
+2010-11-08  Marek Safar  <marek.safar@gmail.com>
+
+	[651547] Check definitely assigned struct this access correctly.
+
+2010-11-05  Marek Safar  <marek.safar@gmail.com>
+
+	Better 843 error message
+
+2010-11-04  Marek Safar  <marek.safar@gmail.com>
+
+	Allow liften null as a given number of bit positions for shift
+	operator
+
+2010-11-04  Marek Safar  <marek.safar@gmail.com>
+
+	Add boxing for dynamic nullable conversion of coalescing operator
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	Issue a warning about re-assigned locked local variable
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	typeof expression does not need unsafe context for pointer types
+
+2010-10-28  Marek Safar  <marek.safar@gmail.com>
+
+	Add more type parameter checks for inherited constraints.
+
+2010-10-27  Marek Safar  <marek.safar@gmail.com>
+
+	Use correct location for unexpected type parameter
+
+2010-10-26  Marek Safar  <marek.safar@gmail.com>
+
+	Check nested declaring types when testing member overrides
+
+2010-10-25  Marek Safar  <marek.safar@gmail.com>
+
+	Recover from invalid implicit lambda block
+
+2010-10-21  Marek Safar  <marek.safar@gmail.com>
+
+	Update issues list
+
+2010-10-20  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up test files
+
+2010-10-20  Marek Safar  <marek.safar@gmail.com>
+
+	Check for name conflicts between parent members and child block
+	variables
+
+2010-10-20  Marek Safar  <marek.safar@gmail.com>
+
+	More work on ambiguous named arguments
+
+2010-10-19  Marek Safar  <marek.safar@gmail.com>
+
+	Restore altered arguments when overload resolution ends up in
+	dynamic dispatch
+
+2010-10-18  Marek Safar  <marek.safar@gmail.com>
+
+	[512754] Overload resolution with named or optional arguments has
+	to use closest member parameters
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Extension method argument cannot exercise numeric conversion
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Add more dynamic conversion restrictions
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	More tweaks to dynamic overload resolution
+
+2010-10-14  Marek Safar  <marek.safar@gmail.com>
+
+	A conditional expression with either dynamic side is always of
+	dynamic type
+
+2010-10-14  Marek Safar  <marek.safar@gmail.com>
+
+	More conversion tweaks for dynamic in using statement
+
+2010-10-13  Marek Safar  <marek.safar@gmail.com>
+
+	New test
+
+2010-10-12  Marek Safar  <marek.safar@gmail.com>
+
+	More fixes for implicit conversions of nullable types with
+	nullable arguments
+
+2010-10-12  Marek Safar  <marek.safar@gmail.com>
+
+	Keep parsing after invalid contstructor declaration
+
+2010-10-12  Marek Safar  <marek.safar@gmail.com>
+
+	Report correct error message for compound lifted binary operations
+
+2010-10-08  Marek Safar  <marek.safar@gmail.com>
+
+	Allow imported members cache to be setup in 2 phases as compiled
+	one is to deal with generics recursions
+
+2010-10-07  Marek Safar  <marek.safar@gmail.com>
+
+	Fix compound event assigments with dynamic side effect
+
+2010-10-06  Marek Safar  <marek.safar@gmail.com>
+
+	Fix CRLF
+
+2010-10-06  Marek Safar  <marek.safar@gmail.com>
+
+	Verify type parameter constraints type parameters
+
+2010-10-05  Marek Safar  <marek.safar@gmail.com>
+
+	Compare all type arguments for nested generic types.
+
+2010-09-30  Marek Safar  <marek.safar@gmail.com>
+
+	void is never of type object
+
+2010-09-30  Marek Safar  <marek.safar@gmail.com>
+
+	More awkward nullable binary expressions which are not lifted even
+	though they should be
+
+2010-09-29  Marek Safar  <marek.safar@gmail.com>
+
+	Skip inaccessible nested types for member access expressions.
+
+2010-09-29  Marek Safar  <marek.safar@gmail.com>
+
+	Inflate custom site container delegates correctly.
+
+2010-09-25  Marek Safar  <marek.safar@gmail.com>
+
+	Implemented more combinations of nullable boolean logical
+	operators
+
+2010-09-25  Marek Safar  <marek.safar@gmail.com>
+
+	Better error message for syntax error in namespace name
+
+2010-09-21  Marek Safar  <marek.safar@gmail.com>
+
+	New tests.
+
+2010-09-20  Marek Safar  <marek.safar@gmail.com>
+
+	Implement postfix operations involving an implicit user operator.
+
+2010-09-20  Marek Safar  <marek.safar@gmail.com>
+
+	Don't check inferred dynamic type arguments against best candidate
+	constraints.
+
+2010-09-17  Marek Safar  <marek.safar@gmail.com>
+
+	Implement predefined binary enum operators involving an implicit
+	user conversion
+
+2010-09-16  Marek Safar  <marek.safar@gmail.com>
+
+	Recover wrong invalid character constants.
+
+2010-09-15  Raja R Harinath  <harinath@hurrynot.org>
+
+	Fix a few CRLF issues
+
+2010-09-15  Marek Safar  <marek.safar@gmail.com>
+
+	Recover wrong embedded statement syntax
+
+2010-09-14  Marek Safar  <marek.safar@gmail.com>
+
+	Recover wrong invalid initializer syntax.
+
+2010-09-13  Marek Safar  <marek.safar@gmail.com>
+
+	Better error reporting for missing identifiers.
+
+2010-09-10  Marek Safar  <marek.safar@gmail.com>
+
+	Tweak few error reports
+
+2010-09-10  Marek Safar  <marek.safar@gmail.com>
+
+	Converting the switch statement into normal statement (the block
+	part).
+
+2010-09-10  Marek Safar  <marek.safar@gmail.com>
+
+	Reject varianly implemented interface members.
+
+2010-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	Recover from broken single parameter
+
+2010-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	Report precise error about local variable hiding
+
+2010-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	Do all possible mistaken empty statement checks in the parser
+
+2010-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	Try to recover after each wrong statement.
+
+2010-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	__arglist can be used as an expression.
+
+2010-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	The first push to make flow-analysis work for complex blocks.
+
+	All blocks are now strictly hierachical which greatly simplifies
+	many things and fixes many subtle bugs with local names. Removing
+	the block cross references helps scalling when compiling deeply
+	nested blocks or large method bodies including linq. Prepared
+	possible dynamic statements to work with variable declarators.
+
+2010-09-06  Jonathan Pobst  <monkey@jpobst.com>
+
+	Normalize line endings.
+
+2010-09-01  Marek Safar  <marek.safar@gmail.com>
+
+	Add ctor block to field initializers to avoid member lookup at
+	wrong block
+
 2010-08-31  Marek Safar  <marek.safar@gmail.com>
 
 	Add support for indirect pointer type constants.

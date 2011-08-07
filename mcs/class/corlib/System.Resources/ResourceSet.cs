@@ -45,10 +45,15 @@ namespace System.Resources
 		protected IResourceReader Reader;
 		protected Hashtable Table;
 		bool resources_read;
+		[NonSerialized] Hashtable table_nocase;
 
 		[NonSerialized]
 		private bool disposed;
 
+		internal bool IsDisposed {
+			get { return disposed || Reader == null; }
+		}
+		
 		// Constructors
 		protected ResourceSet ()
 		{
@@ -105,6 +110,7 @@ namespace System.Resources
 
 			Reader = null;
 			Table = null;
+			table_nocase = null;
 			disposed = true;
 		}
 
@@ -121,7 +127,7 @@ namespace System.Resources
 		[ComVisible (false)]
 		public virtual IDictionaryEnumerator GetEnumerator ()
 		{
-			if (disposed)
+			if (IsDisposed)
 				throw new ObjectDisposedException ("ResourceSet is closed.");
 			ReadResources ();
 			return Table.GetEnumerator();
@@ -136,23 +142,26 @@ namespace System.Resources
 		{
 			if (name == null)
 				throw new ArgumentNullException ("name");
-			if (disposed)
+			if (IsDisposed)
 				throw new ObjectDisposedException ("ResourceSet is closed.");
+
 			ReadResources ();
 
-			object o = Table [name];
-			if (o != null)
-				return o;
+			if (!ignoreCase)
+				return Table [name];
 
-			if (ignoreCase) {
-				foreach (DictionaryEntry de in Table) {
-					string key = (string) de.Key;
-					if (String.Compare (key, name, true, CultureInfo.InvariantCulture) == 0)
-						return de.Value;
+			if (table_nocase == null) {
+				lock (Table) {
+					if (table_nocase == null) {
+						Hashtable ht = new Hashtable (StringComparer.InvariantCultureIgnoreCase);
+						foreach (DictionaryEntry de in Table) {
+							ht.Add (de.Key, de.Value);
+						}
+						table_nocase = ht;
+					}
 				}
 			}
-
-			return null;
+			return table_nocase [name];
 		}
 
 		public virtual object GetObject (string name)
@@ -195,7 +204,7 @@ namespace System.Resources
 			if (resources_read)
 				return;
 
-			if (Reader == null)
+			if (IsDisposed)
 				throw new ObjectDisposedException ("ResourceSet is closed.");
 			lock (Table) {
 				if (resources_read)
@@ -211,7 +220,7 @@ namespace System.Resources
 
 		internal UnmanagedMemoryStream GetStream (string name, bool ignoreCase)
 		{
-			if (Reader == null)
+			if (IsDisposed)
 				throw new ObjectDisposedException ("ResourceSet is closed.");
 
 			IDictionaryEnumerator i = Reader.GetEnumerator();

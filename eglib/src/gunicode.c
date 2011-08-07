@@ -53,6 +53,9 @@
 #    ifdef HAVE_ICONV_H
 #       include <iconv.h>
 #    endif
+#    ifdef HAVE_LOCALCHARSET_H
+#       include <localcharset.h>
+#    endif
 #endif
 
 static char *my_charset;
@@ -217,8 +220,10 @@ g_convert (const gchar *str, gssize len,
 	
 	convertor = iconv_open (to_codeset, from_codeset);
 	if (convertor == (iconv_t) -1){
-		*bytes_written = 0;
-		*bytes_read = 0;
+		if (bytes_written)
+			*bytes_written = 0;
+		if (bytes_read)
+			*bytes_read = 0;
 		return NULL;
 	}
 
@@ -295,26 +300,28 @@ g_filename_from_utf8 (const gchar *utf8string, gssize len, gsize *bytes_read, gs
 gboolean
 g_get_charset (G_CONST_RETURN char **charset)
 {
+	if (my_charset == NULL) {
 #ifdef G_OS_WIN32
-	static char buf[14];
-	sprintf (buf, "CP%u", GetACP ());
-	*charset = buf;
-	is_utf8 = FALSE;
+		static char buf [14];
+		sprintf (buf, "CP%u", GetACP ());
+		my_charset = buf;
+		is_utf8 = FALSE;
 #else
-	if (my_charset == NULL){
 		/* These shouldn't be heap allocated */
-#if HAVE_LANGINFO_H
+#if HAVE_LOCALCHARSET_H
+		my_charset = locale_charset ();
+#elif defined(HAVE_LANGINFO_H)
 		my_charset = nl_langinfo (CODESET);
 #else
 		my_charset = "UTF-8";
 #endif
 		is_utf8 = strcmp (my_charset, "UTF-8") == 0;
+#endif
 	}
 	
 	if (charset != NULL)
 		*charset = my_charset;
 
-#endif
 	return is_utf8;
 }
 

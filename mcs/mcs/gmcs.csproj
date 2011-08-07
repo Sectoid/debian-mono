@@ -47,6 +47,7 @@
     <Compile Include="..\class\Mono.CompilerServices.SymbolWriter\MonoSymbolTable.cs" />
     <Compile Include="..\class\Mono.CompilerServices.SymbolWriter\MonoSymbolWriter.cs" />
     <Compile Include="argument.cs" />
+    <Compile Include="assembly.cs" />
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="anonymous.cs" />
     <Compile Include="assign.cs" />
@@ -86,6 +87,7 @@
     <Compile Include="parameter.cs" />
     <Compile Include="pending.cs" />
     <Compile Include="property.cs" />
+    <Compile Include="reflection.cs" />
     <Compile Include="report.cs" />
     <Compile Include="rootcontext.cs" />
     <Compile Include="roottypes.cs" />

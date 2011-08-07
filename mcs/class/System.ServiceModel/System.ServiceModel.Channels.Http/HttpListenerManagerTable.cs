@@ -70,16 +70,61 @@ namespace System.ServiceModel.Channels.Http
 
 		public object ServiceHostKey { get; private set; }
 
-		public HttpListenerManager GetOrCreateManager (Uri uri)
+		public HttpListenerManager GetOrCreateManager (Uri uri, HttpTransportBindingElement element)
 		{
 			var m = listeners.FirstOrDefault (p => p.Key.Equals (uri)).Value;
 			if (m == null) {
-				if (ServiceHostingEnvironment.InAspNet)
-					m = new AspNetHttpListenerManager (uri);
-				else
-					m = new HttpStandaloneListenerManager (uri);
-				listeners [uri] = m;
+				// Two special cases
+				string absolutePath = uri.AbsolutePath;
+				if (absolutePath.EndsWith ("/js", StringComparison.Ordinal) ||
+				    absolutePath.EndsWith ("/jsdebug", StringComparison.Ordinal))
+					return CreateListenerManager (uri, element);
+				
+				// Try without the query, if any
+				UriBuilder ub = null;
+				if (!String.IsNullOrEmpty (uri.Query)) {
+					ub = new UriBuilder (uri);
+					ub.Query = null;
+
+					m = listeners.FirstOrDefault (p => p.Key.Equals (ub.Uri)).Value;
+					if (m != null)
+						return m;
+				}
+
+				// Chop off the part following the last / in the absolut path part
+				// of the Uri - this is the operation being called in, the remaining
+				// left-hand side of the absolute path should be the service
+				// endpoint address
+				if (ub == null) {
+					ub = new UriBuilder (uri);
+					ub.Query = null;
+				}
+				
+				int lastSlash = absolutePath.LastIndexOf ('/');
+				if (lastSlash != -1) {
+					ub.Path = absolutePath.Substring (0, lastSlash);
+					m = listeners.FirstOrDefault (p => p.Key.Equals (ub.Uri)).Value;
+					if (m != null)
+						return m;
+				}
 			}
+			
+			if (m == null)
+				return CreateListenerManager (uri, element);
+			
+			return m;
+		}
+
+		HttpListenerManager CreateListenerManager (Uri uri, HttpTransportBindingElement element)
+		{
+			HttpListenerManager m;
+			
+			if (ServiceHostingEnvironment.InAspNet)
+				m = new AspNetHttpListenerManager (uri);
+			else
+				m = new HttpStandaloneListenerManager (uri, element);
+			listeners [uri] = m;
+
 			return m;
 		}
 	}

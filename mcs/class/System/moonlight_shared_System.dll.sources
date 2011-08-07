@@ -71,12 +71,14 @@ System.ComponentModel/TypeConverterAttribute.cs
 System.ComponentModel/TypeConverter_2_1.cs
 System/DefaultUriParser.cs
 System.Diagnostics/Debug_2_1.cs
+System.Diagnostics/Stopwatch.cs
 System/FileStyleUriParser.cs
 System/FtpStyleUriParser.cs
 System/GenericUriParser.cs
 System/GenericUriParserOptions.cs
 System/GopherStyleUriParser.cs
 System/HttpStyleUriParser.cs
+System/Platform.cs
 System/UriIdnScope.cs
 System/UriTypeConverter.cs
 System.IO.Compression/CompressionMode.cs
@@ -117,6 +119,7 @@ System.Net/CookieCollection.cs
 System.Net/CookieContainer.cs
 System.Net/Cookie.cs
 System.Net/CookieException.cs
+System.Net/CookieParser.cs
 System.Net/CredentialCache.cs
 System.Net/DecompressionMethods.cs
 System.Net/DefaultCertificatePolicy.cs

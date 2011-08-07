@@ -85,6 +85,10 @@ double mono_conv_to_r8_un (guint32 a) MONO_INTERNAL;
 
 double mono_lconv_to_r8_un (guint64 a) MONO_INTERNAL;
 
+#if defined(__native_client_codegen__) || defined(__native_client__)
+double mono_fmod(double a, double b) MONO_INTERNAL;
+#endif
+
 gpointer mono_helper_compile_generic_method (MonoObject *obj, MonoMethod *method, gpointer *this_arg) MONO_INTERNAL;
 
 MonoString *mono_helper_ldstr (MonoImage *image, guint32 idx) MONO_INTERNAL;
@@ -162,6 +166,12 @@ MonoException *mono_create_corlib_exception_2 (guint32 token, MonoString *arg1, 
 MonoObject* mono_object_castclass (MonoObject *obj, MonoClass *klass) MONO_INTERNAL;
 
 gpointer mono_get_native_calli_wrapper (MonoImage *image, MonoMethodSignature *sig, gpointer func) MONO_INTERNAL;
+
+MonoObject*
+mono_object_isinst_with_cache (MonoObject *obj, MonoClass *klass, gpointer *cache);
+
+MonoObject*
+mono_object_castclass_with_cache (MonoObject *obj, MonoClass *klass, gpointer *cache);
 
 #endif /* __MONO_JIT_ICALLS_H__ */
 

@@ -107,12 +107,21 @@
 #define REDZONE_SIZE	224
 
 #define ARCH_NUM_REGS 32
+#ifdef __APPLE__
 #define ARCH_STORE_REGS(ptr)	\
 	__asm__ __volatile__(	\
 		"stmw r0, 0(%0)\n"	\
 		:			\
 		: "b" (ptr)		\
 	)
+#else
+#define ARCH_STORE_REGS(ptr)	\
+	__asm__ __volatile__(	\
+		"stmw 0, 0(%0)\n"	\
+		:			\
+		: "b" (ptr)		\
+	)
+#endif
 #define ARCH_SIGCTX_SP(ctx)	(UCONTEXT_REG_Rn((ctx), 1))
 #define ARCH_SIGCTX_IP(ctx)	(UCONTEXT_REG_NIP((ctx)))
 #define ARCH_COPY_SIGCTX_REGS(a,ctx) do {	\
@@ -127,18 +136,14 @@
 
 /* We dont store ip, sp */
 #define ARCH_NUM_REGS 14
-#define ARCH_STORE_REGS(ptr)				\
-	__asm__ __volatile__(				\
-		"ldr r12, %0\n"				\
-		"push {r0}\n"				\
-		"push {r12}\n"				\
-		"stmia r12!, {r0-r11}\n"		\
-		"pop {r0}\n"				\
-		"stmia r12!, {r0, lr}\n"		\
-		"mov r12, r0\n"				\
-		"pop {r0}\n"				\
-		: 					\
-		: "m" (ptr)				\
+#define ARCH_STORE_REGS(ptr)		\
+	__asm__ __volatile__(			\
+		"push {lr}\n"				\
+		"mov lr, %0\n"				\
+		"stmia lr!, {r0-r12}\n"		\
+		"pop {lr}\n"				\
+		:							\
+		: "r" (ptr)					\
 	)
 
 #define ARCH_SIGCTX_SP(ctx)	(UCONTEXT_REG_SP((ctx)))

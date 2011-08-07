@@ -615,7 +615,8 @@ namespace Mono.Data.Tds.Protocol
 			// types if param value is NULL
 			if ((colType == TdsColumnType.BigVarChar || 
 			     colType == TdsColumnType.BigNVarChar ||
-			     colType == TdsColumnType.BigVarBinary) && 
+			     colType == TdsColumnType.BigVarBinary ||
+			     colType == TdsColumnType.Image) && 
 			    (param.Value == null || param.Value == DBNull.Value))
 				size = -1;
 			else
@@ -645,7 +646,8 @@ namespace Mono.Data.Tds.Protocol
 					break;
 				}
 				case "smallmoney": {
-					Decimal val = (decimal) param.Value;
+					// 4 == SqlMoney::MoneyFormat.NumberDecimalDigits
+					Decimal val = Decimal.Round ((decimal) param.Value, 4);
 					if (val < SMALLMONEY_MIN || val > SMALLMONEY_MAX)
 						throw new OverflowException (string.Format (
 							CultureInfo.InvariantCulture,

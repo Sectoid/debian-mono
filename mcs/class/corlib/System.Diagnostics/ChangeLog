@@ -1,3 +1,8 @@
+2011-01-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Change some usages of ArrayList to List<T> to avoid calls to the
+	slow ArrayList.ToArray(Type) method.
+
 2010-03-16  Jb Evain  <jbevain@novell.com>
 
 	* StackFrame.cs: use MOONLIGHT symbol to disambiguate

@@ -38,6 +38,18 @@ using System.IO;
 
 namespace System.Configuration {
 
+	// For configuration document, use this XmlDocument instead of the standard one. This ignores xmlns attribute for MS.
+	internal class ConfigurationXmlDocument : XmlDocument
+	{
+		public override XmlElement CreateElement (string prefix, string localName, string namespaceURI)
+		{
+			if (namespaceURI == "http://schemas.microsoft.com/.NetConfiguration/v2.0")
+				return base.CreateElement (String.Empty, localName, String.Empty);
+			else
+				return base.CreateElement (prefix, localName, namespaceURI);
+		}
+	}
+
 	public sealed class Configuration
 	{		
 		Configuration parent;
@@ -100,7 +112,7 @@ namespace System.Configuration {
 			if (relativePath.StartsWith (relConfigPath, StringComparison.Ordinal))
 				relativePath = relativePath.Substring (relConfigPath.Length);
 
-			ConfigurationLocation loc = Locations.Find (relativePath);
+			ConfigurationLocation loc = Locations.FindBest (relativePath);
 			if (loc == null)
 				return parentConfig;
 			

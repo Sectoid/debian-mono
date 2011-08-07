@@ -50,21 +50,19 @@ namespace System.Net {
 		Version version;
 		NameValueCollection query_string; // check if null is ok, check if read-only, check case-sensitiveness
 		string raw_url;
-		Guid identifier;
 		Uri url;
 		Uri referrer;
 		string [] user_languages;
 		HttpListenerContext context;
 		bool is_chunked;
+		bool ka_set;
+		bool keep_alive;
 		static byte [] _100continue = Encoding.ASCII.GetBytes ("HTTP/1.1 100 Continue\r\n\r\n");
-		static readonly string [] no_body_methods = new string [] {
-			"GET", "HEAD", "DELETE" };
 
 		internal HttpListenerRequest (HttpListenerContext context)
 		{
 			this.context = context;
 			headers = new WebHeaderCollection ();
-			input_stream = Stream.Null;
 			version = HttpVersion.Version10;
 		}
 
@@ -111,10 +109,12 @@ namespace System.Net {
 
 		void CreateQueryString (string query)
 		{
-			query_string = new NameValueCollection ();
-			if (query == null || query.Length == 0)
+			if (query == null || query.Length == 0) {
+				query_string = new NameValueCollection (1);
 				return;
+			}
 
+			query_string = new NameValueCollection ();
 			if (query [0] == '?')
 				query = query.Substring (1);
 			string [] components = query.Split ('&');
@@ -144,7 +144,7 @@ namespace System.Net {
 			if (Uri.MaybeUri (raw_url) && Uri.TryCreate (raw_url, UriKind.Absolute, out raw_uri))
 				path = raw_uri.PathAndQuery;
 			else
-				path = raw_url;
+				path = HttpUtility.UrlDecode (raw_url);
 
 			if ((host == null || host.Length == 0))
 				host = UserHostAddress;
@@ -168,32 +168,25 @@ namespace System.Net {
 
 			CreateQueryString (url.Query);
 
-			string t_encoding = null;
 			if (version >= HttpVersion.Version11) {
-				t_encoding = Headers ["Transfer-Encoding"];
+				string t_encoding = Headers ["Transfer-Encoding"];
+				is_chunked = (t_encoding != null && String.Compare (t_encoding, "chunked", StringComparison.OrdinalIgnoreCase) == 0);
 				// 'identity' is not valid!
-				if (t_encoding != null && t_encoding != "chunked") {
+				if (t_encoding != null && !is_chunked) {
 					context.Connection.SendError (null, 501);
 					return;
 				}
 			}
 
-			is_chunked = (t_encoding == "chunked");
-
-			foreach (string m in no_body_methods)
-				if (string.Compare (method, m, StringComparison.InvariantCultureIgnoreCase) == 0)
-					return;
-
 			if (!is_chunked && !cl_set) {
-				context.Connection.SendError (null, 411);
-				return;
+				if (String.Compare (method, "POST", StringComparison.OrdinalIgnoreCase) == 0 ||
+				    String.Compare (method, "PUT", StringComparison.OrdinalIgnoreCase) == 0) {
+					context.Connection.SendError (null, 411);
+					return;
+				}
 			}
 
-			if (is_chunked || content_length > 0) {
-				input_stream = context.Connection.GetRequestStream (is_chunked, content_length);
-			}
-
-			if (Headers ["Expect"] == "100-continue") {
+			if (String.Compare (Headers ["Expect"], "100-continue", StringComparison.OrdinalIgnoreCase) == 0) {
 				ResponseStream output = context.Connection.GetResponseStream ();
 				output.InternalWrite (_100continue, 0, _100continue.Length);
 			}
@@ -258,22 +251,22 @@ namespace System.Net {
 						if (str.Length == 0)
 							continue;
 						if (str.StartsWith ("$Version")) {
-							version = Int32.Parse (Unquote (str.Substring (str.IndexOf ("=") + 1)));
+							version = Int32.Parse (Unquote (str.Substring (str.IndexOf ('=') + 1)));
 						} else if (str.StartsWith ("$Path")) {
 							if (current != null)
-								current.Path = str.Substring (str.IndexOf ("=") + 1).Trim ();
+								current.Path = str.Substring (str.IndexOf ('=') + 1).Trim ();
 						} else if (str.StartsWith ("$Domain")) {
 							if (current != null)
-								current.Domain = str.Substring (str.IndexOf ("=") + 1).Trim ();
+								current.Domain = str.Substring (str.IndexOf ('=') + 1).Trim ();
 						} else if (str.StartsWith ("$Port")) {
 							if (current != null)
-								current.Port = str.Substring (str.IndexOf ("=") + 1).Trim ();
+								current.Port = str.Substring (str.IndexOf ('=') + 1).Trim ();
 						} else {
 							if (current != null) {
 								cookies.Add (current);
 							}
 							current = new Cookie ();
-							int idx = str.IndexOf ("=");
+							int idx = str.IndexOf ('=');
 							if (idx > 0) {
 								current.Name = str.Substring (0, idx).Trim ();
 								current.Value =  str.Substring (idx + 1).Trim ();
@@ -305,7 +298,10 @@ namespace System.Net {
 			while (true) {
 				// TODO: test if MS has a timeout when doing this
 				try {
-					if (InputStream.Read (bytes, 0, length) <= 0)
+					IAsyncResult ares = InputStream.BeginRead (bytes, 0, length, null, null);
+					if (!ares.IsCompleted && !ares.AsyncWaitHandle.WaitOne (100))
+						return false;
+					if (InputStream.EndRead (ares) <= 0)
 						return true;
 				} catch {
 					return false;
@@ -368,7 +364,16 @@ namespace System.Net {
 		}
 
 		public Stream InputStream {
-			get { return input_stream; }
+			get {
+				if (input_stream == null) {
+					if (is_chunked || content_length > 0)
+						input_stream = context.Connection.GetRequestStream (is_chunked, content_length);
+					else
+						input_stream = Stream.Null;
+				}
+
+				return input_stream;
+			}
 		}
 
 		[MonoTODO ("Always returns false")]
@@ -385,7 +390,26 @@ namespace System.Net {
 		}
 
 		public bool KeepAlive {
-			get { return false; }
+			get {
+				if (ka_set)
+					return keep_alive;
+
+				ka_set = true;
+				// 1. Connection header
+				// 2. Protocol (1.1 == keep-alive by default)
+				// 3. Keep-Alive header
+				string cnc = headers ["Connection"];
+				if (!String.IsNullOrEmpty (cnc)) {
+					keep_alive = (0 == String.Compare (cnc, "keep-alive", StringComparison.OrdinalIgnoreCase));
+				} else if (version == HttpVersion.Version11) {
+					keep_alive = true;
+				} else {
+					cnc = headers ["keep-alive"];
+					if (!String.IsNullOrEmpty (cnc))
+						keep_alive = (0 != String.Compare (cnc, "closed", StringComparison.OrdinalIgnoreCase));
+				}
+				return keep_alive;
+			}
 		}
 
 		public IPEndPoint LocalEndPoint {
@@ -408,8 +432,9 @@ namespace System.Net {
 			get { return context.Connection.RemoteEndPoint; }
 		}
 
+		[MonoTODO ("Always returns Guid.Empty")]
 		public Guid RequestTraceIdentifier {
-			get { return identifier; }
+			get { return Guid.Empty; }
 		}
 
 		public Uri Url {

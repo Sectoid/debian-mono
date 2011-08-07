@@ -59,7 +59,7 @@ namespace Microsoft.Build.BuildEngine {
 		bool no_message_color, use_colors;
 		bool noItemAndPropertyList;
 
-		List<BuildStatusEventArgs> events;
+		List<BuildEvent> events;
 		Dictionary<string, List<string>> errorsTable;
 		Dictionary<string, List<string>> warningsTable;
 		SortedDictionary<string, PerfInfo> targetPerfTable, tasksPerfTable;
@@ -96,7 +96,7 @@ namespace Microsoft.Build.BuildEngine {
 			this.colorSet = colorSet;
 			this.colorReset = colorReset;
 
-			events = new List<BuildStatusEventArgs> ();
+			events = new List<BuildEvent> ();
 			errorsTable = new Dictionary<string, List<string>> ();
 			warningsTable = new Dictionary<string, List<string>> ();
 			targetPerfTable = new SortedDictionary<string, PerfInfo> ();
@@ -197,27 +197,94 @@ namespace Microsoft.Build.BuildEngine {
 		public void ApplyParameter (string parameterName,
 					    string parameterValue)
 		{
-			// FIXME: what we should do here? in msbuild it isn't
-			// changing "parameters" property
+			switch (parameterName) {
+				case "PerformanceSummary":
+					this.performanceSummary = true;
+					break;
+				case "Summary":
+					this.showSummary = true;
+					break;
+				case "NoSummary":
+					this.showSummary = false;
+					break;
+				case "NoItemAndPropertyList":
+					this.noItemAndPropertyList = true;
+					break;
+				default:
+					if (parameterName.StartsWith ("Verbosity="))
+						ParseVerbosity (parameterName);
+					break;
+			}
+		}
+
+		void ParseVerbosity (string s)
+		{
+			string key, value;
+			if (!TrySplitKeyValuePair (s, out key, out value))
+				throw new LoggerException ("Unknown Verbosity, should be set as 'Verbosity=<verbosity>'");
+
+			switch (value) {
+			case "q":
+			case "quiet":
+				Verbosity = LoggerVerbosity.Quiet;
+				break;
+			case "m":
+			case "minimal":
+				Verbosity = LoggerVerbosity.Minimal;
+				break;
+			case "n":
+			case "normal":
+				Verbosity = LoggerVerbosity.Normal;
+				break;
+			case "d":
+			case "detailed":
+				Verbosity = LoggerVerbosity.Detailed;
+				break;
+			case "diag":
+			case "diagnostic":
+				Verbosity = LoggerVerbosity.Diagnostic;
+				break;
+			default:
+				throw new LoggerException (String.Format ("Unknown verbosity - '{0}'", s));
+			}
+		}
+
+		bool TrySplitKeyValuePair (string pair, out string key, out string value)
+		{
+			key = value = null;
+			string[] parts = pair.Split ('=');
+			if (parts.Length != 2)
+				return false;
+
+			key = parts [0];
+			value = parts [1];
+			return true;
 		}
 
 		public virtual void Initialize (IEventSource eventSource)
 		{
 			this.eventSource = eventSource;
 
-                        eventSource.BuildStarted +=  new BuildStartedEventHandler (BuildStartedHandler);
-                        eventSource.BuildFinished += new BuildFinishedEventHandler (BuildFinishedHandler);
-                        eventSource.ProjectStarted += new ProjectStartedEventHandler (ProjectStartedHandler);
-                        eventSource.ProjectFinished += new ProjectFinishedEventHandler (ProjectFinishedHandler);
-                        eventSource.TargetStarted += new TargetStartedEventHandler (TargetStartedHandler);
-                        eventSource.TargetFinished += new TargetFinishedEventHandler (TargetFinishedHandler);
-                        eventSource.TaskStarted += new TaskStartedEventHandler (TaskStartedHandler);
-                        eventSource.TaskFinished += new TaskFinishedEventHandler (TaskFinishedHandler);
-                        eventSource.MessageRaised += new BuildMessageEventHandler (MessageHandler);
-                        eventSource.WarningRaised += new BuildWarningEventHandler (WarningHandler);
-                        eventSource.ErrorRaised += new BuildErrorEventHandler (ErrorHandler);
+			eventSource.BuildStarted += BuildStartedHandler;
+			eventSource.BuildFinished += BuildFinishedHandler;
+
+			eventSource.ProjectStarted += PushEvent;
+			eventSource.ProjectFinished += PopEvent;
+
+			eventSource.TargetStarted += PushEvent;
+			eventSource.TargetFinished += PopEvent;
+
+			eventSource.TaskStarted += PushEvent;
+			eventSource.TaskFinished += PopEvent;
+
+			eventSource.MessageRaised += MessageHandler;
+			eventSource.WarningRaised += WarningHandler;
+			eventSource.ErrorRaised += ErrorHandler;
+
+			if (!String.IsNullOrEmpty (parameters))
+				ParseParameters ();
 		}
-		
+
 		public void BuildStartedHandler (object sender, BuildStartedEventArgs args)
 		{
 			if (IsVerbosityGreaterOrEqual (LoggerVerbosity.Normal)) {
@@ -232,8 +299,27 @@ namespace Microsoft.Build.BuildEngine {
 		
 		public void BuildFinishedHandler (object sender, BuildFinishedEventArgs args)
 		{
+			BuildFinishedHandlerActual (args);
+
+			// Reset
+			events.Clear ();
+			errorsTable.Clear ();
+			warningsTable.Clear ();
+			targetPerfTable.Clear ();
+			tasksPerfTable.Clear ();
+			errors.Clear ();
+			warnings.Clear ();
+
+			indent = 0;
+			errorCount = 0;
+			warningCount = 0;
+			projectFailed = false;
+		}
+
+		void BuildFinishedHandlerActual (BuildFinishedEventArgs args)
+		{
 			if (!IsVerbosityGreaterOrEqual (LoggerVerbosity.Normal)) {
-				PopEvent ();
+				PopEvent (args);
 				return;
 			}
 
@@ -288,8 +374,9 @@ namespace Microsoft.Build.BuildEngine {
 				WriteLine (String.Format ("\t {0} Error(s)", errorCount));
 				WriteLine (String.Empty);
 				WriteLine (String.Format ("Time Elapsed {0}", timeElapsed));
-			} 
-			PopEvent ();
+			}
+
+			PopEvent (args);
 		}
 
 		public void ProjectStartedHandler (object sender, ProjectStartedEventArgs args)
@@ -299,11 +386,9 @@ namespace Microsoft.Build.BuildEngine {
 				WriteLine (String.Format ("Project \"{0}\" ({1} target(s)):", args.ProjectFile,
 							String.IsNullOrEmpty (args.TargetNames) ? "default" : args.TargetNames));
 				ResetColor ();
-				WriteLine (String.Empty);
 				DumpProperties (args.Properties);
 				DumpItems (args.Items);
 			}
-			PushEvent (args);
 		}
 		
 		public void ProjectFinishedHandler (object sender, ProjectFinishedEventArgs args)
@@ -320,8 +405,6 @@ namespace Microsoft.Build.BuildEngine {
 			if (!projectFailed)
 				// no project has failed yet, so update the flag
 				projectFailed = !args.Succeeded;
-
-			PopEvent ();
 		}
 		
 		public void TargetStartedHandler (object sender, TargetStartedEventArgs args)
@@ -329,10 +412,10 @@ namespace Microsoft.Build.BuildEngine {
 			if (IsVerbosityGreaterOrEqual (LoggerVerbosity.Normal)) {
 				indent++;
 				SetColor (eventColor);
+				WriteLine (String.Empty);
 				WriteLine (String.Format ("Target {0}:",args.TargetName));
 				ResetColor ();
 			}
-			PushEvent (args);
 		}
 		
 		public void TargetFinishedHandler (object sender, TargetFinishedEventArgs args)
@@ -347,19 +430,16 @@ namespace Microsoft.Build.BuildEngine {
 				WriteLine (String.Empty);
 			}
 			indent--;
-
-			PopEvent ();
 		}
 		
 		public void TaskStartedHandler (object sender, TaskStartedEventArgs args)
 		{
-			if (this.verbosity == LoggerVerbosity.Detailed) {
+			if (IsVerbosityGreaterOrEqual (LoggerVerbosity.Detailed)) {
 				SetColor (eventColor);
 				WriteLine (String.Format ("Task \"{0}\"",args.TaskName));
 				ResetColor ();
 			}
 			indent++;
-			PushEvent (args);
 		}
 		
 		public void TaskFinishedHandler (object sender, TaskFinishedEventArgs args)
@@ -374,15 +454,16 @@ namespace Microsoft.Build.BuildEngine {
 					WriteLine (String.Format ("Task \"{0}\" execution -- FAILED", args.TaskName));
 				ResetColor ();
 			}
-			PopEvent ();
 		}
 		
 		public void MessageHandler (object sender, BuildMessageEventArgs args)
 		{
 			if (IsMessageOk (args)) {
 				if (no_message_color) {
+					ExecutePendingEventHandlers ();
 					WriteLine (args.Message);
 				} else {
+					ExecutePendingEventHandlers ();
 					SetColor (args.Importance == MessageImportance.High ? highMessageColor : messageColor);
 					WriteLine (args.Message);
 					ResetColor ();
@@ -394,6 +475,7 @@ namespace Microsoft.Build.BuildEngine {
 		{
 			string msg = FormatWarningEvent (args);
 			if (IsVerbosityGreaterOrEqual (LoggerVerbosity.Quiet)) {
+				ExecutePendingEventHandlers ();
 				SetColor (warningColor);
 				WriteLineWithoutIndent (msg);
 				ResetColor ();
@@ -412,6 +494,7 @@ namespace Microsoft.Build.BuildEngine {
 		{
 			string msg = FormatErrorEvent (args);
 			if (IsVerbosityGreaterOrEqual (LoggerVerbosity.Quiet)) {
+				ExecutePendingEventHandlers ();
 				SetColor (errorColor);
 				WriteLineWithoutIndent (msg);
 				ResetColor ();
@@ -436,24 +519,46 @@ namespace Microsoft.Build.BuildEngine {
 				StringBuilder sb = new StringBuilder ();
 				for (int i = 0; i < indent; i++)
 					sb.Append ('\t');
-				sb.Append (message);
 
-				writeHandler (sb.ToString ());
+				string indent_str = sb.ToString ();
+
+				foreach (string line in message.Split (new string[] {Environment.NewLine}, StringSplitOptions.RemoveEmptyEntries))
+					writeHandler (indent_str + line);
 			} else {
 				writeHandler (message);
 			}
 		}
 
-		void PushEvent (BuildStatusEventArgs args)
+		void PushEvent<T> (object sender, T args) where T: BuildStatusEventArgs
 		{
-			events.Add (args);
+			PushEvent (args);
+		}
+
+		void PushEvent<T> (T args) where T: BuildStatusEventArgs
+		{
+			BuildEvent be = new BuildEvent {
+				EventArgs = args,
+				StartHandlerHasExecuted = false,
+				ConsoleLogger = this
+			};
+
+			events.Add (be);
 			current_events_string = null;
 		}
 
-		void PopEvent ()
+		void PopEvent<T> (object sender, T finished_args) where T: BuildStatusEventArgs
 		{
+			PopEvent (finished_args);
+		}
+
+		void PopEvent<T> (T finished_args) where T: BuildStatusEventArgs
+		{
+			if (events.Count == 0)
+				throw new InvalidOperationException ("INTERNAL ERROR: Trying to pop from an empty events stack");
+
+			BuildEvent be = events [events.Count - 1];
 			if (performanceSummary || verbosity == LoggerVerbosity.Diagnostic) {
-				var args = events [events.Count - 1];
+				var args = be.EventArgs;
 				TargetStartedEventArgs tgt_args = args as TargetStartedEventArgs;
 				if (tgt_args != null) {
 					AddPerfInfo (tgt_args.TargetName, args.Timestamp, targetPerfTable);
@@ -464,8 +569,15 @@ namespace Microsoft.Build.BuildEngine {
 				}
 			}
 
+			be.ExecuteFinishedHandler (finished_args);
 			events.RemoveAt (events.Count - 1);
 			current_events_string = null;
+		}
+
+		void ExecutePendingEventHandlers ()
+		{
+			foreach (var be in events)
+				be.ExecuteStartedHandler ();
 		}
 
 		string EventsToString ()
@@ -474,7 +586,7 @@ namespace Microsoft.Build.BuildEngine {
 
 			string last_imported_target_file = String.Empty;
 			for (int i = 0; i < events.Count; i ++) {
-				var args = events [i];
+				var args = events [i].EventArgs;
 				ProjectStartedEventArgs pargs = args as ProjectStartedEventArgs;
 				if (pargs != null) {
 					sb.AppendFormat ("{0} ({1}) ->\n", pargs.ProjectFile,
@@ -558,21 +670,8 @@ namespace Microsoft.Build.BuildEngine {
 		private void ParseParameters ()
 		{
 			string[] splittedParameters = parameters.Split (';');
-			foreach (string s in splittedParameters ) {
-				switch (s) {
-				case "PerformanceSummary":
-					this.performanceSummary = true;
-					break;
-				case "NoSummary":
-					this.showSummary = false;
-					break;
-				case "NoItemAndPropertyList":
-					this.noItemAndPropertyList = true;
-					break;
-				default:
-					throw new ArgumentException ("Invalid parameter : " + s);
-				}
-			}
+			foreach (string s in splittedParameters )
+				ApplyParameter (s, null);
 		}
 		
 		public virtual void Shutdown ()
@@ -580,14 +679,18 @@ namespace Microsoft.Build.BuildEngine {
 			if (eventSource == null)
 				return;
 
-			eventSource.BuildStarted -=  BuildStartedHandler;
+			eventSource.BuildStarted -= BuildStartedHandler;
 			eventSource.BuildFinished -= BuildFinishedHandler;
-			eventSource.ProjectStarted -= ProjectStartedHandler;
-			eventSource.ProjectFinished -= ProjectFinishedHandler;
-			eventSource.TargetStarted -= TargetStartedHandler;
-			eventSource.TargetFinished -= TargetFinishedHandler;
-			eventSource.TaskStarted -= TaskStartedHandler;
-			eventSource.TaskFinished -= TaskFinishedHandler;
+
+			eventSource.ProjectStarted -= PushEvent;
+			eventSource.ProjectFinished -= PopEvent;
+
+			eventSource.TargetStarted -= PushEvent;
+			eventSource.TargetFinished -= PopEvent;
+
+			eventSource.TaskStarted -= PushEvent;
+			eventSource.TaskFinished -= PopEvent;
+
 			eventSource.MessageRaised -= MessageHandler;
 			eventSource.WarningRaised -= WarningHandler;
 			eventSource.ErrorRaised -= ErrorHandler;
@@ -673,7 +776,7 @@ namespace Microsoft.Build.BuildEngine {
 				return;
 
 			SetColor (eventColor);
-			WriteLine ("\n");
+			WriteLine (String.Empty);
 			WriteLine ("Initial Properties:");
 			ResetColor ();
 
@@ -686,7 +789,6 @@ namespace Microsoft.Build.BuildEngine {
 
 			foreach (KeyValuePair<string, string> pair in dict)
 				WriteLine (String.Format ("{0} = {1}", pair.Key, pair.Value));
-			WriteLine ("\n");
 		}
 
 		void DumpItems (IEnumerable items)
@@ -695,7 +797,7 @@ namespace Microsoft.Build.BuildEngine {
 				return;
 
 			SetColor (eventColor);
-			WriteLine ("\n");
+			WriteLine (String.Empty);
 			WriteLine ("Initial Items:");
 			ResetColor ();
 			if (items == null)
@@ -717,7 +819,6 @@ namespace Microsoft.Build.BuildEngine {
 					WriteLine (item.ItemSpec);
 				indent--;
 			}
-			WriteLine ("\n");
 		}
 
 		public string Parameters {
@@ -728,8 +829,6 @@ namespace Microsoft.Build.BuildEngine {
 				if (value == null)
 					throw new ArgumentNullException ();
 				parameters = value;
-				if (parameters != String.Empty)
-					ParseParameters ();
 			}
 		}
 
@@ -759,6 +858,44 @@ namespace Microsoft.Build.BuildEngine {
 		protected WriteHandler WriteHandler {
 			get { return writeHandler; }
 			set { writeHandler = value; }
+		}
+	}
+
+	class BuildEvent {
+		public BuildStatusEventArgs EventArgs;
+		public bool StartHandlerHasExecuted;
+		public ConsoleLogger ConsoleLogger;
+
+		public void ExecuteStartedHandler ()
+		{
+			if (StartHandlerHasExecuted)
+				return;
+
+			if (EventArgs is ProjectStartedEventArgs)
+				ConsoleLogger.ProjectStartedHandler (null, (ProjectStartedEventArgs)EventArgs);
+			else if (EventArgs is TargetStartedEventArgs)
+				ConsoleLogger.TargetStartedHandler (null, (TargetStartedEventArgs)EventArgs);
+			else if (EventArgs is TaskStartedEventArgs)
+				ConsoleLogger.TaskStartedHandler (null, (TaskStartedEventArgs)EventArgs);
+			else if (!(EventArgs is BuildStartedEventArgs))
+				throw new InvalidOperationException ("Unexpected event on the stack, type: " + EventArgs.GetType ());
+
+			StartHandlerHasExecuted = true;
+		}
+
+		public void ExecuteFinishedHandler (BuildStatusEventArgs finished_args)
+		{
+			if (!StartHandlerHasExecuted)
+				return;
+
+			if (EventArgs is ProjectStartedEventArgs)
+				ConsoleLogger.ProjectFinishedHandler (null, finished_args as ProjectFinishedEventArgs);
+			else if (EventArgs is TargetStartedEventArgs)
+				ConsoleLogger.TargetFinishedHandler (null, finished_args as TargetFinishedEventArgs);
+			else if (EventArgs is TaskStartedEventArgs)
+				ConsoleLogger.TaskFinishedHandler (null, finished_args as TaskFinishedEventArgs);
+			else if (!(EventArgs is BuildStartedEventArgs))
+				throw new InvalidOperationException ("Unexpected event on the stack, type: " + EventArgs.GetType ());
 		}
 	}
 

@@ -138,6 +138,39 @@ mono_liveness_handle_exception_clauses (MonoCompile *cfg)
 {
 	MonoBasicBlock *bb;
 	GSList *visited = NULL;
+	MonoMethodHeader *header = cfg->header;
+	MonoExceptionClause *clause, *clause2;
+	int i, j;
+	gboolean *outer_try;
+
+	/* 
+	 * Determine which clauses are outer try clauses, i.e. they are not contained in any
+	 * other non-try clause.
+	 */
+	outer_try = mono_mempool_alloc0 (cfg->mempool, sizeof (gboolean) * header->num_clauses);
+	for (i = 0; i < header->num_clauses; ++i)
+		outer_try [i] = TRUE;
+	/* Iterate over the clauses backward, so outer clauses come first */
+	/* This avoids doing an O(2) search, since we can determine when inner clauses end */
+	for (i = header->num_clauses - 1; i >= 0; --i) {
+		clause = &header->clauses [i];
+
+		if (clause->flags != 0) {
+			outer_try [i] = TRUE;
+			/* Iterate over inner clauses */
+			for (j = i - 1; j >= 0; --j) {
+				clause2 = &header->clauses [j];
+
+				if (clause2->flags == 0 && MONO_OFFSET_IN_HANDLER (clause, clause2->try_offset)) {
+					outer_try [j] = FALSE;
+					break;
+				}
+				if (clause2->try_offset < clause->try_offset)
+					/* End of inner clauses */
+					break;
+			}
+		}
+	}
 
 	/*
 	 * Variables in exception handler register cannot be allocated to registers
@@ -149,8 +182,14 @@ mono_liveness_handle_exception_clauses (MonoCompile *cfg)
 	 */
 	for (bb = cfg->bb_entry; bb; bb = bb->next_bb) {
 
-		if (bb->region == -1 || MONO_BBLOCK_IS_IN_REGION (bb, MONO_REGION_TRY))
+		if (bb->region == -1)
 			continue;
+
+		if (MONO_BBLOCK_IS_IN_REGION (bb, MONO_REGION_TRY) && outer_try [MONO_REGION_CLAUSE_INDEX (bb->region)])
+			continue;
+
+		if (cfg->verbose_level > 2)
+			printf ("pessimize variables in bb %d.\n", bb->block_num);
 
 		visit_bb (cfg, bb, &visited);
 	}
@@ -725,13 +764,14 @@ mono_linterval_split (MonoCompile *cfg, MonoLiveInterval *interval, MonoLiveInte
 	}
 }
 
-#ifdef ENABLE_LIVENESS2
-
-#if 0
-#define LIVENESS_DEBUG(a) do { a; } while (0)
+#if 1
+#define LIVENESS_DEBUG(a) do { if (cfg->verbose_level > 1) do { a; } while (0); } while (0)
+#define ENABLE_LIVENESS_DEBUG 1
 #else
 #define LIVENESS_DEBUG(a)
 #endif
+
+#ifdef ENABLE_LIVENESS2
 
 static inline void
 update_liveness2 (MonoCompile *cfg, MonoInst *ins, gboolean set_volatile, int inst_num, gint32 *last_use)
@@ -924,6 +964,172 @@ mono_analyze_liveness2 (MonoCompile *cfg)
 #endif
 
 	g_free (last_use);
+}
+
+#endif
+
+#ifdef HAVE_SGEN_GC
+
+#define ALIGN_TO(val,align) ((((guint64)val) + ((align) - 1)) & ~((align) - 1))
+
+static inline void
+update_liveness_gc (MonoCompile *cfg, MonoBasicBlock *bb, MonoInst *ins, gint32 *last_use, MonoMethodVar **vreg_to_varinfo, GSList **callsites)
+{
+	if (ins->opcode == OP_GC_LIVENESS_DEF || ins->opcode == OP_GC_LIVENESS_USE) {
+		int vreg = ins->inst_c1;
+		MonoMethodVar *vi = vreg_to_varinfo [vreg];
+		int idx = vi->idx;
+		int pc_offset = ins->backend.pc_offset;
+
+		LIVENESS_DEBUG (printf ("\t%x: ", pc_offset); mono_print_ins (ins));
+
+		if (ins->opcode == OP_GC_LIVENESS_DEF) {
+			if (last_use [idx] > 0) {
+				LIVENESS_DEBUG (printf ("\tadd range to R%d: [%x, %x)\n", vreg, pc_offset, last_use [idx]));
+				last_use [idx] = 0;
+			}
+		} else {
+			if (last_use [idx] == 0) {
+				LIVENESS_DEBUG (printf ("\tlast use of R%d set to %x\n", vreg, pc_offset));
+				last_use [idx] = pc_offset;
+			}
+		}
+	} else if (ins->opcode == OP_GC_PARAM_SLOT_LIVENESS_DEF) {
+		GCCallSite *last;
+
+		/* Add it to the last callsite */
+		g_assert (*callsites);
+		last = (*callsites)->data;
+		last->param_slots = g_slist_prepend_mempool (cfg->mempool, last->param_slots, ins);
+	} else if (ins->flags & MONO_INST_GC_CALLSITE) {
+		GCCallSite *callsite = mono_mempool_alloc0 (cfg->mempool, sizeof (GCCallSite));
+		int i;
+
+		LIVENESS_DEBUG (printf ("\t%x: ", ins->backend.pc_offset); mono_print_ins (ins));
+		LIVENESS_DEBUG (printf ("\t\tlive: "));
+
+		callsite->bb = bb;
+		callsite->liveness = mono_mempool_alloc0 (cfg->mempool, ALIGN_TO (cfg->num_varinfo, 8) / 8);
+		callsite->pc_offset = ins->backend.pc_offset;
+		for (i = 0; i < cfg->num_varinfo; ++i) {
+			if (last_use [i] != 0) {
+				LIVENESS_DEBUG (printf ("R%d", MONO_VARINFO (cfg, i)->vreg));
+				callsite->liveness [i / 8] |= (1 << (i % 8));
+			}
+		}
+		LIVENESS_DEBUG (printf ("\n"));
+		*callsites = g_slist_prepend_mempool (cfg->mempool, *callsites, callsite);
+	}
+}
+
+static inline int
+get_vreg_from_var (MonoCompile *cfg, MonoInst *var)
+{
+	if (var->opcode == OP_REGVAR)
+		/* dreg contains a hreg, but inst_c0 still contains the var index */
+		return MONO_VARINFO (cfg, var->inst_c0)->vreg;
+	else
+		/* dreg still contains the vreg */
+		return var->dreg;
+}
+
+/*
+ * mono_analyze_liveness_gc:
+ *
+ *   Compute liveness bitmaps for each call site.
+ * This function is a modified version of mono_analyze_liveness2 ().
+ */
+void
+mono_analyze_liveness_gc (MonoCompile *cfg)
+{
+	int idx, i, j, nins, rem, max, max_vars, block_from, block_to, pos, reverse_len;
+	gint32 *last_use;
+	MonoInst **reverse;
+	MonoMethodVar **vreg_to_varinfo = NULL;
+	MonoBasicBlock *bb;
+	GSList *callsites;
+
+	LIVENESS_DEBUG (printf ("\n------------ GC LIVENESS: ----------\n"));
+
+	max_vars = cfg->num_varinfo;
+	last_use = g_new0 (gint32, max_vars);
+
+	/*
+	 * var->inst_c0 no longer contains the variable index, so compute a mapping now.
+	 */
+	vreg_to_varinfo = g_new0 (MonoMethodVar*, cfg->next_vreg);
+	for (idx = 0; idx < max_vars; ++idx) {
+		MonoMethodVar *vi = MONO_VARINFO (cfg, idx);
+
+		vreg_to_varinfo [vi->vreg] = vi;
+	}
+
+	reverse_len = 1024;
+	reverse = mono_mempool_alloc (cfg->mempool, sizeof (MonoInst*) * reverse_len);
+
+	for (bb = cfg->bb_entry; bb; bb = bb->next_bb) {
+		MonoInst *ins;
+
+		block_from = bb->real_native_offset;
+		block_to = bb->native_offset + bb->native_length;
+
+		LIVENESS_DEBUG (printf ("GC LIVENESS BB%d:\n", bb->block_num));
+
+		if (!bb->code)
+			continue;
+
+		memset (last_use, 0, max_vars * sizeof (gint32));
+		
+		/* For variables in bb->live_out, set last_use to block_to */
+
+		rem = max_vars % BITS_PER_CHUNK;
+		max = ((max_vars + (BITS_PER_CHUNK -1)) / BITS_PER_CHUNK);
+		for (j = 0; j < max; ++j) {
+			gsize bits_out;
+			int k;
+
+			if (!bb->live_out_set)
+				/* The variables used in this bblock are volatile anyway */
+				continue;
+
+			bits_out = mono_bitset_get_fast (bb->live_out_set, j);
+			k = (j * BITS_PER_CHUNK);	
+			while (bits_out) {
+				if ((bits_out & 1) && cfg->varinfo [k]->flags & MONO_INST_GC_TRACK) {
+					int vreg = get_vreg_from_var (cfg, cfg->varinfo [k]);
+					LIVENESS_DEBUG (printf ("Var R%d live at exit, last_use set to %x.\n", vreg, block_to));
+					last_use [k] = block_to;
+				}
+				bits_out >>= 1;
+				k ++;
+			}
+		}
+
+		for (nins = 0, pos = block_from, ins = bb->code; ins; ins = ins->next, ++nins, ++pos) {
+			if (nins >= reverse_len) {
+				int new_reverse_len = reverse_len * 2;
+				MonoInst **new_reverse = mono_mempool_alloc (cfg->mempool, sizeof (MonoInst*) * new_reverse_len);
+				memcpy (new_reverse, reverse, sizeof (MonoInst*) * reverse_len);
+				reverse = new_reverse;
+				reverse_len = new_reverse_len;
+			}
+
+			reverse [nins] = ins;
+		}
+
+		/* Process instructions backwards */
+		callsites = NULL;
+		for (i = nins - 1; i >= 0; --i) {
+			MonoInst *ins = (MonoInst*)reverse [i];
+
+			update_liveness_gc (cfg, bb, ins, last_use, vreg_to_varinfo, &callsites);
+		}
+		/* The callsites should already be sorted by pc offset because we added them backwards */
+		bb->gc_callsites = callsites;
+	}
+
+	g_free (last_use);
+	g_free (vreg_to_varinfo);
 }
 
 #endif

@@ -637,19 +637,19 @@ namespace System.Linq
 			int counter = 0;
 			using (var enumerator = source.GetEnumerator ())
 				while (enumerator.MoveNext ())
-					counter++;
+					checked { counter++; }
 
 			return counter;
 		}
 
-		public static int Count<TSource> (this IEnumerable<TSource> source, Func<TSource, bool> selector)
+		public static int Count<TSource> (this IEnumerable<TSource> source, Func<TSource, bool> predicate)
 		{
-			Check.SourceAndSelector (source, selector);
+			Check.SourceAndSelector (source, predicate);
 
 			int counter = 0;
 			foreach (var element in source)
-				if (selector (element))
-					counter++;
+				if (predicate (element))
+					checked { counter++; }
 
 			return counter;
 		}
@@ -1262,13 +1262,13 @@ namespace System.Linq
 			return counter;
 		}
 
-		public static long LongCount<TSource> (this IEnumerable<TSource> source, Func<TSource, bool> selector)
+		public static long LongCount<TSource> (this IEnumerable<TSource> source, Func<TSource, bool> predicate)
 		{
-			Check.SourceAndSelector (source, selector);
+			Check.SourceAndSelector (source, predicate);
 
 			long counter = 0;
 			foreach (TSource element in source)
-				if (selector (element))
+				if (predicate (element))
 					counter++;
 
 			return counter;
@@ -2163,18 +2163,16 @@ namespace System.Linq
 			if (count < 0)
 				throw new ArgumentOutOfRangeException ("count");
 
-			long upto = ((long) start + count) - 1;
-
-			if (upto > int.MaxValue)
+			if (((long) start + count) - 1L > int.MaxValue)
 				throw new ArgumentOutOfRangeException ();
 
-			return CreateRangeIterator (start, (int) upto);
+			return CreateRangeIterator (start, count);
 		}
 
-		static IEnumerable<int> CreateRangeIterator (int start, int upto)
+		static IEnumerable<int> CreateRangeIterator (int start, int count)
 		{
-			for (int i = start; i <= upto; i++)
-				yield return i;
+			for (int i = 0; i < count; i++)
+				yield return start + i;
 		}
 
 		#endregion
@@ -2208,12 +2206,10 @@ namespace System.Linq
 
 		static IEnumerable<TSource> CreateReverseIterator<TSource> (IEnumerable<TSource> source)
 		{
-			var list = source as IList<TSource>;
-			if (list == null)
-				list = new List<TSource> (source);
+			var array = source.ToArray ();
 
-			for (int i = list.Count - 1; i >= 0; i--)
-				yield return list [i];
+			for (int i = array.Length - 1; i >= 0; i--)
+				yield return array [i];
 		}
 
 		#endregion
@@ -2285,11 +2281,11 @@ namespace System.Linq
 		}
 
 		public static IEnumerable<TResult> SelectMany<TSource, TCollection, TResult> (this IEnumerable<TSource> source,
-			Func<TSource, IEnumerable<TCollection>> collectionSelector, Func<TSource, TCollection, TResult> selector)
+			Func<TSource, IEnumerable<TCollection>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector)
 		{
-			Check.SourceAndCollectionSelectors (source, collectionSelector, selector);
+			Check.SourceAndCollectionSelectors (source, collectionSelector, resultSelector);
 
-			return CreateSelectManyIterator (source, collectionSelector, selector);
+			return CreateSelectManyIterator (source, collectionSelector, resultSelector);
 		}
 
 		static IEnumerable<TResult> CreateSelectManyIterator<TSource, TCollection, TResult> (IEnumerable<TSource> source,
@@ -2301,11 +2297,11 @@ namespace System.Linq
 		}
 
 		public static IEnumerable<TResult> SelectMany<TSource, TCollection, TResult> (this IEnumerable<TSource> source,
-			Func<TSource, int, IEnumerable<TCollection>> collectionSelector, Func<TSource, TCollection, TResult> selector)
+			Func<TSource, int, IEnumerable<TCollection>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector)
 		{
-			Check.SourceAndCollectionSelectors (source, collectionSelector, selector);
+			Check.SourceAndCollectionSelectors (source, collectionSelector, resultSelector);
 
-			return CreateSelectManyIterator (source, collectionSelector, selector);
+			return CreateSelectManyIterator (source, collectionSelector, resultSelector);
 		}
 
 		static IEnumerable<TResult> CreateSelectManyIterator<TSource, TCollection, TResult> (IEnumerable<TSource> source,
@@ -2972,7 +2968,7 @@ namespace System.Linq
 
 		#endregion
 		
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		#region Zip
 		
 		public static IEnumerable<TResult> Zip<TFirst, TSecond, TResult> (this IEnumerable<TFirst> first, IEnumerable<TSecond> second, Func<TFirst, TSecond, TResult> resultSelector)

@@ -1,3 +1,82 @@
+2011-06-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Support RemoteEndpointMessageProperty.
+
+2011-05-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Now our HttpListener can listen to wildcard prefix safely.
+
+	Fixed server part of bug #687580.
+
+2011-04-23  Atsushi Eno  <atsushi@ximian.com>
+
+	Log HTTP reply Message too. Make logging customizible on under the
+	moon.
+
+	Logging is done only when requested by
+	MOON_WCF_TRACE=[stdout|stderr] environment variable.
+
+2011-04-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Prepare for HostNameComparisonMode support (i.e. incomplete).
+
+	This is for bugfix #687580.
+
+2011-04-15  Atsushi Eno  <atsushi@ximian.com>
+
+	One more step to enable WCF diagnostics in Logger, and add
+	HttpReplyChannel log.
+
+2011-02-17  Atsushi Eno  <atsushi@ximian.com>
+
+	HTTP authentication in HttpListener had dropped during
+	refactoring. Now it's back.
+
+2010-11-09  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf] AJAX GET requests work now.
+
+	HttpListenerManagerTable always looked up HttpListerManager
+	instances using the full URI while it should have disregarded the
+	/operation?parameters part of the request in order to match the
+	service endpoint's base address.
+
+2010-10-20  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf] make /js and /jsdebug dispatchers work.
+
+	There were several issues here:
+
+	- The IChannelDispatcherBoundListener was defined twice, in two
+	different namespaces, and it caused code in
+	ChannelDispatcher.Attach not to set its associated listener's
+	ChannelDispatcher property to the correct value. This, in turn,
+	caused incorrect HttpListenerManagerTable operation, where it
+	would put the "/js" and "/jsdebug" dispatchers in separate
+	HttpListenerManagers, instead of in the main (base) service's one.
+	- After fixing the above, it turned out that SvcHttpHandler
+	selected the manager based on the host's base address, when it
+	should first try to find one whose URL matches the current request
+	exactly.
+
+2010-10-18  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf] Don't close HTTP response prematurely.
+
+	Service is invoked in the context of the System.Web pipeline and
+	closing the response before the final output stream flush causes
+	the generated response not to ever reach the client. This patch
+	makes sure the System.Web pipeline takes care of all the response
+	housekeeping.
+
+2010-10-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove extra call to HttpResponse.Flush() which would crash.
+
+2010-09-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Filter requests only by paths, excluding host and port.
+
 2010-08-30  Atsushi Eno  <atsushi@ximian.com>
 
 	Add not-working code for TransferMode support.

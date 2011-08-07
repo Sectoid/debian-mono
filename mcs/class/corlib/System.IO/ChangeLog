@@ -1,3 +1,155 @@
+2011-04-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	In *AllLines use WriteLine instead of Write.
+
+	This fixes bug #689670.
+
+2011-04-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[runtime,IO] Filesystem entries can only be sought for in
+	directories, not files.
+
+2011-03-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Revert "Fix a typo in Directory.GetFiles ()"
+
+	This reverts commit 5bbd6c23f8c5931788ff11722283384639ffbcf0.
+
+2011-03-28  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix a typo in Directory.GetFiles ()
+
+	The mask never matched the attributes and all files were
+	discarded. This fixes bug #683203.
+
+2011-03-23  Miguel de Icaza  <miguel@gnome.org>
+
+	OSX, Win32: Implements support for DriveInfo
+
+	This implements support for DriveInfo for OSX and Windows.
+
+	On OSX we use statfs system call that provides the filesystem type
+	information that we need. On Linux, we continue to fallback to
+	mtab parsing
+
+2011-03-08  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Avoid null refs when capacity set to 0
+
+	This fixes bug #676060.
+
+2011-03-07  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add 2 missing 4.0 APIs to the MOBILE profile
+
+2011-02-24  Steve Bjorg  <steve.bjorg@gmail.com>
+
+	TextReader.Null should return "" on ReadToEnd()
+
+2011-02-24  Miguel de Icaza  <miguel@gnome.org>
+
+	Add default implementations to ReadLine() and ReadToEnd() to
+	TextReader, fixes 655934
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
+2011-01-06  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[windows] Improve drive search
+
+	Windows allows "A", "A:", @"a:\"... as synonyms for the same
+	drive. Patch by Vincent Povirk that fixes bug #660911.
+
+2011-01-06  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Windows] Implement GetDrives.
+
+	Drive names are ok, but the type is always 'Fixed'. Fixes bug
+	#660907.
+
+2011-01-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Change some usages of ArrayList to List<T> to avoid calls to the
+	slow ArrayList.ToArray(Type) method.
+
+2011-01-03  Miguel de Icaza  <miguel@gnome.org>
+
+	[mscorlib] New Path.Combine methods are exposed internally on pre
+	4.0 profiles
+
+	This allows our mscorlib code to be cleaner
+
+2010-11-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[File.ReadLines] Dispose the StreamReader in the right place.
+
+	The StreamReader was being disposed immediately after the call to
+	ReadLines() causing the enumerator to fails.
+
+	Fixes bug #649464.
+
+2010-11-04  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* FileStream.cs: Move anonymous assignation earlier so the value
+	is available when validation are made (and calls other methods)
+
+2010-10-29  Alex Fort  <imphasing@gmail.com>
+
+	Don't use a buffer size of 1 for zero-length buffers
+
+	Using a size of 1 for zero length buffers causes (on linux) the
+	last character to be eaten by the buffer until the next flush.
+
+2010-10-27  Alex Fort  <imphasing@gmail.com>
+
+	[Fix] Don't enforce a minimum size for zero-length buffers, fixing
+	#645193
+
+	InitBuffer was forcing the length of any buffer smaller than 8 to
+	be 8, but for zero-size buffers, this isn't correct.
+
+2010-10-24  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	BinaryWriter.BaseStream calls Flush()
+
+	Before returning the base stream, BinaryWriter.BaseStream calls
+	Flush on it. Added test for this.
+
+	Fixes bug #647948.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Warnings cleanup
+
+2010-10-07  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix CryptoStream.Dispose
+
+	-Dispose will call TransformFinalBlock() for Read streams. Fixes
+	bug #644648. -Dispose () will call Dispose (bool). Fixes bug
+	#644654. -Stream.Close calls GC.SuppressFinalize(). Fixes bug
+	#644660.
+
+2010-09-10  Jb Evain  <jbevain@gmail.com>
+
+	Add FileStream.Flush(bool) to the moonlight profile
+
+2010-09-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Use UTF8 instead of ASCII when reading mount info
+
+	This allows for mount points with UTF8 characters in them.
+
+2010-09-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Linux /proc/mounts might have escaped characters
+
+	Translate escaped characters in mount paths.
+
+	Fixes bug #637078.
+
 2010-05-27  William Holmes  <billholmes54@gmail.com>
 
 	* Directory.cs (ValidateDirectoryListing): Removing an unnecessary

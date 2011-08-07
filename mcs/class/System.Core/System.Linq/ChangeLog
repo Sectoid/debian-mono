@@ -1,3 +1,45 @@
+2011-06-23  Jb Evain  <jbevain@gmail.com>
+
+	Fix queryable enumerable expression transformation
+
+2011-06-23  Jb Evain  <jbevain@gmail.com>
+
+	Don't emit null queryable constants when rewriting linq queries,
+	fix #701187
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
+2011-01-26  Jb Evain  <jbevain@gmail.com>
+
+	[linq] Fix Reverse for IList implementors
+
+2011-01-25  Jb Evain  <jbevain@gmail.com>
+
+	[linq] Fix overflow check for Count
+
+2011-01-25  Jb Evain  <jbevain@gmail.com>
+
+	[linq] fix Range extreme boundaries
+
+2010-12-30  Jb Evain  <jbevain@gmail.com>
+
+	[LINQ] Fix non generic AsQueryable issue #661462
+
+2010-12-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Sys.Core parameters fixup
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Some .net 4.0 api compatibility fixes
+
+2010-12-09  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Detect when AsParallel is called multiple time in a query
+	and simply reuse the existing ParallelQuery object
+
 2010-08-26  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	[PLinq] Add dummy GetEnumerator override in OrderedParallelQuery

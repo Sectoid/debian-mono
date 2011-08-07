@@ -1,3 +1,46 @@
+2011-03-08  Miguel de Icaza  <miguel@gnome.org>
+
+	[System.Json] Fix loader.
+
+	The current loader failed with some Json strings due to the
+	implementation of the BufferedStreamReader. Removed that
+	implementation completely, and instead depend on the StreamReader
+	to do the actual BOM detection.
+
+	This removes the JavaScriptObjectDeserializer.cs file
+
+2010-10-15  Andreia Gaita  <shana@jitted.com>
+
+	[Json] Add support for calling external json (de)serialization
+	methods
+
+	On Moonlight, ScriptObject types have custom (de)serialization
+	methods that need to be called whenever a user object includes
+	properties of that type. This patch creates a TypeMap subclass
+	(ExternalTypeMap) and exposes a method that can be called from
+	moon's System.Windows.Browser to register custom serialization and
+	deserialization methods, keyed by type. These are called whenever
+	a property is found with a type (or base type) that has custom
+	methods registered.
+
+2010-09-13  Atsushi Eno  <atsushi@ximian.com>
+
+	implemented large parts of WCF standard endpoints and
+	configuration support.
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Fix the mobile_System.ServiceModel.Web include
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Factorize the System.ServiceModel.Web monotouch and monodroid
+	sources into a mobile.sources
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System.ServiceModel.Web build for monodroid
+
 2010-03-12  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* net_2_0_System.ServiceModel.Web.dll.sources,

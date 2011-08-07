@@ -1,3 +1,36 @@
+2011-04-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[socket] Fixed other BeginConnect overloads
+
+	The BeginConnect overload taking an IPAddress[] was not really
+	asynchronous.
+
+2010-09-29  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System.Net.Sockets/SocketTest.cs: Add parameter validation
+	test cases for both ReceiveAsync and SendAsync
+
+2010-09-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System.Net.Sockets/SocketTest.cs: Add test case where
+	buffers can be set to 0 under Windows (but has a 256 bytes minimum
+	on Linux)
+
+2010-09-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	LocalEndPoint works now for non-blocking connects
+
+	We didn't keep the endpoint around for non-blocking connects and
+	later, when Poll() was called, we didn't have the information.
+	Also 'isbound' wasn't being set in a few places and UDP sockets
+	needed to be marked as not connected after a call to Connect()
+	with an Any address.
+
+	Removed an old test for Connect(Any) with UDP sockets, since this
+	is used to disconnect them now.
+
+	Fixes bug #640749.
+
 2009-09-26  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* SocketAsyncEventArgsTest.cs: New. Unit tests

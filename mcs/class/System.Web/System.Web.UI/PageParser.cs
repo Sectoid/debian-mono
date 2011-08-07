@@ -404,9 +404,12 @@ namespace System.Web.UI
 			value = GetString (atts, "MasterPageFile", masterPage != null ? masterPage.Value : null);
 			if (!String.IsNullOrEmpty (value)) {
 				if (!BaseParser.IsExpression (value)) {
-					if (!HostingEnvironment.VirtualPathProvider.FileExists (value))
+					value = System.Web.VirtualPathUtility.Combine(BaseVirtualDir, value);
+					var vpp = HostingEnvironment.VirtualPathProvider;
+					if (!vpp.FileExists (value))
 						ThrowParseFileNotFound (value);
-					AddDependency (value);
+					value = vpp.CombineVirtualPaths (VirtualPath.Absolute, VirtualPathUtility.ToAbsolute (value));
+					AddDependency (value, false);
 					masterPage = new MainDirectiveAttribute <string> (value, true);
 				} else
 					masterPage = new MainDirectiveAttribute <string> (value);
@@ -492,7 +495,7 @@ namespace System.Web.UI
 					if (!HostingEnvironment.VirtualPathProvider.FileExists (virtualPath))
 						ThrowParseFileNotFound (virtualPath);
 
-					AddDependency (virtualPath);
+					AddDependency (virtualPath, true);
 					if (isMasterType)
 						masterVirtualPath = virtualPath;
 					else

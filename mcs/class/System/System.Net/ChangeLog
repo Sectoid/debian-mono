@@ -1,3 +1,351 @@
+2011-07-06  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	Load the correct type on MacOSX (as opposed to iOS)
+
+2011-07-05  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	Implemented a shared way to detect MacOSX for System.dll
+
+2011-07-05  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	Doh, do proper OSX detection
+
+2011-07-05  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	Use runtime checks to decide to use
+	CoreFoundation.CFNetwork.GetDefaultProxy()
+
+2011-07-05  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	On MonoTouch, call CoreFoundation.CFNetwork.GetDefaultProxy() to
+	get the default proxy
+
+2011-06-28  Jackson Harper  <jacksonh@gmail.com>
+
+	We can accidently swallow out of FD errors here since this
+	function is called from a threadpool thread.
+
+2011-05-02  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Don't set NoDelay twice.
+
+2011-04-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix prefix selection
+
+	We were picking the wrong prefix when the URL matched the path.
+	Fixes bug #688860.
+
+2011-04-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Support FTP + RETR + proxy
+
+	Fixes bug #690887.
+
+2011-04-29  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[webclient] Process uri.UserInfo when present
+
+	If there are no crendetials, the Uri might have them. Based on a
+	patch by QuickJack. Fixes bug #688007.
+
+2011-04-19  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] Fix matching directories
+
+	/foo was not properly matched. Fixes bug #688353.
+
+2011-04-18  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpWebRequest] Fix half-baked commit
+
+	Fixes bug #688100.
+
+2011-04-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[webclient] Only set the credentials when they are not null.
+
+	Setting the credentials to null makes FtpWebRequest throw. Fixes
+	bug #688007.
+
+2011-04-09  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpWebRequest] Ignore Transfer-Encoding when there's no content.
+
+	If the transfer encoding was set to chunked, we tried to read even
+	when the response might known to have no content. This led to
+	timeouts.
+
+	Fixes bug #686371.
+
+2011-04-06  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpWebResponse] Close and Dispose are different beasts.
+
+	After calling Close () on response you are still allowed to access
+	its properties. Calling Dispose() causes the usual exception to be
+	thrown when accessing the properties.
+
+	Fixes bug #685368.
+
+2011-03-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] request.Url.Original string matches MS now.
+
+	Fixes bug #681548.
+
+2011-03-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] Match exceptions from MS on cleanup.
+
+	When the listener is aborted or closed, we get different
+	exceptions depending on whether there's a GetContext() call in
+	progress or not.
+
+2011-03-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] Fix keep-alive connections
+
+	We were removing the connection in the wrong place. Also unbind
+	the context in other error situations like a read failure after
+	the headers are in.
+
+2011-03-14  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] Avoid contention
+
+	-Lock-free reads from registered listeners. -Don't register the
+	context until *all* the setup steps are done.
+
+2011-03-11  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] Paranoid cleanup
+
+2011-03-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpWebRequest] Only uppercase known methods
+
+2011-03-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Socket] Remove more auto-delegates
+
+2011-03-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Socket] Minimize allocations of delegates
+
+2011-03-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] Avoid blocking in FlushInput
+
+2011-03-11  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] Plug leak.
+
+2011-02-15  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] Close idle connections on Stop()
+
+	Idle connections that never received any data or had ever been
+	associated to a listener are properly closed now when the endpoint
+	is closed or the last listener they used is closed. Fixes a bunch
+	of tests in System.ServiceModel.
+
+2011-03-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] Memory use reductions
+
+2011-01-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpWebRequest] Support 4.0 Host property.
+
+2011-03-08  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Turn the method to upper case.
+
+	Fixes bug #675731.
+
+2011-02-14  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] UserHostName includes the port.
+
+2011-02-14  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpWebRequest] EndGetResponse already does this.
+
+2011-02-13  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpWebRequest] Use the timeout in GetResponse()
+
+	The timeout was not being used in GetResponse. Fixes bug #603794.
+
+2011-02-13  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpWebRequest] Avoid nullref on empty cookie header.
+
+	If the Set-Cookie header is empty, the cookie instance is not
+	created. Fixes bug #670189.
+
+2011-02-13  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListenre] Avoid multiple calls to Close()
+
+	HttpListenerResponse could be calling HttpConnection.Close() more
+	than once.
+
+2011-02-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpWebRequest] Can't ignore erros here
+
+2011-02-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpWebRequest] Error handling for POST/PUT
+
+	When we get an error from the server before writing an entire
+	unbuffered response, the server might close the connection leading
+	to write errors. Ignore those and return the actual HTTP status
+	code from the original server error.
+
+2011-01-31  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Allow forcing HTTP protocol version
+
+	If the version is manually set, ignore the version from the
+	service point when set.
+
+	Fixes bug #668199.
+
+2011-01-27  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] Set each cookie in its own header
+
+	Send a Set-Cookie header per cookie instead of a Set-Cookie2 with
+	multiple cookies.
+
+	Fixes bug #667550.
+
+2011-01-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] Fix incorrect 411 error
+
+	Don't send a 411 for unknown methods without content length. No
+	need to assign input_stream until requested.
+
+	Fixes bug #666251.
+
+2010-12-06  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Workaround bug in AcquireWriterLock
+
+	AcquireWriteLock should be the same as UpgradeToWriterLock when
+	the thread is already a reader.
+
+	Fixes bug #656850.
+
+2010-11-20  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] Reduce the code inside lock {}
+
+	Avoid nesting locks when they are not needed.
+
+2010-11-20  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] Use RWL instead of lock()
+
+	Most of the time we just want to read the prefixes instead of
+	adding/removing one.
+
+2010-11-05  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net/CookieParser.cs: Add more common/shared code *
+	System.Net/HttpWebResponse.cs: Move out CookieParser class and
+	some utility methods so they can be shared with Moonlight http
+	client stack
+
+2010-11-01  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Avoid killing the thread if socket already null
+
+	In some weird cases socket is null when we try to close it.
+
+2010-10-31  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	More StringComparison.Ordinal
+
+	Use StringComparison.Ordinal when calling IndexOf to find the
+	index of an ASCII string.
+
+2010-10-31  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Use ordinal comparison when looking for "::"
+
+	This should fix 650355, but it might just hide the actual problem
+	which seems to be related to loading CJK encodings data.
+
+2010-10-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Send Keep-Alive when reusing
+
+	Send Keep-Alive headers when reusing a connection and limit reuses
+	to 100.
+
+2010-10-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Add connection timers and reuses
+
+	Use a timer to handle read timeouts and extend reuses to regular
+	connections, not just chunked. The timer is set to 90s for the
+	first request and 15s for subsequent requests.
+
+2010-10-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Implemente HttpListenerRequest.KeepAlive
+
+	Ditto.
+
+2010-10-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Use SocketAsyncEventArgs
+
+	BeginAccept/EndAccept replaced by AcceptAsync.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
+2010-10-12  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Add preliminary HTTPS handling support for Android.
+
+	The problem is that Android only exposes Java APIs for ~everything
+	of consequence, including/especially X509 Certificate validation.
+	Since we want Mono-based HTTPS support to use the underlying
+	platform certificates, this requires some amount of Java-using
+	glue. However, we don't want to pull in a ton of Java glue into
+	System.dll (bleh!), so we'll instead place the glue into
+	Mono.Android.dll's
+	Android.Runtime.AndroidEnvironment.TrustEvaluateSsl(), and instead
+	create a delegate which will invoke TrustEvaluateSsl() when
+	needed.
+
+2010-10-07  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Expose ICredentialsByHost on NetworkCredential in the MOBILE
+	profiles
+
+2010-10-04  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Set have_response
+
+	Set have_response to true when there's a protocol error or a
+	previous exception for POST/PUT. Patch by Bassam Tabbara.
+
+2010-09-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Create only 1 callback instance for read/write
+
+	Read/Write were creating one callback instance per call. Now we
+	keep the same delegate around for all the calls.
+
 2010-09-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Invoke the callback in separate threads
@@ -6,6 +354,12 @@
 	clogging the IO pool.
 
 	Fixes bug #639656.
+
+2010-09-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net/IPAddress.cs: ScopeId can only be set on IPv6 or it
+	throws a SocketException (not an Exception). ScopeId is also
+	limited from 0 to 2^32.
 
 2010-09-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
@@ -19,6 +373,15 @@
 
 	Why on earth this wasn't found earlier? $20 reward to whoever
 	gives a plausible explanation.
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System build for monodroid
+
+2010-09-03  Jb Evain  <jbevain@gmail.com>
+
+	Fix the visiblity of WebExceptionStatus for moonlight in the same
+	way as WebException
 
 2010-09-01  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 

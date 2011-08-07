@@ -1,6 +1,19 @@
 using System.Reflection;
 using System.Runtime.Serialization;
 
+#if !MOBILE
+namespace System.Runtime.CompilerServices
+{
+	// introduced for silverlight sdk compatibility
+	internal class FriendAccessAllowedAttribute : Attribute
+	{
+		public FriendAccessAllowedAttribute ()
+		{
+		}
+	}
+}
+#endif
+
 namespace System.ServiceModel
 {
 	public class EndpointIdentity {}
@@ -42,7 +55,6 @@ namespace System.ServiceModel.Description
 	public interface IPolicyImportExtension {}
 	public interface IWsdlExportExtension {}
 	public interface IWsdlImportExtension {}
-	public interface IContractBehavior {}
 
 	// introduced for silverlight sdk compatibility
 	internal class ServiceReflector
@@ -81,11 +93,18 @@ namespace System.ServiceModel.DiagnosticUtility
 }
 namespace System.ServiceModel.Dispatcher
 {
+	public class EndpointDispatcher
+	{
+		internal EndpointDispatcher ()
+		{
+		}
+	}
 }
 namespace System.ServiceModel.Security
 {
 	class Dummy {}
 }
+#if !MOBILE
 namespace System.Net.Security
 {
 	public enum ProtectionLevel {None}
@@ -102,4 +121,4 @@ namespace Mono.Xml.XPath
 {
 	class Dummy {}
 }
-
+#endif

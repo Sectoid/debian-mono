@@ -1,3 +1,29 @@
+2011-04-28  Atsushi Eno  <atsushi@ximian.com>
+
+	support <service>-less wsdls in svcutil. Look for portTypes
+	instead.
+
+2011-01-05  Atsushi Eno  <atsushi@ximian.com>
+
+	AssemblyPath support, patch by Michel Faucault.
+
+2010-10-22  Atsushi Eno  <atsushi@ximian.com>
+
+	We can use ImportAllEndpoints().
+
+2010-10-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Since event arg type name can be EventArgs1, do not match by type
+	name. Check rather base type instead.
+
+2010-10-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Async end operation needs cast.
+
+2010-10-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove ExtensionData from moonlight proxy.
+
 2010-03-04  Jonathan Pryor  <jpryor@novell.com>
 
 	* Driver.cs, CommandLineOptions.cs: Remove Mono.GetOptions use and use

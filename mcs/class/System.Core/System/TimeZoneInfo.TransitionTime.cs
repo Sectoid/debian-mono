@@ -24,7 +24,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#if (INSIDE_CORLIB && (NET_4_0 || BOOTSTRAP_NET_4_0 || MOONLIGHT)) || (MONOTOUCH && !INSIDE_CORLIB) || (NET_3_5 && !NET_4_0 && !BOOTSTRAP_NET_4_0)
+#if (INSIDE_CORLIB && (NET_4_0 || MOONLIGHT || MOBILE)) || (!INSIDE_CORLIB && (NET_3_5 && !NET_4_0 && !MOBILE))
 
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
@@ -34,9 +34,9 @@ namespace System
 	public sealed partial class TimeZoneInfo 
 	{
 		[SerializableAttribute]
-#if NET_4_0 || BOOTSTRAP_NET_4_0
+#if NET_4_0
 		[TypeForwardedFrom (Consts.AssemblySystemCore_3_5)]
-#elif MOONLIGHT
+#elif MOONLIGHT || MOBILE
 		[TypeForwardedFrom (Consts.AssemblySystem_Core)]
 #endif
 		public struct TransitionTime : IEquatable<TimeZoneInfo.TransitionTime>, ISerializable, IDeserializationCallback
@@ -193,10 +193,10 @@ namespace System
 				throw new NotImplementedException ();
 			}
 	
-			public override bool Equals (object other)
+			public override bool Equals (object obj)
 			{
-				if (other is TransitionTime)
-					return this == (TransitionTime) other;
+				if (obj is TransitionTime)
+					return this == (TransitionTime) obj;
 				return false;
 			}
 

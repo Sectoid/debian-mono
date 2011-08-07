@@ -240,6 +240,7 @@ ICALL(ENV_2, "GetCommandLineArgs", mono_runtime_get_main_args)
 ICALL(ENV_3, "GetEnvironmentVariableNames", ves_icall_System_Environment_GetEnvironmentVariableNames)
 ICALL(ENV_4, "GetLogicalDrivesInternal", ves_icall_System_Environment_GetLogicalDrives )
 ICALL(ENV_5, "GetMachineConfigPath", ves_icall_System_Configuration_DefaultConfig_get_machine_config_path)
+ICALL(ENV_51, "GetNewLine", ves_icall_System_Environment_get_NewLine)
 ICALL(ENV_6, "GetOSVersionString", ves_icall_System_Environment_GetOSVersionString)
 ICALL(ENV_6a, "GetPageSize", mono_pagesize)
 ICALL(ENV_7, "GetWindowsFolderPath", ves_icall_System_Environment_GetWindowsFolderPath)
@@ -247,7 +248,6 @@ ICALL(ENV_8, "InternalSetEnvironmentVariable", ves_icall_System_Environment_Inte
 ICALL(ENV_9, "get_ExitCode", mono_environment_exitcode_get)
 ICALL(ENV_10, "get_HasShutdownStarted", ves_icall_System_Environment_get_HasShutdownStarted)
 ICALL(ENV_11, "get_MachineName", ves_icall_System_Environment_get_MachineName)
-ICALL(ENV_12, "get_NewLine", ves_icall_System_Environment_get_NewLine)
 ICALL(ENV_13, "get_Platform", ves_icall_System_Environment_get_Platform)
 ICALL(ENV_14, "get_ProcessorCount", mono_cpu_count)
 ICALL(ENV_15, "get_TickCount", mono_msec_ticks)
@@ -297,7 +297,8 @@ ICALL(REGINF_2, "construct_internal_region_from_name", ves_icall_System_Globaliz
 #ifndef PLATFORM_NO_DRIVEINFO
 ICALL_TYPE(IODRIVEINFO, "System.IO.DriveInfo", IODRIVEINFO_1)
 ICALL(IODRIVEINFO_1, "GetDiskFreeSpaceInternal", ves_icall_System_IO_DriveInfo_GetDiskFreeSpace)
-ICALL(IODRIVEINFO_2, "GetDriveTypeInternal", ves_icall_System_IO_DriveInfo_GetDriveType)
+ICALL(IODRIVEINFO_2, "GetDriveFormat", ves_icall_System_IO_DriveInfo_GetDriveFormat)
+ICALL(IODRIVEINFO_3, "GetDriveTypeInternal", ves_icall_System_IO_DriveInfo_GetDriveType)
 #endif
 
 ICALL_TYPE(FAMW, "System.IO.FAMWatcher", FAMW_1)
@@ -441,12 +442,12 @@ ICALL (SOCK_6a, "Disconnect_internal(intptr,bool,int&)", ves_icall_System_Net_So
 ICALL(SOCK_7, "GetSocketOption_arr_internal(intptr,System.Net.Sockets.SocketOptionLevel,System.Net.Sockets.SocketOptionName,byte[]&,int&)", ves_icall_System_Net_Sockets_Socket_GetSocketOption_arr_internal)
 ICALL(SOCK_8, "GetSocketOption_obj_internal(intptr,System.Net.Sockets.SocketOptionLevel,System.Net.Sockets.SocketOptionName,object&,int&)", ves_icall_System_Net_Sockets_Socket_GetSocketOption_obj_internal)
 ICALL(SOCK_9, "Listen_internal(intptr,int,int&)", ves_icall_System_Net_Sockets_Socket_Listen_internal)
-ICALL(SOCK_10, "LocalEndPoint_internal(intptr,int&)", ves_icall_System_Net_Sockets_Socket_LocalEndPoint_internal)
+ICALL(SOCK_10, "LocalEndPoint_internal(intptr,int,int&)", ves_icall_System_Net_Sockets_Socket_LocalEndPoint_internal)
 ICALL(SOCK_11, "Poll_internal", ves_icall_System_Net_Sockets_Socket_Poll_internal)
 ICALL(SOCK_11a, "Receive_internal(intptr,System.Net.Sockets.Socket/WSABUF[],System.Net.Sockets.SocketFlags,int&)", ves_icall_System_Net_Sockets_Socket_Receive_array_internal)
 ICALL(SOCK_12, "Receive_internal(intptr,byte[],int,int,System.Net.Sockets.SocketFlags,int&)", ves_icall_System_Net_Sockets_Socket_Receive_internal)
 ICALL(SOCK_13, "RecvFrom_internal(intptr,byte[],int,int,System.Net.Sockets.SocketFlags,System.Net.SocketAddress&,int&)", ves_icall_System_Net_Sockets_Socket_RecvFrom_internal)
-ICALL(SOCK_14, "RemoteEndPoint_internal(intptr,int&)", ves_icall_System_Net_Sockets_Socket_RemoteEndPoint_internal)
+ICALL(SOCK_14, "RemoteEndPoint_internal(intptr,int,int&)", ves_icall_System_Net_Sockets_Socket_RemoteEndPoint_internal)
 ICALL(SOCK_15, "Select_internal(System.Net.Sockets.Socket[]&,int,int&)", ves_icall_System_Net_Sockets_Socket_Select_internal)
 ICALL(SOCK_15a, "SendFile(intptr,string,byte[],byte[],System.Net.Sockets.TransmitFileOptions)", ves_icall_System_Net_Sockets_Socket_SendFile)
 ICALL(SOCK_16, "SendTo_internal(intptr,byte[],int,int,System.Net.Sockets.SocketFlags,System.Net.SocketAddress,int&)", ves_icall_System_Net_Sockets_Socket_SendTo_internal)
@@ -456,6 +457,7 @@ ICALL(SOCK_18, "SetSocketOption_internal(intptr,System.Net.Sockets.SocketOptionL
 ICALL(SOCK_19, "Shutdown_internal(intptr,System.Net.Sockets.SocketShutdown,int&)", ves_icall_System_Net_Sockets_Socket_Shutdown_internal)
 ICALL(SOCK_20, "Socket_internal(System.Net.Sockets.AddressFamily,System.Net.Sockets.SocketType,System.Net.Sockets.ProtocolType,int&)", ves_icall_System_Net_Sockets_Socket_Socket_internal)
 ICALL(SOCK_21, "WSAIoctl(intptr,int,byte[],byte[],int&)", ves_icall_System_Net_Sockets_Socket_WSAIoctl)
+ICALL(SOCK_22, "socket_pool_queue", icall_append_io_job)
 
 ICALL_TYPE(SOCKEX, "System.Net.Sockets.SocketException", SOCKEX_1)
 ICALL(SOCKEX_1, "WSAGetLastError_internal", ves_icall_System_Net_Sockets_SocketException_WSAGetLastError_internal)
@@ -523,7 +525,6 @@ ICALL(DERIVEDTYPE_1, "create_unmanaged_type", mono_reflection_create_unmanaged_t
 
 ICALL_TYPE(DYNM, "System.Reflection.Emit.DynamicMethod", DYNM_1)
 ICALL(DYNM_1, "create_dynamic_method", mono_reflection_create_dynamic_method)
-ICALL(DYNM_2, "destroy_dynamic_method", mono_reflection_destroy_dynamic_method)
 
 ICALL_TYPE(ENUMB, "System.Reflection.Emit.EnumBuilder", ENUMB_1)
 ICALL(ENUMB_1, "setup_enum_type", ves_icall_EnumBuilder_setup_enum_type)
@@ -625,7 +626,8 @@ ICALL(MMETH_7, "get_IsGenericMethodDefinition", ves_icall_MonoMethod_get_IsGener
 ICALL(MMETH_8, "get_base_method", ves_icall_MonoMethod_get_base_method)
 ICALL(MMETH_9, "get_name", ves_icall_MonoMethod_get_name)
 
-ICALL_TYPE(MMETHI, "System.Reflection.MonoMethodInfo", MMETHI_1)
+ICALL_TYPE(MMETHI, "System.Reflection.MonoMethodInfo", MMETHI_4)
+ICALL(MMETHI_4, "get_method_attributes", vell_icall_get_method_attributes)
 ICALL(MMETHI_1, "get_method_info", ves_icall_get_method_info)
 ICALL(MMETHI_2, "get_parameter_info", ves_icall_get_parameter_info)
 ICALL(MMETHI_3, "get_retval_marshal", ves_icall_System_MonoMethodInfo_get_retval_marshal)
@@ -665,9 +667,7 @@ ICALL_TYPE(MARSHAL, "System.Runtime.InteropServices.Marshal", MARSHAL_2)
 ICALL(MARSHAL_2, "AllocCoTaskMem", ves_icall_System_Runtime_InteropServices_Marshal_AllocCoTaskMem)
 ICALL(MARSHAL_3, "AllocHGlobal", ves_icall_System_Runtime_InteropServices_Marshal_AllocHGlobal)
 ICALL(MARSHAL_4, "DestroyStructure", ves_icall_System_Runtime_InteropServices_Marshal_DestroyStructure)
-#ifndef DISABLE_COM
 ICALL(MARSHAL_5, "FreeBSTR", ves_icall_System_Runtime_InteropServices_Marshal_FreeBSTR)
-#endif
 ICALL(MARSHAL_6, "FreeCoTaskMem", ves_icall_System_Runtime_InteropServices_Marshal_FreeCoTaskMem)
 ICALL(MARSHAL_7, "FreeHGlobal", ves_icall_System_Runtime_InteropServices_Marshal_FreeHGlobal)
 #ifndef DISABLE_COM
@@ -712,9 +712,7 @@ ICALL(MARSHAL_49, "ReleaseComObjectInternal", ves_icall_System_Runtime_InteropSe
 ICALL(MARSHAL_29, "ReleaseInternal", ves_icall_System_Runtime_InteropServices_Marshal_ReleaseInternal)
 #endif
 ICALL(MARSHAL_30, "SizeOf", ves_icall_System_Runtime_InteropServices_Marshal_SizeOf)
-#ifndef DISABLE_COM
 ICALL(MARSHAL_31, "StringToBSTR", ves_icall_System_Runtime_InteropServices_Marshal_StringToBSTR)
-#endif
 ICALL(MARSHAL_32, "StringToHGlobalAnsi", ves_icall_System_Runtime_InteropServices_Marshal_StringToHGlobalAnsi)
 ICALL(MARSHAL_33, "StringToHGlobalUni", ves_icall_System_Runtime_InteropServices_Marshal_StringToHGlobalUni)
 ICALL(MARSHAL_34, "StructureToPtr", ves_icall_System_Runtime_InteropServices_Marshal_StructureToPtr)
@@ -838,6 +836,7 @@ ICALL(MONIT_4, "Monitor_test_owner", ves_icall_System_Threading_Monitor_Monitor_
 ICALL(MONIT_5, "Monitor_test_synchronised", ves_icall_System_Threading_Monitor_Monitor_test_synchronised)
 ICALL(MONIT_6, "Monitor_try_enter", ves_icall_System_Threading_Monitor_Monitor_try_enter)
 ICALL(MONIT_7, "Monitor_wait", ves_icall_System_Threading_Monitor_Monitor_wait)
+ICALL(MONIT_9, "try_enter_with_atomic_var", ves_icall_System_Threading_Monitor_Monitor_try_enter_with_atomic_var)
 
 ICALL_TYPE(MUTEX, "System.Threading.Mutex", MUTEX_1)
 ICALL(MUTEX_1, "CreateMutex_internal(bool,string,bool&)", ves_icall_System_Threading_Mutex_CreateMutex_internal)
@@ -865,8 +864,6 @@ ICALL(THREAD_2a, "ConstructInternalThread", ves_icall_System_Threading_Thread_Co
 ICALL(THREAD_3, "CurrentInternalThread_internal", mono_thread_internal_current)
 ICALL(THREAD_4, "FreeLocalSlotValues", mono_thread_free_local_slot_values)
 ICALL(THREAD_55, "GetAbortExceptionState", ves_icall_System_Threading_Thread_GetAbortExceptionState)
-ICALL(THREAD_5, "GetCachedCurrentCulture(System.Threading.InternalThread)", ves_icall_System_Threading_Thread_GetCachedCurrentCulture)
-ICALL(THREAD_6, "GetCachedCurrentUICulture(System.Threading.InternalThread)", ves_icall_System_Threading_Thread_GetCachedCurrentUICulture)
 ICALL(THREAD_7, "GetDomainID", ves_icall_System_Threading_Thread_GetDomainID)
 ICALL(THREAD_8, "GetName_internal(System.Threading.InternalThread)", ves_icall_System_Threading_Thread_GetName_internal)
 ICALL(THREAD_11, "GetState(System.Threading.InternalThread)", ves_icall_System_Threading_Thread_GetState)
@@ -875,8 +872,6 @@ ICALL(THREAD_12, "Join_internal(System.Threading.InternalThread,int,intptr)", ve
 ICALL(THREAD_13, "MemoryBarrier", ves_icall_System_Threading_Thread_MemoryBarrier)
 ICALL(THREAD_14, "ResetAbort_internal()", ves_icall_System_Threading_Thread_ResetAbort)
 ICALL(THREAD_15, "Resume_internal()", ves_icall_System_Threading_Thread_Resume)
-ICALL(THREAD_16, "SetCachedCurrentCulture", ves_icall_System_Threading_Thread_SetCachedCurrentCulture)
-ICALL(THREAD_17, "SetCachedCurrentUICulture", ves_icall_System_Threading_Thread_SetCachedCurrentUICulture)
 ICALL(THREAD_18, "SetName_internal(System.Threading.InternalThread,string)", ves_icall_System_Threading_Thread_SetName_internal)
 ICALL(THREAD_21, "SetState(System.Threading.InternalThread,System.Threading.ThreadState)", ves_icall_System_Threading_Thread_SetState)
 ICALL(THREAD_22, "Sleep_internal", ves_icall_System_Threading_Thread_Sleep_internal)

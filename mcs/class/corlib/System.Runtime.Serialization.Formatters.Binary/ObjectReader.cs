@@ -294,12 +294,22 @@ namespace System.Runtime.Serialization.Formatters.Binary
 				
 			info = metadata.NeedsSerializationInfo ? new SerializationInfo(metadata.Type, new FormatterConverter()) : null;
 
-   			if (metadata.MemberNames != null)
+			if (metadata.MemberNames != null) {
 				for (int n=0; n<metadata.FieldCount; n++)
 					ReadValue (reader, objectInstance, objectId, info, metadata.MemberTypes[n], metadata.MemberNames[n], null, null);
-			else
-				for (int n=0; n<metadata.FieldCount; n++)
-					ReadValue (reader, objectInstance, objectId, info, metadata.MemberTypes[n], metadata.MemberInfos[n].Name, metadata.MemberInfos[n], null);
+			} else
+				for (int n=0; n<metadata.FieldCount; n++) {
+					if (metadata.MemberInfos [n] != null)
+						ReadValue (reader, objectInstance, objectId, info, metadata.MemberTypes[n], metadata.MemberInfos[n].Name, metadata.MemberInfos[n], null);
+					else if (BinaryCommon.IsPrimitive(metadata.MemberTypes[n])) {
+						// Since the member info is null, the type in this
+						// domain does not have this type. Even though we
+						// are not going to store the value, we will read
+						// it from the stream so that we can advance to the
+						// next block.
+						ReadPrimitiveTypeValue (reader,	metadata.MemberTypes[n]);
+					}
+				}
 		}
 
 		private void RegisterObject (long objectId, object objectInstance, SerializationInfo info, long parentObjectId, MemberInfo parentObjectMemeber, int[] indices)
@@ -689,8 +699,12 @@ namespace System.Runtime.Serialization.Formatters.Binary
 						else
 							field = metadata.Type.GetField (memberName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 							
-						if (field == null) throw new SerializationException ("Field \"" + names[n] + "\" not found in class " + metadata.Type.FullName);
-						metadata.MemberInfos [n] = field;
+						if (field != null)
+							metadata.MemberInfos [n] = field;
+#if ONLY_1_1
+						else
+							throw new SerializationException ("Field \"" + names[n] + "\" not found in class " + metadata.Type.FullName);
+#endif
 						
 						if (!hasTypeInfo) {
 							types [n] = field.FieldType;
@@ -709,6 +723,22 @@ namespace System.Runtime.Serialization.Formatters.Binary
 			return metadata;
 		}
 
+		// Called for primitive types
+		static bool IsGeneric (MemberInfo minfo)
+		{
+			if (minfo == null)
+				return false;
+
+			Type mtype = null;
+			switch (minfo.MemberType) {
+			case MemberTypes.Field:
+				mtype = ((FieldInfo) minfo).FieldType;
+				break;
+			default:
+				throw new NotSupportedException ("Not supported: " + minfo.MemberType);
+			}
+			return (mtype != null && mtype.IsGenericType);
+		}
 
 		private void ReadValue (BinaryReader reader, object parentObject, long parentObjectId, SerializationInfo info, Type valueType, string fieldName, MemberInfo memberInfo, int[] indices)
 		{
@@ -716,7 +746,7 @@ namespace System.Runtime.Serialization.Formatters.Binary
 
 			object val;
 
-			if (BinaryCommon.IsPrimitive (valueType))
+			if (BinaryCommon.IsPrimitive (valueType) && !IsGeneric (memberInfo))
 			{
 				val = ReadPrimitiveTypeValue (reader, valueType);
 				SetObjectValue (parentObject, fieldName, memberInfo, info, val, valueType, indices);

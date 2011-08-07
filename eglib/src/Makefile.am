@@ -1,6 +1,7 @@
 noinst_LTLIBRARIES = libeglib.la libeglib-static.la
 
 win_files  = \
+	eglib-config.hw \
 	gdate-win32.c gdir-win32.c gfile-win32.c gmisc-win32.c \
 	gmodule-win32.c gtimer-win32.c
 
@@ -23,11 +24,11 @@ os_files = $(unix_files)
 endif
 
 libeglib_la_SOURCES = \
-	eglib-config.h	\
 	eglib-remap.h	\
 	sort.frag.h	\
 	glib.h	     	\
 	garray.c	\
+	gbytearray.c	\
 	gerror.c	\
 	ghashtable.c 	\
 	gmem.c       	\
@@ -52,14 +53,18 @@ libeglib_la_SOURCES = \
 	$(os_files)	\
 	$(vasprintf_files)
 
-libeglib_la_CFLAGS = -Wall -D_FORTIFY_SOURCE=2
+libeglib_la_CFLAGS = -g -Wall -D_FORTIFY_SOURCE=2
 libeglib_static_la_SOURCES=$(libeglib_la_SOURCES)
 libeglib_static_la_CFLAGS = $(libeglib_la_CFLAGS)
 
 INCLUDES = -I$(srcdir)
 
 if HOST_WIN32
-libeglib_la_LIBADD = -lm -liconv -lpsapi
+libeglib_la_LIBADD = -lm $(ICONV_LIBS) -lpsapi
+else
+if PLATFORM_ANDROID
+libeglib_la_LIBADD = -llog
+endif
 endif
 
 libeglib_static_la_LIBADD = $(libeglib_la_LIBADD)

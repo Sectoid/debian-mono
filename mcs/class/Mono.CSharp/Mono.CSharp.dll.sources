@@ -1,6 +1,7 @@
 ../../mcs/anonymous.cs
 ../../mcs/argument.cs
 ../../mcs/assign.cs
+../../mcs/assembly.cs
 ../../mcs/attribute.cs
 ../../mcs/cs-tokenizer.cs
 ../../mcs/cfold.cs
@@ -38,6 +39,7 @@
 ../../mcs/parameter.cs
 ../../mcs/pending.cs
 ../../mcs/property.cs
+../../mcs/reflection.cs
 ../../mcs/report.cs
 ../../mcs/rootcontext.cs
 ../../mcs/roottypes.cs

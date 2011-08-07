@@ -19,6 +19,10 @@
 #define GINT_TO_POINTER(v)     @GINT_TO_POINTER@
 #define GUINT_TO_POINTER(v)    @GUINT_TO_POINTER@
 
+#if @HAVE_ALLOCA_H@ == 1
+#define G_HAVE_ALLOCA_H
+#endif
+
 typedef unsigned @GSIZE@ gsize;
 typedef signed   @GSIZE@ gssize;
 
@@ -37,5 +41,7 @@ typedef signed   @GSIZE@ gssize;
 #undef G_BREAKPOINT
 #define G_BREAKPOINT()
 #endif
+
+typedef @PIDTYPE@ GPid;
 
 #endif

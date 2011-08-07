@@ -82,7 +82,7 @@ namespace System.IO.IsolatedStorage {
 		}
 
 		[CLSCompliant (false)]
-#if NET_4_0
+#if NET_4_0 || MOBILE
 		[Obsolete]
 #endif
 		public virtual ulong CurrentSize {
@@ -105,7 +105,7 @@ namespace System.IO.IsolatedStorage {
 		}
 
 		[CLSCompliant (false)]
-#if NET_4_0
+#if NET_4_0 || MOBILE
 		[Obsolete]
 #endif
 		public virtual ulong MaximumSize {
@@ -119,7 +119,7 @@ namespace System.IO.IsolatedStorage {
 			get { return storage_scope; }
 		}
 
-#if NET_4_0
+#if NET_4_0 || MOBILE
 		[ComVisible (false)]
 		public virtual long AvailableFreeSpace {
 			get {
@@ -169,19 +169,21 @@ namespace System.IO.IsolatedStorage {
 		[MonoTODO ("requires manifest support")]
 		protected void InitStore (IsolatedStorageScope scope, Type appEvidenceType)
 		{
+#if !MOBILE
 			if (AppDomain.CurrentDomain.ApplicationIdentity == null)
 				throw new IsolatedStorageException (Locale.GetText ("No ApplicationIdentity available for AppDomain."));
 
 			if (appEvidenceType == null) {
 				// TODO - Choose evidence
 			}
+#endif
 
 			// no exception here because this can work without CAS
 			storage_scope = scope;
 		}
 		public abstract void Remove ();
 
-#if NET_4_0
+#if NET_4_0 || MOBILE
 		[ComVisible (false)]
 		public virtual bool IncreaseQuotaTo (long newQuotaSize)
 		{

@@ -494,7 +494,8 @@ mono_sgen_dump_internal_mem_usage (FILE *heap_dump_file)
 						     "fin-table", "finalize-entry", "dislink-table",
 						     "dislink", "roots-table", "root-record", "statistics",
 						     "remset", "gray-queue", "store-remset", "marksweep-tables",
-						     "marksweep-block-info", "ephemeron-link" };
+						     "marksweep-block-info", "ephemeron-link", "worker-data",
+						     "bridge-data" };
 
 	int i;
 
@@ -553,6 +554,16 @@ mono_sgen_internal_scan_objects (SgenInternalAllocator *alc, IterateObjectCallba
 				p += obj_size;
 			}
 		}
+	}
+}
+
+void
+mono_sgen_internal_update_heap_boundaries (SgenInternalAllocator *alc)
+{
+	SgenPinnedChunk *chunk;
+	for (chunk = alc->chunk_list; chunk; chunk = chunk->block.next) {
+		char *end_chunk = (char*)chunk + chunk->num_pages * FREELIST_PAGESIZE;
+		mono_sgen_update_heap_boundaries ((mword)chunk, (mword)end_chunk);
 	}
 }
 

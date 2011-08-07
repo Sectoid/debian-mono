@@ -843,7 +843,8 @@ namespace System.Xml.Serialization
 						else if (memType == typeof(XmlTypeMapMemberElement))
 						{
 							if (member.ElementInfo.Count == 1) {
-								GenerateWriteMemberElement ((XmlTypeMapElementInfo)member.ElementInfo[0], memberValue);
+								XmlTypeMapElementInfo elem = (XmlTypeMapElementInfo)member.ElementInfo[0];
+								GenerateWriteMemberElement (elem, GetCast(elem.TypeData, member.TypeData, memberValue));
 							}
 							else if (member.ChoiceMember != null)
 							{
@@ -973,20 +974,19 @@ namespace System.Xml.Serialization
 			bool singleElement = (member.TypeData.Type == typeof (XmlElement));
 			string var, var2;
 			
-			var2 = GetObTempVar ();
+			var = GetObTempVar ();
 			if (singleElement)
-				var = memberValue;
+				var2 = memberValue;
 			else {
-				var = GetObTempVar ();
+				var2 = GetObTempVar ();
 				WriteLineInd ("foreach (object " + var2 + " in " + memberValue + ") {");
 			}
 			WriteLine ("XmlNode " + var + " = " + var2 + " as XmlNode;");
-			WriteLine ("if (" + var + " == null && " + var2 + "!= null) throw new InvalidOperationException (\"A member with XmlAnyElementAttribute can only serialize and deserialize certain XmlNode types.");
-			WriteLineUni ("}");
+			WriteLine ("if (" + var + " == null && " + var2 + "!= null) throw new InvalidOperationException (\"A member with XmlAnyElementAttribute can only serialize and deserialize certain XmlNode types.\");");
 
 			string elem = GetObTempVar ();
 			WriteLine ("XmlNode " + elem + " = " + var + ";");
-			WriteLine ("if (" + elem + " is XmlElement) {");
+			WriteLineInd ("if (" + elem + " is XmlElement) {");
 			
 			if (!member.IsDefaultAny) {
 				for (int n=0; n<member.ElementInfo.Count; n++) {
@@ -997,8 +997,6 @@ namespace System.Xml.Serialization
 					else WriteLine ("|| " + txt);
 				}				
 			}
-			WriteLine ("}");
-			WriteLine ("else " + elem + ".WriteTo (Writer);");
 
 			if (_format == SerializationFormat.Literal) 
 				WriteLine ("WriteElementLiteral (" + elem + ", \"\", \"\", false, true);");
@@ -1011,6 +1009,8 @@ namespace System.Xml.Serialization
 				WriteLine ("throw CreateUnknownAnyElementException (" + elem + ".Name, " + elem + ".NamespaceURI);");
 				Unindent ();
 			}
+			WriteLineUni ("}");
+			WriteLine ("else " + elem + ".WriteTo (Writer);");
 			
 			if (!singleElement)
 				WriteLineUni ("}");
@@ -1228,7 +1228,10 @@ namespace System.Xml.Serialization
 		string GenerateMemberHasValueCondition (XmlTypeMapMember member, string ob, bool isValueList)
 		{
 			if (isValueList) {
-				return ob + ".Length > " + member.GlobalIndex;
+				if (member.IsOptionalValueType)
+					return ob + ".Length > " + Math.Max (member.GlobalIndex, member.SpecifiedGlobalIndex) + " && " + GetCast (typeof(bool), ob + "[" + member.SpecifiedGlobalIndex + "]");
+				else
+					return ob + ".Length > " + member.GlobalIndex;
 			}
 			else if (member.DefaultValue != System.DBNull.Value) {
 				string mem = ob + ".@" + member.Name;
@@ -1603,7 +1606,7 @@ namespace System.Xml.Serialization
 			WriteLine ("return ob;");
 		}
 
-		void GenerateReadMembers (XmlMapping xmlMap, ClassMap map, string ob, bool isValueList, bool readByOrder)
+		void GenerateReadMembers (XmlMapping xmlMap, ClassMap map, string ob, bool isValueList, bool readBySoapOrder)
 		{
 			XmlTypeMapping typeMap = xmlMap as XmlTypeMapping;
 			Type xmlMapType = (typeMap != null) ? typeMap.TypeData.Type : typeof(object[]);
@@ -1633,7 +1636,7 @@ namespace System.Xml.Serialization
 			if (!GenerateReadHook (HookType.elements, xmlMapType))
 			{
 				string[] readFlag = null;
-				if (map.ElementMembers != null && !readByOrder)
+				if (map.ElementMembers != null && !readBySoapOrder)
 				{
 					string readFlagsVars = string.Empty;
 					readFlag = new string[map.ElementMembers.Count];
@@ -1651,6 +1654,11 @@ namespace System.Xml.Serialization
 						readFlagsVars = "bool " + readFlagsVars;
 						WriteLine (readFlagsVars + ";");
 					}
+					foreach (XmlTypeMapElementInfo info in map.AllElementInfos)
+						if (info.ExplicitOrder >= 0) {
+							WriteLine ("int idx = -1;");
+							break;
+						}
 					WriteLine ("");
 				}
 				
@@ -1712,7 +1720,7 @@ namespace System.Xml.Serialization
 				ArrayList infos = null;
 				
 				int maxInd;
-				if (readByOrder) {
+				if (readBySoapOrder) {
 					if (map.ElementMembers != null) maxInd = map.ElementMembers.Count;
 					else maxInd = 0;
 				}
@@ -1731,19 +1739,24 @@ namespace System.Xml.Serialization
 				first = true;
 				for (int ind = 0; ind < maxInd; ind++)
 				{
-					XmlTypeMapElementInfo info = readByOrder ? map.GetElement (ind) : (XmlTypeMapElementInfo) infos [ind];
+					XmlTypeMapElementInfo info = readBySoapOrder ? map.GetElement (ind) : (XmlTypeMapElementInfo) infos [ind];
 					
-					if (!readByOrder)
+					if (!readBySoapOrder)
 					{
 						if (info.IsTextElement || info.IsUnnamedAnyElement) continue;
 						string elemCond = first ? "" : "else ";
 						elemCond += "if (";
+						if (info.ExplicitOrder >= 0)
+							elemCond += "idx < " + info.ExplicitOrder + "&& ";
 						if (!(info.Member.IsReturnValue && _format == SerializationFormat.Encoded)) {
 							elemCond += "Reader.LocalName == " + GetLiteral (info.ElementName);
 							if (!map.IgnoreMemberNamespace) elemCond += " && Reader.NamespaceURI == " + GetLiteral (info.Namespace);
 							elemCond += " && ";
 						}
-						elemCond += "!" + readFlag[info.Member.Index] + ") {";
+						if (readFlag[info.Member.Index] != null)
+							elemCond += "!" + readFlag[info.Member.Index] + ") {";
+						else
+							elemCond += "true) {";
 						WriteLineInd (elemCond);
 					}
 	
@@ -1803,7 +1816,7 @@ namespace System.Xml.Serialization
 								GenerateEndHook ();
 							}
 						}
-						if (!readByOrder)
+						if (!readBySoapOrder)
 							WriteLine (readFlag[info.Member.Index] + " = true;");
 					}
 					else if (info.Member.GetType() == typeof (XmlTypeMapMemberFlatList))
@@ -1837,8 +1850,10 @@ namespace System.Xml.Serialization
 					}
 					else if (info.Member.GetType() == typeof(XmlTypeMapMemberElement))
 					{
-						if (!readByOrder)
+						if (!readBySoapOrder)
 							WriteLine (readFlag[info.Member.Index] + " = true;");
+						if (info.ExplicitOrder >= 0)
+							WriteLine ("idx = " + info.ExplicitOrder + ";");
 						if (_format == SerializationFormat.Encoded)
 						{
 							string val = GetObTempVar ();
@@ -1869,14 +1884,14 @@ namespace System.Xml.Serialization
 					else
 						throw new InvalidOperationException ("Unknown member type");
 	
-					if (!readByOrder)
+					if (!readBySoapOrder)
 						WriteLineUni ("}");
 					else
 						WriteLine ("Reader.MoveToContent();");
 					first = false;
 				}
 				
-				if (!readByOrder)
+				if (!readBySoapOrder)
 				{
 					if (!first) WriteLineInd ("else {");
 					
@@ -2103,11 +2118,24 @@ namespace System.Xml.Serialization
 
 		void GenerateSetMemberValue (XmlTypeMapMember member, string ob, string value, bool isValueList)
 		{
-			if (isValueList) WriteLine (ob + "[" + member.GlobalIndex + "] = " + value + ";");
+			GenerateSetMemberValue (member, ob, value, isValueList, false);
+		}
+		
+		void GenerateSetMemberValue (XmlTypeMapMember member, string ob, string value, bool isValueList, bool initializingMember)
+		{
+			if (isValueList) {
+				WriteLine (ob + "[" + member.GlobalIndex + "] = " + value + ";");
+				if (member.IsOptionalValueType) {
+					string val = initializingMember ? "false" : "true";
+					WriteLine (ob + "[" + member.SpecifiedGlobalIndex + "] = " + val + ";");
+				}
+			}
 			else {
 				WriteLine (ob + ".@" + member.Name + " = " + value + ";");
-				if (member.IsOptionalValueType)
-					WriteLine (ob + "." + member.Name + "Specified = true;");
+				if (member.IsOptionalValueType) {
+					string val = initializingMember ? "false" : "true";
+					WriteLine (ob + "." + member.Name + "Specified = " + val + ";");
+				}
 			}
 		}
 
@@ -2119,7 +2147,7 @@ namespace System.Xml.Serialization
 			
 			if (member.TypeData.Type.IsEnum)
 				value = GetCast (member.TypeData.Type, value);
-			GenerateSetMemberValue (member, ob, value, isValueList);
+			GenerateSetMemberValue (member, ob, value, isValueList, true);
 		}
 
 		string GenerateReadObjectElement (XmlTypeMapElementInfo elem)
@@ -2741,7 +2769,10 @@ namespace System.Xml.Serialization
 
 		string GetCast (TypeData td, string val)
 		{
-			return "((" + td.CSharpFullName + ") " + val + ")";
+			if (td.IsNullable && td.IsValueType)
+				return "((" + td.CSharpFullName + "?) " + val + ")";
+			else
+				return "((" + td.CSharpFullName + ") " + val + ")";
 		}
 
 		string GetCast (Type td, string val)
@@ -2763,6 +2794,7 @@ namespace System.Xml.Serialization
 		{
 			if (ob == null) return "null";
 			if (ob is string) return "\"" + ob.ToString().Replace("\"","\"\"") + "\"";
+			if (ob is char) return (char) ob == '\'' ? "'\\''" : "'" + ob.ToString () + "'";
 			if (ob is DateTime) return "new DateTime (" + ((DateTime) ob).Ticks + ")";
 #if NET_2_0
 			if (ob is DateTimeOffset) return "new DateTimeOffset (" + ((DateTimeOffset) ob).Ticks + ")";

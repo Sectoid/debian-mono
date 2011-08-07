@@ -1,8 +1,9 @@
 //
 // System.Type.cs
 //
-// Author:
+// Authors:
 //   Miguel de Icaza (miguel@ximian.com)
+//   Marek Safar (marek.safar@gmail.com)
 //
 // (C) Ximian, Inc.  http://www.ximian.com
 //
@@ -34,6 +35,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using System.Globalization;
@@ -381,11 +383,14 @@ namespace System {
 		}
 
 		public override MemberTypes MemberType {
-			get {return MemberTypes.TypeInfo;}
+			get {
+				return MemberTypes.TypeInfo;
+			}
 		}
 
-		override
-		public abstract Module Module {get;}
+		public abstract override Module Module {
+			get;
+		}
 	
 		public abstract string Namespace {get;}
 
@@ -435,7 +440,7 @@ namespace System {
 #if NET_4_0
 		public virtual bool Equals (Type o)
 		{
-			if ((object)o == this)
+			if ((object)o == (object)this)
 				return true;
 			if ((object)o == null)
 				return false;
@@ -446,7 +451,7 @@ namespace System {
 			o = o.UnderlyingSystemType;
 			if ((object)o == null)
 				return false;
-			if ((object)o == this)
+			if ((object)o == (object)this)
 				return true;
 			return me.EqualsInternal (o);
 		}		
@@ -504,7 +509,7 @@ namespace System {
 			return result;
 		}
 
-		NotImplementedException CreateNIE () {
+		static NotImplementedException CreateNIE () {
 			return new NotImplementedException ();
 		}
 
@@ -804,13 +809,13 @@ namespace System {
 			if (filter == null)
 				throw new ArgumentNullException ("filter");
 
-			ArrayList ifaces = new ArrayList ();
+			var ifaces = new List<Type> ();
 			foreach (Type iface in GetInterfaces ()) {
 				if (filter (iface, filterCriteria))
 					ifaces.Add (iface);
 			}
 
-			return (Type []) ifaces.ToArray (typeof (Type));
+			return ifaces.ToArray ();
 		}
 		
 		public Type GetInterface (string name) {
@@ -1583,7 +1588,7 @@ namespace System {
 		public virtual StructLayoutAttribute StructLayoutAttribute {
 			get {
 #if NET_4_0
-				throw CreateNIE ();
+				throw new NotSupportedException ();
 #else
 				return GetStructLayoutAttribute ();
 #endif
@@ -1610,8 +1615,13 @@ namespace System {
 			else
 				attr.CharSet = CharSet.Auto;
 
-			if (kind != LayoutKind.Auto)
-				GetPacking (out attr.Pack, out attr.Size);
+			if (kind != LayoutKind.Auto) {
+				int packing;
+				GetPacking (out packing, out attr.Size);
+				// 0 means no data provided, we end up with default value
+				if (packing != 0)
+					attr.Pack = packing;
+			}
 
 			return attr;
 		}
@@ -1640,7 +1650,7 @@ namespace System {
 		}			
 
 
-#if NET_4_0 || BOOTSTRAP_NET_4_0
+#if NET_4_0
 		public virtual bool IsEquivalentTo (Type other)
 		{
 			return this == other;

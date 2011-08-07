@@ -22,7 +22,7 @@
 //
 //
 
-#if NET_4_0 || BOOTSTRAP_NET_4_0
+#if NET_4_0 || MOBILE
 using System;
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
@@ -30,25 +30,31 @@ using System.Runtime.Serialization;
 
 namespace System
 {
+
 	[System.SerializableAttribute]
+	[System.Diagnostics.DebuggerDisplay ("Count = {InnerExceptions.Count}")]
 	public class AggregateException : Exception
 	{
-		List<Exception> innerExceptions;
+		List<Exception> innerExceptions = new List<Exception> ();
+		const string defaultMessage = "One or more errors occured";
 		
-		public AggregateException (): base()
+		public AggregateException () : base (defaultMessage)
 		{
 		}
 		
-		public AggregateException (string message): base (message, null)
+		public AggregateException (string message): base (message)
 		{
 		}
 		
-		public AggregateException (string message, Exception e): base (message, e)
+		public AggregateException (string message, Exception innerException): base (message, innerException)
 		{
+			if (innerException == null)
+				throw new ArgumentNullException ("innerException");
+			innerExceptions.Add (innerException);
 		}
 		
-		protected AggregateException (SerializationInfo info, StreamingContext ctx)
-			: base (info, ctx)
+		protected AggregateException (SerializationInfo info, StreamingContext context)
+			: base (info, context)
 		{
 		}
 		
@@ -58,19 +64,25 @@ namespace System
 		}
 		
 		public AggregateException (string message, params Exception[] innerExceptions)
-			: this (message, (IEnumerable<Exception>)innerExceptions)
+			: base (message, innerExceptions == null || innerExceptions.Length == 0 ? null : innerExceptions[0])
 		{
+			if (innerExceptions == null)
+				throw new ArgumentNullException ("innerExceptions");
+			foreach (var exception in innerExceptions)
+				if (exception == null)
+					throw new ArgumentException ("One of the inner exception is null", "innerExceptions");
+
+			this.innerExceptions.AddRange (innerExceptions);
 		}
 		
 		public AggregateException (IEnumerable<Exception> innerExceptions)
-			: this (string.Empty, innerExceptions)
+			: this (defaultMessage, innerExceptions)
 		{
 		}
 		
-		public AggregateException (string message, IEnumerable<Exception> inner)
-			: base(GetFormattedMessage(message, inner))
+		public AggregateException (string message, IEnumerable<Exception> innerExceptions)
+			: this (message, new List<Exception> (innerExceptions).ToArray ())
 		{
-			this.innerExceptions = new List<Exception> (inner);
 		}
 		
 		public AggregateException Flatten ()
@@ -89,12 +101,12 @@ namespace System
 			return new AggregateException (inner);
 		}
 		
-		public void Handle (Func<Exception, bool> handler)
+		public void Handle (Func<Exception, bool> predicate)
 		{
 			List<Exception> failed = new List<Exception> ();
 			foreach (var e in innerExceptions) {
 				try {
-					if (!handler (e))
+					if (!predicate (e))
 						failed.Add (e);
 				} catch {
 					throw new AggregateException (failed);
@@ -112,22 +124,28 @@ namespace System
 		
 		public override string ToString ()
 		{
-			return this.Message;
-		}
-		
-		const string baseMessage = "Exception(s) occurred : {0}.";
-		static string GetFormattedMessage (string customMessage, IEnumerable<Exception> inner)
-		{
-			System.Text.StringBuilder finalMessage
-				= new System.Text.StringBuilder (string.Format (baseMessage, customMessage));
-			foreach (Exception e in inner) {
+			System.Text.StringBuilder finalMessage = new System.Text.StringBuilder (base.ToString ());
+
+			int currentIndex = -1;
+			foreach (Exception e in innerExceptions) {
 				finalMessage.Append (Environment.NewLine);
-				finalMessage.Append ("[ ");
+				finalMessage.Append (" --> (Inner exception ");
+				finalMessage.Append (++currentIndex);
+				finalMessage.Append (") ");
 				finalMessage.Append (e.ToString ());
-				finalMessage.Append (" ]");
 				finalMessage.Append (Environment.NewLine);
 			}
 			return finalMessage.ToString ();
+		}
+
+		public override Exception GetBaseException ()
+		{
+			return this;
+		}
+
+		public override void GetObjectData (SerializationInfo info,	StreamingContext context)
+		{
+			throw new NotImplementedException ();
 		}
 	}
 }

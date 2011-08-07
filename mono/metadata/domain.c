@@ -130,6 +130,7 @@ static MonoAotModuleInfoTable *aot_modules = NULL;
 static const MonoRuntimeInfo supported_runtimes[] = {
 	{"v2.0.50215","2.0", { {2,0,0,0},    {8,0,0,0}, { 3, 5, 0, 0 } }	},
 	{"v2.0.50727","2.0", { {2,0,0,0},    {8,0,0,0}, { 3, 5, 0, 0 } }	},
+	{"v4.0.20506","4.0", { {4,0,0,0},    {10,0,0,0}, { 4, 0, 0, 0 } }   },
 	{"v4.0.30128","4.0", { {4,0,0,0},    {10,0,0,0}, { 4, 0, 0, 0 } }   },
 	{"v4.0.30319","4.0", { {4,0,0,0},    {10,0,0,0}, { 4, 0, 0, 0 } }   },
 	{"moonlight", "2.1", { {2,0,5,0},    {9,0,0,0}, { 3, 5, 0, 0 } }    },
@@ -1216,9 +1217,7 @@ mono_domain_create (void)
 	domain->jit_info_table = jit_info_table_new (domain);
 	domain->jit_info_free_queue = NULL;
 	domain->finalizable_objects_hash = g_hash_table_new (mono_aligned_addr_hash, NULL);
-#ifndef HAVE_SGEN_GC
 	domain->track_resurrection_handles_hash = g_hash_table_new (mono_aligned_addr_hash, NULL);
-#endif
 
 	InitializeCriticalSection (&domain->lock);
 	InitializeCriticalSection (&domain->assemblies_lock);
@@ -1272,8 +1271,9 @@ mono_init_internal (const char *filename, const char *exe_filename, const char *
 #ifdef HOST_WIN32
 	/* Avoid system error message boxes. */
 	SetErrorMode (SEM_FAILCRITICALERRORS | SEM_NOOPENFILEERRORBOX);
-
+#ifdef ENABLE_COREE
 	mono_load_coree (exe_filename);
+#endif
 #endif
 
 	mono_perfcounters_init ();
@@ -1296,7 +1296,7 @@ mono_init_internal (const char *filename, const char *exe_filename, const char *
 	mono_reflection_init ();
 
 	/* FIXME: When should we release this memory? */
-	MONO_GC_REGISTER_ROOT (appdomains_list);
+	MONO_GC_REGISTER_ROOT_FIXED (appdomains_list);
 
 	domain = mono_domain_create ();
 	mono_root_domain = domain;
@@ -1311,7 +1311,7 @@ mono_init_internal (const char *filename, const char *exe_filename, const char *
 		 * exe_image, and close it during shutdown.
 		 */
 		get_runtimes_from_exe (exe_filename, &exe_image, runtimes);
-#ifdef HOST_WIN32
+#ifdef ENABLE_COREE
 		if (!exe_image) {
 			exe_image = mono_assembly_open_from_bundle (exe_filename, NULL, FALSE);
 			if (!exe_image)
@@ -1898,24 +1898,20 @@ mono_domain_assembly_open (MonoDomain *domain, const char *name)
 	return ass;
 }
 
-#ifndef HAVE_SGEN_GC
 static void
 free_slist (gpointer key, gpointer value, gpointer user_data)
 {
 	g_slist_free (value);
 }
-#endif
 
-#if HAVE_SGEN_GC
 static void
 unregister_vtable_reflection_type (MonoVTable *vtable)
 {
 	MonoObject *type = vtable->type;
 
 	if (type->vtable->klass != mono_defaults.monotype_class)
-		mono_gc_deregister_root ((char*)&vtable->type);
+		MONO_GC_UNREGISTER_ROOT_IF_MOVING (vtable->type);
 }
-#endif
 
 void
 mono_domain_free (MonoDomain *domain, gboolean force)
@@ -1969,22 +1965,21 @@ mono_domain_free (MonoDomain *domain, gboolean force)
 		domain->type_init_exception_hash = NULL;
 	}
 
-	for (tmp = domain->domain_assemblies; tmp; tmp = tmp->next) {
-		MonoAssembly *ass = tmp->data;
-		mono_trace (G_LOG_LEVEL_INFO, MONO_TRACE_ASSEMBLY, "Unloading domain %s %p, assembly %s %p, refcount=%d\n", domain->friendly_name, domain, ass->aname.name, ass, ass->ref_count);
-		if (!mono_assembly_close_except_image_pools (ass))
-			tmp->data = NULL;
-	}
-
-#if HAVE_SGEN_GC
 	if (domain->class_vtable_array) {
 		int i;
 		for (i = 0; i < domain->class_vtable_array->len; ++i)
 			unregister_vtable_reflection_type (g_ptr_array_index (domain->class_vtable_array, i));
 	}
-#endif
 
+	/* This needs to be done before closing assemblies */
 	mono_gc_clear_domain (domain);
+
+	for (tmp = domain->domain_assemblies; tmp; tmp = tmp->next) {
+		MonoAssembly *ass = tmp->data;
+		mono_trace (G_LOG_LEVEL_INFO, MONO_TRACE_ASSEMBLY, "Unloading domain %s[%p], assembly %s[%p], ref_count=%d\n", domain->friendly_name, domain, ass->aname.name, ass, ass->ref_count);
+		if (!mono_assembly_close_except_image_pools (ass))
+			tmp->data = NULL;
+	}
 
 	for (tmp = domain->domain_assemblies; tmp; tmp = tmp->next) {
 		MonoAssembly *ass = tmp->data;
@@ -2059,14 +2054,12 @@ mono_domain_free (MonoDomain *domain, gboolean force)
 
 	g_hash_table_destroy (domain->finalizable_objects_hash);
 	domain->finalizable_objects_hash = NULL;
-#ifndef HAVE_SGEN_GC
 	if (domain->track_resurrection_objects_hash) {
 		g_hash_table_foreach (domain->track_resurrection_objects_hash, free_slist, NULL);
 		g_hash_table_destroy (domain->track_resurrection_objects_hash);
 	}
 	if (domain->track_resurrection_handles_hash)
 		g_hash_table_destroy (domain->track_resurrection_handles_hash);
-#endif
 	if (domain->method_rgctx_hash) {
 		g_hash_table_destroy (domain->method_rgctx_hash);
 		domain->method_rgctx_hash = NULL;
@@ -2074,6 +2067,10 @@ mono_domain_free (MonoDomain *domain, gboolean force)
 	if (domain->generic_virtual_cases) {
 		g_hash_table_destroy (domain->generic_virtual_cases);
 		domain->generic_virtual_cases = NULL;
+	}
+	if (domain->generic_virtual_thunks) {
+		g_hash_table_destroy (domain->generic_virtual_thunks);
+		domain->generic_virtual_thunks = NULL;
 	}
 
 	DeleteCriticalSection (&domain->finalizable_objects_hash_lock);
@@ -2204,6 +2201,58 @@ mono_domain_code_commit (MonoDomain *domain, void *data, int size, int newsize)
 	mono_domain_unlock (domain);
 }
 
+#if defined(__native_client_codegen__) && defined(__native_client__)
+/*
+ * Given the temporary buffer (allocated by mono_domain_code_reserve) into which
+ * we are generating code, return a pointer to the destination in the dynamic 
+ * code segment into which the code will be copied when mono_domain_code_commit
+ * is called.
+ * LOCKING: Acquires the domain lock.
+ */
+void *
+nacl_domain_get_code_dest (MonoDomain *domain, void *data)
+{
+	void *dest;
+	mono_domain_lock (domain);
+	dest = nacl_code_manager_get_code_dest (domain->code_mp, data);
+	mono_domain_unlock (domain);
+	return dest;
+}
+
+/* 
+ * Convenience function which calls mono_domain_code_commit to validate and copy
+ * the code. The caller sets *buf_base and *buf_size to the start and size of
+ * the buffer (allocated by mono_domain_code_reserve), and *code_end to the byte
+ * after the last instruction byte. On return, *buf_base will point to the start
+ * of the copied in the code segment, and *code_end will point after the end of 
+ * the copied code.
+ */
+void
+nacl_domain_code_validate (MonoDomain *domain, guint8 **buf_base, int buf_size, guint8 **code_end)
+{
+	guint8 *tmp = nacl_domain_get_code_dest (domain, *buf_base);
+	mono_domain_code_commit (domain, *buf_base, buf_size, *code_end - *buf_base);
+	*code_end = tmp + (*code_end - *buf_base);
+	*buf_base = tmp;
+}
+
+#else
+
+/* no-op versions of Native Client functions */
+
+void *
+nacl_domain_get_code_dest (MonoDomain *domain, void *data)
+{
+	return data;
+}
+
+void
+nacl_domain_code_validate (MonoDomain *domain, guint8 **buf_base, int buf_size, guint8 **code_end)
+{
+}
+
+#endif
+
 /*
  * mono_domain_code_foreach:
  * Iterate over the code thunks of the code manager of @domain.
@@ -2246,7 +2295,8 @@ mono_domain_add_class_static_data (MonoDomain *domain, MonoClass *klass, gpointe
 		int size = GPOINTER_TO_INT (domain->static_data_array [1]);
 		next = GPOINTER_TO_INT (domain->static_data_array [0]);
 		if (next >= size) {
-			gpointer *new_array = mono_gc_alloc_fixed (sizeof (gpointer) * (size * 2), NULL);
+			/* 'data' is allocated by alloc_fixed */
+			gpointer *new_array = mono_gc_alloc_fixed (sizeof (gpointer) * (size * 2), MONO_GC_ROOT_DESCR_FOR_FIXED (size * 2));
 			memcpy (new_array, domain->static_data_array, sizeof (gpointer) * size);
 			size *= 2;
 			new_array [1] = GINT_TO_POINTER (size);
@@ -2255,7 +2305,7 @@ mono_domain_add_class_static_data (MonoDomain *domain, MonoClass *klass, gpointe
 		}
 	} else {
 		int size = 32;
-		gpointer *new_array = mono_gc_alloc_fixed (sizeof (gpointer) * size, NULL);
+		gpointer *new_array = mono_gc_alloc_fixed (sizeof (gpointer) * size, MONO_GC_ROOT_DESCR_FOR_FIXED (size));
 		next = 2;
 		new_array [0] = GINT_TO_POINTER (next);
 		new_array [1] = GINT_TO_POINTER (size);
@@ -2519,8 +2569,21 @@ get_runtime_by_version (const char *version)
 {
 	int n;
 	int max = G_N_ELEMENTS (supported_runtimes);
-	
+	gboolean do_partial_match;
+	int vlen;
+
+	if (!version)
+		return NULL;
+
+	vlen = strlen (version);
+	if (vlen >= 4 && version [1] - '0' >= 4)
+		do_partial_match = TRUE;
+	else
+		do_partial_match = FALSE;
+
 	for (n=0; n<max; n++) {
+		if (do_partial_match && strncmp (version, supported_runtimes[n].runtime_version, vlen) == 0)
+			return &supported_runtimes[n];
 		if (strcmp (version, supported_runtimes[n].runtime_version) == 0)
 			return &supported_runtimes[n];
 	}

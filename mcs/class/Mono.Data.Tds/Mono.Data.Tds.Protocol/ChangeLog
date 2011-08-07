@@ -1,3 +1,14 @@
+2011-05-05  Veerapuram Varadhan  <v.varadhan@gmail.com>
+
+	** Fixes #681916
+	* Tds70.cs (WriteParameterInfo): Handle null value for Image 
+	or varbinary(max) parameters as well. 
+	
+2010-09-29  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes failed test for smallmoney
+	* Tds70.cs (WriteParameterInfo): Round money values to 4 decimals, for smallmoney too.
+	
 2010-07-13  Veerapuram Varadhan  <vvaradhan@novell.com>
 
 	** Fixes #613845

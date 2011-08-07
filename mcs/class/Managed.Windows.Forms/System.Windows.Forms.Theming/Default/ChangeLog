@@ -1,3 +1,7 @@
+2010-12-10  Thomas Goldstein  <stifu@free.fr>
+
+	[winforms] Small optimization
+
 2010-06-25  Carlos Alberto Cortez <calberto.cortez@gmail.com>
 
 	* TabControlPainter.cs: Use TabControl.Font instead of the values of

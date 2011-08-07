@@ -1,3 +1,46 @@
+2011-07-19  Atsushi Eno  <atsushieno@veritas-vos-liberabit.com>
+
+	support action parameter in SOAP 1.2 content type. Close pull
+	request #133.
+
+2011-06-14  Atsushi Eno  <atsushi@ximian.com>
+
+	finally implement Message.ToString() as in expected form.
+
+	Regressions on this method has caused several unpredictable
+	errors, so I avoided this for somewhat long time...
+
+2011-04-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Some argument check in TextMessageEncoder.
+
+2010-11-04  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* CustomPolicyConversionContext.cs: New file, containing a dummy
+	child of PolicyConversionContext. * MsmqBindingElementBaseTest.cs:
+	New test file. * ConnectionOrientedTransportBindingElementTest.cs:
+	New test file. * HttpTransportBindingElementTest.cs: Add
+	IPolicyExportExtension tests.
+
+2010-10-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement NetTcpBinding.CanBuildChannelFactory/Listener and
+	several related stuff.
+
+	SecurityTokenParameters.InitializeSecurityTokenRequirement() needs
+	to become protected internal, so changed all overrides as well.
+
+	Some implementation in WindowsStreamSecurityBindingElement is
+	needed only for NetTcpBinding implementation.
+
+	Had to disable a test in SymmetricSecurityBindingElement that
+	depended on OneWay support (which is not yet done).
+
+2010-09-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Override IsContentTypeSupported() in per-encoding-binding-element
+	implementation to work as expected.
+
 2010-08-11  Atsushi Eno  <atsushi@ximian.com>
 
 	implement MessageEncodingBindingElement.GetProperty<T>().

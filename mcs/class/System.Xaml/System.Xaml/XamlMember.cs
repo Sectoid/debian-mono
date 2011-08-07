@@ -63,8 +63,8 @@ namespace System.Xaml
 			underlying_member = propertyInfo;
 			DeclaringType = schemaContext.GetXamlType (propertyInfo.DeclaringType);
 			target_type = DeclaringType;
-			UnderlyingGetter = propertyInfo.GetGetMethod ();
-			UnderlyingSetter = propertyInfo.GetSetMethod ();
+			UnderlyingGetter = propertyInfo.GetGetMethod (true);
+			UnderlyingSetter = propertyInfo.GetSetMethod (true);
 		}
 
 		public XamlMember (string attachableEventName, MethodInfo adder, XamlSchemaContext schemaContext)
@@ -150,10 +150,6 @@ namespace System.Xaml
 		bool is_predefined_directive = XamlLanguage.InitializingDirectives;
 		string directive_ns;
 
-		internal ICustomAttributeProvider CustomAttributeProvider {
-			get { return LookupCustomAttributeProvider (); }
-		}
-
 		internal MethodInfo UnderlyingGetter {
 			get { return LookupUnderlyingGetter (); }
 			private set { underlying_getter = value; }
@@ -170,13 +166,15 @@ namespace System.Xaml
 			get { return directive_ns ?? (DeclaringType == null ? null : DeclaringType.PreferredXamlNamespace); }
 		}
 		
-		[MonoTODO]
+#if !NET_2_1
 		public DesignerSerializationVisibility SerializationVisibility {
 			get {
-				// FIXME: probably use attribute.
-				return DesignerSerializationVisibility.Visible;
+				var c= GetCustomAttributeProvider ();
+				var a = c == null ? null : c.GetCustomAttribute<DesignerSerializationVisibilityAttribute> (false);
+				return a != null ? a.Visibility : DesignerSerializationVisibility.Visible;
 			}
 		}
+#endif
 
 		public bool IsAttachable {
 			get { return is_attachable; }
@@ -266,8 +264,8 @@ namespace System.Xaml
 			// this should be in general correct; XamlMembers are almost not comparable.
 			if (Object.ReferenceEquals (this, other))
 				return true;
+			// It does not compare XamlSchemaContext.
 			return !IsNull (other) &&
-				context == other.context &&
 				underlying_member == other.underlying_member &&
 				underlying_getter == other.underlying_getter &&
 				underlying_setter == other.underlying_setter &&
@@ -282,6 +280,7 @@ namespace System.Xaml
 			return ToString ().GetHashCode (); // should in general work.
 		}
 
+		[MonoTODO ("there are some patterns that return different kind of value: e.g. List<int>.Capacity")]
 		public override string ToString ()
 		{
 			if (is_attachable || String.IsNullOrEmpty (PreferredXamlNamespace)) {
@@ -301,6 +300,11 @@ namespace System.Xaml
 
 		// lookups
 
+		internal ICustomAttributeProvider GetCustomAttributeProvider ()
+		{
+			return LookupCustomAttributeProvider ();
+		}
+
 		protected virtual ICustomAttributeProvider LookupCustomAttributeProvider ()
 		{
 			return UnderlyingMember;
@@ -308,7 +312,7 @@ namespace System.Xaml
 
 		protected virtual XamlValueConverter<XamlDeferringLoader> LookupDeferringLoader ()
 		{
-			// FIXME: probably fill from attribute.
+			// FIXME: use XamlDeferLoadAttribute.
 			return null;
 		}
 
@@ -404,6 +408,12 @@ namespace System.Xaml
 				return null;
 			if (t == typeof (object)) // it is different from XamlType.LookupTypeConverter().
 				return null;
+
+			var a = GetCustomAttributeProvider ();
+			var ca = a != null ? a.GetCustomAttribute<TypeConverterAttribute> (false) : null;
+			if (ca != null)
+				return context.GetValueConverter<TypeConverter> (System.Type.GetType (ca.ConverterTypeName), Type);
+
 			return Type.TypeConverter;
 		}
 

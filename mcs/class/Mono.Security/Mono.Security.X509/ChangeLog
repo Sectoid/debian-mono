@@ -1,3 +1,52 @@
+2011-02-11  Sebastien Pouliot  <sebastien@ximian.com>
+
+	Continue X509Chain processing even if the local machine directory
+	does not exists
+
+2010-11-03  Sebastien Pouliot  <sebastien@ximian.com>
+
+	Fix condition so the new feature is available outside NET_2_1
+
+2010-11-03  Marek Habersack  <grendel@twistedcode.net>
+
+	Fix mixed newlines
+
+2010-11-02  Sebastien Pouliot  <sebastien@ximian.com>
+
+	Fix bootstrapping issue wrt moonlight profile
+
+2010-10-20  Pablo Ruiz Garcia  <pablo.ruiz@gmail.com>
+
+	[API] X509 related enhacemnts to allow 1) associating keystore's
+	private keys with their corresponding public certificates found at
+	X509Stores, and 2) importing private keys to X509Stores along with
+	certificates.
+
+	mcs/class/corlib/Mono.Security.X509/X509Store.cs:
+	mcs/class/Mono.Security/Mono.Security.X509/X509Store.cs:
+	mcs/class/corlib/Mono.Security.X509/X509StoreManager.cs:
+	mcs/class/Mono.Security/Mono.Security.X509/X509StoreManager.cs:
+	Modified MSX.X509Store to allow importing privateKeys along
+	certificates (by using RSACryptoServiceProvider and
+	KeyPairPersister). Fixed X509Store to use certificate's hash as
+	CspParameters.KeyContainerName.
+
+	mcs/tools/security/certmgr.cs: Added a new -importKey action to
+	certmgr, which allows importing a PKCS12 contained key into our
+	KeyPair store. Added a more (verbose) output to certmgr's -list
+	action.
+
+	man/certmgr.1: Updated certmgr man page ti reflect -importKey
+	addition.
+
+	mcs/class/corlib/System.Security.Cryptography/CspParameters.cs:
+	mcs/class/corlib/System.Security.Cryptography/RSACryptoServiceProvider.cs:
+	Implemented RSACryptoServiceProvider.CspKeyContainerInfo getter
+	RSACryptoServiceProvider will not take into account
+	CspParameterFlags.UseExistingKey by throwing a
+	CryptographicException if keyset identified by KeyContainerName
+	does not exists.
+
 2010-03-11 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* OSX509Certificates.cs: moved to System.dll.

@@ -1,3 +1,291 @@
+2011-04-01  Marek Habersack  <grendel@twistedcode.net>
+
+	[mvc3] Part of fix for bug #683339. Override more
+	NameValueCollection methods.
+
+	Without those overrides, merging collections in
+	System.Web.HttpParamsCollection fails.
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Kill old IScheduler interface.
+
+	We still use the ParticipateUntil facility of IScheduler
+	internally and provide a default implementation for pure
+	TaskScheduler
+
+2011-02-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,mvc3] Fix for bug #668655. Implemented a few more
+	NameValueCollection method overloads.
+
+2011-02-15  Marek Safar  <marek.safar@gmail.com>
+
+	[671878] Fixes IKVM ordering of catch clauses
+
+2011-02-01  Atsushi Eno  <atsushi@ximian.com>
+
+	quick build workaround.
+
+2011-02-01  Atsushi Eno  <atsushi@ximian.com>
+
+	in NET_4_0, remove types that went into System.Xaml.dll. Change
+	build order.
+
+2011-01-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Leave db connection opened until requested to close it and add
+	more unit tests
+
+2011-01-25  Miguel de Icaza  <miguel@gnome.org>
+
+	Restoring some of the formal beauty of this text document as we
+	carefully restore the missing tabs that helped carefully align the
+	continuation characters in a list of assemblies.
+
+	As we align these newline separators, suddenly, a new form emerges
+	from the chaos, something that gives us the illusion that this
+	stream of bytes is indeed almost like a dawn of a new day as we
+	breathe the air in a valley overlooking a beautiful mountain at
+	the beginning of the spring.
+
+2011-01-25  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf] Install the System.Data.Services.Client properly.
+
+2011-01-22  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add unit test for Database
+
+2011-01-22  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add unit tests for DynamicRecord
+
+2011-01-22  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Just fixup comment
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add GetLastInsertId
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Foobar trigger connection
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add Close method
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add ConnectionOpened event to Database
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix up compilation of Database and DynamicRecord
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add Dispose calls to Database
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add Database type
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Complete base DynamicRecord API
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Stub DynamicRecord
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add WebMatrix.Data assembly skeleton
+
+2011-01-20  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	remove conflict marker
+
+2011-01-19  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,mvc] Make unobtrustive request validation in MVC v3
+	possible
+
+	Validation is enabled early in the pipeline during request.
+	ValidationUtility makes sure that validation is indeed enabled and
+	replaces the default form and query string collections with a lazy
+	version which will validate values only when an existing key is
+	found and requested.
+
+2011-01-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] ValidationUtility implementation
+
+2011-01-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented dynamic HTTP module registration
+
+2011-01-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Added the Microsoft.Web.Infrastructure assembly
+
+2011-01-17  Marek Safar  <marek.safar@gmail.com>
+
+	Update IKVM.Reflection
+
+2011-01-11  Jb Evain  <jbevain@gmail.com>
+
+	Update cecil from upstream
+
+2011-01-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Dump the AOT log upon a failure.
+
+2011-01-10  Marek Safar  <marek.safar@gmail.com>
+
+	Fix IKVM float encoding on big-endian
+
+2010-12-21  Jb Evain  <jbevain@gmail.com>
+
+	Fix cecil update script
+
+2010-12-21  Jb Evain  <jbevain@gmail.com>
+
+	update cecil from upstream
+
+2010-12-20  Marek Safar  <marek.safar@gmail.com>
+
+	Import ikvm fixes
+
+2010-12-18  Marek Safar  <marek.safar@gmail.com>
+
+	Add aot-compiler to dist list
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Don't build aot symbols on make dist
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Monolite mcs compiler
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Add dist only Makefile
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Switch to single mcs compiler for all managed code build
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	dist IKVM.Reflection
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Add IKVM.Reflection
+
+2010-12-01  Jb Evain  <jbevain@gmail.com>
+
+	Update Mono.Cecil
+
+2010-12-01  Jb Evain  <jbevain@gmail.com>
+
+	Add script to update Cecil from upstream
+
+2010-11-24  Jb Evain  <jbevain@gmail.com>
+
+	Add overloads to IAssemblyResolver.Resolve which take a
+	ReaderParameters for better control
+
+2010-11-23  Jb Evain  <jbevain@gmail.com>
+
+	Remove dead code
+
+2010-11-23  Jb Evain  <jbevain@gmail.com>
+
+	Fix corlib type lookup
+
+2010-11-21  Jb Evain  <jbevain@gmail.com>
+
+	update cecil to upstream
+
+2010-11-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove the AOT log files on 'clean'.
+
+2010-11-05  Jb Evain  <jbevain@gmail.com>
+
+	Update Mono.Cecil from upstream
+
+2010-11-05  Marek Safar  <marek.safar@gmail.com>
+
+	Don't build obsolete Compat.ICSharpCode.SharpZipLib in 4.0 profile
+	to avoid another version conflict
+
+2010-11-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove extra whitespace from a Makefile.
+
+2010-10-22  Jb Evain  <jbevain@gmail.com>
+
+	delete unused file
+
+2010-10-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Add some WCF types in moonlight_raw System.Xml.Serialization.dll.
+
+2010-10-20  Jb Evain  <jbevain@gmail.com>
+
+	Pass the appropriate defines for the net_4_0 profile
+
+2010-10-06  Jb Evain  <jbevain@gmail.com>
+
+	Port Mono.CodeContract to cecil-light
+
+2010-09-27  Jb Evain  <jbevain@gmail.com>
+
+	Fix the net_4_0 build
+
+2010-09-26  Jonathan Pobst  <monkey@jpobst.com>
+
+	Commit some stuff I had implemented in my SVN tree.
+
+2010-09-23  Marek Habersack  <grendel@twistedcode.net>
+
+	[WCF] System.Data.Services.Client must be signed with the ECMA
+	public key
+
+2010-09-23  Marek Habersack  <grendel@twistedcode.net>
+
+	[WCF] Changes to System.Data.Services.Client to compile it for 4.0
+
+	It appears Microsoft didn't make any changes to the assembly in
+	.NET 4.0 - they simply changed its version number to 4.0.0.0 and
+	added few assembly attributes.
+
+2010-09-15  Marek Safar  <marek.safar@gmail.com>
+
+	There are actually some 3.5 only dlls, thanks to ankit for poiting
+	out.
+
+2010-09-15  Marek Safar  <marek.safar@gmail.com>
+
+	Remove net_3_5 dirs to fix 4.0 dependency and not to build some
+	dlls twice
+
+2010-09-09  Jb Evain  <jbevain@gmail.com>
+
+	add ignore file
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Factorize the monotouch build into a mobile build for monodroid
+	and monotouch
+
 2010-08-31  Andrew Jorgensen  <ajorgensen@novell.com>
 
 	aot-compiler was not getting included in dist
@@ -42,6 +330,10 @@
 
 	Merge CodeContracts
 
+2010-08-13  jbevain  <jbevain@gmail.com>
+
+	[Fix] emit the proper metadata version for net_4_0 assemblies
+
 2010-08-13  Chris Bacon  <chrisbacon76@gmail.com>
 
 	Removed code that is no longer required due to change to Cecil
@@ -79,6 +371,10 @@
 2010-08-04  atsushieno  <atsushi@ximian.com>
 
 	Add System.ServiceModel.Discovery (now that it builds fine).
+
+2010-08-01  Marek Safar  <marek.safar@gmail.com>
+
+	Update SymbolWriter to use generics collections
 
 2010-06-30  Atsushi Enomoto  <atsushi@ximian.com>
 

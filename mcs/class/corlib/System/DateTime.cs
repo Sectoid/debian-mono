@@ -29,7 +29,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using System.Collections;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -53,7 +53,7 @@ namespace System
 		// memory usage from 16 to 8 bytes, see bug: 592221.   This also fixes the
 		// 622127 issue and simplifies the code in reflection.c to encode DateTimes
 		//
-		public long encoded;
+		long encoded;
 		const long TicksMask = 0x3fffffffffffffff;
 		const long KindMask = unchecked ((long) 0xc000000000000000);
 		const int KindShift = 62;
@@ -89,6 +89,7 @@ namespace System
 		// try combinations of these patterns. The algorithm also looks for
 		// day of the week, AM/PM GMT and Z independently of the patterns.
 		private static readonly string[] ParseTimeFormats = new string [] {
+			"H:m:s.fff zzz",
 			"H:m:s.fffffffzzz",
 			"H:m:s.fffffff",
 			"H:m:s.ffffff",
@@ -649,7 +650,7 @@ namespace System
 
 		public static DateTime FromBinary (long dateData)
 		{
-			switch ((ulong)dateData >> 62) {
+			switch ((ulong)dateData >> KindShift) {
 			case 1: // Utc
 				return new DateTime (dateData & TicksMask, DateTimeKind.Utc);
 			case 0: // Unspecified
@@ -750,10 +751,10 @@ namespace System
 		{
 			DateTimeFormatInfo info = (DateTimeFormatInfo) provider.GetFormat (typeof(DateTimeFormatInfo));
 //			return GetDateTimeFormats (info.GetAllDateTimePatterns ());
-			ArrayList al = new ArrayList ();
+			var l = new List<string> ();
 			foreach (char c in "dDgGfFmMrRstTuUyY")
-				al.AddRange (GetDateTimeFormats (c, info));
-			return al.ToArray (typeof (string)) as string [];
+				l.AddRange (GetDateTimeFormats (c, info));
+			return l.ToArray ();
 		}
 
 		public string[] GetDateTimeFormats(char format,IFormatProvider provider	)

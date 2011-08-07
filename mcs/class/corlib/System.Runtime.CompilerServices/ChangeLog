@@ -1,3 +1,23 @@
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add pfx to the mobile profile
+
+2010-11-08  Marek Safar  <marek.safar@gmail.com>
+
+	API compatibility work
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Warnings cleanup
+
+2010-09-23  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the default exception message of RuntimeWrapperException.
+
 2010-06-04  Jb Evain  <jbevain@novell.com>
 
 	* ConditionalWeakTable.cs: make sure we use positive indexes.

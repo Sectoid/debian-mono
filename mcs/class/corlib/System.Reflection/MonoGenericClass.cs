@@ -71,7 +71,17 @@ namespace System.Reflection
 		{
 			this.generic_type = tb;
 			this.type_arguments = args;
-			register_with_runtime (this); /*Temporary hack while*/
+			/*
+			This is a temporary hack until we can fix the rest of the runtime
+			to properly handle this class to be a complete UT.
+
+			We must not regisrer this with the runtime after the type is created
+			otherwise created_type.MakeGenericType will return an instance of MonoGenericClass,
+			which is very very broken.
+			*/
+			if (tb is TypeBuilder && !(tb as TypeBuilder).is_created)
+				register_with_runtime (this);
+			
 		}
 
 
@@ -266,11 +276,8 @@ namespace System.Reflection
 			if (type.IsArray) {
 				if (type.GetArrayRank () > 1)
 					return InflateType (type.GetElementType (), type_args, method_args).MakeArrayType (type.GetArrayRank ());
-#if BOOTSTRAP_NET_2_0
-				if (type.ToString ().EndsWith ("[*]"))
-#else
+				
 				if (type.ToString ().EndsWith ("[*]", StringComparison.Ordinal)) /*FIXME, the reflection API doesn't offer a way around this*/
-#endif
 					return InflateType (type.GetElementType (), type_args, method_args).MakeArrayType (1);
 				return InflateType (type.GetElementType (), type_args, method_args).MakeArrayType ();
 			}

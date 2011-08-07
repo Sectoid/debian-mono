@@ -1,3 +1,7 @@
+2011-01-08  Marek Safar  <marek.safar@gmail.com>
+
+	Update System.ServiceModel.Discovery version info
+
 2010-03-19  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* : initial checkin (mostly stubs).

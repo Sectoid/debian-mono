@@ -1,3 +1,97 @@
+2011-04-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	backport pull request for 2.10.2
+
+2011-02-08  Marek Habersack  <grendel@twistedcode.net>
+
+	[crypto] Added missing 4.0 algorithm names
+
+2011-01-25  Marek Habersack  <grendel@twistedcode.net>
+
+	[corlib,crypto] RandomNumberGenerator implements IDisposable in
+	4.0
+
+2011-01-11  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Security.Cryptography/CryptoConfig.cs: Add OID for
+	RIPEMD160 *
+	System.Security.Cryptography/RSACryptoServiceProvider.cs: Update
+	GetHashNameFromOID to include SHA2-family OIDs. Remove historical
+	comments about 1.x FX behavior.
+
+2010-11-11  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* CryptoConfig_2_1.cs: Add fully qualified name (to simple name)
+	to allow the creation of AES using (internal) CryptoConfig
+
+2010-11-03  Marek Habersack  <grendel@twistedcode.net>
+
+	Fix mixed newlines
+
+2010-10-20  Pablo Ruiz Garcia  <pablo.ruiz@gmail.com>
+
+	[API] X509 related enhacemnts to allow 1) associating keystore's
+	private keys with their corresponding public certificates found at
+	X509Stores, and 2) importing private keys to X509Stores along with
+	certificates.
+
+	mcs/class/corlib/Mono.Security.X509/X509Store.cs:
+	mcs/class/Mono.Security/Mono.Security.X509/X509Store.cs:
+	mcs/class/corlib/Mono.Security.X509/X509StoreManager.cs:
+	mcs/class/Mono.Security/Mono.Security.X509/X509StoreManager.cs:
+	Modified MSX.X509Store to allow importing privateKeys along
+	certificates (by using RSACryptoServiceProvider and
+	KeyPairPersister). Fixed X509Store to use certificate's hash as
+	CspParameters.KeyContainerName.
+
+	mcs/tools/security/certmgr.cs: Added a new -importKey action to
+	certmgr, which allows importing a PKCS12 contained key into our
+	KeyPair store. Added a more (verbose) output to certmgr's -list
+	action.
+
+	man/certmgr.1: Updated certmgr man page ti reflect -importKey
+	addition.
+
+	mcs/class/corlib/System.Security.Cryptography/CspParameters.cs:
+	mcs/class/corlib/System.Security.Cryptography/RSACryptoServiceProvider.cs:
+	Implemented RSACryptoServiceProvider.CspKeyContainerInfo getter
+	RSACryptoServiceProvider will not take into account
+	CspParameterFlags.UseExistingKey by throwing a
+	CryptographicException if keyset identified by KeyContainerName
+	does not exists.
+
+2010-10-07  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Buffer sizes
+
+	workingBlock should be the InputBlockSize and currentBlock the
+	OutputBlockSize. Allocate currentBlock lazily.
+
+	Test contributed by Bassam Tabbara. Fixes bug #644740.
+
+2010-10-07  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[CryptoStream] Invalid enum in ctor
+
+	Throw on invalid enum value in the ctor.
+
+2010-10-07  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Dispose calls FlushFinalBlock
+
+	Dispose calls FlushFinalBlock (even for Read mode) and this in
+	turn calls either FlushFinalBlock or Flush on the underlying
+	stream.
+
+2010-10-07  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix CryptoStream.Dispose
+
+	-Dispose will call TransformFinalBlock() for Read streams. Fixes
+	bug #644648. -Dispose () will call Dispose (bool). Fixes bug
+	#644654. -Stream.Close calls GC.SuppressFinalize(). Fixes bug
+	#644660.
+
 2010-07-21  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* CryptoConfig_2_1.cs: Ensure Aes[Managed] can be created from

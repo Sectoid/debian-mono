@@ -114,9 +114,17 @@ namespace System.ServiceModel.Dispatcher
 			set { filter_priority = value; }
 		}
 
+#if NET_4_0
+		public bool IsSystemEndpoint { get; private set; }
+#endif
+
 		internal void InitializeServiceEndpoint (bool isCallback, Type serviceType, ServiceEndpoint se)
 		{
-			this.ContractFilter = GetContractFilter (se.Contract);
+#if NET_4_0
+			IsSystemEndpoint = se.IsSystemEndpoint;
+#endif
+
+			this.ContractFilter = GetContractFilter (se.Contract, isCallback);
 
 			this.DispatchRuntime.Type = serviceType;
 			
@@ -129,7 +137,7 @@ namespace System.ServiceModel.Dispatcher
 				ccd.FillClientOperations (db.CallbackClientRuntime, true);
 			}
 			foreach (OperationDescription od in se.Contract.Operations)
-				if (!db.Operations.Contains (od.Name))
+				if (od.InCallbackContract == isCallback/* && !db.Operations.Contains (od.Name)*/)
 					PopulateDispatchOperation (db, od);
 		}
 
@@ -145,6 +153,7 @@ namespace System.ServiceModel.Dispatcher
 				od.IsOneWay ?
 				new DispatchOperation (db, od.Name, reqA) :
 				new DispatchOperation (db, od.Name, reqA, resA);
+			o.IsTerminating = od.IsTerminating;
 			bool no_serialized_reply = od.IsOneWay;
 			foreach (MessageDescription md in od.Messages) {
 				if (md.IsRequest &&
@@ -183,17 +192,20 @@ namespace System.ServiceModel.Dispatcher
 			db.Operations.Add (o);
 		}
 
-		MessageFilter GetContractFilter (ContractDescription cd)
+		MessageFilter GetContractFilter (ContractDescription cd, bool isCallback)
 		{
 			List<string> actions = new List<string> ();
-			foreach (var od in cd.Operations)
+			foreach (var od in cd.Operations) {
 				foreach (var md in od.Messages)
-					if (md.IsRequest)
+					// For callback EndpointDispatcher (i.e. for duplex client), it should get "incoming" request for callback operations and "outgoing" response for non-callback operations.
+					// For non-callback EndpointDispatcher,  it should get "outgoing" request for non-callback operations and "incoming" response for callback operations.
+					if ((od.InCallbackContract == isCallback) == md.IsRequest) {
 						if (md.Action == "*")
 							return new MatchAllMessageFilter ();
 						else
 							actions.Add (md.Action);
-
+					}
+			}
 			return new ActionMessageFilter (actions.ToArray ());
 		}
 	}

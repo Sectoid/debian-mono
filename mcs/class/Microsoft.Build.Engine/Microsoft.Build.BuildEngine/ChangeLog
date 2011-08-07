@@ -1,3 +1,312 @@
+2011-03-11  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Throw ArgumentNullException if target name is null
+
+2011-03-11  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Don't report Imports ignored because of false conditions.
+
+2011-03-11  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Set ProjectFile and TargetName metadata on target
+	outputs.
+
+	Set "MSBuildProjectFile" and "MSBuildTargetName" metadata on
+	target outputs.
+
+2011-03-11  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Handle unknown exceptions.
+
+	Re-throw any unknown exceptions. * Project.cs: Log the exception,
+	doing it here also, so that direct project.Build(..) call failures
+	also get logged. * Engine.cs: Log the unknown exception only if
+	the build is running. This allows for the case when Project.Build
+	caught it and ended the build.
+
+2011-03-10  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Function names are case insensitive.
+
+2011-03-10  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Evaluate Import with MSBuildThisFile* properties set.
+
+2011-03-08  Ankit Jain  <radical@corewars.org>
+
+	* FileLogger.cs: Implement
+
+	Add corresponding command line args for file loggers. Update man
+	page.
+
+2011-03-08  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] ConsoleLogger - parse params only on Initialize.
+
+2011-03-04  Ankit Jain  <radical@corewars.org>
+
+	* LogExtensions.cs (LogError): Rename the 'filename' overload to
+	.. (LogErrorWithFilename): .. this. * Engine.cs: Track api
+	changes.
+
+2011-03-04  Ankit Jain  <radical@corewars.org>
+
+	* Target.cs (Outputs): Add new public property by this name. And
+	rename old one to .. (OutputsAsITaskItems): .. this.
+
+2011-03-04  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix bug #676671. Raise AnyEvent .
+
+2011-03-03  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Add support for wildcards in Import.
+
+	With 4.0 profile, <Import ..> can have wildcards. This works
+	correctly with our multiple MSBuildExtensionsPath also.
+
+	If the import references $(MSBuildExtensionsPath) property, then
+	the each extension path is used to resolve the import, and the
+	search stop as soon as an import is found.
+
+	If such an import uses wildcard, then the search stops at the
+	extension path in which *atleast one* file got imported. And the
+	import fails if any invalid project file is encountered.
+
+	This commit also heavily refactors the Import code to simplify in
+	the face of the new features, and improves error detection and
+	reporting.
+
+	ImportTest.cs: Add test for wildcards.
+
+2011-03-03  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] ImportedProject - remove unnecessary catch/throw
+
+	Remove the catch { throw; }, this truncated the stack also.
+
+2011-03-03  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] ImportCollections.TryGetImport and other fixes
+
+2011-03-03  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Expression.ParseAs<T> - new method
+
+2011-03-03  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] DirectoryScanner.HasWildcard - new method
+
+2011-03-03  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Log build errors and raise events even if a build fails.
+
+2011-03-02  Ankit Jain  <radical@corewars.org>
+
+	* Project.cs (ProcessBeforeAndAfterTargets): New. * Target.cs: Run
+	the before/after targets in the correct order.
+
+2011-03-01  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix warnings.
+
+2011-02-28  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Make Engine.DefaultToolsVersion 2.0 .
+
+	Engine.DefaultToolsVersion is used when a project is unable to
+	determine a suitable ToolsVersion to use. Change this fallback
+	version to 2.0 . This allows vs2005 (.net 2.0) projects which
+	don't have ToolsVersion explicitly set, to build. Newer projects
+	set ToolsVersion by default.
+
+2011-02-28  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Add $(MSBuildToolsRoot) reserved property.
+
+2011-02-28  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Remove property if Output TaskParameter is null.
+
+	If the TaskParameter for Output of a task is null, then remove the
+	corresponding property. Add relevant test.
+
+2011-02-23  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix bug #674337.
+
+	Use appropriate path separator for handling environment variable
+	MSBuildExtensionsPath.
+
+2011-02-23  Ankit Jain  <radical@corewars.org>
+
+	*
+	Microsoft.Build.Engine/Microsoft.Build.BuildEngine/BuildChoose.cs:
+	*
+	Microsoft.Build.Engine/Microsoft.Build.BuildEngine/BuildItemGroup.cs:
+	*
+	Microsoft.Build.Engine/Microsoft.Build.BuildEngine/BuildPropertyGroup.cs:
+	Add DefinedInFileName property.
+
+	* Microsoft.Build.Engine/Microsoft.Build.BuildEngine/Project.cs:
+	Add a stack to keep track the "current" file, which is used to set
+	the $(MSBuildThisFile*) properties. Update the properties on
+	Push/Pop.
+
+	*
+	Microsoft.Build.Engine/Microsoft.Build.BuildEngine/GroupingCollection.cs:
+	Push/Pop the "current" file, when evaluating a property/item/etc.
+
+	* Microsoft.Build.Engine/Microsoft.Build.BuildEngine/Target.cs:
+	Push/Pop the "current" file, when building. This ensures that the
+	references in the target definition get evaluated correctly.
+
+2011-02-22  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Use the env var $MSBuildExtensionsPath before trying
+	other paths.
+
+	Change the order of the "search paths", so that the environment
+	variable can always override it. Update the man page to reflect
+	the change.
+
+2011-02-11  Ankit Jain  <radical@corewars.org>
+
+	* Microsoft.Build.Engine/Microsoft.Build.BuildEngine/Utilities.cs:
+	Move to.. *
+	Microsoft.Build.Utilities/Mono.XBuild.Utilities/MSBuildUtils.cs:
+	.. this. Also, update FromMSBuildPath from monodevelop. * Update
+	Engine/* and Tasks/* to track the new api.
+
+2011-02-02  Ankit Jain  <radical@corewars.org>
+
+	*
+	class/Microsoft.Build.Engine/Microsoft.Build.BuildEngine/Project.cs
+	(GetToolsVersionToUse): Add a 'emitWarning' bool param. (Build):
+	Call GetToolsVersionToUse () to ensure that a warning is emitted
+	in case of a unknown tools version.
+
+2011-01-26  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Improve error messages for condition evaluation.
+
+	Also, add new ExpressionEvaluationException class. Wrap
+	Expression*Exceptions in InvalidProjectFileException with info
+	about the full condition being evaluated.
+
+2011-01-26  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Support short-circuiting in conditions.
+
+2011-01-14  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Error out, if no target is found in a project.
+
+2011-01-14  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Use the backing field directly to avoid evaluating again.
+
+2011-01-14  Ankit Jain  <radical@corewars.org>
+
+	* Microsoft.Build.BuildEngine/Project.cs (BuildInternal): Set
+	needToReevaluate to false, when reevaluating.
+
+2011-01-14  Ankit Jain  <radical@corewars.org>
+
+	* Microsoft.Build.BuildEngine/Engine.cs
+	(ClearBuiltTargetsForProject): New. *
+	Microsoft.Build.BuildEngine/Project.cs (BuiltTargetKeys): Remove.
+	(RemoveBuiltTargets): Use Engine.ClearBuiltTargetsForProject . *
+	Microsoft.Build.BuildEngine/Target.cs: Track api changes. *
+
+2011-01-11  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] ConsoleLogger - Correctly indent multi-line messages.
+
+	Split and correctly indent multi-line messages in ConsoleLogger.
+
+2011-01-11  Ankit Jain  <radical@corewars.org>
+
+	* Microsoft.Build.Engine/Microsoft.Build.BuildEngine/Import.cs:
+	Change the order of paths. *
+	Microsoft.Build.Engine/Microsoft.Build.Engine.dll.sources: Use
+	MS.Build.Tasks/Utilities.cs, for using RunningOnMac . *
+	Microsoft.Build.Tasks/Microsoft.Build.Tasks/PcFileCache.cs: Look
+	in "/Library/Frameworks/Mono.framework/External/pkgconfig" for .pc
+	files, on Mac. *
+	Microsoft.Build.Tasks/Microsoft.Build.Tasks/Utilities.cs
+	(RunningOnMac): New.
+
+2011-01-10  Ankit Jain  <radical@corewars.org>
+
+	* Microsoft.Build.BuildEngine/Token.cs: Add position information.
+	* Microsoft.Build.BuildEngine/ConditionParser.cs: Track api
+	changes. Improve error messages. (ExpectToken): Rename to ..
+	(IsAtToken): .. this, to better reflect its behavior. *
+	Microsoft.Build.BuildEngine/ConditionTokenizer.cs: Track api
+	changes and improve error messages. *
+	Microsoft.Build.BuildEngine/ConditionFactorExpresion.cs: Track api
+	changes
+
+2011-01-10  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix bug #663180 .
+
+	Add "/Library/Frameworks/Mono.framework/External/xbuild" to
+	MSBuildExtensionsPath on MacOSX.
+
+	From the bug report: The purpose of this directory is to provide a
+	place for third-party installers to place extensions where they
+	will not be removed by Mono upgrades. MonoDevelop patches this
+	into the xbuild MSBuildExtensionsPath for builds within MD but it
+	would be useful to have it work outside of MD.
+
+2010-10-13  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Reset cache of built targets, on a new project build.
+
+	All targets that get built are tracked by the engine, to avoid
+	unnecessary builds of targets. This should be reset on
+	engine.Build, unless it is explicitly requested *not to* reset it,
+	via BuildFlags.
+
+2010-10-13  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Reset ConsoleLogger when a build finishes.
+
+	MSBuild hosts like monodevelop, which use the same logger for
+	multiple builds, get errors/warnings from older builds. So, reset
+	them whenever the BuildFinished event is raised.
+
+	ILogger.Shutdown () is invoked when the host is about to quit,
+	according to msdn, so can't use that.
+
+2010-10-11  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Log TaskFinished even when task fails to initialize.
+
+2010-09-12  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix ConsoleLogger's output, extra blank lines etc.
+
+2010-09-11  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Reduce ConsoleLogger's unnecessary output.
+
+	ConsoleLogger was emitting target names, even if they didn't have
+	any useful output, which resulted in lots of "Target foo:" in the
+	output, with no other related msgs.
+
+	Target Foo: Target Bar: Target Xyz:
+
+	Emit project/target/task headers only if they result in a message,
+	error or warning. This results in much cleaner output.
+
+2010-09-11  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Log default msg for TargetSkipped if @reason is null or
+	empty.
+
 2010-09-02  Ankit Jain  <radical@corewars.org>
 
 	[xbuild] Unsubscribe events on ConsoleLogger.Shutdown ()

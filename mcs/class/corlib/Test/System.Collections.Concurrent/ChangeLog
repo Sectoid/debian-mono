@@ -1,3 +1,22 @@
+2011-01-07  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Remove now unused internal classes
+
+2011-01-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use correct exception when a key is not found in
+	ConcurrentDictionary
+
+2010-12-16  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add support for storing elements with the same hashcode in
+	ConcurrentDictionary. Add corresponding unit test.
+
+2010-11-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Implement Partitioner.Create int and long overloads. Add
+	corresponding unit tests.
+
 2010-08-27  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Allow at max one Remove operation to fail in tests.

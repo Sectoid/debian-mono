@@ -1,25 +1,34 @@
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS = -I .
 
-MOONLIGHT_SUBDIRS =    $(libgc_dir) eglib mono $(ikvm_native_dir)         data
+MOONLIGHT_SUBDIRS = $(libgc_dir) eglib/src mono
 
 if CROSS_COMPILING
-SUBDIRS = po $(libgc_dir) eglib mono $(ikvm_native_dir) data runtime scripts man samples web msvc $(docs_dir)
+SUBDIRS = po $(libgc_dir) eglib mono $(ikvm_native_dir) data runtime scripts man samples msvc $(docs_dir)
 # Keep in sync with SUBDIRS
 ## 'tools' is not normally built
-DIST_SUBDIRS = po libgc eglib mono ikvm-native         data runtime scripts man samples web tools msvc docs
+DIST_SUBDIRS = po libgc eglib mono ikvm-native         data runtime scripts man samples tools msvc docs
 else
 if ONLY_MOONLIGHT
 SUBDIRS = $(MOONLIGHT_SUBDIRS) runtime
 else
-SUBDIRS = po $(libgc_dir) eglib mono $(ikvm_native_dir) support data runtime scripts man samples web msvc $(docs_dir)
+SUBDIRS = po $(libgc_dir) eglib mono $(ikvm_native_dir) support data runtime scripts man samples msvc $(docs_dir)
 # Keep in sync with SUBDIRS
 ## 'tools' is not normally built
-DIST_SUBDIRS = po libgc eglib mono ikvm-native support data runtime scripts man samples web tools msvc docs
+DIST_SUBDIRS = po libgc eglib mono ikvm-native support data runtime scripts man samples tools msvc docs
 endif
 endif
 
-EXTRA_DIST= nls.m4 po.m4 progtest.m4 mono-uninstalled.pc.in build-mingw32.sh LICENSE mkinstalldirs autogen.sh 
+EXTRA_DIST= \
+	    LICENSE \
+	    autogen.sh \
+	    build-mingw32.sh \
+	    mkinstalldirs \
+	    mono-uninstalled.pc.in \
+	    nls.m4 \
+	    po.m4 \
+	    progtest.m4 \
+	    winconfig.h
 
 DISTCHECK_CONFIGURE_FLAGS = EXTERNAL_MCS=false EXTERNAL_RUNTIME=false
 
@@ -37,7 +46,8 @@ DISTCLEANFILES= mono-uninstalled.pc
 # building with monolite
 mcslib = $(mcs_topdir)/class/lib
 monolite = $(mcslib)/monolite
-monolite_url = http://mono.ximian.com/daily/monolite-latest.tar.gz
+mono_corlib_version = $(shell sed -n "s/\#define MONO_CORLIB_VERSION //p" $(srcdir)/mono/metadata/appdomain.c)
+monolite_url = http://mono.ximian.com/daily/monolite-$(mono_corlib_version)-latest.tar.gz
 .PHONY: get-monolite-latest 
 get-monolite-latest:
 	-rm -fr $(mcslib)/monolite-*
@@ -72,17 +82,26 @@ bootstrap-world: compiler-tests
 if MOONLIGHT
 moon-do-build: config.h
 	@list='$(MOONLIGHT_SUBDIRS)'; for subdir in $$list; do \
-	  echo "Making all in $$subdir"; \
-	  (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) all); \
+	  case "x$$subdir" in \
+		xmono ) target="moon-do-build";; \
+		* ) target="all";; \
+	  esac; \
+	  echo "Making $$target in $$subdir"; \
+	  (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) $$target); \
         done;
-	cd $(mcs_topdir) && NO_DIR_CHECK=1 $(MAKE) PROFILE=moonlight_raw all
+	(cd runtime && $(MAKE) $(AM_MAKEFLAGS) moon-do-build)
 
 moon-do-clean:
 	@list='$(MOONLIGHT_SUBDIRS)'; for subdir in $$list; do \
-	  echo "Making clean in $$subdir"; \
-	  (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) clean); \
+	  case "x$$subdir" in \
+		xmono ) target="moon-do-clean";; \
+		* ) target="clean";; \
+	  esac; \
+	  echo "Making $$target in $$subdir"; \
+	  (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) $$target); \
         done;
-	cd $(mcs_topdir) && NO_DIR_CHECK=1 $(MAKE) PROFILE=moonlight_raw clean
+	(cd runtime && $(MAKE) $(AM_MAKEFLAGS) moon-do-clean)
+
 endif
 
 win32getdeps:

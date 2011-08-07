@@ -1,3 +1,47 @@
+2011-05-23  Atsushi Eno  <atsushi@ximian.com>
+
+	Look for KnownTypeAttributes on known types (recursively). Fixed
+	bug #695203.
+
+2011-04-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement support for KnownTypeAttribute.MethodName.
+
+2011-03-10  Atsushi Eno  <atsushi@ximian.com>
+
+	In some collection case, xsi:type is explicitly written. Try to
+	copy that behavior.
+
+2011-02-08  Atsushi Eno  <atsushi@ximian.com>
+
+	There's a tricky namespace-mismatching deserialization in .NET
+	implementation.
+
+	Fixed bug #666333.
+
+2010-10-05  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement DataContractResolver support. At least TryResolveType in
+	serializer should work.
+
+2010-10-01  Atsushi Eno  <atsushi@ximian.com>
+
+	rename source file.
+
+2010-09-30  Atsushi Eno  <atsushi@ximian.com>
+
+	Add DataContractResolver stuff (dummy), and fix Id reference from
+	inside the referenced object.
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Factorize the System.Runtime.Serialization monotouch and monodroid
+	sources into a mobile.sources
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System.Runtime.Serialization build for monodroid
+
 2010-03-16  Jb Evain  <jbevain@novell.com>
 
 	* net_2_1_*.dll.sources: rename to moonlight_*.dll.sources.

@@ -1348,5 +1348,39 @@ namespace MonoTests.System.Xml
 			XmlDocument doc = new XmlDocument ();
 			doc.LoadXml ("<root xml:base='' />");
 		}
+
+		[Test]
+		public void GetAttribute ()
+		{
+			StringReader sr = new StringReader("<rootElement myAttribute=\"the value\"></rootElement>");
+			using (XmlReader reader = XmlReader.Create(sr)) {
+				reader.Read ();
+				Assert.AreEqual (reader.GetAttribute("myAttribute", null), "the value", "#1");
+			}
+		}
+
+		[Test] // bug #675384
+		public void ReadCharsWithVeryLimitedBuffer ()
+		{
+			var r = new XmlTextReader ("<root><child>a</child></root>", XmlNodeType.Document, null);
+			r.MoveToContent ();
+			char [] buff = new char [1];
+			int read = 0;
+			var sb = new StringBuilder ();
+			do {
+				read = r.ReadChars (buff, 0, buff.Length);
+			if (read > 0)
+				sb.Append (buff [0]);
+			} while (read > 0);
+			Assert.AreEqual ("<child>a</child>", sb.ToString (), "#1");
+		}
+
+		[Test]
+		public void BOMLessUTF16Detection () // bug #674580
+		{
+			var ms = new MemoryStream (Encoding.Unicode.GetBytes ("<root />"));
+			var xtr = new XmlTextReader (ms);
+			xtr.Read ();
+		}
 	}
 }

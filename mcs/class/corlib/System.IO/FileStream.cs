@@ -105,10 +105,7 @@ namespace System.IO
 #else
 			this.anonymous = false;
 #endif
-			if (isZeroSize)
-				bufferSize = 1;
-
-			InitBuffer (bufferSize);
+			InitBuffer (bufferSize, isZeroSize);
 
 			if (canseek) {
 				buf_start = MonoIO.Seek (handle, 0, SeekOrigin.Current, out error);
@@ -206,6 +203,7 @@ namespace System.IO
 				throw new ArgumentException ("Path is empty");
 			}
 
+			this.anonymous = anonymous;
 			// ignore the Inheritable flag
 			share &= ~FileShare.Inheritable;
 
@@ -314,7 +312,6 @@ namespace System.IO
 
 			this.access = access;
 			this.owner = true;
-			this.anonymous = anonymous;
 
 			/* Can we open non-files by name? */
 			
@@ -335,7 +332,7 @@ namespace System.IO
 				}
 			}
 
-			InitBuffer (bufferSize);
+			InitBuffer (bufferSize, false);
 
 			if (mode==FileMode.Append) {
 				this.Seek (0, SeekOrigin.End);
@@ -848,7 +845,7 @@ namespace System.IO
 			FlushBuffer ();
 		}
 
-#if NET_4_0
+#if NET_4_0 || MOONLIGHT || MOBILE
 		public virtual void Flush (bool flushToDisk)
 		{
 			FlushBuffer ();
@@ -1089,30 +1086,35 @@ namespace System.IO
 			return(amount);
 		}
 				
-		void InitBuffer (int size)
+		void InitBuffer (int size, bool isZeroSize)
 		{
-			if (size <= 0)
-				throw new ArgumentOutOfRangeException ("bufferSize", "Positive number required.");
-			
-			size = Math.Max (size, 8);
-			
-			//
-			// Instead of allocating a new default buffer use the
-			// last one if there is any available
-			//		
-			if (size <= DefaultBufferSize && buf_recycle != null) {
-				lock (buf_recycle_lock) {
-					if (buf_recycle != null) {
-						buf = buf_recycle;
-						buf_recycle = null;
+			if (isZeroSize) {
+				size = 0;
+				buf = new byte[1];
+			} else {
+				if (size <= 0)
+					throw new ArgumentOutOfRangeException ("bufferSize", "Positive number required.");
+
+				size = Math.Max (size, 8);
+
+				//
+				// Instead of allocating a new default buffer use the
+				// last one if there is any available
+				//		
+				if (size <= DefaultBufferSize && buf_recycle != null) {
+					lock (buf_recycle_lock) {
+						if (buf_recycle != null) {
+							buf = buf_recycle;
+							buf_recycle = null;
+						}
 					}
 				}
+
+				if (buf == null)
+					buf = new byte [size];
+				else
+					Array.Clear (buf, 0, size);
 			}
-			
-			if (buf == null)
-				buf = new byte [size];
-			else
-				Array.Clear (buf, 0, size);
 					
 			buf_size = size;
 //			buf_start = 0;

@@ -59,6 +59,16 @@ mono_arch_patch_plt_entry (guint8 *code, gpointer *got, mgreg_t *regs, guint8 *a
 		guint32 offset = ((guint32*)code)[2];
 		
 		jump_entry = code + offset + 12;
+	} else if (*(guint16*)(code - 4) == 0xf8df) {
+		/* 
+		 * Thumb PLT entry, begins with ldr.w ip, [pc, #8], code points to entry + 4, see
+		 * mono_arm_get_thumb_plt_entry ().
+		 */
+		guint32 offset;
+
+		code -= 4;
+		offset = *(guint32*)(code + 12);
+		jump_entry = code + offset + 8;
 	} else {
 		g_assert_not_reached ();
 	}
@@ -147,13 +157,13 @@ mono_arch_create_generic_trampoline (MonoTrampolineType tramp_type, MonoTrampInf
 	 * regs on the stack (all but PC and SP). The original LR value has been
 	 * saved as sp + LR_OFFSET by the push in the specific trampoline
 	 */
-#define LR_OFFSET (sizeof (gpointer) * 13)
+#define LR_OFFSET (sizeof (mgreg_t) * 13)
 
 	// FIXME: Finish the unwind info, the current info allows us to unwind
 	// when the trampoline is not in the epilog
 
 	// CFA = SP + (num registers pushed) * 4
-	cfa_offset = 14 * sizeof (gpointer);
+	cfa_offset = 14 * sizeof (mgreg_t);
 	mono_add_unwind_op_def_cfa (unwind_ops, code, buf, ARMREG_SP, cfa_offset);
 	// PC saved at sp+LR_OFFSET
 	mono_add_unwind_op_offset (unwind_ops, code, buf, ARMREG_LR, -4);
@@ -198,8 +208,8 @@ mono_arch_create_generic_trampoline (MonoTrampolineType tramp_type, MonoTrampInf
 	 * The pointer to the struct is put in r1.
 	 * the iregs array is already allocated on the stack by push.
 	 */
-	ARM_SUB_REG_IMM8 (code, ARMREG_SP, ARMREG_SP, sizeof (MonoLMF) - sizeof (guint) * 14);
-	cfa_offset += sizeof (MonoLMF) - sizeof (guint) * 14;
+	ARM_SUB_REG_IMM8 (code, ARMREG_SP, ARMREG_SP, sizeof (MonoLMF) - sizeof (mgreg_t) * 14);
+	cfa_offset += sizeof (MonoLMF) - sizeof (mgreg_t) * 14;
 	mono_add_unwind_op_def_cfa_offset (unwind_ops, code, buf, cfa_offset);
 	ARM_ADD_REG_IMM8 (code, ARMREG_R1, ARMREG_SP, STACK - sizeof (MonoLMF));
 	/* r0 is the result from mono_get_lmf_addr () */
@@ -218,7 +228,7 @@ mono_arch_create_generic_trampoline (MonoTrampolineType tramp_type, MonoTrampInf
 	}
 	/* Save sp into lmf->iregs, the eh code expects it to be at IP */
 	ARM_ADD_REG_IMM8 (code, ARMREG_R2, ARMREG_SP, cfa_offset);
-	ARM_STR_IMM (code, ARMREG_R2, ARMREG_R1, G_STRUCT_OFFSET (MonoLMF, iregs) + (ARMREG_IP * 4));
+	ARM_STR_IMM (code, ARMREG_R2, ARMREG_R1, G_STRUCT_OFFSET (MonoLMF, iregs) + (ARMREG_IP * sizeof (mgreg_t)));
 	ARM_STR_IMM (code, ARMREG_SP, ARMREG_R1, G_STRUCT_OFFSET (MonoLMF, esp));
 	/* save the IP (caller ip) */
 	if (tramp_type == MONO_TRAMPOLINE_JUMP) {
@@ -259,15 +269,28 @@ mono_arch_create_generic_trampoline (MonoTrampolineType tramp_type, MonoTrampInf
 		code += 4;
 	}
 
+	/* Align stack to 8 */
+	/* FIXME: Do this properly at the beginning */
+	g_assert (STACK % 8 == 4);
+	ARM_SUB_REG_IMM8 (code, ARMREG_SP, ARMREG_SP, 4);
+	cfa_offset += 4;
+	mono_add_unwind_op_def_cfa (unwind_ops, code, buf, ARMREG_SP, cfa_offset);
+
 	ARM_MOV_REG_REG (code, ARMREG_LR, ARMREG_PC);
 	code = emit_bx (code, ARMREG_IP);
+
+	/* Restore stack */
+	ARM_ADD_REG_IMM8 (code, ARMREG_SP, ARMREG_SP, 4);
+	cfa_offset -= 4;
+	mono_add_unwind_op_def_cfa (unwind_ops, code, buf, ARMREG_SP, cfa_offset);
+
 	
 	/* OK, code address is now on r0. Move it to the place on the stack
 	 * where IP was saved (it is now no more useful to us and it can be
 	 * clobbered). This way we can just restore all the regs in one inst
 	 * and branch to IP.
 	 */
-	ARM_STR_IMM (code, ARMREG_R0, ARMREG_V1, (ARMREG_R12 * 4));
+	ARM_STR_IMM (code, ARMREG_R0, ARMREG_V1, (ARMREG_R12 * sizeof (mgreg_t)));
 
 	/* Check for thread interruption */
 	/* This is not perf critical code so no need to check the interrupt flag */
@@ -310,12 +333,12 @@ mono_arch_create_generic_trampoline (MonoTrampolineType tramp_type, MonoTrampInf
 	/* Restore the registers and jump to the code:
 	 * Note that IP has been conveniently set to the method addr.
 	 */
-	ARM_ADD_REG_IMM8 (code, ARMREG_SP, ARMREG_SP, sizeof (MonoLMF) - sizeof (guint) * 14);
+	ARM_ADD_REG_IMM8 (code, ARMREG_SP, ARMREG_SP, sizeof (MonoLMF) - sizeof (mgreg_t) * 14);
 	ARM_POP_NWB (code, 0x5fff);
 	if (tramp_type == MONO_TRAMPOLINE_RGCTX_LAZY_FETCH)
 		ARM_MOV_REG_REG (code, ARMREG_R0, ARMREG_IP);
 	/* do we need to set sp? */
-	ARM_ADD_REG_IMM8 (code, ARMREG_SP, ARMREG_SP, (14 * 4));
+	ARM_ADD_REG_IMM8 (code, ARMREG_SP, ARMREG_SP, (14 * sizeof (mgreg_t)));
 	if ((tramp_type == MONO_TRAMPOLINE_CLASS_INIT) || (tramp_type == MONO_TRAMPOLINE_GENERIC_CLASS_INIT) || (tramp_type == MONO_TRAMPOLINE_RGCTX_LAZY_FETCH))
 		code = emit_bx (code, ARMREG_LR);
 	else
@@ -379,7 +402,7 @@ mono_arch_create_specific_trampoline (gpointer arg1, MonoTrampolineType tramp_ty
 
 	mono_domain_lock (domain);
 	code = buf = mono_domain_code_reserve_align (domain, size, 4);
-	if ((short_branch = branch_for_target_reachable (code + 8, tramp))) {
+	if ((short_branch = branch_for_target_reachable (code + 4, tramp))) {
 		size = 12;
 		mono_domain_code_commit (domain, code, SPEC_TRAMP_SIZE, size);
 	}
@@ -428,7 +451,6 @@ mono_arch_create_specific_trampoline (gpointer arg1, MonoTrampolineType tramp_ty
 
 /*
  * mono_arch_get_unbox_trampoline:
- * @gsctx: the generic sharing context
  * @m: method pointer
  * @addr: pointer to native code for @m
  *
@@ -437,7 +459,7 @@ mono_arch_create_specific_trampoline (gpointer arg1, MonoTrampolineType tramp_ty
  * unboxing before calling the method
  */
 gpointer
-mono_arch_get_unbox_trampoline (MonoGenericSharingContext *gsctx, MonoMethod *m, gpointer addr)
+mono_arch_get_unbox_trampoline (MonoMethod *m, gpointer addr)
 {
 	guint8 *code, *start;
 	MonoDomain *domain = mono_domain_get ();
@@ -496,7 +518,6 @@ mono_arch_create_rgctx_lazy_fetch_trampoline (guint32 slot, MonoTrampInfo **info
 	gboolean mrgctx;
 	MonoJumpInfo *ji = NULL;
 	GSList *unwind_ops = NULL;
-	char *name;
 
 	mrgctx = MONO_RGCTX_SLOT_IS_MRGCTX (slot);
 	index = MONO_RGCTX_SLOT_INDEX (slot);
@@ -682,7 +703,7 @@ mono_arch_create_specific_trampoline (gpointer arg1, MonoTrampolineType tramp_ty
 }
 
 gpointer
-mono_arch_get_unbox_trampoline (MonoGenericSharingContext *gsctx, MonoMethod *m, gpointer addr)
+mono_arch_get_unbox_trampoline (MonoMethod *m, gpointer addr)
 {
 	g_assert_not_reached ();
 	return NULL;
@@ -732,4 +753,53 @@ mono_arch_get_plt_info_offset (guint8 *plt_entry, mgreg_t *regs, guint8 *code)
 {
 	/* The offset is stored as the 4th word of the plt entry */
 	return ((guint32*)plt_entry) [3];
+}
+
+/*
+ * Return the address of the PLT entry called by the thumb code CODE.
+ */
+guint8*
+mono_arm_get_thumb_plt_entry (guint8 *code)
+{
+	int s, j1, j2, imm10, imm11, i1, i2, imm32;
+	guint8 *bl, *base;
+	guint16 t1, t2;
+	guint8 *target;
+
+	/* code should be right after a BL */
+	code = (guint8*)((mgreg_t)code & ~1);
+	base = (guint8*)((mgreg_t)code & ~3);
+	bl = code - 4;
+	t1 = ((guint16*)bl) [0];
+	t2 = ((guint16*)bl) [1];
+
+	g_assert ((t1 >> 11) == 0x1e);
+
+	s = (t1 >> 10) & 0x1;
+	imm10 = (t1 >> 0) & 0x3ff;
+	j1 = (t2 >> 13) & 0x1;
+	j2 = (t2 >> 11) & 0x1;
+	imm11 = t2 & 0x7ff;
+
+	i1 = (s ^ j1) ? 0 : 1;
+	i2 = (s ^ j2) ? 0 : 1;
+
+	imm32 = (imm11 << 1) | (imm10 << 12) | (i2 << 22) | (i1 << 23);
+	// FIXME:
+	g_assert (s == 0);
+
+	target = code + imm32;
+
+	/* target now points to the thumb plt entry */
+	/* ldr.w r12, [pc, #8] */
+	g_assert (((guint16*)target) [0] == 0xf8df);
+	g_assert (((guint16*)target) [1] == 0xc008);
+
+	/* 
+	 * The PLT info offset is at offset 16, but mono_arch_get_plt_entry_offset () returns
+	 * the 3rd word, so compensate by returning a different value.
+	 */
+	target += 4;
+
+	return target;
 }

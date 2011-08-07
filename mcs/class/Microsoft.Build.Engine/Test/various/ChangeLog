@@ -1,3 +1,21 @@
+2011-03-09  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Clean up test logs.
+
+	Remove unnecessary debug spew for tests that pass.
+
+2011-01-26  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Improve error messages for condition evaluation.
+
+	Also, add new ExpressionEvaluationException class. Wrap
+	Expression*Exceptions in InvalidProjectFileException with info
+	about the full condition being evaluated.
+
+2011-01-26  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Support short-circuiting in conditions.
+
 2010-03-04  Ankit Jain  <jankit@novell.com>
 
 	* Build.cs (TestBuildContinueOnError*): New.

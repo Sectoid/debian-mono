@@ -27,9 +27,10 @@ using System.IO;
 using System.Net.Sockets;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
+using System.ServiceModel.Discovery;
 using System.Threading;
 
-namespace System.ServiceModel.Discovery
+namespace System.ServiceModel.Discovery.Udp
 {
 	internal class UdpChannelListener : ChannelListenerBase<IDuplexChannel>
 	{
@@ -97,6 +98,8 @@ namespace System.ServiceModel.Discovery
 			if (!accept_wait_handle.WaitOne (timeout))
 				throw new TimeoutException ();
 			accept_wait_handle.Reset ();
+			if (State != CommunicationState.Opened)
+				return null; // happens during Close() or Abort().
 			channel = new UdpDuplexChannel (this);
 			channel.Closed += delegate {
 				accept_wait_handle.Set ();

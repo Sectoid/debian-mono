@@ -23,6 +23,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -30,9 +31,11 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
+using System.ServiceModel.Discovery;
 using System.Threading;
+using System.Xml;
 
-namespace System.ServiceModel.Discovery
+namespace System.ServiceModel.Discovery.Udp
 {
 	internal class UdpDuplexChannel : ChannelBase, IDuplexChannel
 	{
@@ -75,7 +78,7 @@ namespace System.ServiceModel.Discovery
 
 		void FillMessageEncoder (BindingContext ctx)
 		{
-			var mbe = (MessageEncodingBindingElement) ctx.RemainingBindingElements.FirstOrDefault (be => be is MessageEncodingBindingElement);
+			var mbe = (MessageEncodingBindingElement) ctx.Binding.Elements.FirstOrDefault (be => be is MessageEncodingBindingElement);
 			if (mbe == null)
 				mbe = new TextMessageEncodingBindingElement ();
 			message_encoder = mbe.CreateMessageEncoderFactory ().Encoder;
@@ -88,16 +91,45 @@ namespace System.ServiceModel.Discovery
 
 		static readonly Random rnd = new Random ();
 
+		UdpClient GetSenderClient (Message message)
+		{
+			if (RemoteAddress != null)
+				return client;
+				
+			var rmp = message.Properties [RemoteEndpointMessageProperty.Name] as RemoteEndpointMessageProperty;
+			if (rmp == null)
+				throw new ArgumentException ("This duplex channel from the channel listener cannot send messages without RemoteEndpointMessageProperty");
+			var cli = new UdpClient ();
+			cli.Connect (IPAddress.Parse (rmp.Address), rmp.Port);
+			return cli;
+		}
+
 		public void Send (Message message, TimeSpan timeout)
 		{
 			if (State != CommunicationState.Opened)
 				throw new InvalidOperationException ("The UDP channel must be opened before sending a message.");
 
+			var cli = GetSenderClient (message);
+			try {
+				SendCore (cli, message, timeout);
+			} finally {
+				if (cli != client)
+					cli.Close ();
+			}
+		}
+
+		void SendCore (UdpClient cli, Message message, TimeSpan timeout)
+		{
+			Logger.LogMessage (MessageLogSourceKind.TransportSend, ref message, int.MaxValue);
+
 			var ms = new MemoryStream ();
 			message_encoder.WriteMessage (message, ms);
-			client.Send (ms.GetBuffer (), (int) ms.Length);
-			// FIXME: use MaxAnnouncementDelay. It is fixed now.
-			Thread.Sleep (rnd.Next (500, 500));
+			// It seems .NET sends the same Message a couple of times so that the receivers don't miss it. So, do the same hack.
+			for (int i = 0; i < 3; i++) {
+				// FIXME: use MaxAnnouncementDelay. It is fixed now.
+				Thread.Sleep (rnd.Next (50, 500));
+				cli.Send (ms.GetBuffer (), (int) ms.Length);
+			}
 		}
 
 		public bool WaitForMessage (TimeSpan timeout)
@@ -120,30 +152,62 @@ namespace System.ServiceModel.Discovery
 
 		public bool TryReceive (TimeSpan timeout, out Message msg)
 		{
+			DateTime start = DateTime.Now;
 			ThrowIfDisposedOrNotOpen ();
 			msg = null;
 
+			if (client == null) // could be invoked while being closed.
+				return false;
+
 			byte [] bytes = null;
 			IPEndPoint ip = new IPEndPoint (IPAddress.Any, 0);
+			ManualResetEvent wait = new ManualResetEvent (false);
 			var ar = client.BeginReceive (delegate (IAsyncResult result) {
-				bytes = client.EndReceive (result, ref ip);
-			}, null);
+				try {
+					UdpClient cli = (UdpClient) result.AsyncState;
+					try {
+						bytes = cli.EndReceive (result, ref ip);
+					} catch (ObjectDisposedException) {
+						if (State == CommunicationState.Opened)
+							throw;
+						// Otherwise, called during shutdown. Ignore it.
+					}
+				} finally {
+					wait.Set ();
+				}
+			}, client);
 
-			if (!ar.IsCompleted && !ar.AsyncWaitHandle.WaitOne (timeout))
+			if (!ar.IsCompleted && !wait.WaitOne (timeout))
 				return false;
 			if (bytes == null || bytes.Length == 0)
 				return false;
 
+			// Clients will send the same message many times, and this receiver has to 
+
 			// FIXME: give maxSizeOfHeaders
 			msg = message_encoder.ReadMessage (new MemoryStream (bytes), int.MaxValue);
+			var id = msg.Headers.MessageId;
+			if (message_ids.Contains (id))
+				return TryReceive (timeout - (DateTime.Now - start), out msg);
+			if (id != null) {
+				message_ids.Enqueue (id);
+				if (message_ids.Count >= binding_element.TransportSettings.DuplicateMessageHistoryLength)
+					message_ids.Dequeue ();
+			}
+			msg.Properties.Add ("Via", LocalAddress.Uri);
+			msg.Properties.Add ("Encoder", message_encoder);
+			msg.Properties.Add (RemoteEndpointMessageProperty.Name, new RemoteEndpointMessageProperty (ip.Address.ToString (), ip.Port));
+
+			Logger.LogMessage (MessageLogSourceKind.TransportReceive, ref msg, binding_element.MaxReceivedMessageSize);
+
 			return true;
 		}
 
+		Queue<UniqueId> message_ids = new Queue<UniqueId> ();
+
 		protected override void OnAbort ()
 		{
-			if (client != null)
-				client.Close ();
-			client = null;
+			OnClose (TimeSpan.Zero);
 		}
 		
 		Action<TimeSpan> open_delegate, close_delegate;
@@ -206,6 +270,9 @@ namespace System.ServiceModel.Discovery
 			client.EnableBroadcast = true;
 
 			// FIXME: apply UdpTransportSetting here.
+			var settings = binding_element.TransportSettings;
+			if (settings.MulticastInterfaceId != null)
+				client.Client.SetSocketOption (SocketOptionLevel.Udp, SocketOptionName.MulticastInterface, settings.MulticastInterfaceId);
 		}
 		
 		Func<TimeSpan,Message> receive_delegate;

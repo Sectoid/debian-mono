@@ -1,3 +1,29 @@
+2011-01-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented BuildManager.GetObjectFactory
+
+	This method is not used by Mono internally but is called by MVC
+	v3.
+
+2010-12-09  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Get system.web/httpRuntime only once
+
+	Get that section only once and keep it in HttpRuntime.
+
+2010-11-03  Marek Habersack  <grendel@twistedcode.net>
+
+	* System.Web/System.Web.Util/MachineKeySectionUtils.cs: made
+	GetValidationKey public
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
+2010-10-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	A few moves/changes following previous patch review
+
 2010-06-04  Jb Evain  <jbevain@novell.com>
 
 	* HttpEncoder.cs: only net_4_0 uses System.Web.Configuration.

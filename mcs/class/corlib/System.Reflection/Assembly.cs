@@ -37,7 +37,6 @@ using System.IO;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Collections;
 using System.Collections.Generic;
 using System.Configuration.Assemblies;
 
@@ -45,13 +44,11 @@ using Mono.Security;
 
 namespace System.Reflection {
 
-#pragma warning disable 659 // overrides Equals but not GetHashCode
-
 	[ComVisible (true)]
 	[ComDefaultInterfaceAttribute (typeof (_Assembly))]
 	[Serializable]
 	[ClassInterface(ClassInterfaceType.None)]
-#if MONOTOUCH
+#if MOBILE
 	public partial class Assembly : ICustomAttributeProvider, _Assembly {
 #elif MOONLIGHT
 	public abstract class Assembly : ICustomAttributeProvider, _Assembly {
@@ -79,7 +76,7 @@ namespace System.Reflection {
 		private bool fromByteArray;
 		private string assemblyName;
 
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		protected
 #else
 		internal
@@ -509,6 +506,13 @@ namespace System.Reflection {
 #endif
 
 #if NET_4_0
+		public static Assembly UnsafeLoadFrom (String assemblyFile)
+		{
+			return LoadFrom (assemblyFile);
+		}
+#endif
+
+#if NET_4_0
 		[Obsolete]
 #endif
 		public static Assembly LoadFile (String path, Evidence securityEvidence)
@@ -597,9 +601,7 @@ namespace System.Reflection {
 			return LoadFrom (assemblyFile, true);
 		}
 
-#if NET_4_0
 		[Obsolete]
-#endif
 		public static Assembly LoadWithPartialName (string partialName)
 		{
 			return LoadWithPartialName (partialName, null);
@@ -613,7 +615,7 @@ namespace System.Reflection {
 
 		[MonoTODO ("Not implemented")]
 		public
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		virtual
 #endif
 		Module LoadModule (string moduleName, byte [] rawModule, byte [] rawSymbolStore)
@@ -624,9 +626,7 @@ namespace System.Reflection {
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		private static extern Assembly load_with_partial_name (string name, Evidence e);
 
-#if NET_4_0
 		[Obsolete]
-#endif
 		public static Assembly LoadWithPartialName (string partialName, Evidence securityEvidence)
 		{
 			return LoadWithPartialName (partialName, securityEvidence, true);
@@ -670,7 +670,7 @@ namespace System.Reflection {
 		}
 
 		public
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		virtual
 #endif
 		Object CreateInstance (String typeName, Boolean ignoreCase,
@@ -760,7 +760,7 @@ namespace System.Reflection {
 		[MonoTODO ("Currently it always returns zero")]
 		[ComVisible (false)]
 		public
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		virtual
 #endif
 		long HostContext {
@@ -780,6 +780,11 @@ namespace System.Reflection {
 			[MethodImplAttribute (MethodImplOptions.InternalCall)]
 			get;
 		}
+		
+		public override int GetHashCode ()
+		{
+			return base.GetHashCode ();
+		}
 
 		public override bool Equals (object o)
 		{
@@ -794,7 +799,7 @@ namespace System.Reflection {
 		}
 		
 #if NET_4_0
-#if MOONLIGHT
+#if MOONLIGHT || MOBILE
 		public virtual IList<CustomAttributeData> GetCustomAttributesData () {
 			return CustomAttributeData.GetCustomAttributes (this);
 		}
@@ -892,7 +897,7 @@ namespace System.Reflection {
 		}
 #endif
 
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		static Exception CreateNIE ()
 		{
 			return new NotImplementedException ("Derived classes must implement it");
@@ -946,11 +951,6 @@ namespace System.Reflection {
 			get { return false; }
 		}
 
-		public override int GetHashCode ()
-		{
-			return base.GetHashCode ();
-		}
-
 		public static bool operator == (Assembly left, Assembly right)
 		{
 			if ((object)left == (object)right)
@@ -971,5 +971,3 @@ namespace System.Reflection {
 #endif
 	}
 }
-
-#pragma warning restore 659

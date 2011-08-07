@@ -107,6 +107,51 @@ namespace MonoTests.System.Threading.Tasks
 			
 			completionSource.SetResult (43);
 		}
+
+		[Test]
+		public void ContinuationTest ()
+		{
+			bool result = false;
+			var t = completionSource.Task.ContinueWith ((p) => { if (p.Result == 2) result = true; });
+			Assert.AreEqual (TaskStatus.WaitingForActivation, completionSource.Task.Status, "#A");
+			completionSource.SetResult (2);
+			t.Wait ();
+			Assert.AreEqual (TaskStatus.RanToCompletion, completionSource.Task.Status, "#1");
+			Assert.AreEqual (TaskStatus.RanToCompletion, t.Status, "#2");
+			Assert.IsTrue (result);
+		}
+
+		[Test]
+		public void FaultedFutureTest ()
+		{
+			var thrown = new ApplicationException ();
+			var source = new TaskCompletionSource<int> ();
+			source.TrySetException (thrown);
+			var f = source.Task;
+			AggregateException ex = null;
+			try {
+				f.Wait ();
+			} catch (AggregateException e) {
+				ex = e;
+			}
+
+			Assert.IsNotNull (ex);
+			Assert.AreEqual (thrown, ex.InnerException);
+			Assert.AreEqual (thrown, f.Exception.InnerException);
+			Assert.AreEqual (TaskStatus.Faulted, f.Status);
+
+			ex = null;
+			try {
+				var result = f.Result;
+			} catch (AggregateException e) {
+				ex = e;
+			}
+
+			Assert.IsNotNull (ex);
+			Assert.AreEqual (TaskStatus.Faulted, f.Status);
+			Assert.AreEqual (thrown, f.Exception.InnerException);
+			Assert.AreEqual (thrown, ex.InnerException);
+		}
 	}
 }
 #endif

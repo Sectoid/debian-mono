@@ -20,91 +20,43 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Windows.Markup;
+using System.Xaml;
 using System.Xaml.Schema;
 
+//
+// This implementation can be compiled under .NET, using different namespace
+// (Mono.Xaml). To compile it into a usable library, use the following compile
+// optons and sources:
+//
+//	dmcs -d:DOTNET -t:library -r:System.Xaml.dll \
+//		System.Xaml/XamlObjectReader.cs \
+//		System.Xaml/XamlObjectNodeIterator.cs \
+//		System.Xaml/XamlNode.cs \
+//		System.Xaml/PrefixLookup.cs \
+//		System.Xaml/ValueSerializerContext.cs \
+//		System.Xaml/TypeExtensionMethods.cs
+//
+// (At least it should compile as of the revision that this comment is added.)
+//
+// Adding Test/System.Xaml/TestedTypes.cs might also be useful to examine this
+// reader behavior under .NET and see where bugs are alive.
+//
+
+#if DOTNET
+namespace Mono.Xaml
+#else
 namespace System.Xaml
+#endif
 {
 	public class XamlObjectReader : XamlReader
 	{
-		#region nested types
-
-		class NSList : List<NamespaceDeclaration>
-		{
-			public NSList (XamlNodeType ownerType, IEnumerable<NamespaceDeclaration> nsdecls)
-				: base (nsdecls)
-			{
-				OwnerType = ownerType;
-			}
-			
-			public XamlNodeType OwnerType { get; set; }
-
-			public IEnumerator<NamespaceDeclaration> GetEnumerator ()
-			{
-				return new NSEnumerator (this, base.GetEnumerator ());
-			}
-		}
-
-		class NSEnumerator : IEnumerator<NamespaceDeclaration>
-		{
-			NSList list;
-			IEnumerator<NamespaceDeclaration> e;
-
-			public NSEnumerator (NSList list, IEnumerator<NamespaceDeclaration> e)
-			{
-				this.list= list;
-				this.e = e;
-			}
-			
-			public XamlNodeType OwnerType {
-				get { return list.OwnerType; }
-			}
-
-			public void Dispose ()
-			{
-			}
-
-			public bool MoveNext ()
-			{
-				return e.MoveNext ();
-			}
-
-			public NamespaceDeclaration Current {
-				get { return e.Current; }
-			}
-
-			object IEnumerator.Current {
-				get { return Current; }
-			}
-
-			public void Reset ()
-			{
-				throw new NotSupportedException ();
-			}
-		}
-	
-		class PrefixLookup : INamespacePrefixLookup
-		{
-			XamlObjectReader source;
-
-			public PrefixLookup (XamlObjectReader source)
-			{
-				this.source = source;
-			}
-
-			public string LookupPrefix (string ns)
-			{
-				return source.LookupPrefix (ns);
-			}
-		}
-
-		#endregion nested types
-
 		public XamlObjectReader (object instance)
 			: this (instance, new XamlSchemaContext (null, null), null)
 		{
@@ -124,46 +76,55 @@ namespace System.Xaml
 		{
 			if (schemaContext == null)
 				throw new ArgumentNullException ("schemaContext");
-			// FIXME: special case? or can it be generalized?
+			// FIXME: special case? or can it be generalized? In .NET, For Type instance Instance returns TypeExtension at root StartObject, while for Array it remains to return Array.
 			if (instance is Type)
 				instance = new TypeExtension ((Type) instance);
 
-			this.instance = instance;
+			// See also Instance property for this weirdness.
+			this.root_raw = instance;
+			instance = TypeExtensionMethods.GetExtensionWrapped (instance);
+			this.root = instance;
+
 			sctx = schemaContext;
 			this.settings = settings;
 
-			prefix_lookup = new PrefixLookup (this);
-
+			// check type validity. Note that some checks also needs done at Read() phase. (it is likely FIXME:)
 			if (instance != null) {
-				// check type validity. Note that some checks are done at Read() phase.
-				var type = instance.GetType ();
+				var type = new InstanceContext (instance).GetRawValue ().GetType ();
 				if (!type.IsPublic)
 					throw new XamlObjectReaderException (String.Format ("instance type '{0}' must be public and non-nested.", type));
-				root_type = SchemaContext.GetXamlType (instance.GetType ());
-				if (root_type.ConstructionRequiresArguments && root_type.TypeConverter == null)
+				var xt = SchemaContext.GetXamlType (type);
+				if (xt.ConstructionRequiresArguments && !xt.GetConstructorArguments ().Any () && xt.TypeConverter == null)
 					throw new XamlObjectReaderException (String.Format ("instance type '{0}' has no default constructor.", type));
 			}
-			else
-				root_type = XamlLanguage.Null;
-		}
 
-		object instance;
-		XamlType root_type;
+			value_serializer_context = new ValueSerializerContext (new PrefixLookup (sctx), sctx);
+			new XamlObjectNodeIterator (instance, sctx, value_serializer_context).PrepareReading ();
+		}
+		
+		bool is_eof;
+		object root, root_raw;
 		XamlSchemaContext sctx;
 		XamlObjectReaderSettings settings;
+		IValueSerializerContext value_serializer_context;
 
-		INamespacePrefixLookup prefix_lookup;
-
-		Stack<XamlType> types = new Stack<XamlType> ();
-		Stack<object> objects = new Stack<object> ();
-		Stack<IEnumerator<XamlMember>> members_stack = new Stack<IEnumerator<XamlMember>> ();
-		NSList namespaces;
 		IEnumerator<NamespaceDeclaration> ns_iterator;
-		XamlNodeType node_type = XamlNodeType.None;
-		bool is_eof;
+		IEnumerator<XamlNodeInfo> nodes;
 
+		PrefixLookup PrefixLookup {
+			get { return (PrefixLookup) value_serializer_context.GetService (typeof (INamespacePrefixLookup)); }
+		}
+
+		// This property value is weird.
+		// - For root Type it returns TypeExtension.
+		// - For root Array it returns Array.
+		// - For non-root Type it returns Type.
+		// - For IXmlSerializable, it does not either return the raw IXmlSerializable or interpreted XData (it just returns null).
 		public virtual object Instance {
-			get { return NodeType == XamlNodeType.StartObject && objects.Count > 0 ? objects.Peek () : null; }
+			get {
+				var cur = NodeType == XamlNodeType.StartObject ? nodes.Current.Object.GetRawValue () : null;
+				return cur == root ? root_raw : cur is XData ? null : cur;
+			}
 		}
 
 		public override bool IsEof {
@@ -171,7 +132,7 @@ namespace System.Xaml
 		}
 
 		public override XamlMember Member {
-			get { return NodeType == XamlNodeType.StartMember ? members_stack.Peek ().Current : null; }
+			get { return NodeType == XamlNodeType.StartMember ? nodes.Current.Member.Member : null; }
 		}
 
 		public override NamespaceDeclaration Namespace {
@@ -179,7 +140,16 @@ namespace System.Xaml
 		}
 
 		public override XamlNodeType NodeType {
-			get { return node_type; }
+			get {
+				if (is_eof)
+					return XamlNodeType.None;
+				else if (nodes != null)
+					return nodes.Current.NodeType;
+				else if (ns_iterator != null)
+					return XamlNodeType.NamespaceDeclaration;
+				else
+					return XamlNodeType.None;
+			}
 		}
 
 		public override XamlSchemaContext SchemaContext {
@@ -187,19 +157,15 @@ namespace System.Xaml
 		}
 
 		public override XamlType Type {
-			get { return NodeType == XamlNodeType.StartObject ? types.Peek () : null; }
+			get { return NodeType == XamlNodeType.StartObject ? nodes.Current.Object.Type : null; }
 		}
 
 		public override object Value {
-			get { return NodeType == XamlNodeType.Value ? objects.Peek () : null; }
-		}
-
-		internal string LookupPrefix (string ns)
-		{
-			foreach (var nsd in namespaces)
-				if (nsd.Namespace == ns)
-					return nsd.Prefix;
-			return null;
+			get {
+				if (NodeType != XamlNodeType.Value)
+					return null;
+				return nodes.Current.Value;
+			}
 		}
 
 		public override bool Read ()
@@ -208,197 +174,18 @@ namespace System.Xaml
 				throw new ObjectDisposedException ("reader");
 			if (IsEof)
 				return false;
-			IEnumerator<XamlMember> members;
-			switch (NodeType) {
-			case XamlNodeType.None:
-			default:
-				// -> namespaces
-				var d = new Dictionary<string,string> ();
-				//l.Sort ((p1, p2) => String.CompareOrdinal (p1.Key, p2.Key));
-				CollectNamespaces (d, instance, root_type);
-				var nss = from k in d.Keys select new NamespaceDeclaration (k, d [k]);
-				namespaces = new NSList (XamlNodeType.StartObject, nss);
-				namespaces.Sort ((n1, n2) => String.CompareOrdinal (n1.Prefix, n2.Prefix));
-				ns_iterator = namespaces.GetEnumerator ();
-
-				ns_iterator.MoveNext ();
-				node_type = XamlNodeType.NamespaceDeclaration;
+			
+			if (ns_iterator == null)
+				ns_iterator = PrefixLookup.Namespaces.GetEnumerator ();
+			if (ns_iterator.MoveNext ())
 				return true;
-
-			case XamlNodeType.NamespaceDeclaration:
-				if (ns_iterator.MoveNext ())
-					return true;
-				node_type = ((NSEnumerator) ns_iterator).OwnerType; // StartObject or StartMember
-				if (node_type == XamlNodeType.StartObject)
-					StartNextObject ();
-				else
-					StartNextMemberOrNamespace ();
+			if (nodes == null)
+				nodes = new XamlObjectNodeIterator (root, sctx, value_serializer_context).GetNodes ().GetEnumerator ();
+			if (nodes.MoveNext ())
 				return true;
-
-			case XamlNodeType.StartObject:
-				var xt = types.Peek ();
-				members = xt.GetAllReadWriteMembers ().GetEnumerator ();
-				if (members.MoveNext ()) {
-					members_stack.Push (members);
-					StartNextMemberOrNamespace ();
-					return true;
-				}
-				else
-					node_type = XamlNodeType.EndObject;
-				return true;
-
-			case XamlNodeType.StartMember:
-				if (!members_stack.Peek ().Current.IsContentValue ())
-					StartNextObject ();
-				else {
-					var obj = GetMemberValueOrRootInstance ();
-					objects.Push (obj);
-					node_type = XamlNodeType.Value;
-				}
-				return true;
-
-			case XamlNodeType.Value:
-				objects.Pop ();
-				node_type = XamlNodeType.EndMember;
-				return true;
-
-			case XamlNodeType.GetObject:
-				// how do we get here?
-				throw new NotImplementedException ();
-
-			case XamlNodeType.EndMember:
-				members = members_stack.Peek ();
-				if (members.MoveNext ()) {
-					members_stack.Push (members);
-					StartNextMemberOrNamespace ();
-				} else {
-					members_stack.Pop ();
-					node_type = XamlNodeType.EndObject;
-				}
-				return true;
-
-			case XamlNodeType.EndObject:
-				// It might be either end of the entire object tree or just the end of an object value.
-				types.Pop ();
-				objects.Pop ();
-				if (objects.Count == 0) {
-					node_type = XamlNodeType.None;
-					is_eof = true;
-					return false;
-				}
-				members = members_stack.Peek ();
-				if (members.MoveNext ()) {
-					StartNextMemberOrNamespace ();
-					return true;
-				}
-				// then, move to the end of current object member.
-				node_type = XamlNodeType.EndMember;
-				return true;
-			}
-		}
-
-		void CollectNamespaces (Dictionary<string,string> d, object o, XamlType xt)
-		{
-			if (xt == null)
-				return;
-			if (o == null) {
-				// it becomes NullExtension, so check standard ns.
-				CheckAddNamespace (d, XamlLanguage.Xaml2006Namespace);
-				return;
-			}
-			var ns = xt.PreferredXamlNamespace;
-			CheckAddNamespace (d, ns);
-
-			foreach (var xm in xt.GetAllMembers ()) {
-				ns = xm.PreferredXamlNamespace;
-				if (xm is XamlDirective && ns == XamlLanguage.Xaml2006Namespace)
-					continue;
-				if (xm.Type.IsCollection || xm.Type.IsDictionary || xm.Type.IsArray)
-					continue; // FIXME: process them too.
-				var mv = GetMemberValueOf (xm, o, xt, d);
-				CollectNamespaces (d, mv, xm.Type);
-			}
-		}
-
-		// This assumes that the next member is already on current position on current iterator.
-		void StartNextMemberOrNamespace ()
-		{
-			// FIXME: there might be NamespaceDeclarations.
-			node_type = XamlNodeType.StartMember;
-		}
-
-		void StartNextObject ()
-		{
-			var obj = GetMemberValueOrRootInstance ();
-			var xt = Object.ReferenceEquals (obj, instance) ? root_type : obj != null ? SchemaContext.GetXamlType (obj.GetType ()) : XamlLanguage.Null;
-
-			// FIXME: enable these lines.
-			// FIXME: if there is an applicable instance descriptor, then it could be still valid.
-			//var type = xt.UnderlyingType;
-			//if (type.GetConstructor (System.Type.EmptyTypes) == null)
-			//	throw new XamlObjectReaderException (String.Format ("Type {0} has no default constructor or an instance descriptor.", type));
-
-			objects.Push (obj);
-			types.Push (xt);
-			node_type = XamlNodeType.StartObject;
-		}
-		
-		object GetMemberValueOrRootInstance ()
-		{
-			if (objects.Count == 0)
-				return instance;
-
-			var xm = members_stack.Peek ().Current;
-			var obj = objects.Peek ();
-			var xt = types.Peek ();
-			return GetMemberValueOf (xm, obj, xt, null);
-		}
-
-		object GetMemberValueOf (XamlMember xm, object obj, XamlType xt, Dictionary<string,string> collectingNamespaces)
-		{
-			object retobj;
-			XamlType retxt;
-			if (xt.IsContentValue ()) {
-				retxt = xt;
-				retobj = obj;
-			} else {
-				retxt = xm.Type;
-				retobj = xm.GetMemberValueForObjectReader (xt, obj, prefix_lookup);
-			}
-
-			if (collectingNamespaces != null) {
-				if (retobj is Type || retobj is TypeExtension) {
-					var type = (retobj as Type) ?? ((TypeExtension) retobj).Type;
-					if (type == null) // only TypeExtension.TypeName
-						return null;
-					var xtt = SchemaContext.GetXamlType (type);
-					var ns = xtt.PreferredXamlNamespace;
-					var nss = collectingNamespaces;
-					CheckAddNamespace (collectingNamespaces, ns);
-					return null;
-				}
-				else if (retxt.IsContentValue ())
-					return null;
-				else
-					return retobj;
-			} else if (retxt.IsContentValue ()) {
-				// FIXME: I'm not sure if this should be really done 
-				// here, but every primitive values seem to be exposed
-				// as a string, not a typed object in XamlObjectReader.
-				return retxt.GetStringValue (retobj, prefix_lookup);
-			}
-			else
-				return retobj;
-		}
-
-		void CheckAddNamespace (Dictionary<string,string> d, string ns)
-		{
-			if (ns == XamlLanguage.Xaml2006Namespace)
-				d [XamlLanguage.Xaml2006Namespace] = "x";
-			else if (!d.ContainsValue (String.Empty))
-				d [ns] = String.Empty;
-			else if (!d.ContainsKey (ns))
-				d.Add (ns, SchemaContext.GetPreferredPrefix (ns));
+			if (!is_eof)
+				is_eof = true;
+			return false;
 		}
 	}
 }

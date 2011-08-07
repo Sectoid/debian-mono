@@ -1,3 +1,35 @@
+2011-04-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Use xmlns-ignoring XmlDocument derivation for config files. Fixed
+	bug #641935.
+
+2010-12-14  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #467221. Properly match location sub-paths
+	for security trimming
+
+	When security trimming is requested for sub-path of a location
+	specified in the config file, make sure that we match such a
+	request to its parent location.
+
+	Based on patch from Mike Morano <mmorano@mikeandwan.us>, thanks!
+
+2010-10-04  Marek Habersack  <grendel@twistedcode.net>
+
+	[configuration] Part of fix for bug #579837.
+	CommaDelimitedStringCollection must properly note that it was
+	modified.
+
+	When one manipulates the collection as an instance of
+	StringCollection, the 'modified' field will not be set (Add,
+	Remove etc. from the underlying StringCollection type will be
+	used). To work around it a check has to be performed in IsModified
+	whether the contents of the collection changed. It is done by
+	comparing string hash codes of the original vs current string.
+	CommaDelimitedStringCollectionConverter forces string hash code
+	update on the new collection, so that IsModified works correctly
+	on collections converted from comma-delimited strings.
+
 2010-08-09  Laurent Etiemble  <laurent.etiemble@gmail.com>
 
 	*
