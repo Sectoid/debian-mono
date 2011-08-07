@@ -28,6 +28,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Reflection;
 using System.ServiceModel.Channels;
 using System.Threading;
@@ -130,16 +131,13 @@ namespace System.ServiceModel.Dispatcher
 			endpoints = new EndpointDispatcherCollection (this);
 		}
 
-		internal void InitializeServiceEndpoint (Type serviceType, ServiceEndpoint se)
+		internal EndpointDispatcher InitializeServiceEndpoint (Type serviceType, ServiceEndpoint se)
 		{
-			this.MessageVersion = se.Binding.MessageVersion;
-			if (this.MessageVersion == null)
-				this.MessageVersion = MessageVersion.Default;
-
 			//Attach one EndpointDispacher to the ChannelDispatcher
 			EndpointDispatcher ed = new EndpointDispatcher (se.Address, se.Contract.Name, se.Contract.Namespace);
 			this.Endpoints.Add (ed);
 			ed.InitializeServiceEndpoint (false, serviceType, se);
+			return ed;
 		}
 
 		public string BindingName {
@@ -230,6 +228,9 @@ namespace System.ServiceModel.Dispatcher
 		protected internal override void Attach (ServiceHostBase host)
 		{
 			this.host = host;
+			var bl = listener as IChannelDispatcherBoundListener;
+			if (bl != null)
+				bl.ChannelDispatcher = this;
 		}
 
 		public override void CloseInput ()
@@ -264,7 +265,7 @@ namespace System.ServiceModel.Dispatcher
 			AsyncCallback callback, object state)
 		{
 			if (open_delegate == null)
-				open_delegate = new Action<TimeSpan> (OnClose);
+				open_delegate = new Action<TimeSpan> (OnOpen);
 			return open_delegate.BeginInvoke (timeout, callback, state);
 		}
 
@@ -315,7 +316,7 @@ namespace System.ServiceModel.Dispatcher
 		{
 			// FIXME: not sure if it should be filled here.
 			if (ServiceThrottle == null)
-				ServiceThrottle = new ServiceThrottle ();
+				ServiceThrottle = new ServiceThrottle (this);
 
 			loop_manager.Start ();
 		}
@@ -335,6 +336,7 @@ namespace System.ServiceModel.Dispatcher
 			Func<IAsyncResult> channel_acceptor;
 			List<IChannel> channels = new List<IChannel> ();
 			AddressFilterMode address_filter_mode;
+			List<ISession> sessions = new List<ISession> ();
 
 			public ListenerLoopManager (ChannelDispatcher owner)
 			{
@@ -346,8 +348,9 @@ namespace System.ServiceModel.Dispatcher
 
 			public void Setup (TimeSpan openTimeout)
 			{
-				if (owner.Listener.State != CommunicationState.Opened)
-					owner.Listener.Open (openTimeout);
+				if (owner.Listener.State != CommunicationState.Created)
+					throw new InvalidOperationException ("Tried to open the channel listener which is bound to ChannelDispatcher, but it is not at Created state");
+				owner.Listener.Open (openTimeout);
 
 				// It is tested at Open(), but strangely it is not instantiated at this point.
 				foreach (var ed in owner.Endpoints)
@@ -372,8 +375,7 @@ namespace System.ServiceModel.Dispatcher
 					try {
 						ChannelAccepted (r.EndAcceptChannel (result));
 					} catch (Exception ex) {
-						Console.WriteLine ("Exception during finishing channel acceptance.");
-						Console.WriteLine (ex);
+						Logger.Error ("Exception during finishing channel acceptance.", ex);
 						creator_handle.Set ();
 					}
 				};
@@ -381,8 +383,7 @@ namespace System.ServiceModel.Dispatcher
 					try {
 						return r.BeginAcceptChannel (callback, null);
 					} catch (Exception ex) {
-						Console.WriteLine ("Exception during accepting channel.");
-						Console.WriteLine (ex);
+						Logger.Error ("Exception during accepting channel.", ex);
 						throw;
 					}
 				};
@@ -418,8 +419,7 @@ namespace System.ServiceModel.Dispatcher
 					stop_handle = null;
 				}
 				if (owner.Listener.State != CommunicationState.Closed) {
-					// FIXME: log it
-					Console.WriteLine ("Channel listener '{0}' is not closed. Aborting.", owner.Listener.GetType ());
+					Logger.Warning (String.Format ("Channel listener '{0}' is not closed. Aborting.", owner.Listener.GetType ()));
 					owner.Listener.Abort ();
 				}
 				if (loop_thread != null && loop_thread.IsAlive)
@@ -427,17 +427,39 @@ namespace System.ServiceModel.Dispatcher
 				loop_thread = null;
 			}
 
+			void AddChannel (IChannel ch)
+			{
+				channels.Add (ch);
+				var ich = ch as ISessionChannel<IInputSession>;
+				if (ich != null && ich.Session != null) {
+					lock (sessions) {
+						var session = sessions.FirstOrDefault (s => s.Id == ich.Session.Id);
+						if (session == null)
+							sessions.Add (session);
+					}
+				}
+			}
+
+			void RemoveChannel (IChannel ch)
+			{
+				channels.Remove (ch); // zonbie, if exists
+				var ich = ch as ISessionChannel<IInputSession>;
+				List<IChannel> l;
+				if (ich != null && ich.Session != null)
+					sessions.Remove (ich.Session);
+			}
+
 			public void CloseInput ()
 			{
 				foreach (var ch in channels.ToArray ()) {
 					if (ch.State == CommunicationState.Closed)
-						channels.Remove (ch); // zonbie, if exists
+						RemoveChannel (ch);
 					else {
 						try {
 							ch.Close (close_timeout - (DateTime.Now - close_started));
 						} catch (Exception ex) {
 							// FIXME: log it.
-							Console.WriteLine (ex);
+							Logger.Error (String.Format ("Exception on closing channel ({0})", ch.GetType ()), ex);
 							ch.Abort ();
 						}
 					}
@@ -449,9 +471,7 @@ namespace System.ServiceModel.Dispatcher
 				try {
 					LoopCore ();
 				} catch (Exception ex) {
-					// FIXME: log it
-					Console.WriteLine ("ChannelDispatcher caught an exception inside dispatcher loop, which is likely thrown by the channel listener {0}", owner.Listener);
-					Console.WriteLine (ex);
+					Logger.Error (String.Format ("ListenerLoopManager caught an exception inside dispatcher loop, which is likely thrown by the channel listener {0}", owner.Listener), ex);
 				} finally {
 					if (stop_handle != null)
 						stop_handle.Set ();
@@ -466,9 +486,10 @@ namespace System.ServiceModel.Dispatcher
 				// http://social.msdn.microsoft.com/Forums/en-US/wcf/thread/3faa4a5e-8602-4dbe-a181-73b3f581835e
 
 				while (loop) {
-					// FIXME: enable throttling and allow more than one connection to process at a time.
-					while (loop && channels.Count < 1) {
-//					while (loop && channels.Count < owner.ServiceThrottle.MaxConcurrentSessions) {
+					// FIXME: take MaxConcurrentCalls into consideration appropriately.
+					while (loop && channels.Count < Math.Min (owner.ServiceThrottle.MaxConcurrentSessions, owner.ServiceThrottle.MaxConcurrentCalls)) {
+						// FIXME: this should not be required, but saves multi-ChannelDispatcher case (Throttling enabled) for HTTP standalone listener...
+						Thread.Sleep (100);
 						channel_acceptor ();
 						creator_handle.WaitOne (); // released by ChannelAccepted()
 					}
@@ -478,6 +499,8 @@ namespace System.ServiceModel.Dispatcher
 				}
 				try {
 					owner.Listener.Close ();
+				} catch (Exception ex) {
+					Logger.Error (String.Format ("Exception while closing IChannelListener ({0})", owner.Listener.GetType ()), ex);
 				} finally {
 					// make sure to close both listener and channels.
 					owner.CloseInput ();
@@ -496,16 +519,19 @@ namespace System.ServiceModel.Dispatcher
 					return;
 				}
 
-				channels.Add (ch);
+				lock (channels)
+					AddChannel (ch);
 				ch.Opened += delegate {
 					ch.Faulted += delegate {
-						if (channels.Contains (ch))
-							channels.Remove (ch);
+						lock (channels)
+							if (channels.Contains (ch))
+								RemoveChannel (ch);
 						throttle_wait_handle.Set (); // release loop wait lock.
 						};
 					ch.Closed += delegate {
-						if (channels.Contains (ch))
-							channels.Remove (ch);
+						lock (channels)
+							if (channels.Contains (ch))
+								RemoveChannel (ch);
 						throttle_wait_handle.Set (); // release loop wait lock.
 						};
 					};
@@ -561,31 +587,20 @@ namespace System.ServiceModel.Dispatcher
 					input.Close ();
 			}
 
-			void SendEndpointNotFound (RequestContext rc, EndpointNotFoundException ex) 
-			{
-				try {
-
-					MessageVersion version = rc.RequestMessage.Version;
-					FaultCode fc = new FaultCode ("DestinationUnreachable", version.Addressing.Namespace);
-					Message res = Message.CreateMessage (version, fc, "error occured", rc.RequestMessage.Headers.Action);
-					rc.Reply (res);
-				} catch (Exception e) {
-					// FIXME: log it
-					Console.WriteLine ("Error on sending DestinationUnreachable fault message: " + e);
-				}
-			}
-
 			void ProcessRequest (IReplyChannel reply, RequestContext rc)
 			{
 				try {
-					EndpointDispatcher candidate = FindEndpointDispatcher (rc.RequestMessage);
-					new InputOrReplyRequestProcessor (candidate.DispatchRuntime, reply).
-						ProcessReply (rc);
-				} catch (EndpointNotFoundException ex) {
-					SendEndpointNotFound (rc, ex);
+					var req = rc.RequestMessage;
+					var ed = FindEndpointDispatcher (req);
+					new InputOrReplyRequestProcessor (ed.DispatchRuntime, reply).ProcessReply (rc);
 				} catch (Exception ex) {
-					// FIXME: log it.
-					Console.WriteLine (ex);
+					Message res;
+					if (ProcessErrorWithHandlers (reply, ex, out res))
+						return;
+
+					rc.Reply (res);
+					
+					reply.Close (owner.DefaultCloseTimeout); // close the channel
 				} finally {
 					if (rc != null)
 						rc.Close ();
@@ -595,17 +610,37 @@ namespace System.ServiceModel.Dispatcher
 				}
 			}
 
+			bool ProcessErrorWithHandlers (IChannel ch, Exception ex, out Message res)
+			{
+				res = null;
+
+				foreach (var eh in owner.ErrorHandlers)
+					if (eh.HandleError (ex))
+						return true; // error is handled appropriately.
+
+				Logger.Error ("An error occured, to be handled", ex);
+
+				foreach (var eh in owner.ErrorHandlers)
+					eh.ProvideFault (ex, owner.MessageVersion, ref res);
+				if (res == null) {
+					var conv = ch.GetProperty<FaultConverter> () ?? FaultConverter.GetDefaultFaultConverter (owner.MessageVersion);
+					if (!conv.TryCreateFaultMessage (ex, out res))
+						res = Message.CreateMessage (owner.MessageVersion, new FaultCode ("Receiver"), ex.Message, owner.MessageVersion.Addressing.FaultNamespace);
+				}
+
+				return false;
+			}
+
 			void ProcessInput (IInputChannel input, Message message)
 			{
 				try {
 					EndpointDispatcher candidate = null;
 					candidate = FindEndpointDispatcher (message);
-					new InputOrReplyRequestProcessor (candidate.DispatchRuntime, input).
-						ProcessInput (message);
+					new InputOrReplyRequestProcessor (candidate.DispatchRuntime, input).ProcessInput (message);
 				}
 				catch (Exception ex) {
-					// FIXME: log it.
-					Console.WriteLine (ex);
+					Message dummy;
+					ProcessErrorWithHandlers (input, ex, out dummy);
 				} finally {
 					// unless it is closed by session/call manager, move it back to the loop to receive the next message.
 					if (loop && input.State != CommunicationState.Closed)
@@ -615,30 +650,30 @@ namespace System.ServiceModel.Dispatcher
 
 			EndpointDispatcher FindEndpointDispatcher (Message message) {
 				EndpointDispatcher candidate = null;
-				for (int i = 0; i < owner.Endpoints.Count; i++) {
-					if (MessageMatchesEndpointDispatcher (message, owner.Endpoints [i])) {
-						var newdis = owner.Endpoints [i];
+				bool hasEndpointMatch = false;
+				foreach (var endpoint in owner.Endpoints) {
+					if (endpoint.AddressFilter.Match (message)) {
+						hasEndpointMatch = true;
+						if (!endpoint.ContractFilter.Match (message))
+							continue;
+						var newdis = endpoint;
 						if (candidate == null || candidate.FilterPriority < newdis.FilterPriority)
 							candidate = newdis;
 						else if (candidate.FilterPriority == newdis.FilterPriority)
 							throw new MultipleFilterMatchesException ();
 					}
 				}
-				if (candidate == null && owner.Host != null)
-					owner.Host.OnUnknownMessageReceived (message);
+				if (candidate == null && !hasEndpointMatch) {
+					if (owner.Host != null)
+						owner.Host.OnUnknownMessageReceived (message);
+					// we have to return a fault to the client anyways...
+					throw new EndpointNotFoundException ();
+				}
+				else if (candidate == null)
+					// FIXME: It is not a good place to check, but anyways detach this error from EndpointNotFoundException.
+					throw new ActionNotSupportedException (String.Format ("Action '{0}' did not match any operations in the target contract", message.Headers.Action));
+
 				return candidate;
-			}
-
-			bool MessageMatchesEndpointDispatcher (Message req, EndpointDispatcher endpoint)
-			{
-				// FIXME: handle AddressFilterMode.Prefix too.
-
-				Uri to = req.Headers.To;
-				if (to == null)
-					return address_filter_mode == AddressFilterMode.Any;
-				if (to.AbsoluteUri == Constants.WsaAnonymousUri)
-					return false;
-				return endpoint.AddressFilter.Match (req) && endpoint.ContractFilter.Match (req);
 			}
 		}
 }

@@ -5,6 +5,8 @@
 
 using System;
 using System.Reflection;
+using System.Reflection.Emit;
+using System.Threading;
 
 using NUnit.Framework;
 
@@ -879,6 +881,14 @@ namespace MonoTests.System
 
 		[Test]
 		[ExpectedException (typeof (ArgumentException))]
+		public void RemoveDelegateTypeMismatch ()
+		{
+			Delegate boxer = new Boxer (() => new object ());
+			Delegate.Remove (boxer, new WrongDelegate (() => 42));
+		}
+
+		[Test]
+		[ExpectedException (typeof (ArgumentException))]
 		public void WrongReturnTypeContravariance ()
 		{
 			Delegate.CreateDelegate (
@@ -1007,7 +1017,177 @@ namespace MonoTests.System
 
 			Assert.AreEqual (10, d (5));
 		}
+
+		public static long? StaticMethodToBeClosedOverNull (object o, long? bar)
+		{
+			Console.WriteLine ("o: {0}", o);
+			return 5;
+		}
+
+		[Test] // #617161
+		public void ClosedOverNullReferenceStaticMethod ()
+		{
+			var del = (Func<long?,long?>) Delegate.CreateDelegate (
+				typeof (Func<long?,long?>),
+				null as object,
+				this.GetType ().GetMethod ("StaticMethodToBeClosedOverNull"));
+
+			Assert.IsNull (del.Target);
+
+			Assert.AreEqual ((long?) 5, del (5));
+		}
+
+		public void InstanceMethodToBeClosedOverNull ()
+		{
+		}
+
+		public void InstanceMethodIntToBeClosedOverNull (int i)
+		{
+		}
+
+		[Test] // #475962
+		public void ClosedOverNullReferenceInstanceMethod ()
+		{
+			var action = (Action) Delegate.CreateDelegate (
+				typeof (Action),
+				null as object,
+				this.GetType ().GetMethod ("InstanceMethodToBeClosedOverNull"));
+
+			Assert.IsNull (action.Target);
+
+			action ();
+
+			var action_int = (Action<int>) Delegate.CreateDelegate (
+				typeof (Action<int>),
+				null as object,
+				this.GetType ().GetMethod ("InstanceMethodIntToBeClosedOverNull"));
+
+			Assert.IsNull (action.Target);
+
+			action_int (42);
+		}
+
+		class Foo {
+
+			public void Bar ()
+			{
+			}
+		}
+
+		Foo foo;
+		event Action bar_handler;
+
+		[Test]
+		[ExpectedException (typeof (ArgumentException))] // #635349, #605936
+		public void NewDelegateClosedOverNullReferenceInstanceMethod ()
+		{
+			bar_handler += foo.Bar;
+		}
+
+		public void Banga ()
+		{
+		}
+
+		[Test]
+		[ExpectedException (typeof (ArgumentException))]
+		public void CreateDelegateOpenOnly ()
+		{
+			Delegate.CreateDelegate (
+				typeof (Action),
+				this.GetType ().GetMethod ("Banga"));
+		}
+
 #endif
+		public static void CreateDelegateOfStaticMethodBoundToNull_Helper (object[] args) {}
+
+		[Test]
+		public void CreateDelegateOfStaticMethodBoundToNull ()
+		{
+			Type t = typeof (Action);
+			MethodInfo m = typeof (DelegateTest).GetMethod ("CreateDelegateOfStaticMethodBoundToNull_Helper");
+			object firstArg = null;
+	
+			try {
+				Delegate.CreateDelegate (t, m) ;
+				Assert.Fail ("#1");
+			} catch (ArgumentException) {  }
+	
+			try {
+				Delegate.CreateDelegate(t, m, true);
+				Assert.Fail ("#2");
+			} catch (ArgumentException) {  }
+	
+			try {
+				Delegate.CreateDelegate(t, m, false);
+			} catch (ArgumentException) { Assert.Fail ("#3"); }
+	
+			try {
+				Delegate.CreateDelegate(t, null, m);
+			} catch (ArgumentException) { Assert.Fail ("#4"); }
+	
+			try {
+				Delegate.CreateDelegate(t, null, m, true);
+			} catch (ArgumentException) { Assert.Fail ("#5");  }
+	
+			try {
+				Delegate.CreateDelegate(t, null, m, false);
+			} catch (ArgumentException) { Assert.Fail ("#6"); }
+		}
+
+		[Test]
+		public void GetHashCode_Constant () {
+			Action del = delegate {
+			};
+			int hc1 = del.GetHashCode ();
+			del ();
+			int hc2 = del.GetHashCode ();
+			Assert.AreEqual (hc1, hc2);
+		}
+
+		public interface CreateDelegateIFoo {
+			int Test2 ();
+		}
+		
+		public abstract class CreateDelegateFoo {
+			public abstract int Test ();
+		}
+		
+		public class CreateDelegateMid : CreateDelegateFoo {
+			public override int Test () {
+				return 1;
+			}
+		}
+		
+		public class CreateDelegateBar : CreateDelegateMid, CreateDelegateIFoo {
+			public override int Test () {
+				return 2;
+			}
+		
+			public int Test2 () {
+				return 3;
+			}
+		}
+	
+		delegate int IntNoArgs ();
+
+		[Test]
+		public void CreateDelegateWithAbstractMethods ()
+		{
+			var f = new CreateDelegateBar ();
+			var m = typeof (CreateDelegateFoo).GetMethod ("Test");
+			var m2 = typeof (CreateDelegateMid).GetMethod ("Test");
+			var m3 = typeof (CreateDelegateIFoo).GetMethod ("Test2");
+	
+			IntNoArgs a1 = (IntNoArgs)Delegate.CreateDelegate (typeof (IntNoArgs), f, m);
+			IntNoArgs a2 = (IntNoArgs)Delegate.CreateDelegate (typeof (IntNoArgs), f, m2);
+			IntNoArgs a3 = (IntNoArgs)Delegate.CreateDelegate (typeof (IntNoArgs), f, m3);
+
+			Assert.AreEqual (2, a1 (), "#1");
+			Assert.AreEqual (2, a2 (), "#2");
+			Assert.AreEqual (3, a3 (), "#3");
+		}
+		
+
 		delegate string FooDelegate (Iface iface, string s);
 
 		delegate string FooDelegate2 (B b, string s);
@@ -1015,6 +1195,42 @@ namespace MonoTests.System
 		public interface Iface
 		{
 			string retarg (string s);
+		}
+
+		[Test]
+		public void CreateDelegateWithLdFtnAndAbstractMethod ()
+		{
+			AssemblyName assemblyName = new AssemblyName ();
+			assemblyName.Name = "customMod";
+			assemblyName.Version = new Version (1, 2, 3, 4);
+	
+			AssemblyBuilder assembly
+				= Thread.GetDomain ().DefineDynamicAssembly (
+					  assemblyName, AssemblyBuilderAccess.RunAndSave);
+	
+			ModuleBuilder module = assembly.DefineDynamicModule ("res", "res.dll");
+	
+			TypeBuilder tb = module.DefineType ("Test2", TypeAttributes.Public, typeof (object));
+	
+			{
+				MethodBuilder mb =
+					tb.DefineMethod ("test", MethodAttributes.Public | MethodAttributes.Static,
+									 typeof (int), null);
+				ILGenerator il = mb.GetILGenerator ();
+	
+				il.Emit (OpCodes.Newobj, typeof (CreateDelegateBar).GetConstructor (new Type [] { }));
+				il.Emit (OpCodes.Ldftn, typeof (CreateDelegateIFoo).GetMethod ("Test2"));
+				il.Emit (OpCodes.Newobj, typeof (IntNoArgs).GetConstructor (new Type [] { typeof (object), typeof (IntPtr) }));
+				il.Emit (OpCodes.Call, typeof (IntNoArgs).GetMethod ("Invoke"));
+				il.Emit (OpCodes.Ret);
+			}
+	
+			Type t = tb.CreateType ();
+	
+			Object obj = Activator.CreateInstance (t, new object [0] { });
+	
+			int a = (int) t.GetMethod ("test").Invoke (obj, null);
+			Assert.AreEqual (3, a, "#1");
 		}
 
 		public class B {

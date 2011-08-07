@@ -286,24 +286,30 @@ namespace System.Runtime.Serialization.Formatters.Binary
 
 		private void ReadObjectContent (BinaryReader reader, TypeMetadata metadata, long objectId, out object objectInstance, out SerializationInfo info)
 		{
-#if NET_1_1
 			if (_filterLevel == TypeFilterLevel.Low)
 				objectInstance = FormatterServices.GetSafeUninitializedObject (metadata.Type);
 			else
-#endif
 				objectInstance = FormatterServices.GetUninitializedObject (metadata.Type);
-#if NET_2_0
 			_manager.RaiseOnDeserializingEvent (objectInstance);
-#endif
 				
 			info = metadata.NeedsSerializationInfo ? new SerializationInfo(metadata.Type, new FormatterConverter()) : null;
 
-   			if (metadata.MemberNames != null)
+			if (metadata.MemberNames != null) {
 				for (int n=0; n<metadata.FieldCount; n++)
 					ReadValue (reader, objectInstance, objectId, info, metadata.MemberTypes[n], metadata.MemberNames[n], null, null);
-			else
-				for (int n=0; n<metadata.FieldCount; n++)
-					ReadValue (reader, objectInstance, objectId, info, metadata.MemberTypes[n], metadata.MemberInfos[n].Name, metadata.MemberInfos[n], null);
+			} else
+				for (int n=0; n<metadata.FieldCount; n++) {
+					if (metadata.MemberInfos [n] != null)
+						ReadValue (reader, objectInstance, objectId, info, metadata.MemberTypes[n], metadata.MemberInfos[n].Name, metadata.MemberInfos[n], null);
+					else if (BinaryCommon.IsPrimitive(metadata.MemberTypes[n])) {
+						// Since the member info is null, the type in this
+						// domain does not have this type. Even though we
+						// are not going to store the value, we will read
+						// it from the stream so that we can advance to the
+						// next block.
+						ReadPrimitiveTypeValue (reader,	metadata.MemberTypes[n]);
+					}
+				}
 		}
 
 		private void RegisterObject (long objectId, object objectInstance, SerializationInfo info, long parentObjectId, MemberInfo parentObjectMemeber, int[] indices)
@@ -625,8 +631,13 @@ namespace System.Runtime.Serialization.Formatters.Binary
 				for (int n=0; n<fieldCount; n++)
 					codes [n] = (TypeTag) reader.ReadByte ();
 	
-				for (int n=0; n<fieldCount; n++)
-					types [n] = ReadType (reader, codes[n]);
+				for (int n=0; n<fieldCount; n++) {
+					Type t = ReadType (reader, codes[n], false);
+					// The field's type could not be resolved: assume it is an object.
+					if (t == null)
+						t = typeof (object);
+					types [n] = t;
+				}
 			}
 			
 			// Gets the type
@@ -688,8 +699,12 @@ namespace System.Runtime.Serialization.Formatters.Binary
 						else
 							field = metadata.Type.GetField (memberName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 							
-						if (field == null) throw new SerializationException ("Field \"" + names[n] + "\" not found in class " + metadata.Type.FullName);
-						metadata.MemberInfos [n] = field;
+						if (field != null)
+							metadata.MemberInfos [n] = field;
+#if ONLY_1_1
+						else
+							throw new SerializationException ("Field \"" + names[n] + "\" not found in class " + metadata.Type.FullName);
+#endif
 						
 						if (!hasTypeInfo) {
 							types [n] = field.FieldType;
@@ -708,6 +723,22 @@ namespace System.Runtime.Serialization.Formatters.Binary
 			return metadata;
 		}
 
+		// Called for primitive types
+		static bool IsGeneric (MemberInfo minfo)
+		{
+			if (minfo == null)
+				return false;
+
+			Type mtype = null;
+			switch (minfo.MemberType) {
+			case MemberTypes.Field:
+				mtype = ((FieldInfo) minfo).FieldType;
+				break;
+			default:
+				throw new NotSupportedException ("Not supported: " + minfo.MemberType);
+			}
+			return (mtype != null && mtype.IsGenericType);
+		}
 
 		private void ReadValue (BinaryReader reader, object parentObject, long parentObjectId, SerializationInfo info, Type valueType, string fieldName, MemberInfo memberInfo, int[] indices)
 		{
@@ -715,7 +746,7 @@ namespace System.Runtime.Serialization.Formatters.Binary
 
 			object val;
 
-			if (BinaryCommon.IsPrimitive (valueType))
+			if (BinaryCommon.IsPrimitive (valueType) && !IsGeneric (memberInfo))
 			{
 				val = ReadPrimitiveTypeValue (reader, valueType);
 				SetObjectValue (parentObject, fieldName, memberInfo, info, val, valueType, indices);
@@ -820,6 +851,11 @@ namespace System.Runtime.Serialization.Formatters.Binary
 
 		private Type GetDeserializationType (long assemblyId, string className)
 		{
+			return GetDeserializationType (assemblyId, className, true);
+		}
+		
+		private Type GetDeserializationType (long assemblyId, string className, bool throwOnError)
+		{
 			Type t;
 			string assemblyName = (string)_registeredAssemblies[assemblyId];
 
@@ -828,15 +864,32 @@ namespace System.Runtime.Serialization.Formatters.Binary
 				if (t != null)
 					return t;
 			}
-				
-			Assembly assembly = Assembly.Load (assemblyName);
-			t = assembly.GetType (className, true);
+
+			Assembly assembly;
+			try {
+				assembly = Assembly.Load (assemblyName);
+			} catch	(Exception ex) {
+				if (!throwOnError)
+					return null;
+				throw new SerializationException (String.Format ("Couldn't find assembly '{0}'", assemblyName), ex);
+			}
+
+			t = assembly.GetType (className);
 			if (t != null)
 				return t;
-			throw new SerializationException ("Couldn't find type '" + className + "'.");
+
+			if (!throwOnError)
+				return null;
+
+			throw new SerializationException (String.Format ("Couldn't find type '{0}' in assembly '{1}'", className, assemblyName));
 		}
 
 		public Type ReadType (BinaryReader reader, TypeTag code)
+		{
+			return ReadType (reader, code, true);
+		}
+		
+		public Type ReadType (BinaryReader reader, TypeTag code, bool throwOnError)
 		{
 			switch (code)
 			{
@@ -852,14 +905,12 @@ namespace System.Runtime.Serialization.Formatters.Binary
 				case TypeTag.RuntimeType:
 				{
 					string name = reader.ReadString ();
-#if NET_2_0
 					// map MS.NET's System.RuntimeType to System.MonoType
 					if (_context.State == StreamingContextStates.Remoting)
 						if (name == "System.RuntimeType")
 							return typeof (MonoType);
 						else if (name == "System.RuntimeType[]")
 							return typeof (MonoType[]);
-#endif
 					Type t = Type.GetType (name);
 					if (t != null)
 						return t;
@@ -871,7 +922,7 @@ namespace System.Runtime.Serialization.Formatters.Binary
 				{
 					string name = reader.ReadString ();
 					long asmid = (long) reader.ReadUInt32();
-					return GetDeserializationType (asmid, name);
+					return GetDeserializationType (asmid, name, throwOnError);
 				}
 
 				case TypeTag.ArrayOfObject:

@@ -1,3 +1,12 @@
+/*
+ * debug-debugger.c: Hard debugger support (mdb)
+ *
+ * Author:
+ *
+ * Copyright 2006-2010 Novell, Inc.
+ */
+#if MONO_DEBUGGER_SUPPORTED
+
 #include <config.h>
 #include <mono/io-layer/io-layer.h>
 #include <mono/metadata/threads.h>
@@ -20,10 +29,8 @@
  * configure.in checks whether we're using the included libgc and disables the debugger if not.
  */
 
-#if !defined(MONO_DEBUGGER_SUPPORTED)
-#error "Some clown tried to compile debug-debugger.c on an unsupported platform - fix Makefile.am!"
-#elif !defined(USE_INCLUDED_LIBGC)
-#error "Some clown #defined MONO_DEBUGGER_SUPPORTED without USE_INCLUDED_GC - fix configure.in!"
+#if !defined(USE_INCLUDED_LIBGC)
+#error "Inconsistency detected: #defined MONO_DEBUGGER_SUPPORTED without USE_INCLUDED_GC - fix configure.in!"
 #endif
 
 static guint64 debugger_compile_method (guint64 method_arg);
@@ -57,6 +64,8 @@ static guint8 *debugger_executable_code_buffer = NULL;
 
 static GCThreadFunctions debugger_thread_vtable;
 
+static guint32 debugger_thread_abort_signal = 0;
+
 static MonoDebuggerMetadataInfo debugger_metadata_info = {
 	sizeof (MonoDebuggerMetadataInfo),
 	sizeof (MonoDefaults),
@@ -64,10 +73,10 @@ static MonoDebuggerMetadataInfo debugger_metadata_info = {
 	MONO_SIZEOF_TYPE,
 	sizeof (MonoArrayType),
 	sizeof (MonoClass),
-	sizeof (MonoThread),
-	G_STRUCT_OFFSET (MonoThread, tid),
-	G_STRUCT_OFFSET (MonoThread, stack_ptr),
-	G_STRUCT_OFFSET (MonoThread, end_stack),
+	sizeof (MonoInternalThread),
+	G_STRUCT_OFFSET (MonoInternalThread, tid),
+	G_STRUCT_OFFSET (MonoInternalThread, stack_ptr),
+	G_STRUCT_OFFSET (MonoInternalThread, end_stack),
 	G_STRUCT_OFFSET (MonoClass, image),
 	G_STRUCT_OFFSET (MonoClass, instance_size),
 	G_STRUCT_OFFSET (MonoClass, parent),
@@ -171,7 +180,9 @@ MonoDebuggerInfo MONO_DEBUGGER__debugger_info = {
 	&_mono_debug_using_mono_debugger,
 	(gint32*)&_mono_debugger_interruption_request,
 
-	&debugger_abort_runtime_invoke
+	&debugger_abort_runtime_invoke,
+
+	&debugger_thread_abort_signal
 };
 
 static guint64
@@ -507,6 +518,8 @@ mini_debugger_init (void)
 	debugger_executable_code_buffer = mono_global_codeman_reserve (EXECUTABLE_CODE_BUFFER_SIZE);
 	mono_debugger_event_handler = debugger_event_handler;
 
+	debugger_thread_abort_signal = mono_thread_get_abort_signal ();
+
 	/*
 	 * Use an indirect call so gcc can't optimize it away.
 	 */
@@ -528,6 +541,7 @@ mini_debugger_init (void)
 void
 mini_debugger_set_attach_ok (void)
 {
+	debugger_thread_abort_signal = mono_thread_get_abort_signal ();
 	MONO_DEBUGGER__debugger_info.runtime_flags |= DEBUGGER_RUNTIME_FLAGS_ATTACH_OK;
 }
 
@@ -597,3 +611,4 @@ mini_debugger_main (MonoDomain *domain, MonoAssembly *assembly, int argc, char *
 
 	return 0;
 }
+#endif /* MONO_DEBUGGER_SUPPORTED */

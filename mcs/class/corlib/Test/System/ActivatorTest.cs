@@ -64,7 +64,6 @@ namespace MonoTests.System {
 	[TestFixture]
 	public class ActivatorTest {
 
-		private string corlibLocation = typeof (string).Assembly.Location;
 		private string testLocation = typeof (ActivatorTest).Assembly.Location;
 
 		[Test]
@@ -170,22 +169,14 @@ namespace MonoTests.System {
 		// TODO: Implemente the test methods for all the overriden functions using activationAttribute
 
 		[Test]
-#if NET_2_0
 		[ExpectedException(typeof(MissingMethodException))]
-#else
-		[ExpectedException(typeof(MemberAccessException))]
-#endif
 		public void CreateInstanceAbstract1 () 
 		{
 			Activator.CreateInstance (typeof (Type));
 		}
 
 		[Test]
-#if NET_2_0
 		[ExpectedException(typeof(MissingMethodException))]
-#else
-		[ExpectedException(typeof(MemberAccessException))]
-#endif
 		[Category ("TargetJvmNotWorking")]
 		public void CreateInstanceAbstract2 () 
 		{
@@ -207,18 +198,13 @@ namespace MonoTests.System {
 		}
 
 		[Test]
-#if NET_2_0
 		[ExpectedException (typeof (MissingMethodException))]
-#else
-		[ExpectedException (typeof (MemberAccessException))]
-#endif
 		[Category ("TargetJvmNotWorking")]
 		public void CreateInstanceAbstract5 () 
 		{
 			Activator.CreateInstance (typeof (Type), BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance, null, null, CultureInfo.InvariantCulture, null);
 		}
 
-#if NET_2_0
 		[Test]
 		[Category ("TargetJvmNotWorking")]
 		public void CreateInstance_Nullable ()
@@ -229,7 +215,6 @@ namespace MonoTests.System {
 			Assert.AreEqual (typeof (int), Activator.CreateInstance (typeof (Nullable<int>), new object [] { null }).GetType ());
 			Assert.AreEqual (null, Activator.CreateInstance (typeof (Nullable<int>)));
 		}
-#endif
 
 		[Test]
 		[ExpectedException (typeof (ArgumentNullException))]
@@ -323,12 +308,8 @@ namespace MonoTests.System {
 		public void Unification_FromFx99_Corlib ()
 		{
 			Unification (String.Format (CorlibPermissionPattern, "9.99.999.9999"));
-#if ONLY_1_1
-			Unification (String.Format (SystemPermissionPattern, "9.99.999.9999"));
-#endif
 		}
 
-#if NET_2_0
 		[Test]
 		[Category ("TargetJvmNotSupported")] // No support under TARGET_JVM for assemlies versioning
 		[Category ("NotWorking")]
@@ -397,6 +378,91 @@ namespace MonoTests.System {
 						  BindingFlags.Public | BindingFlags.Instance, null, null, null,
 						  new object [] {ModuleHandle.EmptyHandle}, null);
 		}
-#endif
+
+		public class ParamsConstructor {
+
+			public int A;
+			public string X;
+			public string Y;
+
+			public ParamsConstructor (int a, params string [] s)
+			{
+				A = a;
+
+				Assert.IsNotNull (s);
+
+				if (s.Length == 0)
+					return;
+
+				X = s [0];
+
+				if (s.Length == 1)
+					return;
+
+				Y = s [1];
+			}
+		}
+
+		[Test]
+		public void CreateInstanceParamsConstructor ()
+		{
+			var a = (ParamsConstructor) Activator.CreateInstance (
+				typeof (ParamsConstructor), new object [] { 42, "foo", "bar" });
+
+			Assert.AreEqual (42, a.A);
+			Assert.AreEqual ("foo", a.X);
+			Assert.AreEqual ("bar", a.Y);
+
+			a = (ParamsConstructor) Activator.CreateInstance (
+				typeof (ParamsConstructor), new object [] { 42, "foo" });
+
+			Assert.AreEqual (42, a.A);
+			Assert.AreEqual ("foo", a.X);
+			Assert.AreEqual (null, a.Y);
+
+			a = (ParamsConstructor) Activator.CreateInstance (
+				typeof (ParamsConstructor), new object [] { 42 });
+
+			Assert.AreEqual (42, a.A);
+			Assert.AreEqual (null, a.X);
+			Assert.AreEqual (null, a.Y);
+		}
+
+		class SimpleParamsConstructor {
+
+			public string X;
+			public string Y;
+
+			public SimpleParamsConstructor (params string [] s)
+			{
+				Assert.IsNotNull (s);
+
+				if (s.Length == 0)
+					return;
+
+				X = s [0];
+
+				if (s.Length == 1)
+					return;
+
+				Y = s [1];
+			}
+		}
+
+		[Test]
+		public void CreateInstanceSimpleParamsConstructor ()
+		{
+			var a = (SimpleParamsConstructor) Activator.CreateInstance (
+				typeof (SimpleParamsConstructor), new object [] { "foo", "bar" });
+
+			Assert.AreEqual ("foo", a.X);
+			Assert.AreEqual ("bar", a.Y);
+
+			a = (SimpleParamsConstructor) Activator.CreateInstance (
+				typeof (SimpleParamsConstructor), new object [0]);
+
+			Assert.AreEqual (null, a.X);
+			Assert.AreEqual (null, a.Y);
+		}
 	}
 }

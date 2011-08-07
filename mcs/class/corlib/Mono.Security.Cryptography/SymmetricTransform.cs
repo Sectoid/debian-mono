@@ -50,7 +50,7 @@ namespace Mono.Security.Cryptography {
 		private byte[] temp2;
 		private byte[] workBuff;
 		private byte[] workout;
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		// Silverlight 2.0 does not support any feedback mode
 		private int FeedBackByte;
 		private int FeedBackIter;
@@ -69,19 +69,17 @@ namespace Mono.Security.Cryptography {
 			} else {
 				rgbIV = (byte[]) rgbIV.Clone ();
 			}
-#if NET_2_0
 			// compare the IV length with the "currently selected" block size and *ignore* IV that are too big
 			if (rgbIV.Length < BlockSizeByte) {
 				string msg = Locale.GetText ("IV is too small ({0} bytes), it should be {1} bytes long.",
 					rgbIV.Length, BlockSizeByte);
 				throw new CryptographicException (msg);
 			}
-#endif
 			// mode buffers
 			temp = new byte [BlockSizeByte];
 			Buffer.BlockCopy (rgbIV, 0, temp, 0, System.Math.Min (BlockSizeByte, rgbIV.Length));
 			temp2 = new byte [BlockSizeByte];
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 			FeedBackByte = (algo.FeedbackSize >> 3);
 			if (FeedBackByte != 0)
 				FeedBackIter = (int) BlockSizeByte / FeedBackByte;
@@ -138,7 +136,7 @@ namespace Mono.Security.Cryptography {
 		// i.e. Any padding must be done before calling this method
 		protected virtual void Transform (byte[] input, byte[] output) 
 		{
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 			// Silverlight 2.0 only supports CBC
 			CBC (input, output);
 #else
@@ -185,7 +183,7 @@ namespace Mono.Security.Cryptography {
 			}
 		}
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		// Cipher-FeedBack (CFB)
 		protected virtual void CFB (byte[] input, byte[] output) 
 		{
@@ -256,7 +254,7 @@ namespace Mono.Security.Cryptography {
 
 			// ordered to avoid possible integer overflow
 			int len = outputBuffer.Length - inputCount - outputOffset;
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 			// only PKCS7 is supported Silverlight 2.0
 			if (KeepLastBlock) {
 #else
@@ -265,11 +263,7 @@ namespace Mono.Security.Cryptography {
 			} else if (KeepLastBlock) {
 #endif
 				if (0 > len + BlockSizeByte) {
-#if NET_2_0
 					throw new CryptographicException ("outputBuffer", Locale.GetText ("Overflow"));
-#else
-					throw new IndexOutOfRangeException (Locale.GetText ("Overflow"));
-#endif
 				}
 			} else {
 				if (0 > len) {
@@ -285,7 +279,7 @@ namespace Mono.Security.Cryptography {
 
 		private bool KeepLastBlock {
 			get {
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 				// only PKCS7 is supported Silverlight 2.0
 				return !encrypt;
 #else
@@ -340,7 +334,7 @@ namespace Mono.Security.Cryptography {
 			return total;
 		}
 
-#if NET_2_0 && !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		RandomNumberGenerator _rng;
 
 		private void Random (byte[] buffer, int start, int length)
@@ -371,15 +365,13 @@ namespace Mono.Security.Cryptography {
 			int rem = inputCount - full;
 			int total = full;
 
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 			// only PKCS7 is supported Silverlight 2.0
 			total += BlockSizeByte;
 #else
 			switch (algo.Padding) {
-#if NET_2_0
 			case PaddingMode.ANSIX923:
 			case PaddingMode.ISO10126:
-#endif
 			case PaddingMode.PKCS7:
 				// we need to add an extra block for padding
 				total += BlockSizeByte;
@@ -415,7 +407,7 @@ namespace Mono.Security.Cryptography {
 
 			// now we only have a single last block to encrypt
 			byte padding = (byte) (BlockSizeByte - rem);
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 			// only PKCS7 is supported Silverlight 2.0
 			for (int i = res.Length; --i >= (res.Length - padding);) 
 				res [i] = padding;
@@ -423,7 +415,6 @@ namespace Mono.Security.Cryptography {
 			InternalTransformBlock (res, full, BlockSizeByte, res, full);
 #else
 			switch (algo.Padding) {
-#if NET_2_0
 			case PaddingMode.ANSIX923:
 				// XX 00 00 00 00 00 00 07 (zero + padding length)
 				res [res.Length - 1] = padding;
@@ -439,7 +430,6 @@ namespace Mono.Security.Cryptography {
 				// the last padded block will be transformed in-place
 				InternalTransformBlock (res, full, BlockSizeByte, res, full);
 				break;
-#endif // NET_2_0
 			case PaddingMode.PKCS7:
 				// XX 07 07 07 07 07 07 07 (padding length)
 				for (int i = res.Length; --i >= (res.Length - padding);) 
@@ -484,7 +474,7 @@ namespace Mono.Security.Cryptography {
 
 			// total may be 0 (e.g. PaddingMode.None)
 			byte padding = ((total > 0) ? res [total - 1] : (byte) 0);
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 			// only PKCS7 is supported Silverlight 2.0
 			if ((padding == 0) || (padding > BlockSizeByte))
 				throw new CryptographicException (Locale.GetText ("Bad padding length."));
@@ -495,7 +485,6 @@ namespace Mono.Security.Cryptography {
 			total -= padding;
 #else
 			switch (algo.Padding) {
-#if NET_2_0
 			case PaddingMode.ANSIX923:
 				if ((padding == 0) || (padding > BlockSizeByte))
 					ThrowBadPaddingException (algo.Padding, padding, -1);
@@ -519,11 +508,6 @@ namespace Mono.Security.Cryptography {
 				}
 				total -= padding;
 				break;
-#else
-			case PaddingMode.PKCS7:
-				total -= padding;
-				break;
-#endif // NET_2_0
 			case PaddingMode.None:	// nothing to do - it's a multiple of block size
 			case PaddingMode.Zeros:	// nothing to do - user must unpad himself
 				break;

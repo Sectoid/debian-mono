@@ -1,3 +1,7 @@
+2010-10-31  Miguel de Icaza  <miguel@gnome.org>
+
+	Expose some of our internals to the Mono.Winforms assembly
+
 2008-09-03  Mario Carrion  <mcarrion@novell.com>
 
 	* AssemblyInfo.cs: Added InternalsVisibleTo attribute to support 

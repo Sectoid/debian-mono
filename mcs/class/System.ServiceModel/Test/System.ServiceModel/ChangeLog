@@ -1,3 +1,126 @@
+2011-05-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Add (not-working) callback instance context mode test and FIXME
+	comment.
+
+2011-04-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Get real fix for bug #687902. Revert request processor
+	IDisposable.
+
+	and handle session shutdown when creating InstanceContext. Also
+	add note on DisposeInstance(), which got me stuck.
+
+2011-04-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Add ServiceKnownTypeAttributeTest.
+
+2011-02-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Open and close client/service runtime channels in chains. Fixed
+	bug #663278.
+
+2010-11-04  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* MsmqTransportSecurityTest.cs: New test file.
+
+2010-10-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement NetTcpBinding.CanBuildChannelFactory/Listener and
+	several related stuff.
+
+	SecurityTokenParameters.InitializeSecurityTokenRequirement() needs
+	to become protected internal, so changed all overrides as well.
+
+	Some implementation in WindowsStreamSecurityBindingElement is
+	needed only for NetTcpBinding implementation.
+
+	Had to disable a test in SymmetricSecurityBindingElement that
+	depended on OneWay support (which is not yet done).
+
+2010-10-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Fill NetTcpBinding security implementation a bit.
+
+2010-09-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement some additional logic around AddServiceEndpoint() to
+	achive standard endpoint support.
+
+2010-08-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Request-reply channel factory should not reject one-way operation.
+	It should just ignore the void reply.
+
+2010-08-16  Atsushi Eno  <atsushi@ximian.com>
+
+	ContractDescription aren't compared decently. Compare their types
+	instead.
+
+2010-08-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Add contract existence check when calling
+	AddServiceEndpoint(ServiceEndpoint).
+
+2010-08-12  Atsushi Eno  <atsushi@ximian.com>
+
+	ChannelFactory<T> and ClientBase<T> do not reject ServiceEndpoint
+	with null Binding or Address.
+
+2010-07-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientCredentialsSecurityTokenManagerTest.cs : add utility .ctor.
+
+2010-06-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EndpointAddressTest.cs : add more ReadFrom() tests.
+
+2010-06-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostTest.cs : improved endpoint tests and enabled them.
+
+2010-06-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostTest.cs : fix AddServiceEndpoint tests to make sense.
+	  They are mostly not working. Enable working one.
+
+2010-06-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* CallbackBehaviorAttributeTest.cs : added test for bug #567672
+	  ('IsOneWay=false' case).
+
+2010-06-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* CallbackBehaviorAttributeTest.cs : test recent changes on operation
+	  descriptions, message directions, client operations and so on.
+
+2010-05-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* CallbackBehaviorAttributeTest.cs : fix assertion label.
+
+2010-04-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* FaultContractAttributeTest.cs : new test.
+
+2010-04-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBaseTest.cs : enable RunDestinationUnreachableTest()
+	  and add another case for different addressing version.
+
+2010-03-29  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EndpointIdentityTest.cs, EndpointAddress10Test.cs :
+	  enable working tests.
+
+2010-03-25  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBaseTest.cs : add not-working ActionNotFound test by
+	  Matt Dargavel.
+
+2010-03-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Constants.cs : copied from the lib itself.
+
 2010-02-05  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* ServiceHostBaseTest.cs : on unixy filesystems "/foobar"

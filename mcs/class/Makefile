@@ -1,19 +1,8 @@
 thisdir = class
 
-bootstrap_dirs := \
-	corlib					\
-	Mono.CompilerServices.SymbolWriter	\
-	System					\
-	System.XML				\
-	Mono.Security				\
-	System.Security				\
-	System.Configuration			\
-	System
-
-
 # Note that Mono.Security and System.Security aren't listed.
 # We may have to add those if 'mcs' starts using them.
-basic_SUBDIRS := corlib System System.XML System
+basic_SUBDIRS := corlib System System.XML System Mono.Security Mono.CompilerServices.SymbolWriter System.Core aot-compiler
 
 net_1_1_java_SUBDIRS = \
 	System.Xml					\
@@ -43,13 +32,11 @@ common_dirs := \
 	System.EnterpriseServices	\
 	Mono.Data.Tds			\
 	System.Data			\
-	Mono.Data			\
-	Mono.GetOptions			\
 	Accessibility			\
 	Mono.WebBrowser			\
 	Managed.Windows.Forms		\
 	Mono.Data.Sqlite		\
-	Mono.Data.SqliteClient		\
+	System.Web.ApplicationServices	\
 	System.Web			\
 	Mono.Web			\
 	System.Web.Services		\
@@ -58,18 +45,12 @@ common_dirs := \
 	System.Runtime.Remoting		\
 	System.Configuration.Install 	\
 	System.Management		\
-	Mono.Data.SybaseClient		\
-	Mono.Data.TdsClient		\
 	System.Data.OracleClient	\
 	Microsoft.VisualC		\
 	Cscompmgd			\
 	System.Design			\
 	PEAPI				\
 	Npgsql				\
-	Compat.ICSharpCode.SharpZipLib	\
-	ICSharpCode.SharpZipLib		\
-	Compat.ICSharpCode.SharpZipLib	\
-	ByteFX.Data			\
 	Commons.Xml.Relaxng		\
 	Novell.Directory.Ldap		\
 	Mono.Security.Win32		\
@@ -81,19 +62,16 @@ common_dirs := \
 	System.ServiceProcess           \
 	System.Drawing.Design		\
 	System.Design			\
+	ICSharpCode.SharpZipLib		\
 	Mono.Http			\
-	Microsoft.Vsa			\
 	Mono.Cairo                      \
 	IBM.Data.DB2			\
-	Microsoft.JScript		\
 	CustomMarshalers		\
 	OpenSystem.C			\
 	Mono.Cecil			\
 	Mono.Cecil.Mdb			\
+	Mono.Debugger.Soft		\
 	SystemWebTestShim
-
-net_1_1_dirs :=		\
-	FirebirdSql.Data.Firebird
 
 net_2_0_dirs := \
 	Microsoft.Build.Framework	\
@@ -116,45 +94,51 @@ net_2_0_dirs := \
 	System.Web.DynamicData		\
 	System.ServiceModel.Web		\
 	System.Web.Mvc			\
+	System.Web.Mvc2			\
 	Mono.C5				\
 	Mono.Management			\
 	Mono.Options 			\
 	Mono.Simd			\
 	Mono.Tasklets       		\
-	WindowsBase			\
-	Mono.Debugger.Soft	\
-	System.Data.Services
+	Mono.CSharp			\
+	Moonlight.Build.Tasks		\
+	System.Data.Services		\
+	System.Net
 
 net_2_0_only_dirs := \
 	System.Web.Extensions_1.0	\
-	System.Web.Extensions.Design_1.0
+	System.Web.Extensions.Design_1.0	\
+	Compat.ICSharpCode.SharpZipLib	\
+	WindowsBase			\
+	System.Data.Services.Client
 
-net_2_1_dirs := \
+moonlight_dirs := \
 	corlib			\
-	Mono.CompilerServices.SymbolWriter \
 	System			\
-	System.XML		\
+	Mono.CompilerServices.SymbolWriter \
 	System.Core		\
+	System.XML		\
 	System.Net		\
 	System.Xml.Linq	\
 	System.Runtime.Serialization	\
 	System.ServiceModel	\
-	System.ServiceModel.Web
+	System.ServiceModel.Web	\
+	System.Xml.Serialization
 
-monotouch_dirs := \
+mobile_dirs := \
 	corlib	\
-	Mono.CompilerServices.SymbolWriter	\
 	System	\
+	Mono.CompilerServices.SymbolWriter	\
+	System.Core	\
 	System.XML	\
 	Mono.Security	\
 	System	\
 	I18N		\
-	System.Core	\
-	System.Json	\
 	System.Xml.Linq	\
 	System.Runtime.Serialization	\
 	System.ServiceModel	\
 	System.ServiceModel.Web	\
+	System.Json	\
 	System.Web.Services	\
 	Mono.Data.Tds	\
 	System.Transactions	\
@@ -162,34 +146,41 @@ monotouch_dirs := \
 	Mono.Cairo	\
 	Mono.Data.Sqlite
 
-net_3_5_dirs := \
+net_3_5_only_dirs := \
 	Microsoft.Build.Framework	\
 	Microsoft.Build.Utilities	\
 	Microsoft.Build.Engine		\
-	Microsoft.Build.Tasks		\
-	System.Web.Extensions.Design	
+	Microsoft.Build.Tasks
 
 net_4_0_dirs := \
 	System.Dynamic		\
-	Microsoft.CSharp
+	System.Numerics		\
+	Microsoft.CSharp	\
+	System.Windows.Forms.DataVisualization	\
+	System.ComponentModel.Composition \
+	System.Xaml \
+	WindowsBase \
+	System.Data.Services.Client \
+	System.ServiceModel.Routing \
+	System.ServiceModel.Discovery \
+	System.Runtime.Caching \
+	System.Runtime.DurableInstancing \
+	Mono.CodeContracts \
+	Microsoft.Web.Infrastructure \
+	WebMatrix.Data
 
-net_1_1_bootstrap_SUBDIRS := $(bootstrap_dirs) PEAPI
-net_1_1_SUBDIRS := $(common_dirs) $(net_1_1_dirs)
-net_2_0_bootstrap_SUBDIRS := $(bootstrap_dirs) PEAPI
 net_2_0_SUBDIRS := $(common_dirs) $(net_2_0_dirs) $(net_2_0_only_dirs)
-net_2_1_bootstrap_SUBDIRS := corlib System Mono.CompilerServices.SymbolWriter
-net_2_1_raw_SUBDIRS := $(net_2_1_dirs)
-monotouch_bootstrap_SUBDIRS := corlib System Mono.CompilerServices.SymbolWriter
-monotouch_SUBDIRS := $(monotouch_dirs)
-net_3_5_SUBDIRS := $(net_3_5_dirs)
-net_4_0_bootstrap_SUBDIRS := $(bootstrap_dirs) PEAPI Mono.Posix System.Core
+moonlight_raw_SUBDIRS := $(moonlight_dirs)
+monodroid_SUBDIRS := $(mobile_dirs)
+monotouch_SUBDIRS := $(mobile_dirs)
+net_3_5_SUBDIRS := $(net_3_5_only_dirs)
 net_4_0_SUBDIRS := $(common_dirs) $(net_2_0_dirs) $(net_4_0_dirs)
 
 include ../build/rules.make
 
-SUBDIRS = $(common_dirs) $(net_1_1_dirs) $(net_2_0_dirs) $(net_2_0_only_dirs) $(net_2_1_dirs) $(net_3_5_dirs) $(net_4_0_dirs)
+SUBDIRS = $(common_dirs) $(net_2_0_dirs) $(net_2_0_only_dirs) $(moonlight_dirs) $(mobile_dirs) $(net_4_0_dirs)
 
-DIST_ONLY_SUBDIRS = dlr
+DIST_ONLY_SUBDIRS = dlr IKVM.Reflection aot-compiler
 
 # No new makefiles for: System.Messaging, System.Web.Mobile,
 # System.ServiceProcess
@@ -215,7 +206,8 @@ DISTFILES = \
 all-local $(STD_TARGETS:=-local):
 	@:
 
-basic_files = mcs.exe mscorlib.dll System.dll System.Xml.dll
+# Files needed to bootstrap C# compiler
+basic_files = mcs.exe mscorlib.dll System.dll System.Xml.dll Mono.Security.dll System.Core.dll
 monolite_files = $(basic_files:%=lib/monolite/%)
 
 lib/monolite:
@@ -226,7 +218,7 @@ $(monolite_files): lib/monolite/%: lib/basic/%
 	cp -p $< $@
 
 $(basic_files:%=lib/basic/%):
-	cd $(topdir) && $(MAKE) profile-do--basic--all
+	cd $(topdir) && $(MAKE) profile-do--basic--all SKIP_AOT=1
 
 dist-default: $(monolite_files)
 dist-local: dist-default

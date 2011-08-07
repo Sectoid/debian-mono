@@ -35,7 +35,10 @@ using System.Xml.Serialization;
 namespace System.ServiceModel.Description
 {
 	public class XmlSerializerOperationBehavior
-		: IOperationBehavior, IWsdlExportExtension
+		: IOperationBehavior
+#if !NET_2_1
+			, IWsdlExportExtension
+#endif
 	{
 		XmlSerializerFormatAttribute format;
 		OperationDescription operation;
@@ -50,6 +53,8 @@ namespace System.ServiceModel.Description
 			OperationDescription operation,
 			XmlSerializerFormatAttribute format)
 		{
+			if (operation == null)
+				throw new ArgumentNullException ("operation");
 			if (format == null)
 				format = new XmlSerializerFormatAttribute ();
 			this.format = format;
@@ -70,29 +75,44 @@ namespace System.ServiceModel.Description
 			OperationDescription description,
 			BindingParameterCollection parameters)
 		{
-			throw new NotImplementedException ();
 		}
-
+		
 		void IOperationBehavior.ApplyDispatchBehavior (
 			OperationDescription description,
 			DispatchOperation dispatch)
 		{
+#if MOONLIGHT
 			throw new NotImplementedException ();
+#else
+			if (description == null)
+				throw new ArgumentNullException ("description");
+			if (dispatch == null)
+				throw new ArgumentNullException ("dispatch");
+			dispatch.Formatter = new XmlMessagesFormatter (description, format);
+#endif
 		}
 
 		void IOperationBehavior.ApplyClientBehavior (
 			OperationDescription description,
 			ClientOperation proxy)
 		{
+#if MOONLIGHT
 			throw new NotImplementedException ();
+#else
+			if (description == null)
+				throw new ArgumentNullException ("description");
+			if (proxy == null)
+				throw new ArgumentNullException ("proxy");
+			proxy.Formatter = new XmlMessagesFormatter (description, format);
+#endif
 		}
 
 		void IOperationBehavior.Validate (
 			OperationDescription description)
 		{
-			throw new NotImplementedException ();
 		}
 
+#if !NET_2_1
 		void IWsdlExportExtension.ExportContract (
 			WsdlExporter exporter,
 			WsdlContractConversionContext context)
@@ -105,5 +125,6 @@ namespace System.ServiceModel.Description
 		{
 			throw new NotImplementedException ();
 		}
+#endif
 	}
 }

@@ -1,3 +1,8 @@
+2010-11-04  Marek Safar  <marek.safar@gmail.com>
+
+	Fix SharpZipLib 4.0 profile version number to not overwrite
+	non-4.0 version of same assembly in GAC
+
 2005-10-15  Zoltan Varga  <vargaz@freemail.hu>
 
 	* Import 0.84 version of SharpZipLib and merge local changes. This is

@@ -53,7 +53,7 @@ namespace MonoTests.System.Web.UI {
 		private HttpContext ctx;
 
 		// don't call base class (so _context is never set to a non-null value)
-		protected override HttpContext Context {
+		protected internal override HttpContext Context {
 			get {
 				if (ctx == null) {
 					ctx = new HttpContext (null);
@@ -96,7 +96,7 @@ namespace MonoTests.System.Web.UI {
 		private HttpContext ctx;
 
 		// don't call base class (so _context is never set to a non-null value)
-		protected override HttpContext Context {
+		protected internal override HttpContext Context {
 			get {
 				if (ctx == null) {
 					ctx = new HttpContext (
@@ -119,15 +119,6 @@ namespace MonoTests.System.Web.UI {
 		[TestFixtureSetUp]
 		public void SetUpTest ()
 		{
-#if VISUAL_STUDIO
-			WebTest.CopyResource (GetType (), "MonoTests.System.Web.UI.WebControls.Resources.PageCultureTest.aspx", "PageCultureTest.aspx");
-			WebTest.CopyResource (GetType (), "MonoTests.System.Web.UI.WebControls.Resources.PageLifecycleTest.aspx", "PageLifecycleTest.aspx");
-			WebTest.CopyResource (GetType (), "MonoTests.System.Web.UI.WebControls.Resources.PageValidationTest.aspx", "PageValidationTest.aspx");
-			WebTest.CopyResource (GetType (), "MonoTests.System.Web.UI.WebControls.Resources.AsyncPage.aspx", "AsyncPage.aspx");
-			WebTest.CopyResource (GetType (), "MonoTests.System.Web.UI.WebControls.Resources.PageWithAdapter.aspx", "PageWithAdapter.aspx");
-			WebTest.CopyResource (GetType (), "MonoTests.System.Web.UI.WebControls.Resources.RedirectOnError.aspx", "RedirectOnError.aspx");
-			WebTest.CopyResource (GetType (), "MonoTests.System.Web.UI.WebControls.Resources.ClearErrorOnError.aspx", "ClearErrorOnError.aspx");
-#else
 			WebTest.CopyResource (GetType (), "PageCultureTest.aspx", "PageCultureTest.aspx");
 			WebTest.CopyResource (GetType (), "PageLifecycleTest.aspx", "PageLifecycleTest.aspx");
 			WebTest.CopyResource (GetType (), "PageValidationTest.aspx", "PageValidationTest.aspx");
@@ -135,7 +126,6 @@ namespace MonoTests.System.Web.UI {
 			WebTest.CopyResource (GetType (), "PageWithAdapter.aspx", "PageWithAdapter.aspx");
 			WebTest.CopyResource (GetType (), "RedirectOnError.aspx", "RedirectOnError.aspx");
 			WebTest.CopyResource (GetType (), "ClearErrorOnError.aspx", "ClearErrorOnError.aspx");
-#endif
 		}
 
 		[Test]
@@ -1273,7 +1263,7 @@ namespace MonoTests.System.Web.UI {
 
 		class CustomPostBackDataHandler : WebControl, IPostBackDataHandler
 		{
-			protected override void OnInit (EventArgs e)
+			protected internal override void OnInit (EventArgs e)
 			{
 				base.OnInit (e);
 				Page.RegisterRequiresPostBack (this);
@@ -1420,7 +1410,7 @@ namespace MonoTests.System.Web.UI {
 			return persister;
 		}
 
-		protected override string GetPostBackFormReference (string formId)
+		protected internal override string GetPostBackFormReference (string formId)
 		{
 			return String.Format("/* testFormReference */{0}", 
 				base.GetPostBackFormReference (formId));

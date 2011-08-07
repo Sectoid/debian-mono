@@ -1,0 +1,21 @@
+2011-04-21  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented composite scripts support in
+	System.Web.Extensions
+
+2011-04-18  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] ScriptResourceHandler must correctly encode script
+	literals.
+
+2011-04-15  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #685116. AJAX post-back which redirects the
+	browser does not need a Page or ScriptManager instance
+
+2010-07-08  Marek Habersack  <mhabersack@novell.com>
+
+	* ScriptModule.cs: PostAcquireRequestState must check if the
+	current context and the current handler aren't null before
+	attempting to use them.
+

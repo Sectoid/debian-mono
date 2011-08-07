@@ -1,4 +1,3 @@
-#if NET_4_0 || BOOTSTRAP_NET_4_0
 // SpinWait.cs
 //
 // Copyright (c) 2008 Jérémie "Garuma" Laval
@@ -23,78 +22,73 @@
 //
 //
 
+#if NET_4_0 || MOBILE
 using System;
 
 namespace System.Threading
 {
-	
 	public struct SpinWait
 	{
 		// The number of step until SpinOnce yield on multicore machine
-		const           int  step = 20;
+		const           int  step = 10;
+		const           int  maxTime = 200;
 		static readonly bool isSingleCpu = (Environment.ProcessorCount == 1);
-		
+
 		int ntime;
-		
-		public void SpinOnce () 
+
+		public void SpinOnce ()
 		{
-			// On a single-CPU system, spinning does no good
+			ntime += 1;
+
 			if (isSingleCpu) {
-				Yield ();
+				// On a single-CPU system, spinning does no good
+				Thread.Yield ();
 			} else {
-				if (Interlocked.Increment (ref ntime) % step == 0) {
-					Yield ();
-				} else {
+				if (ntime % step == 0)
+					Thread.Yield ();
+				else
 					// Multi-CPU system might be hyper-threaded, let other thread run
-					Thread.SpinWait (2 * (ntime + 1));
-				}
+					Thread.SpinWait (Math.Min (ntime, maxTime) << 1);
 			}
 		}
-		
-		public static void SpinUntil (Func<bool> predicate)
+
+		public static void SpinUntil (Func<bool> condition)
 		{
 			SpinWait sw = new SpinWait ();
-			while (!predicate ())
+			while (!condition ())
 				sw.SpinOnce ();
 		}
-		
-		public static bool SpinUntil (Func<bool> predicate, TimeSpan ts)
+
+		public static bool SpinUntil (Func<bool> condition, TimeSpan timeout)
 		{
-			return SpinUntil (predicate, (int)ts.TotalMilliseconds);
+			return SpinUntil (condition, (int)timeout.TotalMilliseconds);
 		}
-		
-		public static bool SpinUntil (Func<bool> predicate, int milliseconds)
+
+		public static bool SpinUntil (Func<bool> condition, int millisecondsTimeout)
 		{
 			SpinWait sw = new SpinWait ();
 			Watch watch = Watch.StartNew ();
-			
-			while (!predicate ()) {
-				if (watch.ElapsedMilliseconds > milliseconds)
+
+			while (!condition ()) {
+				if (watch.ElapsedMilliseconds > millisecondsTimeout)
 					return false;
 				sw.SpinOnce ();
 			}
-			
+
 			return true;
 		}
-		
-		void Yield ()
-		{
-			// Replace sched_yield by Thread.Sleep(0) which does almost the same thing
-			// (going back in kernel mode and yielding) but avoid the branching and unmanaged bridge
-			Thread.Sleep (0);
-		}
-		
+
 		public void Reset ()
 		{
 			ntime = 0;
 		}
-		
+
 		public bool NextSpinWillYield {
 			get {
 				return isSingleCpu ? true : ntime % step == 0;
 			}
 		}
-		
+
 		public int Count {
 			get {
 				return ntime;

@@ -2,32 +2,27 @@
  *
  * Copyright (c) Microsoft Corporation. 
  *
- * This source code is subject to terms and conditions of the Microsoft Public License. A 
+ * This source code is subject to terms and conditions of the Apache License, Version 2.0. A 
  * copy of the license can be found in the License.html file at the root of this distribution. If 
- * you cannot locate the  Microsoft Public License, please send an email to 
+ * you cannot locate the  Apache License, Version 2.0, please send an email to 
  * dlr@microsoft.com. By using this source code in any fashion, you are agreeing to be bound 
- * by the terms of the Microsoft Public License.
+ * by the terms of the Apache License, Version 2.0.
  *
  * You must not remove this notice, or any other, from this software.
  *
  *
  * ***************************************************************************/
-using System; using Microsoft;
 
-
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-#if CODEPLEX_40
 using System.Dynamic.Utils;
-#else
-using Microsoft.Scripting.Utils;
-#endif
 
-#if CODEPLEX_40
-namespace System.Linq.Expressions {
+#if CLR2
+namespace Microsoft.Scripting.Ast {
 #else
-namespace Microsoft.Linq.Expressions {
+namespace System.Linq.Expressions {
 #endif
     /// <summary>
     /// Represents one case of a <see cref="SwitchExpression"/>.
@@ -84,21 +79,21 @@ namespace Microsoft.Linq.Expressions {
 
     public partial class Expression {
         /// <summary>
-        /// Creates a <see cref="Microsoft.Linq.Expressions.SwitchCase">SwitchCase</see> for use in a <see cref="SwitchExpression"/>.
+        /// Creates a <see cref="T:SwitchCase">SwitchCase</see> for use in a <see cref="SwitchExpression"/>.
         /// </summary>
         /// <param name="body">The body of the case.</param>
         /// <param name="testValues">The test values of the case.</param>
-        /// <returns>The created <see cref="Microsoft.Linq.Expressions.SwitchCase">SwitchCase</see>.</returns>
+        /// <returns>The created <see cref="T:SwitchCase">SwitchCase</see>.</returns>
         public static SwitchCase SwitchCase(Expression body, params Expression[] testValues) {
             return SwitchCase(body, (IEnumerable<Expression>)testValues);
         }
 
         /// <summary>
-        /// Creates a <see cref="Microsoft.Linq.Expressions.SwitchCase">SwitchCase</see> for use in a <see cref="SwitchExpression"/>.
+        /// Creates a <see cref="T:SwitchCase">SwitchCase</see> for use in a <see cref="SwitchExpression"/>.
         /// </summary>
         /// <param name="body">The body of the case.</param>
         /// <param name="testValues">The test values of the case.</param>
-        /// <returns>The created <see cref="Microsoft.Linq.Expressions.SwitchCase">SwitchCase</see>.</returns>
+        /// <returns>The created <see cref="T:SwitchCase">SwitchCase</see>.</returns>
         public static SwitchCase SwitchCase(Expression body, IEnumerable<Expression> testValues) {
             RequiresCanRead(body, "body");
             

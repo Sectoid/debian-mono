@@ -42,18 +42,9 @@ using System.Runtime.InteropServices;
 
 namespace System {
 
-#if NET_2_0
 	[ComVisible (true)]
-#endif
-#if NET_2_0
 	public static class Environment {
-#else
-	public sealed class Environment {
 
-		private Environment ()
-		{
-		}
-#endif
 		/*
 		 * This is the version number of the corlib-runtime interface. When
 		 * making changes to this interface (by changing the layout
@@ -63,21 +54,16 @@ namespace System {
 		 * Changes which are already detected at runtime, like the addition
 		 * of icalls, do not require an increment.
 		 */
-		private const int mono_corlib_version = 82;
+#pragma warning disable 169
+		private const int mono_corlib_version = 96;
+#pragma warning restore 169
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public enum SpecialFolder
-		{	// TODO: Determine if these windoze style folder identifiers 
-			//       have unix/linux counterparts
-#if NET_2_0
+		{	
 			MyDocuments = 0x05,
-#endif
-#if NET_1_1
 			Desktop = 0x00,
 			MyComputer = 0x11,
-#endif
 			Programs = 0x02,
 			Personal = 0x05,
 			Favorites = 0x06,
@@ -98,6 +84,45 @@ namespace System {
 			ProgramFiles = 0x26,
 			MyPictures = 0x27,
 			CommonProgramFiles = 0x2b,
+#if NET_4_0 || MOONLIGHT || MOBILE
+			MyVideos = 0x0e,
+#endif
+#if NET_4_0
+			NetworkShortcuts = 0x13,
+			Fonts = 0x14,
+			CommonStartMenu = 0x16,
+			CommonPrograms = 0x17,
+			CommonStartup = 0x18,
+			CommonDesktopDirectory = 0x19,
+			PrinterShortcuts = 0x1b,
+			Windows = 0x24,
+			UserProfile = 0x28,
+			SystemX86 = 0x29,
+			ProgramFilesX86 = 0x2a,
+			CommonProgramFilesX86 = 0x2c,
+			CommonTemplates = 0x2d,
+			CommonDocuments = 0x2e,
+			CommonAdminTools = 0x2f,
+			AdminTools = 0x30,
+			CommonMusic = 0x35,
+			CommonPictures = 0x36,
+			CommonVideos = 0x37,
+			Resources = 0x38,
+			LocalizedResources = 0x39,
+			CommonOemLinks = 0x3a,
+			CDBurning = 0x3b,
+#endif
+		}
+
+#if NET_4_0
+		public
+#else
+		internal
+#endif
+		enum SpecialFolderOption {
+			None = 0,
+			DoNotVerify = 0x4000,
+			Create = 0x8000
 		}
 
 		/// <summary>
@@ -106,9 +131,26 @@ namespace System {
 		public static string CommandLine {
 			// note: security demand inherited from calling GetCommandLineArgs
 			get {
-				// FIXME: we may need to quote, but any sane person
-				// should use GetCommandLineArgs () instead.
-				return String.Join (" ", GetCommandLineArgs ());
+				StringBuilder sb = new StringBuilder ();
+				foreach (string str in GetCommandLineArgs ()) {
+					bool escape = false;
+					string quote = "";
+					string s = str;
+					for (int i = 0; i < s.Length; i++) {
+						if (quote.Length == 0 && Char.IsWhiteSpace (s [i])) {
+							quote = "\"";
+						} else if (s [i] == '"') {
+							escape = true;
+						}
+					}
+					if (escape && quote.Length != 0) {
+						s = s.Replace ("\"", "\\\"");
+					}
+					sb.AppendFormat ("{0}{1}{0} ", quote, s);
+				}
+				if (sb.Length > 0)
+					sb.Length--;
+				return sb.ToString ();
 			}
 		}
 
@@ -138,10 +180,7 @@ namespace System {
 			set;
 		}
 
-#if NET_1_1
-		static
-#endif
-		public extern bool HasShutdownStarted
+		static public extern bool HasShutdownStarted
 		{
 			[MethodImplAttribute (MethodImplOptions.InternalCall)]
 			get;
@@ -158,12 +197,21 @@ namespace System {
 			get;
 		}
 
+		[MethodImplAttribute (MethodImplOptions.InternalCall)]
+		extern static string GetNewLine ();
+
+		static string nl;
 		/// <summary>
 		/// Gets the standard new line value
 		/// </summary>
-		public extern static string NewLine {
-			[MethodImplAttribute (MethodImplOptions.InternalCall)]
-			get;
+		public static string NewLine {
+			get {
+				if (nl != null)
+					return nl;
+
+				nl = GetNewLine ();
+				return nl;
+			}
 		}
 
 		//
@@ -171,7 +219,7 @@ namespace System {
 		//
 		static OperatingSystem os;
 
-		internal static extern PlatformID Platform {
+		static extern PlatformID Platform {
 			[MethodImplAttribute (MethodImplOptions.InternalCall)]
 			get;
 		}
@@ -187,6 +235,8 @@ namespace System {
 				if (os == null) {
 					Version v = Version.CreateFromString (GetOSVersionString ());
 					PlatformID p = Platform;
+					if (p == PlatformID.MacOSX)
+						p = PlatformID.Unix;
 					os = new OperatingSystem (p, v);
 				}
 				return os;
@@ -378,7 +428,7 @@ namespace System {
 		/// <summary>
 		/// Return a set of all environment variables and their values
 		/// </summary>
-#if NET_2_0 && !NET_2_1
+#if !NET_2_1
 		public static IDictionary GetEnvironmentVariables ()
 		{
 			StringBuilder sb = null;
@@ -424,13 +474,22 @@ namespace System {
 		/// </summary>
 		public static string GetFolderPath (SpecialFolder folder)
 		{
+			return GetFolderPath (folder, SpecialFolderOption.None);
+		}
+#if NET_4_0
+		public
+#endif
+		static string GetFolderPath(SpecialFolder folder, SpecialFolderOption option)
+		{
+			SecurityManager.EnsureElevatedPermissions (); // this is a no-op outside moonlight
+
 			string dir = null;
 
-			if (Environment.IsRunningOnWindows) {
+			if (Environment.IsRunningOnWindows)
 				dir = GetWindowsFolderPath ((int) folder);
-			} else {
-				dir = InternalGetFolderPath (folder);
-			}
+			else
+				dir = UnixGetFolderPath (folder, option);
+
 #if !NET_2_1
 			if ((dir != null) && (dir.Length > 0) && SecurityManager.SecurityEnabled) {
 				new FileIOPermission (FileIOPermissionAccess.PathDiscovery, dir).Demand ();
@@ -439,8 +498,7 @@ namespace System {
 			return dir;
 		}
 
-		private static string ReadXdgUserDir (string config_dir, string home_dir, 
-			string key, string fallback)
+		private static string ReadXdgUserDir (string config_dir, string home_dir, string key, string fallback)
 		{
 			string env_path = internalGetEnvironmentVariable (key);
 			if (env_path != null && env_path != String.Empty) {
@@ -459,19 +517,19 @@ namespace System {
 					while ((line = reader.ReadLine ()) != null) {
 						line = line.Trim ();
 						int delim_index = line.IndexOf ('=');
-                        if(delim_index > 8 && line.Substring (0, delim_index) == key) {
-                            string path = line.Substring (delim_index + 1).Trim ('"');
-                            bool relative = false;
-
-                            if (path.StartsWith ("$HOME/")) {
-                                relative = true;
-                                path = path.Substring (6);
-                            } else if (!path.StartsWith ("/")) {
-                                relative = true;
-                            }
-
-                            return relative ? Path.Combine (home_dir, path) : path;
-                        }
+						if(delim_index > 8 && line.Substring (0, delim_index) == key) {
+							string path = line.Substring (delim_index + 1).Trim ('"');
+							bool relative = false;
+							
+							if (path.StartsWith ("$HOME/")) {
+								relative = true;
+								path = path.Substring (6);
+							} else if (!path.StartsWith ("/")) {
+								relative = true;
+							}
+							
+							return relative ? Path.Combine (home_dir, path) : path;
+						}
 					}
 				}
 			} catch (FileNotFoundException) {
@@ -483,7 +541,7 @@ namespace System {
 
 		// the security runtime (and maybe other parts of corlib) needs the
 		// information to initialize themselves before permissions can be checked
-		internal static string InternalGetFolderPath (SpecialFolder folder)
+		internal static string UnixGetFolderPath (SpecialFolder folder, SpecialFolderOption option)
 		{
 			string home = internalGetHome ();
 
@@ -503,11 +561,10 @@ namespace System {
 			}
 
 			switch (folder) {
-#if NET_1_1
 			// MyComputer is a virtual directory
 			case SpecialFolder.MyComputer:
 				return String.Empty;
-#endif
+
 			// personal == ~
 			case SpecialFolder.Personal:
 #if MONOTOUCH
@@ -517,38 +574,116 @@ namespace System {
 #endif
 			// use FDO's CONFIG_HOME. This data will be synced across a network like the windows counterpart.
 			case SpecialFolder.ApplicationData:
+#if MONOTOUCH
+			{
+				string dir = Path.Combine (Path.Combine (home, "Documents"), ".config");
+				if (option == SpecialFolderOption.Create){
+					if (!Directory.Exists (dir))
+						Directory.CreateDirectory (dir);
+				}
+				return dir;
+			}
+#else
 				return config;
+#endif
 			//use FDO's DATA_HOME. This is *NOT* synced
 			case SpecialFolder.LocalApplicationData:
+#if MONOTOUCH
+			{
+				string dir = Path.Combine (home, "Documents");
+				if (!Directory.Exists (dir))
+					Directory.CreateDirectory (dir);
+
+				return dir;
+			}
+#else
 				return data;
-#if NET_1_1
-			case SpecialFolder.Desktop:
 #endif
+
+			case SpecialFolder.Desktop:
 			case SpecialFolder.DesktopDirectory:
 				return ReadXdgUserDir (config, home, "XDG_DESKTOP_DIR", "Desktop");
 
 			case SpecialFolder.MyMusic:
-				return ReadXdgUserDir (config, home, "XDG_MUSIC_DIR", "Music");
+				if (Platform == PlatformID.MacOSX)
+					return Path.Combine (home, "Music");
+				else
+					return ReadXdgUserDir (config, home, "XDG_MUSIC_DIR", "Music");
 
 			case SpecialFolder.MyPictures:
-				return ReadXdgUserDir (config, home, "XDG_PICTURES_DIR", "Pictures");
+				if (Platform == PlatformID.MacOSX)
+					return Path.Combine (home, "Pictures");
+				else
+					return ReadXdgUserDir (config, home, "XDG_PICTURES_DIR", "Pictures");
+			
+			case SpecialFolder.Templates:
+				return ReadXdgUserDir (config, home, "XDG_TEMPLATES_DIR", "Templates");
+#if NET_4_0 || MOONLIGHT || MOBILE
+			case SpecialFolder.MyVideos:
+				return ReadXdgUserDir (config, home, "XDG_VIDEOS_DIR", "Videos");
+#endif
+#if NET_4_0
+			case SpecialFolder.CommonTemplates:
+				return "/usr/share/templates";
+			case SpecialFolder.Fonts:
+				if (Platform == PlatformID.MacOSX)
+					return Path.Combine (home, "Library", "Fonts");
 				
+				return Path.Combine (home, ".fonts");
+#endif
 			// these simply dont exist on Linux
 			// The spec says if a folder doesnt exist, we
 			// should return ""
 			case SpecialFolder.Favorites:
+				if (Platform == PlatformID.MacOSX)
+					return Path.Combine (home, "Library", "Favorites");
+				else
+					return String.Empty;
+				
+			case SpecialFolder.ProgramFiles:
+				if (Platform == PlatformID.MacOSX)
+					return "/Applications";
+				else
+					return String.Empty;
+
+			case SpecialFolder.InternetCache:
+				if (Platform == PlatformID.MacOSX)
+					return Path.Combine (home, "Library", "Caches");
+				else
+					return String.Empty;
+				
 			case SpecialFolder.Programs:
 			case SpecialFolder.SendTo:
 			case SpecialFolder.StartMenu:
 			case SpecialFolder.Startup:
-			case SpecialFolder.Templates:
 			case SpecialFolder.Cookies:
 			case SpecialFolder.History:
-			case SpecialFolder.InternetCache:
 			case SpecialFolder.Recent:
 			case SpecialFolder.CommonProgramFiles:
-			case SpecialFolder.ProgramFiles:
 			case SpecialFolder.System:
+#if NET_4_0
+			case SpecialFolder.NetworkShortcuts:
+			case SpecialFolder.CommonStartMenu:
+			case SpecialFolder.CommonPrograms:
+			case SpecialFolder.CommonStartup:
+			case SpecialFolder.CommonDesktopDirectory:
+			case SpecialFolder.PrinterShortcuts:
+			case SpecialFolder.Windows:
+			case SpecialFolder.UserProfile:
+			case SpecialFolder.SystemX86:
+			case SpecialFolder.ProgramFilesX86:
+			case SpecialFolder.CommonProgramFilesX86:
+			case SpecialFolder.CommonDocuments:
+			case SpecialFolder.CommonAdminTools:
+			case SpecialFolder.AdminTools:
+			case SpecialFolder.CommonMusic:
+			case SpecialFolder.CommonPictures:
+			case SpecialFolder.CommonVideos:
+			case SpecialFolder.Resources:
+			case SpecialFolder.LocalizedResources:
+			case SpecialFolder.CommonOemLinks:
+			case SpecialFolder.CDBurning:
+#endif
 				return String.Empty;
 			// This is where data common to all users goes
 			case SpecialFolder.CommonApplicationData:
@@ -558,13 +693,14 @@ namespace System {
                         }
                 }
 
+		
 		[EnvironmentPermission (SecurityAction.Demand, Unrestricted=true)]
 		public static string[] GetLogicalDrives ()
 		{
 			return GetLogicalDrivesInternal ();
 		}
 
-#if NET_2_0 && !NET_2_1
+#if !NET_2_1
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		private static extern void internalBroadcastSettingChange ();
 
@@ -678,21 +814,41 @@ namespace System {
 
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		internal static extern void InternalSetEnvironmentVariable (string variable, string value);
-
-		[MonoTODO ("Not implemented")]
+#endif
 		[SecurityPermission (SecurityAction.LinkDemand, UnmanagedCode=true)]
 		public static void FailFast (string message)
 		{
 			throw new NotImplementedException ();
 		}
+
+#if NET_4_0 || MOONLIGHT || MOBILE
+		[SecurityCritical]
+		public static void FailFast (string message, Exception exception)
+		{
+			throw new NotImplementedException ();
+		}
 #endif
-#if NET_2_0
+
+#if NET_4_0
+		public static bool Is64BitOperatingSystem {
+			get { return IntPtr.Size == 8; } // FIXME: is this good enough?
+		}
+
+		public static bool Is64BitProcess {
+			get { return Is64BitOperatingSystem; }
+		}
+
+		public static int SystemPageSize {
+			get { return GetPageSize (); }
+		}
+#endif
+
 		public static extern int ProcessorCount {
 			[EnvironmentPermission (SecurityAction.Demand, Read="NUMBER_OF_PROCESSORS")]
 			[MethodImplAttribute (MethodImplOptions.InternalCall)]
 			get;			
 		}
-#endif
+
 		// private methods
 
 		internal static bool IsRunningOnWindows {
@@ -729,6 +885,22 @@ namespace System {
 
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		internal extern static string internalGetHome ();
+
+		[MethodImplAttribute (MethodImplOptions.InternalCall)]
+		internal extern static int GetPageSize ();
+
+		static internal bool IsUnix {
+			get {
+				int platform = (int) Environment.Platform;
+
+				return (platform == 4 || platform == 128 || platform == 6);
+			}
+		}
+		static internal bool IsMacOS {
+			get {
+				return Environment.Platform == PlatformID.MacOSX;
+			}
+		}
 	}
 }
 

@@ -1,15 +1,19 @@
-// CS0271: The property or indexer `C.this[string]' cannot be used in this context because a `set' accessor is inaccessible
-// Line: 13
+// CS0271: The property or indexer `Test.A.B' cannot be used in this context because the get accessor is inaccessible
+// Line: 17
 
-class C
-{
-	public int this [string i] { private set { } get { return 1; } }
-}
+using System;
 
 public class Test
 {
-	void Foo ()
-	{	C c = new C ();
-		c [""] = 9;
+	private class A
+	{
+		public string B { protected get; set; }
+	}
+	
+	static void Main ()
+	{
+		A a = new A ();
+		a.B = "foo";
+		string b = a.B;
 	}
 }

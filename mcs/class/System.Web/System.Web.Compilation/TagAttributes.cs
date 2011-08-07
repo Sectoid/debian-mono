@@ -5,6 +5,7 @@
 //	Gonzalo Paniagua Javier (gonzalo@ximian.com)
 //
 // (C) 2003 Ximian, Inc (http://www.ximian.com)
+// (C) 2003-2009 Novell, Inc (http://novell.com/)
 //
 
 //
@@ -36,7 +37,7 @@ using System.Web.Util;
 
 namespace System.Web.Compilation
 {
-	class TagAttributes
+	sealed class TagAttributes
 	{
 		Hashtable atts_hash;
 		Hashtable tmp_hash;
@@ -53,12 +54,7 @@ namespace System.Web.Compilation
 
 		void MakeHash ()
 		{
-#if NET_2_0
 			atts_hash = new Hashtable (StringComparer.InvariantCultureIgnoreCase);
-#else
-			atts_hash = new Hashtable (CaseInsensitiveHashCodeProvider.DefaultInvariant,
-						   CaseInsensitiveComparer.DefaultInvariant);
-#endif
 			for (int i = 0; i < keys.Count; i++) {
 				CheckServerKey (keys [i]);
 				atts_hash.Add (keys [i], values [i]);
@@ -158,18 +154,13 @@ namespace System.Web.Compilation
 			return (StrUtils.StartsWith (att, "<%#") && StrUtils.EndsWith (att, "%>"));
 		}
 		
-		public Hashtable GetDictionary (string key)
+		public IDictionary GetDictionary (string key)
 		{
 			if (got_hashed)
 				return atts_hash;
 
 			if (tmp_hash == null)
-#if NET_2_0
 				tmp_hash = new Hashtable (StringComparer.InvariantCultureIgnoreCase);
-#else
-				tmp_hash = new Hashtable (CaseInsensitiveHashCodeProvider.DefaultInvariant,
-							  CaseInsensitiveComparer.DefaultInvariant);
-#endif
 			
 			tmp_hash.Clear ();
 			for (int i = keys.Count - 1; i >= 0; i--)

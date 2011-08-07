@@ -27,7 +27,13 @@ ifneq (1, $(FRAMEWORK_VERSION_MAJOR))
 LIB_MCS_FLAGS = -nowarn:618 -d:CONFIGURATION_2_0 -unsafe $(RESOURCE_FILES:%=-resource:%)
 TEST_MCS_FLAGS += -r:System.Configuration
 PROFILE_2_OR_4 := $(filter net_2_0 net_4_0, $(PROFILE))
-NOT_SL := $(filter net_2_0 net_4_0 monotouch, $(PROFILE))
+NOT_SL := $(filter net_2_0 net_4_0 monotouch monodroid, $(PROFILE))
+endif
+ifeq (2.1, $(FRAMEWORK_VERSION))
+LIB_MCS_FLAGS += -d:INSIDE_SYSTEM
+ifeq (moonlight_raw, $(PROFILE))
+LIB_MCS_FLAGS += -d:SECURITY_DEP
+endif
 endif
 
 EXTRA_DISTFILES = \
@@ -51,12 +57,10 @@ else
 USE_BOOT_COMPILE = yes
 endif
 
-ifeq (net_2_0, $(PROFILE))
-BOOTSTRAP_MCS = MONO_PATH="$(topdir)/class/lib/net_2_0$(PLATFORM_PATH_SEPARATOR)$(topdir)/class/lib/net_2_0_bootstrap$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(INTERNAL_GMCS)
-endif
-
 ifdef USE_BOOT_COMPILE
+ifndef PROFILE_MCS_HAS_BOOTSTRAP_FALLBACK
 LIBRARY_COMPILE = $(BOOT_COMPILE)
+endif
 endif
 
 # Because System.dll, Mono.Security.dll System.Xml.dll have a cyclic dependency, we need a two-pass build.

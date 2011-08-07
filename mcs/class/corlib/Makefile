@@ -5,13 +5,15 @@ export __SECURITY_BOOTSTRAP_DB=$(topdir)/class/corlib
 
 LIBRARY = corlib.dll
 LIBRARY_NAME = mscorlib.dll
-LIB_MCS_FLAGS = $(corlib_flags) $(RESOURCE_FILES:%=-resource:%)
+LIB_MCS_FLAGS = $(RESOURCE_FILES:%=-resource:%)
 LIBRARY_USE_INTERMEDIATE_FILE = yes
+
+ifeq (4.0, $(FRAMEWORK_VERSION))
+LIB_MCS_FLAGS += --runtime:v4
+endif
 
 LIBRARY_COMPILE = $(BOOT_COMPILE)
 LIBRARY_INSTALL_DIR = $(mono_libdir)/mono/$(FRAMEWORK_VERSION)
-
-AOT_IN_PROFILES = net_1_1
 
 RESOURCE_FILES = \
 	resources/collation.core.bin \
@@ -22,14 +24,13 @@ RESOURCE_FILES = \
 	resources/collation.cjkKO.bin \
 	resources/collation.cjkKOlv2.bin
 
-corlib_flags = -unsafe -nostdlib
-LOCAL_MCS_FLAGS = -nowarn:612,618 -d:INSIDE_CORLIB
+LOCAL_MCS_FLAGS = -unsafe -nostdlib -nowarn:612,618 -d:INSIDE_CORLIB -d:LIBC
+DEFAULT_REFERENCES =
 
 # System.IO/DirectoryInfoTest.cs needs Mono.Posix
 TEST_MCS_FLAGS = -debug+ -debug:full -nowarn:168,219,618,672 -unsafe -r:$(topdir)/class/lib/$(PROFILE)/Mono.Posix.dll -define:MONO_DATACONVERTER_STATIC_METHODS
 
 EXTRA_DISTFILES = \
-	corlib.dll.win32-excludes		\
 	Test/ms_run_test.sh			\
 	Test/resources/MyResources.resources	\
 	Test/resources/MyResources.de.resources	\
@@ -46,6 +47,7 @@ include $(topdir)/build/library.make
 
 ifdef FIXME_CORLIB_CMP
 # corlib_cmp
+corlib_flags = -unsafe -nostdlib
 cmplib = $(topdir)/class/lib/$(PROFILE)/corlib_cmp.dll
 cmppdb = $(cmplib:.dll=.pdb)
 cmp_response = $(depsdir)/$(PROFILE)_corlib_cmp.dll.response
@@ -76,10 +78,35 @@ $(cmp_makefrag): $(cmp_response)
 $(cmp_response) $(cmp_makefrag): Makefile $(depsdir)/.stamp
 endif
 
-#
-# qh21 = Quick Hack for 2.1, to be used by impatient developers to get
-# test builds done quickly
-#
-qh21:
-	make PROFILE=net_2_1_raw
-	(cd ../../tools/tuner; rm tune.stamp; make tune.stamp && make PROFILE=net_2_1 install)
+vts = VersionTolerantSerialization
+vtsdir = Test/System.Runtime.Serialization.Formatters.Binary/$(vts)
+test-vts:
+	$(MCS) -target:library \
+		$(vtsdir)/$(vts)TestLib/1.0/Address.cs
+	$(MCS) $(test_nunit_ref) \
+		-r:$(vtsdir)/$(vts)TestLib/1.0/Address.dll \
+		$(vtsdir)/BinarySerializationOverVersions.cs
+	cp $(vtsdir)/$(vts)TestLib/1.0/Address.dll $(vtsdir)
+	$(MCS) -target:library \
+		$(vtsdir)/$(vts)TestLib/2.0/Address.cs
+	$(MCS) -target:library \
+		$(vtsdir)/$(vts)TestLib/3.0/Address.cs
+	$(MCS) -target:library \
+		$(vtsdir)/$(vts)TestLib/4.0/Address.cs
+	$(MCS) -target:library \
+		$(vtsdir)/$(vts)TestLib/5.0/Address.cs
+	$(MCS) -target:library \
+		$(vtsdir)/$(vts)TestLib/6.0/Address.cs
+run-test-vts: test-vts
+	$(TEST_RUNTIME) $(RUNTIME_FLAGS) $(TEST_HARNESS) -noshadow \
+		$(vtsdir)/BinarySerializationOverVersions.exe 
+test: test-vts
+run-test: run-test-vts
+
+EXTRA_DISTFILES += \
+	$(vtsdir)/$(vts)TestLib/1.0/Address.cs \
+	$(vtsdir)/$(vts)TestLib/2.0/Address.cs \
+	$(vtsdir)/$(vts)TestLib/3.0/Address.cs \
+	$(vtsdir)/$(vts)TestLib/4.0/Address.cs \
+	$(vtsdir)/$(vts)TestLib/5.0/Address.cs \
+	$(vtsdir)/BinarySerializationOverVersions.cs

@@ -1,3 +1,36 @@
+2010-10-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Update mappings after latest changes to Mono.Posix
+
+	New mappings created for the epoll code.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
+2010-09-23  Jackson Harper  <jacksonh@gmail.com>
+
+	On 64bit this is turning into a 16 byte struct, this works around
+	the issue.
+
+2010-09-23  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	epoll_ctl takes an int, not IntPtr
+
+	Ditto.
+
+2010-09-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	EpollEvent size adjustment
+
+	EpollEvent has to be one uint32 plus one int64, i.e. 12 bytes
+	long. Manos libres now.
+
+2010-07-21  Jackson Harper  <jackson@ximian.com>
+
+	* Syscall.cs: Add bindings to the various epoll
+	functions. (epoll_create, epoll_ctl, epoll_wait).
+
 2008-12-19  Jonathan Pryor  <jpryor@novell.com>
 
 	* NativeConvert.cs: Add FromRealTimeSignum(), ToRealTimeSignum().

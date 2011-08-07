@@ -1,3 +1,21 @@
+2011-03-08  Atsushi Eno  <atsushi@ximian.com>
+
+	More xml output fixes in XmlSyndicationContent and
+	SydicationElementExtension.
+
+	They have couple of complicated xml outputs in both
+	GetReader(AtContent) and Write(Contents)To methods... check new
+	tests for details.
+
+2011-03-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Couple of fixes around XmlSyndicationContent.GetReaderAtContent().
+
+	- The returned XmlReader is positioned at the beginning of the
+	element. - XmlSyndicationContent.GetReaderAtContent() returns
+	XmlReader that begins with the "wrapper" which is dummy Atom 1.0
+	content element.
+
 2009-10-07  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* SyndicationItemTest.cs, SyndicationFeedTest.cs : allow atom feed

@@ -84,36 +84,38 @@ namespace Microsoft.Build.BuildEngine {
 		[MonoTODO]
 		public bool Execute ()
 		{
-			bool		result;
+			bool		result = false;
 			TaskEngine	taskEngine;
 
 			LogTaskStarted ();
 			ITask task = null;
 
 			try {
-				task = InitializeTask ();
-			} catch (Exception e) {
-				LogError ("Error initializing task {0}: {1}", taskElement.LocalName, e.Message);
-				LogMessage (MessageImportance.Low, "Error initializing task {0}: {1}",
-						taskElement.LocalName, e.ToString ());
-				return false;
+				try {
+					task = InitializeTask ();
+				} catch (Exception e) {
+					LogError ("Error initializing task {0}: {1}", taskElement.LocalName, e.Message);
+					LogMessage (MessageImportance.Low, "Error initializing task {0}: {1}",
+							taskElement.LocalName, e.ToString ());
+					return false;
+				}
+
+				try {
+					taskEngine = new TaskEngine (parentTarget.Project);
+					taskEngine.Prepare (task, this.taskElement, GetParameters (), this.Type);
+					result = taskEngine.Execute ();
+					if (result)
+						taskEngine.PublishOutput ();
+				} catch (Exception e) {
+					task_logger.LogError ("Error executing task {0}: {1}", taskElement.LocalName, e.Message);
+					task_logger.LogMessage (MessageImportance.Low,
+							"Error executing task {0}: {1}", taskElement.LocalName, e.ToString ());
+					result = false;
+				}
+			} finally {
+				LogTaskFinished (result);
 			}
 
-			try {
-				taskEngine = new TaskEngine (parentTarget.Project);		
-				taskEngine.Prepare (task, this.taskElement, GetParameters (), this.Type);
-				result = taskEngine.Execute ();
-				if (result)
-					taskEngine.PublishOutput ();
-			} catch (Exception e) {
-				task_logger.LogError ("Error executing task {0}: {1}", taskElement.LocalName, e.Message);
-				task_logger.LogMessage (MessageImportance.Low,
-						"Error executing task {0}: {1}", taskElement.LocalName, e.ToString ());
-				result = false;
-			}
-
-			LogTaskFinished (result);
-		
 			return result;
 		}
 
@@ -176,27 +178,31 @@ namespace Microsoft.Build.BuildEngine {
 		void LogError (string message,
 				     params object[] messageArgs)
 		{
-			BuildErrorEventArgs beea = new BuildErrorEventArgs (
-				null, null, null, 0, 0, 0, 0, String.Format (message, messageArgs),
-				null, null);
-			parentTarget.Project.ParentEngine.EventSource.FireErrorRaised (this, beea);
+			parentTarget.Project.ParentEngine.LogError (message, messageArgs);
 		}
 		
 		void LogMessage (MessageImportance importance,
 					string message,
 					params object[] messageArgs)
 		{
-			BuildMessageEventArgs bmea = new BuildMessageEventArgs (
-				String.Format (message, messageArgs), null,
-				null, importance);
-			parentTarget.Project.ParentEngine.EventSource.FireMessageRaised (this, bmea);
+			parentTarget.Project.ParentEngine.LogMessage (importance, message, messageArgs);
 		}
 
 		ITask InitializeTask ()
 		{
 			ITask task;
 			
-			task = (ITask)Activator.CreateInstance (this.Type);
+			try {
+				task = (ITask)Activator.CreateInstance (this.Type);
+			} catch (InvalidCastException) {
+				LogMessage (MessageImportance.Low, "InvalidCastException, ITask: {0} Task type: {1}",
+						typeof (ITask).AssemblyQualifiedName, this.Type.AssemblyQualifiedName);
+				throw;
+			}
+			parentTarget.Project.ParentEngine.LogMessage (
+					MessageImportance.Low,
+					"Using task {0} from {1}", Name, this.Type.AssemblyQualifiedName);
+
 			task.BuildEngine = new BuildEngine (parentTarget.Project.ParentEngine, parentTarget.Project,
 						parentTarget.TargetFile, 0, 0, ContinueOnError);
 			task_logger = new TaskLoggingHelper (task);

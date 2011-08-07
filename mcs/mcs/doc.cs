@@ -9,37 +9,22 @@
 // Copyright 2004 Novell, Inc.
 //
 //
-#if ! BOOTSTRAP_WITH_OLDLIB
+
 using System;
-using System.Collections;
-using System.Collections.Specialized;
+using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
-using System.Reflection.Emit;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Security;
-using System.Security.Permissions;
 using System.Text;
 using System.Xml;
+using System.Linq;
 
-using Mono.CompilerServices.SymbolWriter;
 
 namespace Mono.CSharp {
 
 	//
 	// Support class for XML documentation.
 	//
-#if NET_2_0
-	static
-#else
-	abstract
-#endif
-	public class DocUtil
+	static class DocUtil
 	{
-#if !NET_2_0
-		private DocUtil () {}
-#endif
 		// TypeContainer
 
 		//
@@ -61,10 +46,6 @@ namespace Mono.CSharp {
 			if (t.Types != null)
 				foreach (TypeContainer tc in t.Types)
 					tc.GenerateDocComment (t);
-
-			if (t.Delegates != null)
-				foreach (Delegate de in t.Delegates)
-					de.GenerateDocComment (t);
 
 			if (t.Constants != null)
 				foreach (Const c in t.Constants)
@@ -155,7 +136,7 @@ namespace Mono.CSharp {
 					XmlNodeList nl = n.SelectNodes (".//include");
 					if (nl.Count > 0) {
 						// It could result in current node removal, so prepare another list to iterate.
-						ArrayList al = new ArrayList (nl.Count);
+						var al = new List<XmlNode> (nl.Count);
 						foreach (XmlNode inc in nl)
 							al.Add (inc);
 						foreach (XmlElement inc in al)
@@ -206,8 +187,8 @@ namespace Mono.CSharp {
 				keep_include_node = true;
 			}
 			else {
-				XmlDocument doc = RootContext.Documentation.StoredDocuments [file] as XmlDocument;
-				if (doc == null) {
+				XmlDocument doc;
+				if (!RootContext.Documentation.StoredDocuments.TryGetValue (file, out doc)) {
 					try {
 						doc = new XmlDocument ();
 						doc.Load (file);
@@ -270,7 +251,7 @@ namespace Mono.CSharp {
 		// returns a full runtime type name from a name which might
 		// be C# specific type name.
 		//
-		private static Type FindDocumentedType (MemberCore mc, string name, DeclSpace ds, string cref, Report r)
+		private static TypeSpec FindDocumentedType (MemberCore mc, string name, DeclSpace ds, string cref, Report r)
 		{
 			bool is_array = false;
 			string identifier = name;
@@ -281,13 +262,13 @@ namespace Mono.CSharp {
 					is_array = true;
 				}
 			}
-			Type t = FindDocumentedTypeNonArray (mc, identifier, ds, cref, r);
+			TypeSpec t = FindDocumentedTypeNonArray (mc, identifier, ds, cref, r);
 			if (t != null && is_array)
-				t = Array.CreateInstance (t, 0).GetType ();
+				t = ArrayContainer.MakeType (t);
 			return t;
 		}
 
-		private static Type FindDocumentedTypeNonArray (MemberCore mc, 
+		private static TypeSpec FindDocumentedTypeNonArray (MemberCore mc, 
 			string identifier, DeclSpace ds, string cref, Report r)
 		{
 			switch (identifier) {
@@ -324,7 +305,7 @@ namespace Mono.CSharp {
 			case "void":
 				return TypeManager.void_type;;
 			}
-			FullNamedExpression e = ds.LookupNamespaceOrType (identifier, mc.Location, false);
+			FullNamedExpression e = ds.LookupNamespaceOrType (identifier, 0, mc.Location, false);
 			if (e != null) {
 				if (!(e is TypeExpr))
 					return null;
@@ -333,153 +314,79 @@ namespace Mono.CSharp {
 			int index = identifier.LastIndexOf ('.');
 			if (index < 0)
 				return null;
+
+			var nsName = identifier.Substring (0, index);
+			var typeName = identifier.Substring (index + 1);
+			Namespace ns = ds.NamespaceEntry.NS.GetNamespace (nsName, false);
+			ns = ns ?? mc.Module.GlobalRootNamespace.GetNamespace(nsName, false);
+			if (ns != null) {
+				var te = ns.LookupType(mc.Compiler, typeName, 0, true, mc.Location);
+				if(te != null)
+					return te.Type;
+			}
+
 			int warn;
-			Type parent = FindDocumentedType (mc, identifier.Substring (0, index), ds, cref, r);
+			TypeSpec parent = FindDocumentedType (mc, identifier.Substring (0, index), ds, cref, r);
 			if (parent == null)
 				return null;
 			// no need to detect warning 419 here
-			return FindDocumentedMember (mc, parent,
+			var ts = FindDocumentedMember (mc, parent,
 				identifier.Substring (index + 1),
-				null, ds, out warn, cref, false, null, r).Member as Type;
-		}
-
-		private static MemberInfo [] empty_member_infos =
-			new MemberInfo [0];
-
-		private static MemberInfo [] FindMethodBase (Type type,
-			BindingFlags binding_flags, MethodSignature signature)
-		{
-			MemberList ml = TypeManager.FindMembers (
-				type,
-				MemberTypes.Constructor | MemberTypes.Method | MemberTypes.Property | MemberTypes.Custom,
-				binding_flags,
-				MethodSignature.method_signature_filter,
-				signature);
-			if (ml == null)
-				return empty_member_infos;
-
-			return FilterOverridenMembersOut ((MemberInfo []) ml);
-		}
-
-		static bool IsOverride (PropertyInfo deriv_prop, PropertyInfo base_prop)
-		{
-			if (!MethodGroupExpr.IsAncestralType (base_prop.DeclaringType, deriv_prop.DeclaringType))
-				return false;
-
-			Type [] deriv_pd = TypeManager.GetParameterData (deriv_prop).Types;
-			Type [] base_pd = TypeManager.GetParameterData (base_prop).Types;
-		
-			if (deriv_pd.Length != base_pd.Length)
-				return false;
-
-			for (int j = 0; j < deriv_pd.Length; ++j) {
-				if (deriv_pd [j] != base_pd [j])
-					return false;
-				Type ct = TypeManager.TypeToCoreType (deriv_pd [j]);
-				Type bt = TypeManager.TypeToCoreType (base_pd [j]);
-
-				if (ct != bt)
-					return false;
-			}
-
-			return true;
-		}
-
-		private static MemberInfo [] FilterOverridenMembersOut (
-			MemberInfo [] ml)
-		{
-			if (ml == null)
-				return empty_member_infos;
-
-			ArrayList al = new ArrayList (ml.Length);
-			for (int i = 0; i < ml.Length; i++) {
-				MethodBase mx = ml [i] as MethodBase;
-				PropertyInfo px = ml [i] as PropertyInfo;
-				if (mx != null || px != null) {
-					bool overriden = false;
-					for (int j = 0; j < ml.Length; j++) {
-						if (j == i)
-							continue;
-						MethodBase my = ml [j] as MethodBase;
-						if (mx != null && my != null &&
-							MethodGroupExpr.IsOverride (my, mx)) {
-							overriden = true;
-							break;
-						}
-						else if (mx != null)
-							continue;
-						PropertyInfo py = ml [j] as PropertyInfo;
-						if (px != null && py != null &&
-							IsOverride (py, px)) {
-							overriden = true;
-							break;
-						}
-					}
-					if (overriden)
-						continue;
-				}
-				al.Add (ml [i]);
-			}
-			return al.ToArray (typeof (MemberInfo)) as MemberInfo [];
-		}
-
-		struct FoundMember
-		{
-			public static FoundMember Empty = new FoundMember (true);
-
-			public bool IsEmpty;
-			public readonly MemberInfo Member;
-			public readonly Type Type;
-
-			public FoundMember (bool regardless_of_this_value_its_empty)
-			{
-				IsEmpty = true;
-				Member = null;
-				Type = null;
-			}
-
-			public FoundMember (Type found_type, MemberInfo member)
-			{
-				IsEmpty = false;
-				Type = found_type;
-				Member = member;
-			}
+				null, ds, out warn, cref, false, null, r) as TypeSpec;
+			if (ts != null)
+				return ts;
+			return null;
 		}
 
 		//
 		// Returns a MemberInfo that is referenced in XML documentation
 		// (by "see" or "seealso" elements).
 		//
-		private static FoundMember FindDocumentedMember (MemberCore mc,
-			Type type, string member_name, Type [] param_list, 
+		private static MemberSpec FindDocumentedMember (MemberCore mc,
+			TypeSpec type, string member_name, AParametersCollection param_list, 
 			DeclSpace ds, out int warning_type, string cref,
 			bool warn419, string name_for_error, Report r)
 		{
-			for (; type != null; type = type.DeclaringType) {
-				MemberInfo mi = FindDocumentedMemberNoNest (
+//			for (; type != null; type = type.DeclaringType) {
+				var mi = FindDocumentedMemberNoNest (
 					mc, type, member_name, param_list, ds,
 					out warning_type, cref, warn419,
 					name_for_error, r);
 				if (mi != null)
-					return new FoundMember (type, mi);
-			}
+					return mi; // new FoundMember (type, mi);
+//			}
 			warning_type = 0;
-			return FoundMember.Empty;
+			return null;
 		}
 
-		private static MemberInfo FindDocumentedMemberNoNest (
-			MemberCore mc, Type type, string member_name,
-			Type [] param_list, DeclSpace ds, out int warning_type, 
+		private static MemberSpec FindDocumentedMemberNoNest (
+			MemberCore mc, TypeSpec type, string member_name,
+			AParametersCollection param_list, DeclSpace ds, out int warning_type, 
 			string cref, bool warn419, string name_for_error, Report Report)
 		{
 			warning_type = 0;
-			MemberInfo [] mis;
+//			var filter = new MemberFilter (member_name, 0, MemberKind.All, param_list, null);
+			IList<MemberSpec> found = null;
+			while (type != null && found == null) {
+				found = MemberCache.FindMembers (type, member_name, false);
+				type = type.DeclaringType;
+			}
 
+			if (found == null)
+				return null;
+
+			if (warn419 && found.Count > 1) {
+				Report419 (mc, name_for_error, found.ToArray (), Report);
+			}
+
+			return found [0];
+
+/*
 			if (param_list == null) {
 				// search for fields/events etc.
 				mis = TypeManager.MemberLookup (type, null,
-					type, MemberTypes.All,
-					BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance,
+					type, MemberKind.All,
+					BindingRestriction.None,
 					member_name, null);
 				mis = FilterOverridenMembersOut (mis);
 				if (mis == null || mis.Length == 0)
@@ -547,14 +454,14 @@ namespace Mono.CSharp {
 				msig);
 			if (mis.Length == 0)
 				return null; // CS1574
-			MemberInfo mi = mis [0];
-			Type expected = mi is MethodInfo ?
-				((MethodInfo) mi).ReturnType :
-				mi is PropertyInfo ?
-				((PropertyInfo) mi).PropertyType :
+			var mi = mis [0];
+			TypeSpec expected = mi is MethodSpec ?
+				((MethodSpec) mi).ReturnType :
+				mi is PropertySpec ?
+				((PropertySpec) mi).PropertyType :
 				null;
 			if (return_type_name != null) {
-				Type returnType = FindDocumentedType (mc, return_type_name, ds, cref, Report);
+				TypeSpec returnType = FindDocumentedType (mc, return_type_name, ds, cref, Report);
 				if (returnType == null || returnType != expected) {
 					warning_type = 1581;
 					Report.Warning (1581, 1, mc.Location, "Invalid return type in XML comment cref attribute `{0}'", cref);
@@ -562,19 +469,7 @@ namespace Mono.CSharp {
 				}
 			}
 			return mis [0];
-		}
-
-		private static bool IsAmbiguous (MemberInfo [] members)
-		{
-			if (members.Length < 2)
-				return false;
-			if (members.Length > 2)
-				return true;
-			if (members [0] is EventInfo && members [1] is FieldInfo)
-				return false;
-			if (members [1] is EventInfo && members [0] is FieldInfo)
-				return false;
-			return true;
+*/ 
 		}
 
 		//
@@ -647,18 +542,18 @@ namespace Mono.CSharp {
 			}
 
 			// check if parameters are valid
-			Type [] parameter_types;
+			AParametersCollection parameter_types;
 			if (parameters == null)
 				parameter_types = null;
 			else if (parameters.Length == 0)
-				parameter_types = Type.EmptyTypes;
+				parameter_types = ParametersCompiled.EmptyReadOnlyParameters;
 			else {
 				string [] param_list = parameters.Split (',');
-				ArrayList plist = new ArrayList ();
+				var plist = new List<TypeSpec> ();
 				for (int i = 0; i < param_list.Length; i++) {
 					string param_type_name = param_list [i].Trim (wsChars);
 					Normalize (mc, ref param_type_name, Report);
-					Type param_type = FindDocumentedType (mc, param_type_name, ds, cref, Report);
+					TypeSpec param_type = FindDocumentedType (mc, param_type_name, ds, cref, Report);
 					if (param_type == null) {
 						Report.Warning (1580, 1, mc.Location, "Invalid type for parameter `{0}' in XML comment cref attribute `{1}'",
 							(i + 1).ToString (), cref);
@@ -666,13 +561,14 @@ namespace Mono.CSharp {
 					}
 					plist.Add (param_type);
 				}
-				parameter_types = plist.ToArray (typeof (Type)) as Type [];
+
+				parameter_types = ParametersCompiled.CreateFullyResolved (plist.ToArray ());
 			}
 
-			Type type = FindDocumentedType (mc, name, ds, cref, Report);
+			TypeSpec type = FindDocumentedType (mc, name, ds, cref, Report);
 			if (type != null
 				// delegate must not be referenced with args
-				&& (!TypeManager.IsDelegateType (type)
+				&& (!type.IsDelegate
 				|| parameter_types == null)) {
 				string result = GetSignatureForDoc (type)
 					+ (brace_pos < 0 ? String.Empty : signature.Substring (brace_pos));
@@ -684,36 +580,36 @@ namespace Mono.CSharp {
 			if (period > 0) {
 				string typeName = name.Substring (0, period);
 				string member_name = name.Substring (period + 1);
+				string lookup_name = member_name == "this" ? MemberCache.IndexerNameAlias : member_name;
+				Normalize (mc, ref lookup_name, Report);
 				Normalize (mc, ref member_name, Report);
 				type = FindDocumentedType (mc, typeName, ds, cref, Report);
 				int warn_result;
 				if (type != null) {
-					FoundMember fm = FindDocumentedMember (mc, type, member_name, parameter_types, ds, out warn_result, cref, true, name, Report);
+					var mi = FindDocumentedMember (mc, type, lookup_name, parameter_types, ds, out warn_result, cref, true, name, Report);
 					if (warn_result > 0)
 						return;
-					if (!fm.IsEmpty) {
-						MemberInfo mi = fm.Member;
+					if (mi != null) {
 						// we cannot use 'type' directly
 						// to get its name, since mi
 						// could be from DeclaringType
 						// for nested types.
-						xref.SetAttribute ("cref", GetMemberDocHead (mi.MemberType) + GetSignatureForDoc (fm.Type) + "." + member_name + GetParametersFormatted (mi));
+						xref.SetAttribute ("cref", GetMemberDocHead (mi) + GetSignatureForDoc (mi.DeclaringType) + "." + member_name + GetParametersFormatted (mi));
 						return; // a member of a type
 					}
 				}
-			}
-			else {
+			} else {
 				int warn_result;
-				FoundMember fm = FindDocumentedMember (mc, ds.TypeBuilder, name, parameter_types, ds, out warn_result, cref, true, name, Report);
+				var mi = FindDocumentedMember (mc, ds.PartialContainer.Definition, name, parameter_types, ds, out warn_result, cref, true, name, Report);
+
 				if (warn_result > 0)
 					return;
-				if (!fm.IsEmpty) {
-					MemberInfo mi = fm.Member;
+				if (mi != null) {
 					// we cannot use 'type' directly
 					// to get its name, since mi
 					// could be from DeclaringType
 					// for nested types.
-					xref.SetAttribute ("cref", GetMemberDocHead (mi.MemberType) + GetSignatureForDoc (fm.Type) + "." + name + GetParametersFormatted (mi));
+					xref.SetAttribute ("cref", GetMemberDocHead (mi) + GetSignatureForDoc (mi.DeclaringType) + "." + name + GetParametersFormatted (mi));
 					return; // local member name
 				}
 			}
@@ -724,7 +620,7 @@ namespace Mono.CSharp {
 				xref.SetAttribute ("cref", "N:" + ns.GetSignatureForError ());
 				return; // a namespace
 			}
-			if (GlobalRootNamespace.Instance.IsNamespace (name)) {
+			if (mc.Module.GlobalRootNamespace.IsNamespace (name)) {
 				xref.SetAttribute ("cref", "N:" + name);
 				return; // a namespace
 			}
@@ -735,33 +631,25 @@ namespace Mono.CSharp {
 			xref.SetAttribute ("cref", "!:" + name);
 		}
 
-		static string GetParametersFormatted (MemberInfo mi)
+		static string GetParametersFormatted (MemberSpec mi)
 		{
-			MethodBase mb = mi as MethodBase;
-			bool is_setter = false;
-			PropertyInfo pi = mi as PropertyInfo;
-			if (pi != null) {
-				mb = pi.GetGetMethod ();
-				if (mb == null) {
-					is_setter = true;
-					mb = pi.GetSetMethod ();
-				}
-			}
-			if (mb == null)
-				return String.Empty;
+			var pm = mi as IParametersMember;
+			if (pm == null || pm.Parameters.IsEmpty)
+				return string.Empty;
 
-			AParametersCollection parameters = TypeManager.GetParameterData (mb);
+			AParametersCollection parameters = pm.Parameters;
+/*
 			if (parameters == null || parameters.Count == 0)
 				return String.Empty;
-
+*/
 			StringBuilder sb = new StringBuilder ();
 			sb.Append ('(');
 			for (int i = 0; i < parameters.Count; i++) {
-				if (is_setter && i + 1 == parameters.Count)
-					break; // skip "value".
+//				if (is_setter && i + 1 == parameters.Count)
+//					break; // skip "value".
 				if (i > 0)
 					sb.Append (',');
-				Type t = parameters.Types [i];
+				TypeSpec t = parameters.Types [i];
 				sb.Append (GetSignatureForDoc (t));
 			}
 			sb.Append (')');
@@ -782,7 +670,7 @@ namespace Mono.CSharp {
 			return identifier;
 		}
 
-		static void Report419 (MemberCore mc, string member_name, MemberInfo [] mis, Report Report)
+		static void Report419 (MemberCore mc, string member_name, MemberSpec [] mis, Report Report)
 		{
 			Report.Warning (419, 3, mc.Location, 
 				"Ambiguous reference in cref attribute `{0}'. Assuming `{1}' but other overloads including `{2}' have also matched",
@@ -795,22 +683,19 @@ namespace Mono.CSharp {
 		// Get a prefix from member type for XML documentation (used
 		// to formalize cref target name).
 		//
-		static string GetMemberDocHead (MemberTypes type)
+		static string GetMemberDocHead (MemberSpec type)
 		{
-			switch (type) {
-			case MemberTypes.Constructor:
-			case MemberTypes.Method:
-				return "M:";
-			case MemberTypes.Event:
-				return "E:";
-			case MemberTypes.Field:
+			if (type is FieldSpec)
 				return "F:";
-			case MemberTypes.NestedType:
-			case MemberTypes.TypeInfo:
-				return "T:";
-			case MemberTypes.Property:
+			if (type is MethodSpec)
+				return "M:";
+			if (type is EventSpec)
+				return "E:";
+			if (type is PropertySpec)
 				return "P:";
-			}
+			if (type is TypeSpec)
+				return "T:";
+
 			return "!:";
 		}
 
@@ -839,8 +724,16 @@ namespace Mono.CSharp {
 			if (paramSpec.Length > 0)
 				paramSpec += ")";
 
-			string name = mc is Constructor ? "#ctor" : mc.Name;
-			if (mc.MemberName.IsGeneric)
+			string name = mc.Name;
+			if (mc is Constructor)
+				name = "#ctor";
+			else if (mc is InterfaceMemberBase) {
+				var imb = (InterfaceMemberBase) mc;
+				name = imb.GetFullName (imb.ShortName);
+			}
+			name = name.Replace ('.', '#');
+
+			if (mc.MemberName.TypeArguments != null && mc.MemberName.TypeArguments.Count > 0)
 				name += "``" + mc.MemberName.CountTypeArguments;
 
 			string suffix = String.Empty;
@@ -849,34 +742,50 @@ namespace Mono.CSharp {
 				switch (op.OperatorType) {
 				case Operator.OpType.Implicit:
 				case Operator.OpType.Explicit:
-					suffix = "~" + GetSignatureForDoc (op.MethodBuilder.ReturnType);
+					suffix = "~" + GetSignatureForDoc (op.ReturnType);
 					break;
 				}
 			}
 			return String.Concat (mc.DocCommentHeader, ds.Name, ".", name, paramSpec, suffix);
 		}
 
-		static string GetSignatureForDoc (Type type)
+		static string GetSignatureForDoc (TypeSpec type)
 		{
-#if GMCS_SOURCE
-			if (TypeManager.IsGenericParameter (type))
-				return (type.DeclaringMethod != null ? "``" : "`") + TypeManager.GenericParameterPosition (type);
+			var tp = type as TypeParameterSpec;
+			if (tp != null) {
+				int c = 0;
+				type = type.DeclaringType;
+				while (type != null && type.DeclaringType != null) {
+					type = type.DeclaringType;
+					c += type.MemberDefinition.TypeParametersCount;
+				}
+				var prefix = tp.IsMethodOwned ? "``" : "`";
+				return prefix + (c + tp.DeclaredPosition);
+			}
+
+			var pp = type as PointerContainer;
+			if (pp != null)
+				return GetSignatureForDoc (pp.Element) + "*";
+
+			ArrayContainer ap = type as ArrayContainer;
+			if (ap != null)
+				return GetSignatureForDoc (ap.Element) +
+					ArrayContainer.GetPostfixSignature (ap.Rank);
 
 			if (TypeManager.IsGenericType (type)) {
-				string g = type.Namespace;
+				string g = type.MemberDefinition.Namespace;
 				if (g != null && g.Length > 0)
 					g += '.';
 				int idx = type.Name.LastIndexOf ('`');
 				g += (idx < 0 ? type.Name : type.Name.Substring (0, idx)) + '{';
 				int argpos = 0;
-				foreach (Type t in type.GetGenericArguments ())
+				foreach (TypeSpec t in TypeManager.GetTypeArguments (type))
 					g += (argpos++ > 0 ? "," : String.Empty) + GetSignatureForDoc (t);
 				g += '}';
 				return g;
 			}
-#endif
 
-			string name = type.FullName != null ? type.FullName : type.Name;
+			string name = type.GetMetaInfo ().FullName != null ? type.GetMetaInfo ().FullName : type.Name;
 			return name.Replace ("+", ".").Replace ('&', '@');
 		}
 
@@ -890,22 +799,22 @@ namespace Mono.CSharp {
 		internal static void OnMethodGenerateDocComment (
 			MethodCore mc, XmlElement el, Report Report)
 		{
-			Hashtable paramTags = new Hashtable ();
+			var paramTags = new Dictionary<string, string> ();
 			foreach (XmlElement pelem in el.SelectNodes ("param")) {
 				string xname = pelem.GetAttribute ("name");
 				if (xname.Length == 0)
 					continue; // really? but MS looks doing so
-				if (xname != "" && mc.Parameters.GetParameterIndexByName (xname) < 0)
+				if (xname != "" && mc.ParameterInfo.GetParameterIndexByName (xname) < 0)
 					Report.Warning (1572, 2, mc.Location, "XML comment on `{0}' has a param tag for `{1}', but there is no parameter by that name",
 						mc.GetSignatureForError (), xname);
-				else if (paramTags [xname] != null)
+				else if (paramTags.ContainsKey (xname))
 					Report.Warning (1571, 2, mc.Location, "XML comment on `{0}' has a duplicate param tag for `{1}'",
 						mc.GetSignatureForError (), xname);
 				paramTags [xname] = xname;
 			}
-			IParameterData [] plist = mc.Parameters.FixedParameters;
+			IParameterData [] plist = mc.ParameterInfo.FixedParameters;
 			foreach (Parameter p in plist) {
-				if (paramTags.Count > 0 && paramTags [p.Name] == null)
+				if (paramTags.Count > 0 && !paramTags.ContainsKey (p.Name))
 					Report.Warning (1573, 4, mc.Location, "Parameter `{0}' has no matching param tag in the XML comment for `{1}'",
 						p.Name, mc.GetSignatureForError ());
 			}
@@ -974,7 +883,7 @@ namespace Mono.CSharp {
 		// Stores XmlDocuments that are included in XML documentation.
 		// Keys are included filenames, values are XmlDocuments.
 		//
-		public Hashtable StoredDocuments = new Hashtable ();
+		public Dictionary<string, XmlDocument> StoredDocuments = new Dictionary<string, XmlDocument> ();
 
 		//
 		// Outputs XML documentation comment from tokenized comments.
@@ -1020,11 +929,6 @@ namespace Mono.CSharp {
 			if (root.Types != null)
 				foreach (TypeContainer tc in root.Types)
 					DocUtil.GenerateTypeDocComment (tc, null, r);
-
-			if (root.Delegates != null)
-				foreach (Delegate d in root.Delegates) 
-					DocUtil.GenerateDocComment (d, null, r);
 		}
 	}
 }
-#endif

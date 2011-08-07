@@ -35,7 +35,7 @@ using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
-#if (NET_2_0 || MONOTOUCH) && SECURITY_DEP
+#if SECURITY_DEP
 using Mono.Security.Protocol.Tls;
 #endif
 
@@ -73,9 +73,7 @@ namespace System.Net
 		HttpWebRequest priority_request;
 		NetworkCredential ntlm_credentials;
 		bool ntlm_authenticated;
-#if NET_1_1
 		bool unsafe_sharing;
-#endif
 
 		bool ssl;
 		bool certsAvailable;
@@ -92,7 +90,8 @@ namespace System.Net
                 static WebConnection ()
                 {
                         Type type = Type.GetType ("MonoTouch.ObjCRuntime.Runtime, monotouch");
-                        start_wwan = type.GetMethod ("StartWWAN");
+			if (type != null)
+	                        start_wwan = type.GetMethod ("StartWWAN");
                 }
 #endif
 
@@ -102,7 +101,11 @@ namespace System.Net
 			buffer = new byte [4096];
 			readState = ReadState.None;
 			Data = new WebConnectionData ();
-			initConn = new WaitCallback (InitConnection);
+			initConn = new WaitCallback (state => {
+				try {
+					InitConnection (state);
+				} catch {}
+				});
 			queue = group.Queue;
 			abortHelper = new AbortHelper ();
 			abortHelper.Connection = this;
@@ -164,21 +167,24 @@ namespace System.Net
 #endif
 				}
 
-				WebConnectionData data = Data;
+				//WebConnectionData data = Data;
 				foreach (IPAddress address in hostEntry.AddressList) {
-					socket = new Socket (address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+					try {
+						socket = new Socket (address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+					} catch (Exception se) {
+						// The Socket ctor can throw if we run out of FD's
+						if (!request.Aborted)
+							status = WebExceptionStatus.ConnectFailure;
+						connect_exception = se;
+						return;
+					}
 					IPEndPoint remote = new IPEndPoint (address, sPoint.Address.Port);
-#if NET_1_1
-					socket.SetSocketOption (SocketOptionLevel.Tcp, SocketOptionName.NoDelay, sPoint.UseNagleAlgorithm ? 0 : 1);
-#endif
-#if NET_2_0
 					socket.NoDelay = !sPoint.UseNagleAlgorithm;
 					if (!sPoint.CallEndPointDelegate (socket, remote)) {
 						socket.Close ();
 						socket = null;
 						status = WebExceptionStatus.ConnectFailure;
 					} else {
-#endif
 						try {
 							if (request.Aborted)
 								return;
@@ -192,7 +198,7 @@ namespace System.Net
 							if (s != null)
 								s.Close ();
 							return;
-						} catch (ObjectDisposedException exc) {
+						} catch (ObjectDisposedException) {
 							// socket closed from another thread
 							return;
 						} catch (Exception exc) {
@@ -204,9 +210,7 @@ namespace System.Net
 								status = WebExceptionStatus.ConnectFailure;
 							connect_exception = exc;
 						}
-#if NET_2_0
 					}
-#endif
 				}
 			}
 		}
@@ -217,7 +221,7 @@ namespace System.Net
 				if (sslStream != null)
 					return;
 
-#if MONOTOUCH && SECURITY_DEP
+#if NET_2_1 && SECURITY_DEP
 				sslStream = typeof (Mono.Security.Protocol.Tls.HttpsClientStream);
 #else
 				// HttpsClientStream is an internal glue class in Mono.Security.dll
@@ -355,7 +359,7 @@ namespace System.Net
 										request.ClientCertificates,
 										request, buffer};
 						nstream = (Stream) Activator.CreateInstance (sslStream, args);
-#if (NET_2_0 || MONOTOUCH) && SECURITY_DEP
+#if SECURITY_DEP
 						SslClientStream scs = (SslClientStream) nstream;
 						var helper = new ServicePointManager.ChainValidationHelper (request);
 						scs.ServerCertValidation2 += new CertificateValidationCallback2 (helper.ValidateChain);
@@ -469,9 +473,12 @@ namespace System.Net
 			cnc.position = 0;
 
 			WebConnectionStream stream = new WebConnectionStream (cnc);
+			bool expect_content = ExpectContent (data.StatusCode, data.request.Method);
+			string tencoding = null;
+			if (expect_content)
+				tencoding = data.Headers ["Transfer-Encoding"];
 
-			string contentType = data.Headers ["Transfer-Encoding"];
-			cnc.chunkedRead = (contentType != null && contentType.ToLower ().IndexOf ("chunked") != -1);
+			cnc.chunkedRead = (tencoding != null && tencoding.IndexOf ("chunked", StringComparison.OrdinalIgnoreCase) != -1);
 			if (!cnc.chunkedRead) {
 				stream.ReadBuffer = cnc.buffer;
 				stream.ReadBufferOffset = pos;
@@ -496,14 +503,16 @@ namespace System.Net
 
 			data.stream = stream;
 			
-			if (!ExpectContent (data.StatusCode) || data.request.Method == "HEAD")
+			if (!expect_content)
 				stream.ForceCompletion ();
 
 			data.request.SetResponseData (data);
 		}
 
-		static bool ExpectContent (int statusCode)
+		static bool ExpectContent (int statusCode, string method)
 		{
+			if (method == "HEAD")
+				return false;
 			return (statusCode >= 200 && statusCode != 204 && statusCode != 304);
 		}
 
@@ -712,11 +721,11 @@ namespace System.Net
 				bool keepAlive = (Data.Version == HttpVersion.Version11 && this.keepAlive);
 				if (cncHeader != null) {
 					cncHeader = cncHeader.ToLower ();
-					keepAlive = (this.keepAlive && cncHeader.IndexOf ("keep-alive") != -1);
+					keepAlive = (this.keepAlive && cncHeader.IndexOf ("keep-alive", StringComparison.Ordinal) != -1);
 				}
 
 				if ((socket != null && !socket.Connected) ||
-				   (!keepAlive || (cncHeader != null && cncHeader.IndexOf ("close") != -1))) {
+				   (!keepAlive || (cncHeader != null && cncHeader.IndexOf ("close", StringComparison.Ordinal) != -1))) {
 					Close (false);
 				}
 
@@ -1049,6 +1058,8 @@ namespace System.Net
 					socket = null;
 				}
 
+				if (ntlm_authenticated)
+					ResetNtlm ();
 				busy = false;
 				Data = new WebConnectionData ();
 				if (sendNext)
@@ -1123,12 +1134,10 @@ namespace System.Net
 			set { ntlm_credentials = value; }
 		}
 
-#if NET_1_1
 		internal bool UnsafeAuthenticatedConnectionSharing {
 			get { return unsafe_sharing; }
 			set { unsafe_sharing = value; }
 		}
-#endif
 		// -
 	}
 }

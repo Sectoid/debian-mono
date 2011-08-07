@@ -1,3 +1,121 @@
+2011-07-21  Atsushi Eno  <atsushieno@veritas-vos-liberabit.com>
+
+	Fix bug #703910 - implement Order support in XmlSerializer.
+
+2011-07-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix bug 704813: just ignore members of type IEnumerable`1 without
+	Add().
+
+2011-05-27  Atsushi Eno  <atsushi@ximian.com>
+
+	Add test for XmlMembersMapping.TypeName and .Namespace (not very
+	useful yet...)
+
+2011-05-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Check invalid recursion of xs:group use. Fixed bug #650117.
+
+2011-05-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not import xs:any member as XmlElement[]. Create a wrapper
+	class instead.
+
+	Part of bugfix #670945.
+
+2011-05-06  Lluis Sanchez  <lluis@novell.com>
+
+	[Web Services] Fix regression caused by previous commit
+
+	Fixes a regression caused by the implementation of support for
+	optional parameters. GlobalIndex was not being set when using SOAP
+	RPC protocol.
+
+2011-04-28  Lluis Sanchez  <lluis@novell.com>
+
+	[Web.Services] Add support for optional parameters
+
+	Non-nullable web service parameters can be made optional by adding
+	an additional parameter with the same name and a 'Specified'
+	suffix. This was supported when serializing classes, but not when
+	serializing web service parameters. This might fix bug 688496.
+
+2011-04-28  Atsushi Eno  <atsushi@ximian.com>
+
+	XmlSerializer code generator was generating wrong char literal.
+
+	Fixed bug #673019.
+
+2010-12-13  Lluis Sanchez  <lluis@novell.com>
+
+	Fix several issues in the code generator
+
+	Issues include: casts not being properly generated for nullable
+	types, missing cast when the type of a member does not match the
+	forced serialization type, and incorrect code generated for
+	handling [XmlText] members.
+
+2010-12-13  Lluis Sanchez  <lluis@novell.com>
+
+	Fix code generation issue with nested generic types
+
+	The type argument list for generic nested types include all types
+	arguments for the whole declaring type chain. When generating the
+	C# name of the class, each type argument has to be assigned to the
+	correct class in the chain.
+
+2010-12-13  Lluis Sanchez  <lluis@novell.com>
+
+	Throw correct exceptions when using generated serializer
+
+	Invocations to generated serializers are done through reflection,
+	so exceptions are masked by TargetInvocationException. The inner
+	exception has to be rethrown so that the client code gets the
+	correct exception.
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Fix the monodroid and monotouch profile builds
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System.Xml build for monodroid
+
+2010-03-29  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlTypeMapping.cs, XmlReflectionImporter.cs: XmlRoot takes higher
+	  priority to XmlSchemaProvider QName.
+	  This fixes WCF EndpointAddress serialization.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* SerializationSource.cs: use MOONLIGHT symbol to disambiguate
+	MonoTouch and Moonlight code.
+
+2010-03-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlAnyElementAttribute.cs : add internal IsNullableSpecified
+	  (for moonlight compatibility).
+	* XmlChoiceIdentifierAttribute.cs : implement MemberInfo (ditto).
+
+2010-03-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlSerializationWriter.cs : namespaces argument could be null.
+	  MS generated serializers often pass null here.
+
+2010-01-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationCodeGenerator.cs : generate valid code for non-
+	  identifier names. This should fix bug #488293.
+
+2010-01-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlReflectionImporter.cs, SerializationCodeGenerator.cs,
+	  XmlSerializationWriterInterpreter.cs: XmlAnyElementAttribute can be
+	  still used for non-XmlNode (object) array. It only fails when it
+	  tries to serialize non-XmlNode object at run-time.
+	  Fixed bug #553032.
+
 2010-01-06  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* SerializationCodeGenerator.cs : enum value identifiers should be

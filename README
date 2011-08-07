@@ -11,16 +11,6 @@ This is Mono.
    a. Build Requirements
    ---------------------
 
-	To build Mono, you will need the following components:
-
-		* pkg-config
-
-		  Available from: http://www.freedesktop.org/Software/pkgconfig
-
-		* glib 2.4
-
-		  Available from: http://www.gtk.org/
-
 	On Itanium, you must obtain libunwind:
 
 		http://www.hpl.hp.com/research/linux/libunwind/download.php4
@@ -35,7 +25,15 @@ This is Mono.
 		* libgdiplus
 
 		  If you want to get support for System.Drawing, you will need to get
-		  Libgdiplus.
+		  Libgdiplus.    This library in turn requires glib and pkg-config:
+
+			* pkg-config
+
+		    	  Available from: http://www.freedesktop.org/Software/pkgconfig
+
+		  	* glib 2.4
+
+		    	  Available from: http://www.gtk.org/
 
 		* libzlib
 
@@ -74,15 +72,18 @@ This is Mono.
 		 make V=1
 
 
-
-    c. Building the software from SVN
+    c. Building the software from GIT
     ---------------------------------
 
-	If you are building the software from SVN, make sure that you
+	If you are building the software from GIT, make sure that you
 	have up-to-date mcs and mono sources:
 
-		svn co svn+ssh://USER@mono-cvs.ximian.com/source/trunk/mono
-		svn co svn+ssh://USER@mono-cvs.ximian.com/source/trunk/mcs
+	   If you are an anonymous user:
+		git clone git://github.com/mono/mono.git
+
+           If you are a Mono contributors with read/write privileges:
+	        git clone git@github.com:mono/mono.git
+
 
 	Then, go into the mono directory, and configure:
 
@@ -129,16 +130,16 @@ This is Mono.
 	distribution, which contains just enough to run the 'mcs'
 	compiler.  You do this with:
 
+		# Run the following line after ./autogen.sh
 		make get-monolite-latest
 
 	This will download and automatically gunzip and untar the
 	tarball, and place the files appropriately so that you can then
 	just run:
 
-		make
+		make EXTERNAL_MCS=${PWD}/mcs/class/lib/monolite/gmcs.exe
 
-	To ensure that you're using the 'monolite' distribution, you can
-	also try passing EXTERNAL_MCS=false on the make command-line.
+	And that will use the files downloaded by 'make get-monolite-latest.
 
 	Testing and Installation
 	------------------------
@@ -164,19 +165,31 @@ This is Mono.
 
 		make install
 
+	You can verify your installation by using the mono-test-install
+	script, it can diagnose some common problems with Mono's install.
+
 	Failure to follow these steps may result in a broken installation. 
 
-    d. Common Configuration Options
-    -------------------------------
+    d. Configuration Options
+    ------------------------
 
 	The following are the configuration options that someone
 	building Mono might want to use:
 	
+	--with-sgen=yes,no
+
+		Generational GC support: Used to enable or disable the
+		compilation of a Mono runtime with the SGen garbage collector.
+
+		On platforms that support it, after building Mono, you
+		will have both a mono binary and a mono-sgen binary.
+		Mono uses Boehm, while mono-sgen uses the Simple
+		Generational GC.
 
 	--with-gc=[boehm, included, sgen, none]
 
-		Selects the garbage collector engine to use, the
-	  	default is the "included" value.
+		Selects the default Boehm garbage collector engine to
+	  	use, the default is the "included" value.
 	
 		included: 
 			This is the default value, and its
@@ -191,10 +204,6 @@ This is Mono.
 			it is useful to test new features available in
 			Boehm GC, but we do not recommend that people
 			use this, as it disables a few features.
-
-		sgen:
-			The under-development Generational GC for
-		  	Mono, do not use this in production.
 
 		none:
 			Disables the inclusion of a garbage
@@ -259,6 +268,17 @@ This is Mono.
 
 		This value is set to `no' by default.
 
+	--enable-small-config=yes,no
+
+		Enable some tweaks to reduce memory usage and disk footprint at
+		the expense of some capabilities. Typically this means that the
+		number of threads that can be created is limited (256), that the
+		maxmimum heap size is also reduced (256 MB) and other such limitations
+		that still make mono useful, but more suitable to embedded devices
+		(like mobile phones).
+
+		This value is set to `no' by default.
+
 	--with-ikvm-native=yes,no
 
 		Controls whether the IKVM JNI interface library is
@@ -267,10 +287,10 @@ This is Mono.
 
 		This defaults to `yes'.
 
-	--with-profile2=yes,no
+	--with-profile4=yes,no
 
-		Whether you want to build the 2.x libraries (support
-		for Generics and the 2.0/3.5 APIS).
+		Whether you want to build the 4.x profile libraries
+		and runtime.
 
 	  	It defaults to `yes'.
 
@@ -284,6 +304,21 @@ This is Mono.
 		the Silverlight modified assemblies (mscorlib.dll,
 		System.dll, System.Code.dll and System.Xml.Core.dll) and turn
 	  	on the LINQ extensions for the compiler.
+
+	--with-moon-gc=boehm,sgen
+
+		Select the GC to use for Moonlight.
+
+		boehm:
+			Selects the Boehm Garbage Collector, with the same flags
+			as the regular Mono build. This is the default.
+
+		sgen:
+			Selects the new SGen Garbage Collector, which provides
+			Generational GC support, using the same flags as the
+			mono-sgen build.
+
+		This defaults to `boehm'.
 
 	--with-libgdiplus=installed,sibling,<path>
 
@@ -396,6 +431,24 @@ This is Mono.
 			framework, and the various SSA-based
 		  	optimizations.
 
+	--enable-llvm
+	--enable-loadedllvm
+
+		This enables the use of LLVM as a code generation engine
+		for Mono.  The LLVM code generator and optimizer will be 
+		used instead of Mono's built-in code generator for both
+		Just in Time and Ahead of Time compilations.
+
+		See the http://www.mono-project.com/Mono_LLVM for the 
+		full details and up-to-date information on this feature.
+
+		You will need to have an LLVM built that Mono can link
+		against,
+
+		The --enable-loadedllvm variant will make the llvm backend
+		into a runtime-loadable module instead of linking it directly
+		into the main mono binary.
+
 	--enable-big-arrays
 
 		This enables the use arrays whose indexes are larger
@@ -439,6 +492,15 @@ This is Mono.
 		There are a number of runtime options to control this
 	  	also, see the man page.
 
+	--enable-nacl
+
+		This configures the Mono compiler to generate code
+		suitable to be used by Google's Native Client:
+
+			 http://code.google.com/p/nativeclient/
+
+		Currently this is used with Mono's AOT engine as
+		Native Client does not support JIT engines yet.
 
 2. Using Mono
 =============
@@ -522,4 +584,5 @@ This is Mono.
 		independent checkout) from the Mono module, that
 		directory is automatically configured to share the
 		same prefix than this module gets.
+
 

@@ -856,11 +856,10 @@ namespace System.Diagnostics {
 		public static Process[] GetProcesses()
 		{
 			int [] pids = GetProcesses_internal ();
-			ArrayList proclist = new ArrayList ();
-
 			if (pids == null)
 				return new Process [0];
-			
+
+			ArrayList proclist = new ArrayList (pids.Length);
 			for (int i = 0; i < pids.Length; i++) {
 				try {
 					proclist.Add (GetProcessById (pids [i]));
@@ -889,19 +888,26 @@ namespace System.Diagnostics {
 
 		public static Process[] GetProcessesByName(string processName)
 		{
-			Process [] procs = GetProcesses();
-			ArrayList proclist = new ArrayList();
+			int [] pids = GetProcesses_internal ();
+			if (pids == null)
+				return new Process [0];
 			
-			for (int i = 0; i < procs.Length; i++) {
-				/* Ignore case */
-				if (String.Compare (processName,
-						    procs [i].ProcessName,
-						    true) == 0) {
-					proclist.Add (procs [i]);
+			ArrayList proclist = new ArrayList (pids.Length);
+			for (int i = 0; i < pids.Length; i++) {
+				try {
+					Process p = GetProcessById (pids [i]);
+					if (String.Compare (processName, p.ProcessName, true) == 0)
+						proclist.Add (p);
+				} catch (SystemException) {
+					/* The process might exit
+					 * between
+					 * GetProcesses_internal and
+					 * GetProcessById
+					 */
 				}
 			}
 
-			return ((Process[]) proclist.ToArray (typeof(Process)));
+			return ((Process []) proclist.ToArray (typeof (Process)));
 		}
 
 		[MonoTODO]
@@ -1594,13 +1600,11 @@ namespace System.Diagnostics {
 				if(disposing) {
 					// Do stuff here
 					lock (this) {
-#if NET_2_0
 						/* These have open FileStreams on the pipes we are about to close */
 						if (async_output != null)
 							async_output.Close ();
 						if (async_error != null)
 							async_error.Close ();
-#endif
 					}
 				}
 				
@@ -1639,6 +1643,7 @@ namespace System.Diagnostics {
 		static void CBOnExit (object state, bool unused)
 		{
 			Process p = (Process) state;
+			p.already_waiting = false;
 			p.OnExited ();
 		}
 

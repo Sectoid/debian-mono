@@ -1,18 +1,12 @@
 SUBDIRS = cas assemblyresolve
 
-# avoid including eglib twice since GLIB_LIBS == GMODULE_LIBS for eglib builds
-if EGLIB_BUILD
-glib_libs = $(GLIB_LIBS)
-else
-glib_libs = $(GLIB_LIBS) $(GMODULE_LIBS)
-endif
-
 check-local: test
 
 aotcheck: testaot gshared-aot
 
 TEST_PROG = ../interpreter/mint
-JITTEST_PROG = ../mini/mono
+
+JITTEST_PROG = $(if $(VALGRIND), valgrind $(VALGRIND_ARGS),) $(if $(SGEN),$(top_builddir)/mono/mini/mono-sgen,$(top_builddir)/mono/mini/mono)
 
 TEST_PROG_RUN = MONO_SHARED_DIR=$(mono_build_root)/runtime MONO_CFG_DIR=$(mono_build_root)/runtime/etc $(LIBTOOL) --mode=execute $(TEST_PROG)
 JITTEST_PROG_RUN = MONO_SHARED_DIR=$(mono_build_root)/runtime MONO_CFG_DIR=$(mono_build_root)/runtime/etc $(LIBTOOL) --mode=execute $(JITTEST_PROG)
@@ -20,17 +14,17 @@ JITTEST_PROG_RUN = MONO_SHARED_DIR=$(mono_build_root)/runtime MONO_CFG_DIR=$(mon
 RUNTIME_ARGS=--config tests-config --optimize=all --debug
 
 with_mono_path = MONO_PATH=$(mcs_topdir)/class/lib/net_2_0
-with_mono_path21 = MONO_PATH=$(mcs_topdir)/class/lib/net_2_1_raw
+with_mono_path_moonlight = MONO_PATH=$(mcs_topdir)/class/lib/moonlight_raw
 
 RUNTIME = $(with_mono_path) $(top_builddir)/runtime/mono-wrapper
-RUNTIME21 = $(with_mono_path21) $(top_builddir)/runtime/mono-wrapper
+RUNTIME_MOONLIGHT = $(with_mono_path_moonlight) $(top_builddir)/runtime/mono-wrapper
 
 MKBUNDLE = \
 	PKG_CONFIG_PATH=$(top_builddir):$(PKG_CONFIG_PATH) \
 	$(RUNTIME) $(mcs_topdir)/class/lib/net_2_0/mkbundle.exe
 
 MCS = $(RUNTIME) $(mcs_topdir)/class/lib/net_2_0/gmcs.exe -unsafe -nowarn:0162 -nowarn:0168 -nowarn:0219 -debug
-SMCS = $(RUNTIME21) --runtime=moonlight --security=temporary-smcs-hack $(mcs_topdir)/class/lib/net_2_1_raw/smcs.exe -unsafe -nowarn:0162 -nowarn:0168 -nowarn:0219
+SMCS = $(RUNTIME_MOONLIGHT) --runtime=moonlight --security=temporary-smcs-hack $(mcs_topdir)/class/lib/moonlight_raw/smcs.exe -unsafe -nowarn:0162 -nowarn:0168 -nowarn:0219
 ILASM = $(RUNTIME) $(mcs_topdir)/class/lib/net_2_0/ilasm.exe
 
 BENCHSRC=fib.cs random.cs nested-loops.cs ackermann.cs tight-loop.cs sieve.cs
@@ -48,6 +42,8 @@ STRESS_TESTS_SRC=	\
 	process-stress.cs	\
 	assembly-load-stress.cs
 
+# Disabled until ?mcs is fixed
+#	bug-331958.cs
 BASE_TEST_CS_SRC=		\
 	array-init.cs		\
 	arraylist.cs		\
@@ -214,6 +210,13 @@ BASE_TEST_CS_SRC=		\
 	async_read.cs		\
 	threadpool.cs		\
 	threadpool1.cs		\
+	threadpool-exceptions1.cs \
+	threadpool-exceptions2.cs \
+	threadpool-exceptions3.cs \
+	threadpool-exceptions4.cs \
+	threadpool-exceptions5.cs \
+	threadpool-exceptions6.cs \
+	threadpool-exceptions7.cs \
 	base-definition.cs	\
 	bug-27420.cs		\
 	bug-47295.cs		\
@@ -227,7 +230,6 @@ BASE_TEST_CS_SRC=		\
 	bug-78656.cs		\
 	bug-77127.cs		\
 	bug-323114.cs		\
-	bug-331958.cs		\
 	interlocked.cs		\
 	cross-domain.cs		\
 	appdomain-exit.cs	\
@@ -250,7 +252,6 @@ BASE_TEST_CS_SRC=		\
 	exists.cs		\
 	handleref.cs	\
 	transparentproxy.cs \
-	imt_big_iface_test.cs \
 	dbnull-missing.cs	\
 	test-type-ctor.cs 	\
 	soft-float-tests.cs	\
@@ -306,6 +307,7 @@ BASE_TEST_CS_SRC=		\
 	bug-473482.2.cs	\
 	bug-473999.2.cs	\
 	bug-479763.2.cs	\
+	bug-616463.cs	\
 	bug-80392.2.cs		\
 	dynamic-method-access.2.cs	\
 	dynamic-method-finalize.2.cs	\
@@ -358,17 +360,37 @@ BASE_TEST_CS_SRC=		\
 	finalizer-wait.cs	\
 	critical-finalizers.cs	\
 	appdomain-thread-abort.cs \
+	xdomain-threads.cs	\
 	w32message.cs	\
 	bug-544446.cs	\
-	gc-altstack.cs
+	gc-altstack.cs	\
+	large-gc-bitmap.cs	\
+	bug-561239.cs	\
+	bug-562150.cs	\
+	bug-575941.cs	\
+	bug-599469.cs	\
+	bug-389886-3.cs \
+	monitor.cs
+
+TEST_CS_SRC_DIST=	\
+	$(BASE_TEST_CS_SRC)	\
+	async-exc-compilation.cs \
+	filter-stack.cs	\
+	finally_guard.cs
+
+TEST_CS_SRC_GEN = \
+	runtime-invoke.gen.cs \
+	imt_big_iface_test.cs
 
 if AMD64
-TEST_CS_SRC = $(BASE_TEST_CS_SRC) async-exc-compilation.cs
+TEST_CS_SRC = $(BASE_TEST_CS_SRC) $(TEST_CS_SRC_GEN) async-exc-compilation.cs finally_guard.cs
+# #651684
+PLATFORM_DISABLED_TESTS = finally_guard.exe
 else
 if X86
-TEST_CS_SRC = $(BASE_TEST_CS_SRC) async-exc-compilation.cs
+TEST_CS_SRC = $(BASE_TEST_CS_SRC) $(TEST_CS_SRC_GEN) async-exc-compilation.cs finally_guard.cs
 else
-TEST_CS_SRC = $(BASE_TEST_CS_SRC)
+TEST_CS_SRC = $(BASE_TEST_CS_SRC) $(TEST_CS_SRC_GEN)
 endif
 endif
 
@@ -381,7 +403,7 @@ endif
 
 if X86
 
-if PLATFORM_WIN32
+if HOST_WIN32
 PLATFORM_DISABLED_TESTS=async-exc-compilation.exe
 endif
 
@@ -392,12 +414,20 @@ if POWERPC
 PLATFORM_DISABLED_TESTS=finalizer-abort.exe finalizer-exception.exe finalizer-exit.exe
 endif
 
+if ARM
+PLATFORM_DISABLED_TESTS=filter-stack.exe
+endif
+
 # The two finalizer tests only work under sgen
+# gc-altstack.exe fails under boehm because it has no support for altstack
+# bug-459094.exe creates an extremely deep directory tree
 DISABLED_TESTS=			\
 	delegate-async-exception.exe	\
 	bug-348522.2.exe	\
 	finalizer-wait.exe	\
 	critical-finalizers.exe	\
+	gc-altstack.exe \
+	bug-459094.exe \
 	$(PLATFORM_DISABLED_TESTS)
 
 AOT_DISABLED_TESTS=constraints-load.exe
@@ -466,9 +496,12 @@ TEST_IL_SRC=			\
 	bug-528055.il	\
 	constraints-load.il	\
 	array_load_exception.il \
-	bug-481403.il
-
-#	bug-318677.il
+	bug-481403.il	\
+	interface-with-static-method.il	\
+	bug-515884.il	\
+	bug-633291.il	\
+	delegate-with-null-target.il	\
+	bug-318677.il
 
 # pre-requisite test sources: files that are not test themselves
 # but that need to be compiled
@@ -484,7 +517,7 @@ TESTSI_IL=$(TEST_IL_SRC:.il=.exe)
 TESTBS=$(BENCHSRC:.cs=.exe)
 STRESS_TESTS=$(STRESS_TESTS_SRC:.cs=.exe)
 
-EXTRA_DIST=test-driver $(TEST_CS_SRC) $(TEST_IL_SRC) \
+EXTRA_DIST=test-driver $(TEST_CS_SRC_DIST) $(TEST_IL_SRC) \
 	$(BENCHSRC) $(STRESS_TESTS_SRC) stress-runner.pl $(PREREQ_IL_SRC) $(PREREQ_CS_SRC)
 
 %.exe: %.il
@@ -495,16 +528,33 @@ EXTRA_DIST=test-driver $(TEST_CS_SRC) $(TEST_IL_SRC) \
 
 # mkbundle works on ppc, but the pkg-config POC doesn't when run with make test
 if POWERPC
-test_platform:	testbundle
+test_platform:
 else
 # Can't use mkbundle on win32 since there is no static build there
 # Can't run test-unhandled-exception on Windows because of all the debug popups...
-if PLATFORM_WIN32
+if HOST_WIN32
 test_platform:
 else
-test_platform:	testbundle test-iomap-regression
+# mkbundle uses the installed mono-2.pc so it won't work if there is no system mono
+#test_platform:	testbundle test-iomap-regression
+test_platform:	test-iomap-regression
 endif
 endif
+
+if X86
+if HOST_WIN32
+else
+test_platform: test-eglib-remap
+endif
+endif
+
+#
+# Test that no symbols are missed in eglib-remap.h
+#
+OK_G_SYMBOLS='g_list\|g_slist\|g_concat_dir_and_file'
+test-eglib-remap:
+	@echo "Testing eglib remap..."
+	@if which nm > /dev/null; then if nm $(top_builddir)/mono/mini/mono | grep -v $(OK_G_SYMBOLS) | grep 't g_'; then exit 1; else exit 0; fi; fi
 
 #
 # Tests that the internals in mono/io-layer/messages.c are ok by triggering the 
@@ -514,7 +564,7 @@ test_messages: w32message.exe
 	> test_messages.zero
 	$(JITTEST_PROG_RUN) w32message.exe >& w32message.allout && cmp test_messages.zero w32message.allout
 
-if INSTALL_2_1
+if MOONLIGHT
 test_2_1 : test-coreclr-security
 else
 test_2_1 :
@@ -522,7 +572,7 @@ endif
 
 # test_messages fails on the buildbots
 #test: assemblyresolve/test/asm.dll testjit test-type-load test-generic-sharing test_platform test_2_1 test_messages
-test: assemblyresolve/test/asm.dll testjit test-type-load test-generic-sharing test_platform test-runtime-invoke test_2_1
+test: assemblyresolve/test/asm.dll testjit test-generic-sharing test-type-load test_platform test_2_1 test-process-exit
 
 assemblyresolve/test/asm.dll:
 	$(MAKE) -C assemblyresolve prereq
@@ -569,7 +619,7 @@ runtest: $(TESTSI_CS) $(TESTSI_IL) $(TESTBS) libtest.la $(PREREQSI_IL) $(PREREQS
 	failed_tests="";\
 	for i in $(TESTSI_CS) $(TESTBS) $(TESTSI_IL); do	\
 		rm -f $${i}.so; \
-		if [ x$(AOT) = x1 ]; then if echo $(AOT_DISABLED_TESTS) | grep -v -q $${i}; then $(with_mono_path) $(JITTEST_PROG_RUN) --aot --debug $${i} > /dev/null || exit 1; fi; fi; \
+		if [ x$(AOT) = x1 ]; then if echo $(AOT_DISABLED_TESTS) | grep -v -q $${i}; then $(with_mono_path) $(JITTEST_PROG_RUN) --aot --debug $${i} > $${i}.aotlog 2>&1 || exit 1; fi; fi; \
 		if $(srcdir)/test-driver '$(with_mono_path) $(JITTEST_PROG_RUN)' $$i '$(DISABLED_TESTS)' $(RUNTIME_ARGS); \
 		then \
 			passed=`expr $${passed} + 1`; \
@@ -587,7 +637,7 @@ runtest-managed: test-runner.exe $(TESTSI_CS) $(TESTSI_IL) $(TESTBS) libtest.la 
 	@$(RUNTIME) ./test-runner.exe -j a --disabled '$(DISABLED_TESTS)' $(TESTSI_CS) $(TESTBS) $(TESTSI_IL)
 
 testjit:
-	@$(MAKE) runtest
+	@if test x$(M) != x; then $(MAKE) runtest-managed; else $(MAKE) runtest; fi
 
 testaot:
 	@$(MAKE) AOT=1 runtest
@@ -644,11 +694,14 @@ test-type-load: TestDriver.dll
 
 # Generated tests for runtime invoke
 EXTRA_DIST += gen-runtime-invoke.cs
-test-runtime-invoke: TestDriver.dll gen-runtime-invoke.exe
-	@$(RUNTIME) gen-runtime-invoke.exe > runtime-invoke.gen.cs
-	@$(MCS) -out:runtime-invoke.gen.exe -r:TestDriver.dll runtime-invoke.gen.cs
-	@echo "Testing runtime-invoke.gen.exe..."
-	@$(RUNTIME) runtime-invoke.gen.exe > runtime-invoke.gen.exe.stdout 2> runtime-invoke.gen.exe.stderr
+runtime-invoke.gen.exe: TestDriver.dll gen-runtime-invoke.exe
+	$(RUNTIME) gen-runtime-invoke.exe > runtime-invoke.gen.cs
+	$(MCS) -out:runtime-invoke.gen.exe -r:TestDriver.dll runtime-invoke.gen.cs
+
+EXTRA_DIST += make-imt-test.cs
+imt_big_iface_test.exe: TestDriver.dll make-imt-test.exe
+	$(RUNTIME) make-imt-test.exe > imt_big_iface_test.cs
+	$(MCS) -out:imt_big_iface_test.exe -r:TestDriver.dll imt_big_iface_test.cs
 
 EXTRA_DIST += test-inline-call-stack-library.cs test-inline-call-stack.cs
 test-inline-call-stack-library.dll: TestDriver.dll $(srcdir)/test-inline-call-stack-library.cs
@@ -658,6 +711,7 @@ test-inline-call-stack.exe: TestDriver.dll test-inline-call-stack-library.dll $(
 
 EXTRA_DIST += unhandled-exception-base-configuration.config
 EXTRA_DIST += unhandled-exception-legacy-configuration.config
+EXTRA_DIST += appdomain-unload.exe.config
 EXTRA_DIST += unhandled-exception-test-case.2.cs
 EXTRA_DIST += unhandled-exception-test-runner.2.cs
 unhandled-exception-test-case.1.cs: unhandled-exception-test-case.2.cs
@@ -702,6 +756,7 @@ bug-81691.exe bug-81691-b.dll: $(srcdir)/bug-81691.cs $(srcdir)/bug-81691-a.cs $
 	$(MCS) -target:library -out:bug-81691-b.dll -r:bug-81691-a.dll $(srcdir)/bug-81691-b.cs
 	$(MCS) -r:bug-81691-b.dll -out:bug-81691.exe $(srcdir)/bug-81691.cs
 	rm -f bug-81691-a.dll
+bug-81691.exe: bug-81691-b.dll
 
 EXTRA_DIST += bug-81466-lib.il
 bug-81466-lib.dll: bug-81466-lib.il
@@ -714,10 +769,6 @@ bug-324535-il.dll : bug-324535-il.il
 	$(ILASM) /dll /output:bug-324535-il.dll $(srcdir)/bug-324535-il.il
 bug-324535.exe : bug-324535.cs bug-324535-il.dll
 	$(MCS) -r:bug-324535-il.dll -out:bug-324535.exe $(srcdir)/bug-324535.cs
-
-EXTRA_DIST += make_imt_test.sh
-imt_big_iface_test.cs: $(srcdir)/make_imt_test.sh
-	$(srcdir)/make_imt_test.sh > imt_big_iface_test.cs
 
 EXTRA_DIST += custom-modifiers.2.cs custom-modifiers-lib.il
 custom-modifiers-lib.dll: custom-modifiers-lib.il
@@ -733,13 +784,13 @@ bug-382986.exe: bug-382986.cs bug-382986-lib.dll
 
 EXTRA_DIST += coreclr-security.cs
 
-if INSTALL_2_1
+if MOONLIGHT
 coreclr-security.exe : coreclr-security.cs
 	$(SMCS) -out:coreclr-security.exe $(srcdir)/coreclr-security.cs
 
 test-coreclr-security : coreclr-security.exe
 	@echo "Testing coreclr-security.exe..."
-	@$(RUNTIME21) --security=core-clr-test coreclr-security.exe
+	@$(RUNTIME_MOONLIGHT) --security=core-clr-test coreclr-security.exe
 endif
 
 EXTRA_DIST += generic-unboxing.2.il
@@ -769,7 +820,8 @@ gshared: test-generic-sharing
 gshared-aot:
 	@$(MAKE) AOT=1 gshared
 
-test-generic-sharing : generics-sharing.2.exe shared-generic-methods.2.exe	\
+GSHARED_TESTS = \
+		generics-sharing.2.exe shared-generic-methods.2.exe	\
 		shared-generic-synchronized.2.exe generic-initobj.2.exe		\
 		generics-sharing-other-exc.2.exe generic-box.2.exe		\
 		generic-unbox.2.exe generic-delegate.2.exe generic-sizeof.2.exe	\
@@ -793,7 +845,9 @@ test-generic-sharing : generics-sharing.2.exe shared-generic-methods.2.exe	\
 		generic-stack-traces.2.exe generic-stack-traces2.2.exe		\
 		bug-472600.2.exe bug-473482.2.exe bug-473999.2.exe		\
 		bug-479763.2.exe generic-xdomain.2.exe				\
-		generic-type-load-exception.2.exe
+		generic-type-load-exception.2.exe bug-616463.exe
+
+test-generic-sharing-normal: $(GSHARED_TESTS)
 	@for fn in $+ ; do	\
 		echo "Testing $$fn ...";	\
 		MONO_GENERIC_SHARING=all $(RUNTIME) -O=gshared                $$fn > $$fn.stdout || exit 1;	\
@@ -802,6 +856,12 @@ test-generic-sharing : generics-sharing.2.exe shared-generic-methods.2.exe	\
 		MONO_GENERIC_SHARING=all $(RUNTIME) -O=gshared,-inline,shared $$fn > $fn.stdout || exit 1;	\
 		if [ x$(AOT) = x1 ]; then MONO_GENERIC_SHARING=all $(with_mono_path) $(JITTEST_PROG_RUN) --aot --debug $$fn > /dev/null || exit 1; MONO_GENERIC_SHARING=all $(RUNTIME) $$fn > $$fn.stdout || exit 1; fi; \
 	done
+
+test-generic-sharing-managed: test-runner.exe $(GSHARED_TESTS)
+	@$(RUNTIME) ./test-runner.exe -j a --opt-sets "gshared gshared,shared gshared,-inline gshared,-inline,shared" $(GSHARED_TESTS)
+
+test-generic-sharing:
+	@if test x$(M) != x; then $(MAKE) test-generic-sharing-managed; else $(MAKE) test-generic-sharing-normal; fi
 
 EXTRA_DIST += async-exceptions.cs
 async-exceptions.exe : async-exceptions.cs
@@ -813,7 +873,7 @@ test-async-exceptions : async-exceptions.exe
 EXTRA_DIST += modules.cs modules-m1.cs
 modules-m1.netmodule: modules-m1.cs
 	$(MCS) -out:$@ /target:module $(srcdir)/modules-m1.cs
-modules.exe: modules.cs modules-m1.netmodule
+modules.exe: modules.cs modules-m1.netmodule TestDriver.dll
 	$(MCS) -out:$@ /addmodule:modules-m1.netmodule -r:TestDriver.dll $(srcdir)/modules.cs
 
 # Useful if mono is compiled with --enable-shared=no
@@ -823,11 +883,32 @@ patch-libtool:
 	sed -e 's,LIBTOOL =,LIBTOOL2 =,g' Makefile > 2 && echo "LIBTOOL = bash ./libtool" > 1 && cat 1 2 > Makefile
 	touch libtest.c
 
+EXTRA_DIST += bug-438454.cs bug-438454.exe.stdout.expected
+test-process-exit:
+	@$(MCS) $(srcdir)/bug-438454.cs -out:bug-438454.exe
+	@echo "Testing bug-438454.exe..."
+	@$(RUNTIME) bug-438454.exe > bug-438454.exe.stdout
+	@diff bug-438454.exe.stdout $(srcdir)/bug-438454.exe.stdout.expected
+
+OOM_TESTS =	\
+	gc-oom-handling.exe	\
+	gc-oom-handling2.exe
+
+
+test-oom: $(OOM_TESTS)
+	@for fn in $+ ; do	\
+		echo "Testing $$fn ...";	\
+		MONO_GC_PARAMS=max-heap-size=16m,major=marksweep-par MONO_ENV_OPTIONS="--gc=sgen" $(RUNTIME) $$fn > $$fn.stdout || exit 1;	\
+		MONO_GC_PARAMS=max-heap-size=16m MONO_ENV_OPTIONS="--gc=sgen"                     $(RUNTIME) $$fn > $$fn.stdout || exit 1;	\
+		MONO_GC_PARAMS=max-heap-size=16m                                                  $(RUNTIME) $$fn > $$fn.stdout || exit 1;	\
+	done
+
+
 noinst_LTLIBRARIES = libtest.la
 
 INCLUDES = $(GLIB_CFLAGS) $(GMODULE_CFLAGS)
 
-if PLATFORM_WIN32
+if HOST_WIN32
 # gcc-3.4.4 emits incorrect code when making indirect calls to stdcall functions using a tail call
 # This shows up when compiling mono_test_marshal_delegate ()
 libtest_la_CFLAGS=-fno-optimize-sibling-calls
@@ -838,6 +919,6 @@ else
 libtest_la_LDFLAGS = -rpath `pwd`
 endif
 libtest_la_SOURCES = libtest.c
-libtest_la_LIBADD = $(glib_libs)
+libtest_la_LIBADD = $(GLIB_LIBS)
 
-CLEANFILES = $(TESTSI_CS) $(TESTSI_IL) $(STRESS_TESTS) *.dll *.stdout *.exe stest.dat
+CLEANFILES = $(TESTSI_CS) $(TESTSI_IL) $(STRESS_TESTS) *.dll *.stdout *.aotlog *.exe stest.dat

@@ -34,9 +34,7 @@ using System.Runtime.InteropServices;
 
 namespace System.Security.Cryptography {
 
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public class CryptoStream : Stream {
 		private Stream _stream;
 		private ICryptoTransform _transform;
@@ -59,27 +57,21 @@ namespace System.Security.Cryptography {
 		
 		public CryptoStream (Stream stream, ICryptoTransform transform, CryptoStreamMode mode)
 		{
-			if ((mode == CryptoStreamMode.Read) && (!stream.CanRead)) {
-				throw new ArgumentException (
-					Locale.GetText ("Can't read on stream"));
-			}
-			if ((mode == CryptoStreamMode.Write) && (!stream.CanWrite)) {
-				throw new ArgumentException (
-					Locale.GetText ("Can't write on stream"));
+			if (mode == CryptoStreamMode.Read) {
+				if (!stream.CanRead)
+					throw new ArgumentException (Locale.GetText ("Can't read on stream"));
+			} else if (mode == CryptoStreamMode.Write) {
+				if (!stream.CanWrite)
+					throw new ArgumentException (Locale.GetText ("Can't write on stream"));
+			} else {
+				throw new ArgumentException ("mode");
 			}
 			_stream = stream;
 			_transform = transform;
 			_mode = mode;
 			_disposed = false;
 			if (transform != null) {
-				if (mode == CryptoStreamMode.Read) {
-					_currentBlock = new byte [transform.InputBlockSize];
-					_workingBlock = new byte [transform.InputBlockSize];
-				}
-				else if (mode == CryptoStreamMode.Write) {
-					_currentBlock = new byte [transform.OutputBlockSize];
-					_workingBlock = new byte [transform.OutputBlockSize];
-				}
+				_workingBlock = new byte [transform.InputBlockSize];
 			}
 		}
 
@@ -111,19 +103,13 @@ namespace System.Security.Cryptography {
 
 		public void Clear () 
 		{
-			Dispose (true);
-			GC.SuppressFinalize (this); // not called in Stream.Dispose
+			Close ();
 		}
 
 		// LAMESPEC: A CryptoStream can be close in read mode
 		public override void Close () 
 		{
-			// only flush in write mode (bugzilla 46143)
-			if ((!_flushedFinalBlock) && (_mode == CryptoStreamMode.Write))
-				FlushFinalBlock ();
-
-			if (_stream != null)
-				_stream.Close ();
+			base.Close ();
 		}
 
 		public override int Read ([In,Out] byte[] buffer, int offset, int count)
@@ -149,12 +135,7 @@ namespace System.Security.Cryptography {
 			}
 			// for some strange reason ObjectDisposedException isn't throw
 			if (_workingBlock == null) {
-#if NET_2_0
 				return 0;
-#else
-				// instead we get a ArgumentNullException (probably from an internal method)
-				throw new ArgumentNullException (Locale.GetText ("CryptoStream was disposed."));
-#endif
 			}
 
 			int result = 0;
@@ -262,7 +243,7 @@ namespace System.Security.Cryptography {
 			}
 
 			if (_stream == null)
-				throw new ArgumentNullException ("inner stream was diposed");
+				throw new ArgumentNullException ("inner stream was disposed");
 
 			int buffer_length = count;
 
@@ -279,6 +260,9 @@ namespace System.Security.Cryptography {
 			int bufferPos = offset;
 			while (count > 0) {
 				if (_partialCount == _transform.InputBlockSize) {
+					if (_currentBlock == null)
+						_currentBlock = new byte [_transform.OutputBlockSize];
+
 					// use partial block to avoid (re)allocation
 					int len = _transform.TransformBlock (_workingBlock, 0, _partialCount, _currentBlock, 0);
 					_stream.Write (_currentBlock, 0, len);
@@ -320,31 +304,24 @@ namespace System.Security.Cryptography {
 
 		public override void Flush ()
 		{
-			if (_stream != null)
-				_stream.Flush ();
 		}
 
 		public void FlushFinalBlock ()
 		{
 			if (_flushedFinalBlock)
 				throw new NotSupportedException (Locale.GetText ("This method cannot be called twice."));
-#if NET_2_0
 			if (_disposed)
 				throw new NotSupportedException (Locale.GetText ("CryptoStream was disposed."));
-			if (_mode != CryptoStreamMode.Write)
-				return;
-#else
-			if (_mode != CryptoStreamMode.Write)
-				throw new NotSupportedException (Locale.GetText ("cannot flush a non-writeable CryptoStream"));
-#endif
+
 			_flushedFinalBlock = true;
 			byte[] finalBuffer = _transform.TransformFinalBlock (_workingBlock, 0, _partialCount);
-			if (_stream != null) {
+			if (_stream != null && _mode == CryptoStreamMode.Write) {
 				_stream.Write (finalBuffer, 0, finalBuffer.Length);
-				if (_stream is CryptoStream) {
-					// for cascading crypto streams
-					(_stream as CryptoStream).FlushFinalBlock ();
-				}
+			}
+			if (_stream is CryptoStream) {
+				// for cascading crypto streams
+				(_stream as CryptoStream).FlushFinalBlock ();
+			} else {
 				_stream.Flush ();
 			}
 			// zeroize
@@ -362,13 +339,17 @@ namespace System.Security.Cryptography {
 			throw new NotSupportedException ("SetLength");
 		}
 
-#if NET_2_0
 		protected override void Dispose (bool disposing) 
-#else
-		protected virtual void Dispose (bool disposing) 
-#endif
 		{
 			if (!_disposed) {
+				if (disposing) {
+					if (!_flushedFinalBlock) {
+						FlushFinalBlock ();
+					}
+
+					if (_stream != null)
+						_stream.Close ();
+				}
 				_disposed = true;
 				// always cleared for security reason
 				if (_workingBlock != null)

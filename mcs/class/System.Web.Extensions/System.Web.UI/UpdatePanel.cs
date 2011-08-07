@@ -1,10 +1,12 @@
 //
 // UpdatePanel.cs
 //
-// Author:
+// Authors:
 //   Igor Zelmanovich <igorz@mainsoft.com>
+//   Marek Habersack <grendel@twistedcode.net>
 //
 // (C) 2007 Mainsoft, Inc.  http://www.mainsoft.com
+// (C) 2007-2010 Novell, Inc (http://novell.com/)
 //
 //
 // Permission is hereby granted, free of charge, to any person obtaining
@@ -95,6 +97,22 @@ namespace System.Web.UI
 		UpdatePanelTriggerCollection _triggers;
 		UpdatePanelRenderMode _renderMode = UpdatePanelRenderMode.Block;
 		ScriptManager _scriptManager;
+		Control cachedParent;
+		UpdatePanel parentPanel;
+		bool parentPanelChecked;
+		
+		UpdatePanel ParentPanel {
+			get {
+				Control parent = Parent;
+				if (cachedParent == parent && parentPanelChecked)
+					return parentPanel;
+
+				cachedParent = parent;
+				parentPanel = FindParentPanel (parent);
+
+				return parentPanel;
+			}
+		}
 		
 		[Category ("Behavior")]
 		[DefaultValue (true)]
@@ -216,41 +234,41 @@ namespace System.Web.UI
 
 		protected internal virtual void Initialize ()
 		{
-			int tcount = _triggers != null ? _triggers.Count : 0;
-			if (tcount == 0 || !ScriptManager.SupportsPartialRendering)
+			if (_triggers == null || _triggers.Count == 0 || !ScriptManager.SupportsPartialRendering)
 				return;
-			
-			for (int i = 0; i < tcount; i++)
-				_triggers [i].Initialize ();
+
+			_triggers.Initialize ();
 		}
 
-		protected override void OnInit (EventArgs e) {
+		protected internal override void OnInit (EventArgs e) {
 			base.OnInit (e);
 
 			ScriptManager.RegisterUpdatePanel (this);
-
+			if (ParentPanel != null)
+				ScriptManager.RegisterChildUpdatePanel (this);
+			
 			if (ContentTemplate != null)
 				ContentTemplate.InstantiateIn (ContentTemplateContainer);
 		}
 
-		protected override void OnLoad (EventArgs e) {
+		protected internal override void OnLoad (EventArgs e) {
 			base.OnLoad (e);
 
 			Initialize ();
 		}
 
-		protected override void OnPreRender (EventArgs e) {
+		protected internal override void OnPreRender (EventArgs e) {
 			base.OnPreRender (e);
 
 			if (UpdateMode == UpdatePanelUpdateMode.Always && !ChildrenAsTriggers)
 				throw new InvalidOperationException (String.Format ("ChildrenAsTriggers cannot be set to false when UpdateMode is set to Always on UpdatePanel '{0}'", ID));
 		}
 
-		protected override void OnUnload (EventArgs e) {
+		protected internal override void OnUnload (EventArgs e) {
 			base.OnUnload (e);
 		}
 
-		protected override void Render (HtmlTextWriter writer) {
+		protected internal override void Render (HtmlTextWriter writer) {
 			writer.AddAttribute (HtmlTextWriterAttribute.Id, ClientID);
 			if (RenderMode == UpdatePanelRenderMode.Block)
 				writer.RenderBeginTag (HtmlTextWriterTag.Div);
@@ -260,21 +278,21 @@ namespace System.Web.UI
 			writer.RenderEndTag ();
 		}
 
-		UpdatePanel FindParentPanel ()
+		UpdatePanel FindParentPanel (Control parent)
 		{
-			Control parent = Parent;
+			parentPanelChecked = true;
 			while (parent != null) {
 				UpdatePanel panel = parent as UpdatePanel;
 				if (panel != null)
 					return panel;
-
+				
 				parent = parent.Parent;
 			}
 
 			return null;
 		}
 		
-		protected override void RenderChildren (HtmlTextWriter writer)
+		protected internal override void RenderChildren (HtmlTextWriter writer)
 		{
 			RenderChildrenWriter = null;
 			
@@ -284,7 +302,7 @@ namespace System.Web.UI
 					altWriter = writer.InnerWriter as ScriptManager.AlternativeHtmlTextWriter;
 				
 				if (altWriter == null) {
-					UpdatePanel parentPanel = FindParentPanel ();
+					UpdatePanel parentPanel = ParentPanel;
 					if (parentPanel != null)
 						altWriter = parentPanel.RenderChildrenWriter;
 				}
@@ -300,7 +318,11 @@ namespace System.Web.UI
 					HtmlTextWriter w = new HtmlTextWriter (new StringWriter (sb));
 					base.RenderChildren (w);
 					w.Flush ();
-					ScriptManager.WriteCallbackPanel (responseOutput, this, sb);
+					UpdatePanel parent = ParentPanel;
+					if (parent != null && parent.ChildrenAsTriggers)
+						writer.Write (sb.ToString ());
+					else
+						ScriptManager.WriteCallbackPanel (responseOutput, this, sb);
 				} finally {
 					RenderChildrenWriter = null;
 				}

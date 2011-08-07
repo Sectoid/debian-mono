@@ -242,8 +242,8 @@ public class EcmaProvider : Provider {
 						
 						XmlNode ns_summary = nsSummaryFile.SelectSingleNode ("Namespace/Docs/summary");
 						if (ns_summary != null && ns_summary.InnerText.Trim () != "To be added." && ns_summary.InnerText != "") {
-							namespace_summaries [tn] = ns_summary;
-							namespace_remarks [tn] = nsSummaryFile.SelectSingleNode ("Namespace/Docs/remarks");
+							namespace_summaries [tn]  = detached.ImportNode (ns_summary, true);
+							namespace_remarks [tn]    = detached.ImportNode (nsSummaryFile.SelectSingleNode ("Namespace/Docs/remarks"), true);
 						}
 						
 					} else if (!namespace_summaries.ContainsKey (tn)) {
@@ -263,7 +263,7 @@ public class EcmaProvider : Provider {
 
 	}
 		
-	struct TypeInfo : IComparable {
+	class TypeInfo : IComparable {
 		public string type_assembly;
 		public string type_name;
 		public string type_full;
@@ -398,15 +398,16 @@ public class EcmaProvider : Provider {
 		}
 	}
 	       
-	Hashtable class_summaries = new Hashtable ();
-	Hashtable namespace_summaries = new Hashtable ();
-	Hashtable namespace_remarks = new Hashtable ();
-	Hashtable namespace_realpath = new Hashtable ();
-	XmlDocument doc;
+	Hashtable/*<string, List<TypeInfo>>*/ class_summaries = new Hashtable ();
+	Hashtable/*<string, XmlNode>*/ namespace_summaries = new Hashtable ();
+	Hashtable/*<string, XmlNode>*/ namespace_remarks = new Hashtable ();
+	Hashtable/*<string, string -- path>*/ namespace_realpath = new Hashtable ();
+
+	XmlDocument detached = new XmlDocument ();
 	
 	void PopulateClass (Tree tree, string ns, Node ns_node, string file)
 	{
-		doc = new XmlDocument ();
+		XmlDocument doc = new XmlDocument ();
 		doc.Load (file);
 		
 		string name = EcmaDoc.GetClassName (doc);
@@ -417,7 +418,7 @@ public class EcmaProvider : Provider {
 		Node class_node;
 		string file_code = ns_node.tree.HelpSource.PackFile (file);
 
-		XmlNode class_summary = doc.SelectSingleNode ("/Type/Docs/summary");
+		XmlNode class_summary = detached.ImportNode (doc.SelectSingleNode ("/Type/Docs/summary"), true);
 		ArrayList l = (ArrayList) class_summaries [ns];
 		if (l == null){
 			l = new ArrayList ();
@@ -443,12 +444,12 @@ public class EcmaProvider : Provider {
 		//
 		class_node.CreateNode ("Members", "*");
 
-		PopulateMember (name, class_node, "Constructor", "Constructors");
-		PopulateMember (name, class_node, "Method", "Methods");
-		PopulateMember (name, class_node, "Property", "Properties");
-		PopulateMember (name, class_node, "Field", "Fields");
-		PopulateMember (name, class_node, "Event", "Events");
-		PopulateMember (name, class_node, "Operator", "Operators");
+		PopulateMember (doc, name, class_node, "Constructor", "Constructors");
+		PopulateMember (doc, name, class_node, "Method", "Methods");
+		PopulateMember (doc, name, class_node, "Property", "Properties");
+		PopulateMember (doc, name, class_node, "Field", "Fields");
+		PopulateMember (doc, name, class_node, "Event", "Events");
+		PopulateMember (doc, name, class_node, "Operator", "Operators");
 	}
 
 	class NodeIndex {
@@ -482,7 +483,7 @@ public class EcmaProvider : Provider {
 	// Performs an XPath query on the document to extract the nodes for the various members
 	// we also use some extra text to pluralize the caption
 	//
-	void PopulateMember (string typename, Node node, string type, string caption)
+	void PopulateMember (XmlDocument doc, string typename, Node node, string type, string caption)
 	{
 		string select = type;
 		if (select == "Operator") select = "Method";
@@ -630,7 +631,7 @@ public class EcmaHelpSource : HelpSource {
 				return EcmaDoc.GetCref (d.DocumentElement);
 			XmlElement e = GetDocElement (d, rest);
 			if (e == null)
-				return url;
+				return EcmaDoc.GetCref (d.DocumentElement) + "/" + rest;
 			return EcmaDoc.GetCref (e);
 		}
 		catch (Exception e) {
@@ -703,7 +704,7 @@ public class EcmaHelpSource : HelpSource {
 			XsltArgumentList args = new XsltArgumentList();
 			args.AddExtensionObject("monodoc:///extensions", ExtObject);
 			args.AddParam("show", "", "masteroverview");
-			string s = Htmlize(new XPathDocument (summary), args);
+			string s = Htmlize(summary, args);
 			return BuildHtml (css_ecma_code, js_code, s); 
 		}
 		
@@ -829,19 +830,57 @@ public class EcmaHelpSource : HelpSource {
 		nicename = name.Substring(3);
 		
 		switch (name) {
-			// unary operators: no overloading possible
-			case "op_UnaryPlus": case "op_UnaryNegation": case "op_LogicalNot": case "op_OnesComplement":
-			case "op_Increment": case "op_Decrement": 
-			case "op_True": case "op_False":
+			// unary operators: no overloading possible	[ECMA-335 §10.3.1]
+			case "op_UnaryPlus":                    // static     R operator+       (T)
+			case "op_UnaryNegation":                // static     R operator-       (T)
+			case "op_LogicalNot":                   // static     R operator!       (T)
+			case "op_OnesComplement":               // static     R operator~       (T)
+			case "op_Increment":                    // static     R operator++      (T)
+			case "op_Decrement":                    // static     R operator--      (T)
+			case "op_True":                         // static  bool operator true   (T)
+			case "op_False":                        // static  bool operator false  (T)
+			case "op_AddressOf":                    // static     R operator&       (T)
+			case "op_PointerDereference":           // static     R operator*       (T)
 				sig = nicename;
 				break;
 			
-			// binary operators: overloading is possible based on parameter types
-			case "op_Addition": case "op_Subtraction": case "op_Multiply": case "op_Division": case "op_Modulus":
-			case "op_BitwiseAnd": case "op_BitwiseOr": case "op_ExclusiveOr":
-			case "op_LeftShift": case "op_RightShift":
-			case "op_Equality": case "op_Inequality":
-			case "op_GreaterThan": case "op_LessThan": case "op_GreaterThanOrEqual": case "op_LessThanOrEqual":
+			// binary operators: overloading is possible [ECMA-335 §10.3.2]
+			case "op_Addition":                     // static    R operator+    (T1, T2)
+			case "op_Subtraction":                  // static    R operator-    (T1, T2)
+			case "op_Multiply":                     // static    R operator*    (T1, T2)
+			case "op_Division":                     // static    R operator/    (T1, T2)
+			case "op_Modulus":                      // static    R operator%    (T1, T2)
+			case "op_ExclusiveOr":                  // static    R operator^    (T1, T2)
+			case "op_BitwiseAnd":                   // static    R operator&    (T1, T2)
+			case "op_BitwiseOr":                    // static    R operator|    (T1, T2)
+			case "op_LogicalAnd":                   // static    R operator&&   (T1, T2)
+			case "op_LogicalOr":                    // static    R operator||   (T1, T2)
+			case "op_Assign":                       // static    R operator=    (T1, T2)
+			case "op_LeftShift":                    // static    R operator<<   (T1, T2)
+			case "op_RightShift":                   // static    R operator>>   (T1, T2)
+			case "op_SignedRightShift":             // static    R operator>>   (T1, T2)
+			case "op_UnsignedRightShift":           // static    R operator>>>  (T1, T2)
+			case "op_Equality":                     // static bool operator==   (T1, T2)
+			case "op_GreaterThan":                  // static bool operator>    (T1, T2)
+			case "op_LessThan":                     // static bool operator<    (T1, T2)
+			case "op_Inequality":                   // static bool operator!=   (T1, T2)
+			case "op_GreaterThanOrEqual":           // static bool operator>=   (T1, T2)
+			case "op_LessThanOrEqual":              // static bool operator<=   (T1, T2)
+			case "op_UnsignedRightShiftAssignment": // static    R operator>>>= (T1, T2)
+			case "op_MemberSelection":              // static    R operator->   (T1, T2)
+			case "op_RightShiftAssignment":         // static    R operator>>=  (T1, T2)
+			case "op_MultiplicationAssignment":     // static    R operator*=   (T1, T2)
+			case "op_PointerToMemberSelection":     // static    R operator->*  (T1, T2)
+			case "op_SubtractionAssignment":        // static    R operator-=   (T1, T2)
+			case "op_ExclusiveOrAssignment":        // static    R operator^=   (T1, T2)
+			case "op_LeftShiftAssignment":          // static    R operator<<=  (T1, T2)
+			case "op_ModulusAssignment":            // static    R operator%=   (T1, T2)
+			case "op_AdditionAssignment":           // static    R operator+=   (T1, T2)
+			case "op_BitwiseAndAssignment":         // static    R operator&=   (T1, T2)
+			case "op_BitwiseOrAssignment":          // static    R operator|=   (T1, T2)
+			case "op_Comma":                        // static    R operator,    (T1, T2)
+			case "op_DivisionAssignment":           // static    R operator/=   (T1, T2)
+			default:                                // If all else fails, assume it can be overridden...whatever it is.
 				XmlNodeList paramnodes = n.SelectNodes("Parameters/Parameter");
 				sig = nicename + "(";
 				bool first = true;
@@ -855,16 +894,14 @@ public class EcmaHelpSource : HelpSource {
 				sig += ")";
 				break;
 			
-			// overloading based on parameter and return type
-			case "op_Implicit": case "op_Explicit":
+			// conversion operators: overloading based on parameter and return type [ECMA-335 §10.3.3]
+			case "op_Implicit":                    // static implicit operator R (T)
+			case "op_Explicit":                    // static explicit operator R (T)
 				nicename = "Conversion";
 				string arg = n.SelectSingleNode("Parameters/Parameter/@Type").InnerText;
 				string ret = n.SelectSingleNode("ReturnValue/ReturnType").InnerText;
 				sig = EcmaDoc.ConvertCTSName(arg) + " to " + EcmaDoc.ConvertCTSName(ret);
 				break;
-				
-			default:
-				throw new InvalidOperationException();
 		}	
 	}
 
@@ -1124,7 +1161,7 @@ public class EcmaHelpSource : HelpSource {
 			args.AddExtensionObject("monodoc:///extensions", ExtObject);
 			args.AddParam("show", "", "namespace");
 			args.AddParam("namespace", "", ns_name);
-			string s = Htmlize(doc, args);
+			string s = Htmlize(new XmlNodeReader (doc), args);
 			return BuildHtml (css_ecma_code, js_code, s); 
 
 		}
@@ -1243,7 +1280,7 @@ public class EcmaHelpSource : HelpSource {
 		
 		if (rest == "") {
 			args.AddParam("show", "", "typeoverview");
-			string s = Htmlize(doc, args);
+			string s = Htmlize(new XmlNodeReader (doc), args);
 			return BuildHtml (css_ecma_code, js_code, s); 
 		}
 		
@@ -1303,7 +1340,7 @@ public class EcmaHelpSource : HelpSource {
 			return "Unknown url: " + url;
 		}
 
-		string html = Htmlize(doc, args);
+		string html = Htmlize(new XmlNodeReader (doc), args);
 		return BuildHtml (css_ecma_code, js_code, html); 
 	}
 
@@ -1325,22 +1362,25 @@ public class EcmaHelpSource : HelpSource {
 		XsltArgumentList args = new XsltArgumentList ();
 		args.AddExtensionObject ("monodoc:///extensions", ExtObject);
 		
-		Htmlize (newNode, args, writer);
+		Htmlize (new XmlNodeReader (newNode), args, writer);
 	}
 
-	static XslTransform ecma_transform;
+	static XslCompiledTransform ecma_transform;
 
-	public string Htmlize (IXPathNavigable ecma_xml)
+	public string Htmlize (XmlReader ecma_xml)
 	{
 		return Htmlize(ecma_xml, null);
 	}
 
-	public string Htmlize (IXPathNavigable ecma_xml, XsltArgumentList args)
+	public string Htmlize (XmlReader ecma_xml, XsltArgumentList args)
 	{
 		EnsureTransform ();
 		
-		StringWriter output = new StringWriter ();
-		ecma_transform.Transform (ecma_xml, args, output, CreateDocumentResolver ());
+		var output = new StringBuilder ();
+		ecma_transform.Transform (ecma_xml, 
+				args, 
+				XmlWriter.Create (output, ecma_transform.OutputSettings),
+				CreateDocumentResolver ());
 		return output.ToString ();
 	}
 
@@ -1350,7 +1390,7 @@ public class EcmaHelpSource : HelpSource {
 		return null;
 	}
 	
-	static void Htmlize (IXPathNavigable ecma_xml, XsltArgumentList args, XmlWriter w)
+	static void Htmlize (XmlReader ecma_xml, XsltArgumentList args, XmlWriter w)
 	{
 		EnsureTransform ();
 		
@@ -1360,22 +1400,22 @@ public class EcmaHelpSource : HelpSource {
 		ecma_transform.Transform (ecma_xml, args, w, null);
 	}
 	
-	static XslTransform ecma_transform_css, ecma_transform_no_css;
+	static XslCompiledTransform ecma_transform_css, ecma_transform_no_css;
 	static void EnsureTransform ()
 	{
 		if (ecma_transform == null) {
-			ecma_transform_css = new XslTransform ();
-			ecma_transform_no_css = new XslTransform ();
+			ecma_transform_css = new XslCompiledTransform ();
+			ecma_transform_no_css = new XslCompiledTransform ();
 			Assembly assembly = System.Reflection.Assembly.GetCallingAssembly ();
 			
 			Stream stream = assembly.GetManifestResourceStream ("mono-ecma-css.xsl");
 			XmlReader xml_reader = new XmlTextReader (stream);
 			XmlResolver r = new ManifestResourceResolver (".");
-			ecma_transform_css.Load (xml_reader, r, null);
+			ecma_transform_css.Load (xml_reader, XsltSettings.TrustedXslt, r);
 			
 			stream = assembly.GetManifestResourceStream ("mono-ecma.xsl");
 			xml_reader = new XmlTextReader (stream);
-			ecma_transform_no_css.Load (xml_reader, r, null);
+			ecma_transform_no_css.Load (xml_reader, XsltSettings.TrustedXslt, r);
 		}
 		if (use_css)
 			ecma_transform = ecma_transform_css;
@@ -2229,7 +2269,7 @@ public class EcmaUncompiledHelpSource : EcmaHelpSource {
 			XsltArgumentList args = new XsltArgumentList();
 			args.AddExtensionObject("monodoc:///extensions", ExtObject);
 			args.AddParam("show", "", "masteroverview");
-			string s = Htmlize(new XPathDocument (reader), args);
+			string s = Htmlize(reader, args);
 			return BuildHtml (css_ecma_code, js_code, s); 
 		}
 		return base.GetText(url, out match_node);

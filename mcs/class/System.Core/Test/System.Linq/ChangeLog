@@ -1,8 +1,115 @@
+2011-01-07  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add bigger unit test for Intersect and Union
+
+2010-12-30  Jb Evain  <jbevain@gmail.com>
+
+	Add test for bug #661462
+
+2010-12-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fixicate some unit test
+
+2010-11-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Split long running test in two
+
+2010-09-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Plinq] Force strict parallelism in all PLinq unit tests
+
+2010-08-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Remove the scwl noise in ParallelEnumerable
+	TestOrderByAgeAscendingTheByNameDescending test
+
+2010-08-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Add Cancellation checks even deeper. Introduce merge
+	token.
+
+	Merge token are simply the combined cancellation source of user
+	(i.e. token supplied with PLinq operator WithCancellation) and
+	internal tokens (supplied with WithImplementerToken).
+
+2010-08-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Reactivate a bunch more of unit tests
+
+2010-08-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Add SelectMany unit tests
+
+2010-08-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Enable First and FirstOrDefault unit tests
+
+2010-08-25  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Add GroupBy unit tests
+
+2010-08-24  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Add test for Join operator
+
+2010-08-20  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Add implementation of Take/TakeWhile operators (including
+	corresponding query node and unit tests)
+
+2010-08-19  Jb Evain  <jbevain@gmail.com>
+
+	Add test for #611821
+
+2010-08-18  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Tune SkipWhile operator, re-enable its unit tests
+
+2010-08-18  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Re-enable tests that were previously [Ignore]'ed
+
+2010-08-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Add more twist to unit tests by forcing use of a standard
+	IEnumerable.
+
+2010-08-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Disable two faulty tests that timeout the build bot.
+
+2010-05-19  Jb Evain  <jbevain@novell.com>
+
+	* EnumerableMoreTest.cs: add more GroupBy tests.
+
+2010-04-29  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* ParallelEnumerableTests.cs: Add Ignore attribute instead of commenting test.
+	Enable more tests.
+
+2010-04-23  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* ParallelEnumerableTests.cs: Fix namespace, add NET_4_0 #ifdef
+	* ParallelTestHelper.cs: Fix namespace
+
+2010-04-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* ParallelEnumerableTests.cs: Tweak Skip unit test to avoid deadlocking for now
+
+2010-04-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* ParallelEnumerableTests.cs:
+	* ParallelTestHelper.cs: Add PLinq unit tests
+
+2010-03-24  Jb Evain  <jbevain@novell.com>
+
+	* EnumerableTest.cs: add test for #582502.
+
 2009-11-12  Eric Maupin  <me@ermau.com>
 
 	* EnumerableMoreTest.cs: Added ToLookup test for null keys, updated old test to check count.
 	* LookupTest.cs: Added tests for contains, the enumerator and null keys in the indexer.
-	
+
 2009-04-03  Jb Evain  <jbevain@novell.com>
 
 	* EnumerableTest.cs: test for bug 491841.

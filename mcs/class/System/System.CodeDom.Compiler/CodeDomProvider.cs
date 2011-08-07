@@ -30,6 +30,7 @@
 //
 
 using System.Collections;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
 using System.IO;
@@ -119,12 +120,12 @@ namespace System.CodeDom.Compiler {
 			return cc.CompileAssemblyFromFileBatch (options, fileNames);
 		}
 
-		public virtual CompilerResults CompileAssemblyFromSource (CompilerParameters options, params string[] fileNames)
+		public virtual CompilerResults CompileAssemblyFromSource (CompilerParameters options, params string[] sources)
 		{
 			ICodeCompiler cc = CreateCompiler ();
 			if (cc == null)
 				throw GetNotImplemented ();
-			return cc.CompileAssemblyFromSourceBatch (options, fileNames);
+			return cc.CompileAssemblyFromSourceBatch (options, sources);
 		}
 
 		public virtual string CreateEscapedIdentifier (string value)
@@ -143,8 +144,16 @@ namespace System.CodeDom.Compiler {
 			CompilerInfo ci = GetCompilerInfo (language);
 			return (ci == null) ? null : ci.CreateProvider ();
 		}
+#if NET_4_0
+		[ComVisible (false)]
+		public static CodeDomProvider CreateProvider (string language, IDictionary<string, string> providerOptions)
+		{
+			CompilerInfo ci = GetCompilerInfo (language);
+			return ci == null ? null : ci.CreateProvider (providerOptions);
+		}
 #endif
 
+#endif
 		public virtual string CreateValidIdentifier (string value)
 		{
 			ICodeGenerator cg = CreateGenerator ();

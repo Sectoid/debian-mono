@@ -30,12 +30,14 @@
 //     For details, see:
 //     http://blogs.msdn.com/cbrumme/archive/2004/02/20/77460.aspx
 //
+//     CER-like behavior is implemented for Close and DangerousAddRef
+//     via the try/finally uninterruptible pattern in case of async
+//     exceptions like ThreadAbortException.
+//
 // On implementing SafeHandles:
 //     http://blogs.msdn.com/bclteam/archive/2005/03/15/396335.aspx
 //
 // Issues:
-//     The System.Runtime.ConstrainedExecution.ReliabilityContractAttribute has
-//     not been applied to any APIs here yet.
 //
 //     TODO: Although DangerousAddRef has been implemented, I need to
 //     find out whether the runtime performs the P/Invoke if the
@@ -43,10 +45,10 @@
 //
 //
 
-#if NET_2_0
 using System;
 using System.Runtime.InteropServices;
 using System.Runtime.ConstrainedExecution;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace System.Runtime.InteropServices
@@ -82,15 +84,27 @@ namespace System.Runtime.InteropServices
 			if (refcount == 0)
 				throw new ObjectDisposedException (GetType ().FullName);
 
-			int newcount, current;
-			do {
-				current = refcount;
-				newcount = current-1;
-			} while (Interlocked.CompareExchange (ref refcount, newcount, current) != current);
+			int newcount = 0, current = 0;
+			bool registered = false;
+			RuntimeHelpers.PrepareConstrainedRegions ();
+			try {
+				do {
+					current = refcount;
+					newcount = current-1;
 
-			if (newcount == 0 && owns_handle && !IsInvalid){
-				ReleaseHandle ();
-				handle = invalid_handle_value;
+					// perform changes in finally to avoid async interruptions
+					try {}
+					finally {
+						if (Interlocked.CompareExchange (ref refcount, newcount, current) == current)
+							registered = true;
+					}
+				} while (!registered);
+			} finally {
+				if (registered && newcount == 0 && owns_handle && !IsInvalid){
+					ReleaseHandle ();
+					handle = invalid_handle_value;
+					refcount = -1;
+				}
 			}
 		}
 
@@ -106,15 +120,16 @@ namespace System.Runtime.InteropServices
 		[ReliabilityContract (Consistency.WillNotCorruptState, Cer.MayFail)]
 		public void DangerousAddRef (ref bool success)
 		{
-			if (refcount == 0)
+			if (refcount <= 0)
 				throw new ObjectDisposedException (GetType ().FullName);
 
+			bool registered = false;
 			int newcount, current;
 			do {
 				current = refcount;
 				newcount = current + 1;
 				
-				if (handle == invalid_handle_value || current == 0){
+				if (current <= 0){
 					//
 					// In MS, calling sf.Close () followed by a call
 					// to P/Invoke with SafeHandles throws this, but
@@ -123,14 +138,21 @@ namespace System.Runtime.InteropServices
 					//
 					throw new ObjectDisposedException (GetType ().FullName);
 				}
-			} while (Interlocked.CompareExchange (ref refcount, newcount, current) != current);
-			success = true;
+
+				// perform changes in finally to avoid async interruptions
+				RuntimeHelpers.PrepareConstrainedRegions ();
+				try {}
+				finally {
+					if (Interlocked.CompareExchange (ref refcount, newcount, current) == current)
+						registered = success = true;
+				}
+			} while (!registered);
 		}
 
 		[ReliabilityContract (Consistency.WillNotCorruptState, Cer.Success)]
 		public IntPtr DangerousGetHandle ()
 		{
-			if (refcount == 0){
+			if (refcount <= 0){
 				throw new ObjectDisposedException (GetType ().FullName);
 			}
 
@@ -140,7 +162,7 @@ namespace System.Runtime.InteropServices
 		[ReliabilityContract (Consistency.WillNotCorruptState, Cer.Success)]
 		public void DangerousRelease ()
 		{
-			if (refcount == 0)
+			if (refcount <= 0)
 				throw new ObjectDisposedException (GetType ().FullName);
 
 			int newcount, current;
@@ -199,7 +221,7 @@ namespace System.Runtime.InteropServices
 		public bool IsClosed {
 			[ReliabilityContract (Consistency.WillNotCorruptState, Cer.Success)]
 			get {
-				return refcount == 0;
+				return refcount <= 0;
 			}
 		}
 
@@ -217,4 +239,3 @@ namespace System.Runtime.InteropServices
 		}
 	}
 }
-#endif

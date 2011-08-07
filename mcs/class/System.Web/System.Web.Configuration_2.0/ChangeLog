@@ -1,6 +1,199 @@
+2011-04-14  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Shorten code in WebConfigurationHost
+
+2011-04-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] A more effective way of looking for web.config
+
+2011-03-30  Martin  <test051102@hotmail.com>
+
+	[asp.net] Fix for bug #658184. AuthorizationRule restores its
+	Action when unmerging.
+
+2011-02-09  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented CustomErrorsRedirectMode
+
+2011-02-03  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] HttpRuntimeSection.RequestPathInvalidCharacters default
+	value is different
+
+2011-01-10  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,mcs] Fixed 'protected internal' build errors and removed
+	System.Web-specific hack from mcs
+
+2010-11-18  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Don't throw when unable to write autogen keys
+
+	It is possible that the user running the ASP.NET application does
+	not have permission to write to the registry. In this case, the
+	auto generated keys will be created on every application start.
+
+2010-11-02  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] 4.0-only types don't need the NET_4_0 ifdef and should
+	be in net_4_0_System.Web.dll.sources
+
+2010-10-26  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] HttpRuntime.AppDomainAppPath may be null during tests,
+	check it before using.
+
+2010-10-24  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Better handling of application's AppDomain restart
+
+2010-10-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Web.Configuration_2.0/MachineKeySection.cs: Adjust using
+	clauses. Uncomment some code. Fix TripleDES versus 3DES for
+	Validation under NET_4_0. Remove 'private' on fields/methods. *
+	System.Web.Handlers/AssemblyResourceLoader.cs: Adjust using
+	clauses * System.Web.Security/MembershipHelper.cs: Adjust using
+	clauses * System.Web.Security/RolePrincipal.cs: Adjust using
+	clauses * System.Web.SessionState_2.0/SessionId.cs: Adjust using
+	clauses * System.Web.UI/LosFormatter.cs: Adjust using clauses. *
+	System.Web.Util/MachineKeySectionUtils.cs: Moved from System.Web.
+	Configuration_2.0. Rename namespace and remove 'internal' on type
+	declaration
+
+2010-10-08  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Web.Configuration_2.0/MachineKeyRegistryStorage.cs:
+	Remove key length check and generic key generation.
+
+	* System.Web.Configuration_2.0/MachineKeySection.cs: Add support
+	for 4.0 ValidationAlgorithm and the use of custom algorithms
+	(validation and decryption). Allow the use of any, valid, key
+	length (based on the algorithm). Let each algorithm creates its
+	own key (e.g. special needs, default length...)
+
+	* System.Web.Configuration_2.0/MachineKeySectionUtils.cs: Remove
+	key generation (from random) code and 192bits key length hack
+	(won't work with custom algorithms). Add support for new (4.0)
+	algorithms, including custom ones. Provide uniform/shared code to
+	Encrypt/Decrypt, Sign/Verify and EncryptSign/VerifyDecrypt using
+	MachineKeySection data.
+
+	* System.Web.Configuration_2.0/MachineKeyValidation.cs: Add new
+	(4.0) values.
+
+	* System.Web.Configuration_2.0/MachineKeyValidationConverter.cs:
+	Add support for new (4.0) algorithms.
+
+	* System.Web.Configuration_2.0/MachineKeyCompatibilityMode.cs:
+	New.
+
+2010-10-04  Marek Habersack  <grendel@twistedcode.net>
+
+	* AuthorizationRule.cs: if the configuration save is not Full,
+	SerializeElement checks whether the rule being serialized is
+	modified. If it isn't, validation and serialization are not
+	performed. * AuthorizationRuleCollection.cs: there is no element
+	name for the collection.
+
+2010-09-28  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Get rid of a possible (although unlikely) race condition
+	when acquiring locks
+
+	The patch removes a small race condition where a boolean flag is
+	set after acquiring a lock to indicate to code executing in the
+	finally {} block that it should release the lock. The boolean
+	variable is now removed and the lock is released unconditionally.
+	It carries a potential to throw an exception when the lock is not
+	held, but it's better than to fail to release it and lead the
+	application to a deadlock.
+
+2010-08-11  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Partial fix for bug #575600. Support opening another app
+	configuration.
+
+	WebConfigurationHost now supports one more parameter passed to it
+	in InitForConfiguration - a boolean telling whether the
+	configuration being initialized belongs to another app. If it is
+	true then the virtual path passed to InitForConfiguration is used
+	as the application virtual path. This has the effect that
+	IsDefinitionAllowed doesn't throw an exception when a
+	configuration element with the MachineToApplication level is
+	parsed. WebConfigurationManager.FindWebConfig checks whether the
+	path passed to it belongs to this application which allows the
+	mechanism described in the first paragraph to work.
+
+2010-08-05  Jb Evain  <jbevain@gmail.com>
+
+	[Perf] avoid an exception when reading a non existent app
+	configuration
+
+	Make implementors of IInternalConfigurationHost.OpenStreamForRead
+	return null instead of throwing an exception when there's no
+	usable configuration file and deal with null at the call site.
+
+2010-08-04  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] implemented
+	BaseTemplateParser.{GetReferencedType,GetUserControlType} methods
+
+2010-07-02  Marek Habersack  <mhabersack@novell.com>
+
+	* VersionConverter.cs: added support for checking whether the
+	passed version is equal or more than a specified minimal version.
+
+	* PagesSection.cs: added two 4.0 properties - ClientIDMode and
+	ControlRenderingCompatibilityVersion 
+
+2010-06-01  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpRuntimeSection.cs: added 4.0 properties
+	MaxQueryLengthString, MaxUrlLength, EncoderType and
+	RelaxedUrlToFileSystemMapping.
+
+2010-05-17  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildProvider.cs: made the Extension property case-insensitive
+
+2010-04-09  Marek Habersack  <mhabersack@novell.com>
+
+	* WebConfigurationManager.cs: GetSection properly processes paths
+	of form '~'. Fixes bug #595140. Patch from Adriaan van Kekem
+	<avkekem@hotmail.com>, thanks!
+
+2010-04-08 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* GlobalizationSection.cs: use WebName instead of EncodingName.
+
+2010-03-06  Marek Habersack  <mhabersack@novell.com>
+
+	* WebConfigurationManager.cs: do not use Request.Path - it may
+	fail because of invalid web.config file, use
+	Request.PathNoValidation instead.
+
+	* VersionConverter.cs: added
+
+	* PropertyHelper.cs: added a Version converter helper.
+
+	* HttpRuntimeSection.cs: added 4.0 properties -
+	RequestPathInvalidCharacters, RequestValidationType and
+	RequestValidationMode.
+
+2010-02-23  Marek Habersack  <mhabersack@novell.com>
+
+	* SessionStateSection.cs: implemented 4.0 properties -
+	CompressionEnabled and SqlConnectionRetryInterval 
+
 2010-02-12  Marek Habersack  <mhabersack@novell.com>
 
 	* WebConfigurationHost.cs: implemented {Encrypt,Decrypt}Section
+
+2010-01-20  Marek Habersack  <mhabersack@novell.com>
+
+	* OutputCacheSection.cs: implemented the Providers and
+	DefaultProviderName 4.0 properties.
 
 2010-01-09  Marek Habersack  <mhabersack@novell.com>
 
@@ -14,8 +207,8 @@
 
 2009-12-02  Marek Habersack  <mhabersack@novell.com>
 
-	* CompilationSection.cs: added new property - 
-	OptimizeCompilations (3.5+)
+	* CompilationSection.cs: added two properties -
+	OptimizeCompilations (3.5+) and TargetFramework (4.0+)
 
 2009-11-19  Marek Habersack  <mhabersack@novell.com>
 

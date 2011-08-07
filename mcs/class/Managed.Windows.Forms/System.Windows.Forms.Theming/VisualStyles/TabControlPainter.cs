@@ -58,8 +58,8 @@ namespace System.Windows.Forms.Theming.VisualStyles
 				return base.DrawTab (dc, page, tab, bounds, is_selected);
 			new VisualStyleRenderer (element).DrawBackground (dc, bounds);
 			bounds.Inflate (
-				-(FocusRectSpacing.X + BorderThickness.X),
-				-(FocusRectSpacing.Y + BorderThickness.Y));
+				-(tab.Padding.X),
+				-(tab.Padding.Y));
 			Rectangle text_area = bounds;
 			if (tab.ImageList != null && page.ImageIndex >= 0 && page.ImageIndex < tab.ImageList.Images.Count) {
 				int image_y = bounds.Y + (bounds.Height - tab.ImageList.ImageSize.Height) / 2;
@@ -69,7 +69,7 @@ namespace System.Windows.Forms.Theming.VisualStyles
 				text_area.Width -= image_occupied_space;
 			}
 			if (page.Text != null)
-				dc.DrawString (page.Text, page.Font, SystemBrushes.ControlText, text_area, DefaultFormatting);
+				dc.DrawString (page.Text, tab.Font, SystemBrushes.ControlText, text_area, DefaultFormatting);
 			if (tab.Focused && is_selected && tab.ShowFocusCues)
 				ControlPaint.DrawFocusRectangle (dc, bounds);
 			return 0;

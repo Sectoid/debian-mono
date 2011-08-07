@@ -27,7 +27,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-#if NET_2_0
+
 using System;
 using System.CodeDom;
 using System.CodeDom.Compiler;
@@ -43,7 +43,7 @@ using System.Web.Util;
 
 namespace System.Web.Compilation
 {
-	internal abstract class TemplateBuildProvider : GenericBuildProvider <TemplateParser>
+	abstract class TemplateBuildProvider : GenericBuildProvider <TemplateParser>
 	{
 		delegate void ExtractDirectiveDependencies (string baseDirectory, CaptureCollection names, CaptureCollection values, TemplateBuildProvider bp);
 		
@@ -220,14 +220,14 @@ namespace System.Web.Compilation
 		IDictionary <string, bool> AddParsedDependencies (IDictionary <string, bool> dict)
 		{
 			if (Parsed) {
-				ArrayList deps = Parser.Dependencies;
+				List <string> deps = Parser.Dependencies;
 				if (deps == null || deps.Count > 0)
 					return dict;
 				
 				if (dict == null) {
 					dict = dependencies;
 					if (dict == null)
-						dict = dependencies = new SortedDictionary <string, bool> (StringComparer.InvariantCultureIgnoreCase);
+						dict = dependencies = new SortedDictionary <string, bool> (StringComparer.OrdinalIgnoreCase);
 				}
 				
 				string s;
@@ -351,16 +351,13 @@ namespace System.Web.Compilation
 			if (parser == null)
 				return null;
 			
-			ArrayList al = parser.Assemblies;
-			if (al == null || al.Count == 0)
+			List <string> asms = parser.Assemblies;
+			if (asms == null || asms.Count == 0)
 				return null;
 
-			List <string> ret = new List <string> ();
-			string loc;
-			
-			foreach (object o in al) {
-				loc = o as string;
-				if (loc == null)
+			List <string> ret = new List <string> ();			
+			foreach (string loc in asms) {
+				if (String.IsNullOrEmpty (loc))
 					continue;
 
 				if (ret.Contains (loc))
@@ -373,4 +370,3 @@ namespace System.Web.Compilation
 		}
 	}
 }
-#endif

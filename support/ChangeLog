@@ -1,7 +1,113 @@
+2011-07-25  Miguel de Icaza  <miguel@gnome.org>
+
+	Fix invocation to syslog
+
+2011-03-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[windows] Get rid of a lot of warnings
+
+2011-02-12  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[gzip] Allow partial flush
+
+	When Flush() is called explicitly, do a Z_PARTIAL_FLUSH to force
+	gzip into giving us whatever is available. Less efficient, but
+	compatible with MS.
+
+2010-11-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove the unused and incomplete CMake build scripts for now.
+
+2010-10-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Update mappings after latest changes to Mono.Posix
+
+	New mappings created for the epoll code.
+
+2010-10-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Update
+
+2010-10-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Update zlib to version 1.2.5
+
+2010-06-28  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am (patch-libtool): Fix this up after the dolt changes.
+
+2010-05-13  Geoff Norton  <gnorton@novell.com>
+
+	* fakepoll.h: Added for OSX
+	* serial.c:
+	* signal.c: poll on OSX is broken, so we use a select based 
+	implementation instead.
+
+2010-04-19 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* zlib-helper.c: don't call Z_FINISH if nothing has been written.
+
+2010-04-19  Jonathan Pryor  <jpryor@novell.com>
+
+	* dirent.c, grp.c, macros.c, pwd.c, signal.c, sys-statvfs.c, sys-time.c,
+	  unistd.c: Add #if HAVE_XXX checks for functions which aren't
+	  provided on Android.
+
+2010-04-15  Jonathan Pryor  <jpryor@novell.com>
+
+	* Makefile.am: Revert previous linkage against libmono.so, as lupus
+	  mentioned that it's unacceptable for MonoPosixHelper to link against
+	  libmono (e.g. when embedding mono, there might not be a libmono).
+	* map.h: Flush updated Mono_Unix_UnixSignal_SignalInfo prototype.
+	* signal.c: Don't use mono_runtime_is_shutting_down(). Instead, change
+	  Mono_Unix_UnixSignal_WaitAny() to accept a function pointer argument,
+	  which will return Environment.HasShutdownStarted in managed code (the 
+	  moral equivalent of mono_runtime_is_shutting_down()).  This allows
+	  us to avoid a libmono dependency w/o lots of rewriting. Fixes #592981.
+
+2010-04-07 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* zlib-helper.c: now that we don't use Z_SYNC_FLUSH, there might be
+	unflushed input in zstream, so always call Z_FINISH.
+
+2010-04-02  Jonathan Pryor  <jpryor@novell.com>
+
+	* Makefile.am: On non-Windows platforms, MonoPosixHelper now links
+	  against libmono.so, for mono_runtime_is_shutting_down().
+	* signal.c: Only continue retrying system calls if Mono is NOT
+	  attempting to shut down.  Fixes #592981.
+
+2010-03-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* mph.h: Applied some changes from the openbsd ports tree to fix openbsd
+	support.
+
+2010-03-23  Andreas Faerber  <andreas.faerber@web.de>
+
+	* old-map.c (map_Mono_Posix_Signals): Fix build for platforms where
+	SIGIO is not defined (Haiku).
+	
+	Code is contributed under MIT/X11 license.
+
+2010-02-23  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* serial.cs: Add 921600 to the list of possible baud rates, and
+	use it only if defined, as is not available in all the unix systems.
+	Fixes #445520.
+
 2010-01-28 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* zlib-helper.c: no need for sync flush when compressing.
 	Thanks to Hin-Tak Leung.
+
+2010-01-28  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* serial.c: Fix the OSX build.
+
+2010-01-22 Leszek Ciesielski <skolima@gmail.com>
+	
+	* serial.c: baud rate 460800 by Thad Thompson <TThompson@nucsafe.com>
+	* serial.c: report errors from every function
 
 2009-12-16 Gonzalo Paniagua Javier <gonzalo@novell.com>
 

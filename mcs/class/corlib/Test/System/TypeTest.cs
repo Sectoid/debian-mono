@@ -11,9 +11,7 @@ using NUnit.Framework;
 using System;
 using System.Threading;
 using System.Collections;
-#if NET_2_0
 using System.Collections.Generic;
-#endif
 using System.IO;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -158,7 +156,6 @@ namespace MonoTests.System
 		}
 	}
 
-#if NET_2_0
 	public class Foo<T>
 	{
 		public T Whatever;
@@ -171,6 +168,8 @@ namespace MonoTests.System
 		{
 			return a;
 		}
+		
+		public class Nested<K> {}
 	}
 	
 	class Foo<T, U>
@@ -184,7 +183,12 @@ namespace MonoTests.System
 	public class Baz<T> : IBar<T>
 	{
 	}
-#endif
+
+	class Gazonk {
+
+		public static void Bang<S> () {}
+	}
+
 	public class Bug348522
 	{
 		public void Test (int __argument)
@@ -255,11 +259,14 @@ namespace MonoTests.System
 		private void ByrefMethod (ref int i, ref Derived1 j, ref Base1 k)
 		{
 		}
-#if NET_2_0
-		private void GenericMethod<Q> (Q q)
+
+		public interface IFace {
+		}
+
+		private void GenericMethod<Q, T1> (Q q, T1 t) where T1 : IFace
 		{
 		}
-#endif
+
 		[Test]
 		public void TestIsAssignableFrom ()
 		{
@@ -326,11 +333,13 @@ namespace MonoTests.System
 			Assert.IsTrue (mi.GetParameters ()[1].ParameterType.IsAssignableFrom (mi.GetParameters ()[1].ParameterType));
 
 			// Tests for type parameters
-#if NET_2_0
 			mi = typeof (TypeTest).GetMethod ("GenericMethod", BindingFlags.Instance|BindingFlags.NonPublic);
 			Assert.IsTrue (mi.GetParameters ()[0].ParameterType.IsAssignableFrom (mi.GetParameters ()[0].ParameterType));
 			Assert.IsFalse (mi.GetParameters ()[0].ParameterType.IsAssignableFrom (typeof (int)));
-#endif
+
+			// Tests for parameters with generic constraints
+			mi = typeof (TypeTest).GetMethod ("GenericMethod", BindingFlags.Instance|BindingFlags.NonPublic);
+			Assert.IsTrue (typeof (IFace).IsAssignableFrom (mi.GetParameters ()[1].ParameterType));
 		}
 
 		[Test]
@@ -408,11 +417,7 @@ namespace MonoTests.System
 			Assert.IsTrue (ContainsProperty (props, "ProtInstBase"), "#A2");
 			Assert.IsTrue (ContainsProperty (props, "ProIntInstBase"), "#A3");
 			Assert.IsFalse (ContainsProperty (props, "PubInstBase"), "#A4");
-#if NET_2_0
 			Assert.IsTrue (ContainsProperty (props, "IntInstBase"), "#A5");
-#else
-			Assert.IsFalse (ContainsProperty (props, "IntInstBase"), "#A5");
-#endif
 			Assert.IsTrue (ContainsProperty (props, "PrivInst"), "#A6");
 			Assert.IsTrue (ContainsProperty (props, "ProtInst"), "#A7");
 			Assert.IsTrue (ContainsProperty (props, "ProIntInst"), "#A8");
@@ -432,11 +437,7 @@ namespace MonoTests.System
 			Assert.IsTrue (ContainsProperty (props, "ProtInstBlue"), "#A22");
 			Assert.IsTrue (ContainsProperty (props, "ProIntInstBlue"), "#A23");
 			Assert.IsFalse (ContainsProperty (props, "PubInstBlue"), "#A24");
-#if NET_2_0
 			Assert.IsTrue (ContainsProperty (props, "IntInstBlue"), "#A25");
-#else
-			Assert.IsFalse (ContainsProperty (props, "IntInstBlue"), "#A25");
-#endif
 			Assert.IsFalse (ContainsProperty (props, "PrivStatBlue"), "#A26");
 			Assert.IsFalse (ContainsProperty (props, "ProtStatBlue"), "#A27");
 			Assert.IsFalse (ContainsProperty (props, "ProIntStatBlue"), "#A28");
@@ -553,11 +554,7 @@ namespace MonoTests.System
 			Assert.IsTrue (ContainsProperty (props, "ProtInstBase"), "#E2");
 			Assert.IsTrue (ContainsProperty (props, "ProIntInstBase"), "#E3");
 			Assert.IsFalse (ContainsProperty (props, "PubInstBase"), "#E4");
-#if NET_2_0
 			Assert.IsTrue (ContainsProperty (props, "IntInstBase"), "#E5");
-#else
-			Assert.IsFalse (ContainsProperty (props, "IntInstBase"), "#E5");
-#endif
 			Assert.IsTrue (ContainsProperty (props, "PrivInst"), "#E6");
 			Assert.IsTrue (ContainsProperty (props, "ProtInst"), "#E7");
 			Assert.IsTrue (ContainsProperty (props, "ProIntInst"), "#E8");
@@ -577,11 +574,7 @@ namespace MonoTests.System
 			Assert.IsTrue (ContainsProperty (props, "ProtInstBlue"), "#E22");
 			Assert.IsTrue (ContainsProperty (props, "ProIntInstBlue"), "#E23");
 			Assert.IsFalse (ContainsProperty (props, "PubInstBlue"), "#E24");
-#if NET_2_0
 			Assert.IsTrue (ContainsProperty (props, "IntInstBlue"), "#E25");
-#else
-			Assert.IsFalse (ContainsProperty (props, "IntInstBlue"), "#E25");
-#endif
 			Assert.IsFalse (ContainsProperty (props, "PrivStatBlue"), "#E26");
 			Assert.IsFalse (ContainsProperty (props, "ProtStatBlue"), "#E27");
 			Assert.IsFalse (ContainsProperty (props, "ProIntStatBlue"), "#E28");
@@ -676,11 +669,7 @@ namespace MonoTests.System
 			Assert.IsTrue (ContainsProperty (props, "ProtStatBase"), "#H12");
 			Assert.IsTrue (ContainsProperty (props, "ProIntStatBase"), "#H13");
 			Assert.IsFalse (ContainsProperty (props, "PubStatBase"), "#H14");
-#if NET_2_0
 			Assert.IsTrue (ContainsProperty (props, "IntStatBase"), "#H15");
-#else
-			Assert.IsFalse (ContainsProperty (props, "IntStatBase"), "#H15");
-#endif
 			Assert.IsTrue (ContainsProperty (props, "PrivStat"), "#H16");
 			Assert.IsTrue (ContainsProperty (props, "ProtStat"), "#H17");
 			Assert.IsTrue (ContainsProperty (props, "ProIntStat"), "#H18");
@@ -695,11 +684,7 @@ namespace MonoTests.System
 			Assert.IsTrue (ContainsProperty (props, "ProtStatBlue"), "#H27");
 			Assert.IsTrue (ContainsProperty (props, "ProIntStatBlue"), "#H28");
 			Assert.IsFalse (ContainsProperty (props, "PubStatBlue"), "#H29");
-#if NET_2_0
 			Assert.IsTrue (ContainsProperty (props, "IntStatBlue"), "#H30");
-#else
-			Assert.IsFalse (ContainsProperty (props, "IntStatBlue"), "#H50");
-#endif
 
 			flags = BindingFlags.Instance | BindingFlags.NonPublic |
 				BindingFlags.DeclaredOnly;
@@ -849,11 +834,7 @@ namespace MonoTests.System
 			Assert.IsTrue (ContainsProperty (props, "ProtInstBase"), "#M2");
 			Assert.IsTrue (ContainsProperty (props, "ProIntInstBase"), "#M3");
 			Assert.IsTrue (ContainsProperty (props, "PubInstBase"), "#M4");
-#if NET_2_0
 			Assert.IsTrue (ContainsProperty (props, "IntInstBase"), "#M5");
-#else
-			Assert.IsFalse (ContainsProperty (props, "IntInstBase"), "#M5");
-#endif
 			Assert.IsTrue (ContainsProperty (props, "PrivInst"), "#M6");
 			Assert.IsTrue (ContainsProperty (props, "ProtInst"), "#M7");
 			Assert.IsTrue (ContainsProperty (props, "ProIntInst"), "#M8");
@@ -873,11 +854,7 @@ namespace MonoTests.System
 			Assert.IsTrue (ContainsProperty (props, "ProtInstBlue"), "#M22");
 			Assert.IsTrue (ContainsProperty (props, "ProIntInstBlue"), "#M23");
 			Assert.IsTrue (ContainsProperty (props, "PubInstBlue"), "#M24");
-#if NET_2_0
 			Assert.IsTrue (ContainsProperty (props, "IntInstBlue"), "#M25");
-#else
-			Assert.IsFalse (ContainsProperty (props, "IntInstBlue"), "#M25");
-#endif
 			Assert.IsFalse (ContainsProperty (props, "PrivStatBlue"), "#M26");
 			Assert.IsFalse (ContainsProperty (props, "ProtStatBlue"), "#M27");
 			Assert.IsFalse (ContainsProperty (props, "ProIntStatBlue"), "#M28");
@@ -948,11 +925,7 @@ namespace MonoTests.System
 			Assert.IsNotNull (type.GetProperty ("ProtInstBase", flags), "#A2");
 			Assert.IsNotNull (type.GetProperty ("ProIntInstBase", flags), "#A3");
 			Assert.IsNull (type.GetProperty ("PubInstBase", flags), "#A4");
-#if NET_2_0
 			Assert.IsNotNull (type.GetProperty ("IntInstBase", flags), "#A5");
-#else
-			Assert.IsNull (type.GetProperty ("IntInstBase", flags), "#A5");
-#endif
 			Assert.IsNotNull (type.GetProperty ("PrivInst", flags), "#A6");
 			Assert.IsNotNull (type.GetProperty ("ProtInst", flags), "#A7");
 			Assert.IsNotNull (type.GetProperty ("ProIntInst", flags), "#A8");
@@ -972,11 +945,7 @@ namespace MonoTests.System
 			Assert.IsNotNull (type.GetProperty ("ProtInstBlue", flags), "#A22");
 			Assert.IsNotNull (type.GetProperty ("ProIntInstBlue", flags), "#A23");
 			Assert.IsNull (type.GetProperty ("PubInstBlue", flags), "#A24");
-#if NET_2_0
 			Assert.IsNotNull (type.GetProperty ("IntInstBlue", flags), "#A25");
-#else
-			Assert.IsNull (type.GetProperty ("IntInstBlue", flags), "#A25");
-#endif
 			Assert.IsNull (type.GetProperty ("PrivStatBlue", flags), "#A26");
 			Assert.IsNull (type.GetProperty ("ProtStatBlue", flags), "#A27");
 			Assert.IsNull (type.GetProperty ("ProIntStatBlue", flags), "#A28");
@@ -1089,11 +1058,7 @@ namespace MonoTests.System
 			Assert.IsNotNull (type.GetProperty ("ProtInstBase", flags), "#E2");
 			Assert.IsNotNull (type.GetProperty ("ProIntInstBase", flags), "#E3");
 			Assert.IsNull (type.GetProperty ("PubInstBase", flags), "#E4");
-#if NET_2_0
 			Assert.IsNotNull (type.GetProperty ("IntInstBase", flags), "#E5");
-#else
-			Assert.IsNull (type.GetProperty ("IntInstBase", flags), "#E5");
-#endif
 			Assert.IsNotNull (type.GetProperty ("PrivInst", flags), "#E6");
 			Assert.IsNotNull (type.GetProperty ("ProtInst", flags), "#E7");
 			Assert.IsNotNull (type.GetProperty ("ProIntInst", flags), "#E8");
@@ -1113,11 +1078,7 @@ namespace MonoTests.System
 			Assert.IsNotNull (type.GetProperty ("ProtInstBlue", flags), "#E22");
 			Assert.IsNotNull (type.GetProperty ("ProIntInstBlue", flags), "#E23");
 			Assert.IsNull (type.GetProperty ("PubInstBlue", flags), "#E24");
-#if NET_2_0
 			Assert.IsNotNull (type.GetProperty ("IntInstBlue", flags), "#E25");
-#else
-			Assert.IsNull (type.GetProperty ("IntInstBlue", flags), "#E25");
-#endif
 			Assert.IsNull (type.GetProperty ("PrivStatBlue", flags), "#E26");
 			Assert.IsNull (type.GetProperty ("ProtStatBlue", flags), "#E27");
 			Assert.IsNull (type.GetProperty ("ProIntStatBlue", flags), "#E28");
@@ -1209,11 +1170,7 @@ namespace MonoTests.System
 			Assert.IsNotNull (type.GetProperty ("ProtStatBase", flags), "#H12");
 			Assert.IsNotNull (type.GetProperty ("ProIntStatBase", flags), "#H13");
 			Assert.IsNull (type.GetProperty ("PubStatBase", flags), "#H14");
-#if NET_2_0
 			Assert.IsNotNull (type.GetProperty ("IntStatBase", flags), "#H15");
-#else
-			Assert.IsNull (type.GetProperty ("IntStatBase", flags), "#H15");
-#endif
 			Assert.IsNotNull (type.GetProperty ("PrivStat", flags), "#H16");
 			Assert.IsNotNull (type.GetProperty ("ProtStat", flags), "#H17");
 			Assert.IsNotNull (type.GetProperty ("ProIntStat", flags), "#H18");
@@ -1228,11 +1185,7 @@ namespace MonoTests.System
 			Assert.IsNotNull (type.GetProperty ("ProtStatBlue", flags), "#H27");
 			Assert.IsNotNull (type.GetProperty ("ProIntStatBlue", flags), "#H28");
 			Assert.IsNull (type.GetProperty ("PubStatBlue", flags), "#H29");
-#if NET_2_0
 			Assert.IsNotNull (type.GetProperty ("IntStatBlue", flags), "#H30");
-#else
-			Assert.IsNull (type.GetProperty ("IntStatBlue", flags), "#H60");
-#endif
 
 			flags = BindingFlags.Instance | BindingFlags.NonPublic |
 				BindingFlags.DeclaredOnly;
@@ -1377,11 +1330,7 @@ namespace MonoTests.System
 			Assert.IsNotNull (type.GetProperty ("ProtInstBase", flags), "#M2");
 			Assert.IsNotNull (type.GetProperty ("ProIntInstBase", flags), "#M3");
 			Assert.IsNotNull (type.GetProperty ("PubInstBase", flags), "#M4");
-#if NET_2_0
 			Assert.IsNotNull (type.GetProperty ("IntInstBase", flags), "#M5");
-#else
-			Assert.IsNull (type.GetProperty ("IntInstBase", flags), "#M5");
-#endif
 			Assert.IsNotNull (type.GetProperty ("PrivInst", flags), "#M6");
 			Assert.IsNotNull (type.GetProperty ("ProtInst", flags), "#M7");
 			Assert.IsNotNull (type.GetProperty ("ProIntInst", flags), "#M8");
@@ -1401,11 +1350,7 @@ namespace MonoTests.System
 			Assert.IsNotNull (type.GetProperty ("ProtInstBlue", flags), "#M22");
 			Assert.IsNotNull (type.GetProperty ("ProIntInstBlue", flags), "#M23");
 			Assert.IsNotNull (type.GetProperty ("PubInstBlue", flags), "#M24");
-#if NET_2_0
 			Assert.IsNotNull (type.GetProperty ("IntInstBlue", flags), "#M25");
-#else
-			Assert.IsNull (type.GetProperty ("IntInstBlue", flags), "#M25");
-#endif
 			Assert.IsNull (type.GetProperty ("PrivStatBlue", flags), "#M26");
 			Assert.IsNull (type.GetProperty ("ProtStatBlue", flags), "#M27");
 			Assert.IsNull (type.GetProperty ("ProIntStatBlue", flags), "#M28");
@@ -1567,7 +1512,6 @@ namespace MonoTests.System
 		{
 		}
 
-#if NET_2_0
 		[Test]
 		public void StructLayoutAttribute ()
 		{
@@ -1583,13 +1527,26 @@ namespace MonoTests.System
 			Assert.AreEqual (LayoutKind.Explicit, attr3.Value);
 			Assert.AreEqual (CharSet.Unicode, attr3.CharSet);
 		}
-#endif
 #endif // TARGET_JVM
 
 		[Test]
 		public void Namespace ()
 		{
 			Assert.AreEqual (null, typeof (NoNamespaceClass).Namespace);
+		}
+
+		[Test]
+		public void GenericParameterNamespace ()
+		{
+			var t = typeof (Foo<>).GetGenericArguments () [0];
+
+			Assert.AreEqual ("T", t.Name);
+			Assert.AreEqual ("MonoTests.System", t.Namespace);
+
+			var s = typeof (Gazonk).GetMethod ("Bang").GetGenericArguments () [0];
+
+			Assert.AreEqual ("S", s.Name);
+			Assert.AreEqual ("MonoTests.System", s.Namespace);
 		}
 
 		public static void Reflected (ref int a)
@@ -1614,6 +1571,19 @@ namespace MonoTests.System
 			Assert.AreEqual (2, t2.Length);
 		}
 
+		[Test]
+		public void GetInterfacesGenericVarWithConstraints ()
+		{
+			var a = typeof (TypeTest).GetMethod ("GenericMethod");
+
+			var p = a.GetParameters ();
+			var i = p[0].ParameterType.GetElementType ();
+			i.GetInterfaces ();
+		}
+
+		public static void GenericMethod<T, T2> (T[] arr) where T: IComparable<T> {
+		}
+
 		public int AField;
 
 		[Test]
@@ -1622,7 +1592,6 @@ namespace MonoTests.System
 			Assert.IsNotNull (typeof (TypeTest).GetField ("afield", BindingFlags.Instance|BindingFlags.Public|BindingFlags.IgnoreCase));
 		}
 
-#if NET_2_0
 		public int Count {
 			internal get {
 				return 0;
@@ -1638,7 +1607,6 @@ namespace MonoTests.System
 			Assert.IsNotNull (typeof (TypeTest).GetProperty ("Count", BindingFlags.Instance | BindingFlags.Public));
 			Assert.IsNull (typeof (TypeTest).GetProperty ("Count", BindingFlags.Instance | BindingFlags.NonPublic));
 		}
-#endif
 
 		[Test]
 		public void IsAbstract ()
@@ -1650,12 +1618,10 @@ namespace MonoTests.System
 			Assert.IsFalse (typeof (TimeSpan).IsAbstract, "#5");
 			Assert.IsTrue (typeof (TextReader).IsAbstract, "#6");
 
-#if NET_2_0
 			// LAMESPEC:
 			// https://connect.microsoft.com/VisualStudio/feedback/ViewFeedback.aspx?FeedbackID=286308
 			Type [] typeArgs = typeof (List<>).GetGenericArguments ();
 			Assert.IsFalse (typeArgs [0].IsAbstract, "#7");
-#endif
 		}
 
 		[Test]
@@ -1790,7 +1756,6 @@ PublicKeyToken=b77a5c561934e089"));
 			Assert.AreEqual (0, mi.Length);
 		}
 
-#if NET_2_0
 		[Test]
 		public void GenericParameterMemberType ()
 		{
@@ -1799,7 +1764,6 @@ PublicKeyToken=b77a5c561934e089"));
 
 			Assert.AreEqual (MemberTypes.TypeInfo, t.MemberType);
 		}
-#endif
 
 		public class ByRef0
 		{
@@ -1919,11 +1883,7 @@ PublicKeyToken=b77a5c561934e089"));
 				Assert.IsNull (ex.InnerException, "#B3");
 				Assert.IsNotNull (ex.Message, "#B4");
 				Assert.IsNotNull (ex.ParamName, "#B5");
-#if NET_2_0
 				Assert.AreEqual ("bindingFlags", ex.ParamName, "#B6");
-#else
-				Assert.AreEqual ("invokeAttr", ex.ParamName, "#B6");
-#endif
 			}
 		}
 
@@ -1942,11 +1902,7 @@ PublicKeyToken=b77a5c561934e089"));
 				Assert.IsNull (ex.InnerException, "#3");
 				Assert.IsNotNull (ex.Message, "#4");
 				Assert.IsNotNull (ex.ParamName, "#5");
-#if NET_2_0
 				Assert.AreEqual ("bindingFlags", ex.ParamName, "#6");
-#else
-				Assert.AreEqual ("invokeAttr", ex.ParamName, "#6");
-#endif
 			}
 		}
 
@@ -1966,11 +1922,7 @@ PublicKeyToken=b77a5c561934e089"));
 				Assert.IsNull (ex.InnerException, "#A3");
 				Assert.IsNotNull (ex.Message, "#A4");
 				Assert.IsNotNull (ex.ParamName, "#A5");
-#if NET_2_0
 				Assert.AreEqual ("bindingFlags", ex.ParamName, "#A6");
-#else
-				Assert.AreEqual ("invokeAttr", ex.ParamName, "#A6");
-#endif
 			}
 
 			try {
@@ -1985,11 +1937,7 @@ PublicKeyToken=b77a5c561934e089"));
 				Assert.IsNull (ex.InnerException, "#B3");
 				Assert.IsNotNull (ex.Message, "#B4");
 				Assert.IsNotNull (ex.ParamName, "#B5");
-#if NET_2_0
 				Assert.AreEqual ("bindingFlags", ex.ParamName, "#B6");
-#else
-				Assert.AreEqual ("invokeAttr", ex.ParamName, "#B6");
-#endif
 			}
 		}
 
@@ -2035,11 +1983,7 @@ PublicKeyToken=b77a5c561934e089"));
 				Assert.IsNull (ex.InnerException, "#3");
 				Assert.IsNotNull (ex.Message, "#4");
 				Assert.IsNotNull (ex.ParamName, "#5");
-#if NET_2_0
 				Assert.AreEqual ("bindingFlags", ex.ParamName, "#6");
-#else
-				Assert.AreEqual ("invokeAttr", ex.ParamName, "#6");
-#endif
 			}
 		}
 
@@ -2070,11 +2014,7 @@ PublicKeyToken=b77a5c561934e089"));
 				Assert.IsNull (ex.InnerException, "#A3");
 				Assert.IsNotNull (ex.Message, "#A4");
 				Assert.IsNotNull (ex.ParamName, "#A5");
-#if NET_2_0
 				Assert.AreEqual ("bindingFlags", ex.ParamName, "#6");
-#else
-				Assert.AreEqual ("invokeAttr", ex.ParamName, "#6");
-#endif
 			}
 
 			try {
@@ -2082,7 +2022,6 @@ PublicKeyToken=b77a5c561934e089"));
 					BindingFlags.Static | BindingFlags.SetField,
 					null, null, null);
 				Assert.Fail ("#B1");
-#if NET_2_0
 			} catch (ArgumentNullException ex) {
 				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#B2");
 				Assert.IsNull (ex.InnerException, "#B3");
@@ -2090,21 +2029,6 @@ PublicKeyToken=b77a5c561934e089"));
 				Assert.IsNotNull (ex.ParamName, "#B5");
 				Assert.AreEqual ("providedArgs", ex.ParamName, "#B6");
 			}
-#else
-			} catch (ArgumentException ex) {
-				// Only the field value can be specified to set
-				// a field value
-				Assert.AreEqual (typeof (ArgumentException), ex.GetType (), "#B2");
-				Assert.IsNull (ex.InnerException, "#B3");
-				Assert.IsNotNull (ex.Message, "#B4");
-				Assert.IsNotNull (ex.ParamName, "#B5");
-#if NET_2_0
-				Assert.AreEqual ("bindingFlags", ex.ParamName, "#B6");
-#else
-				Assert.AreEqual ("invokeAttr", ex.ParamName, "#B6");
-#endif
-			}
-#endif
 		}
 
 		[Test] // bug #336841
@@ -2150,6 +2074,15 @@ PublicKeyToken=b77a5c561934e089"));
 	    [Test]
 		public void TestMissing () {
 			Assert.AreEqual (Type.Missing, Missing.Value);
+		}
+
+		[Test]
+		public void GetGenericMethodDefinitionOverInflatedMethodOnGTD () {
+			var l = typeof (List<>);
+			var m = l.GetMethod ("ConvertAll");
+			var infl = m.MakeGenericMethod (typeof (int));
+			var res = m.GetGenericMethodDefinition ();
+			Assert.AreEqual (m, res, "#1");
 		}
 
 		[Test]
@@ -2472,9 +2405,7 @@ PublicKeyToken=b77a5c561934e089"));
 		}
 
 		[Test] // bug #82431
-#if NET_2_0
 		[Category ("NotWorking")]
-#endif
 		public void IsDefined_Inherited ()
 		{
 			Assert.IsFalse (typeof (CA).IsDefined (typeof (NemerleAttribute), false), "#C1");
@@ -2492,13 +2423,8 @@ PublicKeyToken=b77a5c561934e089"));
 			Assert.IsFalse (typeof (BBA).IsDefined (typeof (BarAttribute), false), "#D4");
 			Assert.IsTrue (typeof (BBA).IsDefined (typeof (NemerleAttribute), true), "#D5");
 			Assert.IsTrue (typeof (BBA).IsDefined (typeof (VolatileModifier), true), "#D6");
-#if NET_2_0
 			Assert.IsTrue (typeof (BBA).IsDefined (typeof (FooAttribute), true), "#D7");
 			Assert.IsTrue (typeof (BBA).IsDefined (typeof (BarAttribute), true), "#D8");
-#else
-			Assert.IsFalse (typeof (BBA).IsDefined (typeof (FooAttribute), true), "#D7");
-			Assert.IsFalse (typeof (BBA).IsDefined (typeof (BarAttribute), true), "#D8");
-#endif
 
 			Assert.IsTrue (typeof (bug82431A1).IsDefined (typeof (InheritAttribute), false), "#E1");
 			Assert.IsTrue (typeof (bug82431A1).IsDefined (typeof (NotInheritAttribute), false), "#E2");
@@ -2507,11 +2433,7 @@ PublicKeyToken=b77a5c561934e089"));
 
 			Assert.IsFalse (typeof (bug82431A2).IsDefined (typeof (InheritAttribute), false), "#F1");
 			Assert.IsFalse (typeof (bug82431A2).IsDefined (typeof (NotInheritAttribute), false), "#F2");
-#if NET_2_0
 			Assert.IsFalse (typeof (bug82431A2).IsDefined (typeof (InheritAttribute), true), "#F3");
-#else
-			Assert.IsTrue (typeof (bug82431A2).IsDefined (typeof (InheritAttribute), true), "#F3");
-#endif
 			Assert.IsFalse (typeof (bug82431A2).IsDefined (typeof (NotInheritAttribute), true), "#F4");
 
 			Assert.IsTrue (typeof (bug82431A3).IsDefined (typeof (InheritAttribute), false), "#G1");
@@ -2550,11 +2472,7 @@ PublicKeyToken=b77a5c561934e089"));
 				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
 				Assert.IsNull (ex.InnerException, "#3");
 				Assert.IsNotNull (ex.Message, "#4");
-#if NET_2_0
 				Assert.AreEqual ("TypeName", ex.ParamName, "#5");
-#else
-				Assert.AreEqual ("className", ex.ParamName, "#5");
-#endif
 			}
 		}
 
@@ -2568,11 +2486,7 @@ PublicKeyToken=b77a5c561934e089"));
 				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
 				Assert.IsNull (ex.InnerException, "#3");
 				Assert.IsNotNull (ex.Message, "#4");
-#if NET_2_0
 				Assert.AreEqual ("TypeName", ex.ParamName, "#5");
-#else
-				Assert.AreEqual ("className", ex.ParamName, "#5");
-#endif
 			}
 		}
 
@@ -2586,11 +2500,7 @@ PublicKeyToken=b77a5c561934e089"));
 				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
 				Assert.IsNull (ex.InnerException, "#3");
 				Assert.IsNotNull (ex.Message, "#4");
-#if NET_2_0
 				Assert.AreEqual ("TypeName", ex.ParamName, "#5");
-#else
-				Assert.AreEqual ("className", ex.ParamName, "#5");
-#endif
 			}
 		}
 
@@ -2636,20 +2546,7 @@ PublicKeyToken=b77a5c561934e089"));
 		{
 			RuntimeTypeHandle handle = new RuntimeTypeHandle ();
 
-#if NET_2_0
 			Assert.IsNull (Type.GetTypeFromHandle (handle));
-#else
-			try {
-				Type.GetTypeFromHandle (handle);
-				Assert.Fail ("#1");
-			} catch (ArgumentException ex) {
-				// Handle is not initialized
-				Assert.AreEqual (typeof (ArgumentException), ex.GetType (), "#2");
-				Assert.IsNull (ex.InnerException, "#3");
-				Assert.IsNotNull (ex.Message, "#4");
-				Assert.IsNull (ex.ParamName, "#5");
-			}
-#endif
 		}
 
 		[Test]
@@ -2662,11 +2559,7 @@ PublicKeyToken=b77a5c561934e089"));
 				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
 				Assert.IsNull (ex.InnerException, "#3");
 				Assert.IsNotNull (ex.Message, "#4");
-#if NET_2_0
 				Assert.IsNull (ex.ParamName, "#5");
-#else
-				Assert.AreEqual ("o", ex.ParamName, "#5");
-#endif
 			}
 		}
 
@@ -2824,7 +2717,6 @@ PublicKeyToken=b77a5c561934e089"));
 			Assert.IsNull (typeof (TheEnum).GetElementType (), "#1");
 		}
 
-#if NET_2_0
 		[Test]
 		public void FullNameGenerics ()
 		{
@@ -2918,9 +2810,7 @@ PublicKeyToken=b77a5c561934e089"));
 		{
 			Assert.IsFalse (typeof (int).IsInstanceOfType (null), "int");
 			Assert.IsFalse (typeof (object).IsInstanceOfType (null), "object");
-#if NET_2_0
 			Assert.IsFalse (typeof (int?).IsInstanceOfType (null), "int?");
-#endif
 		}
 
 		[Test]
@@ -2931,6 +2821,13 @@ PublicKeyToken=b77a5c561934e089"));
 			Type byref_type_param = type_param.MakeByRefType ();
 			Assert.IsFalse (byref_type_param.IsGenericParameter);
 			Assert.IsNull (byref_type_param.DeclaringType);
+		}
+
+		[Test]
+		[ExpectedException (typeof (TypeLoadException))]
+		public void MakeByRefByRef ()
+		{
+			typeof (int).MakeByRefType ().MakeByRefType ();
 		}
 
 		[Test]
@@ -3030,7 +2927,6 @@ PublicKeyToken=b77a5c561934e089"));
 		}
 
 		[Test] //bug #331199
-		//FIXME: 2.0 SP 1 has a diferent behavior
 		public void MakeGenericType_UserDefinedType ()
 		{
 			Type ut = new UserType (typeof (int));
@@ -3041,7 +2937,7 @@ PublicKeyToken=b77a5c561934e089"));
 			Type arg = t.GetGenericArguments () [0];
 			Assert.IsNotNull (arg, "#B1");
 			Assert.IsFalse (arg.IsGenericType, "#B2");
-			Assert.AreEqual (typeof (int), arg, "#B3");
+			Assert.AreEqual (ut, arg, "#B3");
 		}
 
 		[Category ("NotWorking")]
@@ -3074,13 +2970,11 @@ PublicKeyToken=b77a5c561934e089"));
 		public void MakeGenericType_BadUserType ()
 		{
 			Type ut = new UserType (null);
-			try {
-				Type t = typeof (Foo<>).MakeGenericType (ut);
-				Assert.Fail ("#1");
-			} catch (ArgumentException) {
-			}
+			Type t = typeof (Foo<>).MakeGenericType (ut);
+			var g0 = t.GetGenericArguments () [0];
+			Assert.AreSame (g0, ut, "#1");
 		}
-	
+
 		[Test]
 		public void MakeGenericType_WrongNumOfArguments ()
 		{
@@ -3169,7 +3063,6 @@ PublicKeyToken=b77a5c561934e089"));
 	public void GenericParameterPositionUserType () {
 		Assert.IsTrue (new UserType(null).GenericParameterPosition == 0);
 	}
-#endif
 
 		[Test]
 		public void TypeGetMemberReturnTypeTest ()
@@ -3253,8 +3146,6 @@ PublicKeyToken=b77a5c561934e089"));
 				Assert.IsTrue (m.DeclaringType == typeof (object), String.Format ("{0}::{1}", m.DeclaringType, m.Name));
 		}
 
-#if NET_2_0
-
 		[Test]
 		public void MakeArrayTypeOfOneDimension ()
 		{
@@ -3312,7 +3203,721 @@ PublicKeyToken=b77a5c561934e089"));
 				Assert.Fail ("#3");
 			} catch (ArgumentException) {}
 		}
+
+		[Test] //Bug #564379
+		public void GetMethodsReturnPublicMethodsInInterfaces ()
+		{
+			Type t = typeof (NonClosingStream);
+			MethodInfo[] methods = t.GetMethods (BindingFlags.Public | BindingFlags.Instance);
+
+			Assert.AreEqual (5, methods.Length, "#1");
+			int id = 2;
+
+			foreach (var m in methods) {
+				if (m.Name.Equals ("ToString"))
+					Assert.IsTrue (m.DeclaringType == typeof (NonClosingStream), "#" + id);
+				else if (m.Name.Equals ("Dispose") && m.GetParameters ().Length == 0)
+					Assert.IsTrue (m.DeclaringType == typeof (Stream), "#" + id);
+				else if (m.Name.Equals ("Equals") || m.Name.Equals ("GetHashCode") || m.Name.Equals ("GetType"))
+					Assert.IsTrue (m.DeclaringType == typeof (object), "#" + id);
+				else
+					Assert.Fail ("invalid method " + m);
+				++id;
+			}
+		}
+
+		[Test] // Bug #574696
+		public void GetMember_DoesntReturnPrivatePropOfParent ()
+		{
+			BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance;
+			Assert.AreEqual (1, typeof (Bar).GetMember ("PrivInst", flags).Length);
+			Assert.AreEqual (0, typeof (Bar).GetMember ("PrivInstBase", flags).Length);
+			Assert.AreEqual (1, typeof (Foo).GetMember ("PrivInstBase", flags).Length);
+		}
+
+		[Test] // Bug #484246
+		public void GetInterfaceCompareAgainstGTDNames ()
+		{
+			var t = typeof (Dictionary<string,string>);
+			var iface = typeof (IDictionary<string,string>);
+
+			Assert.AreSame (iface, t.GetInterface ("System.Collections.Generic.IDictionary`2"), "#1");
+
+			string name = "System.Collections.Generic.IDictionary`2[[System.String, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089],[System.String, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]";
+
+			Assert.IsNull (t.GetInterface (name), "#2");
+		} 
+
+		[Test]
+		public void RuntimeCorrectlyNormalizeGenericTypes ()
+		{
+			Type lst = typeof (MList<>);
+			Type arg = lst.GetGenericArguments ()[0];
+
+			Type sup = lst.BaseType;
+			Type sa0 = sup.GetGenericArguments ()[0];
+			Type sa1 = sup.GetGenericArguments ()[1];
+
+			Assert.IsTrue (sa1 == lst, "#1");
+			Assert.IsTrue (sa0 == arg, "#2");
+
+			Type inst = typeof (Cons<,>).MakeGenericType (arg, lst.MakeGenericType (arg));
+			Assert.IsTrue (inst == sup, "#3");
+		}
+
+		class Cons<T,U>
+		{
+
+		}
+
+		class MList<A> : Cons<A, MList<A>>
+		{
+
+		}
+
+		[Test] // Bug #331126
+		public void IsAssignableFromWorksCorrectlyWithByRefs ()
+		{
+			Type int_byref = typeof (int).MakeByRefType ();
+			Type obj_byref = typeof (object).MakeByRefType ();
+			Type long_byref = typeof (long).MakeByRefType ();
+			Type enum1_byref = typeof (AttributeTargets).MakeByRefType ();
+			Type enum2_byref = typeof (PlatformID).MakeByRefType ();
+			Type uint_byref = typeof (uint).MakeByRefType ();
+			Type string_byref = typeof (object).MakeByRefType ();
+			Type struct0_byref = typeof (Size4).MakeByRefType ();
+			Type struct1_byref = typeof (Size4b).MakeByRefType ();
+			Type mvar0_byref = typeof (TypeTest).GetMethod ("Bug331126").GetGenericArguments ()[0].MakeByRefType ();
+			Type mvar1_byref = typeof (TypeTest).GetMethod ("Bug331126").GetGenericArguments ()[1].MakeByRefType ();
+
+			Assert.IsFalse (typeof (int).IsAssignableFrom (int_byref), "#1");
+			Assert.IsFalse (int_byref.IsAssignableFrom (typeof (int)), "#2");
+			Assert.IsFalse (obj_byref.IsAssignableFrom (long_byref), "#3");
+			Assert.IsFalse (long_byref.IsAssignableFrom (obj_byref), "#4");
+			Assert.IsTrue (enum1_byref.IsAssignableFrom (enum2_byref), "#5");
+			Assert.IsTrue (enum2_byref.IsAssignableFrom (enum1_byref), "#6");
+			Assert.IsTrue (int_byref.IsAssignableFrom (enum2_byref), "#7");
+			Assert.IsTrue (enum2_byref.IsAssignableFrom (int_byref), "#8");
+			Assert.IsTrue (enum2_byref.IsAssignableFrom (uint_byref), "#9");
+			Assert.IsTrue (uint_byref.IsAssignableFrom (enum2_byref), "#10");
+			Assert.IsTrue (int_byref.IsAssignableFrom (uint_byref), "#11");
+			Assert.IsTrue (uint_byref.IsAssignableFrom (int_byref), "#12");
+
+			Assert.IsTrue (typeof (object).IsAssignableFrom (typeof (long)), "#13");
+
+			Assert.IsTrue (obj_byref.IsAssignableFrom (string_byref), "#14");
+			Assert.IsTrue (string_byref.IsAssignableFrom (obj_byref), "#15");
+
+			Assert.IsFalse (uint_byref.IsAssignableFrom (struct0_byref), "#16");
+			Assert.IsFalse (struct0_byref.IsAssignableFrom (int_byref), "#17");
+			Assert.IsFalse (struct0_byref.IsAssignableFrom (struct1_byref), "#18");
+
+			Assert.IsFalse (obj_byref.IsAssignableFrom (mvar0_byref), "#19");
+			Assert.IsFalse (mvar0_byref.IsAssignableFrom (mvar1_byref), "#20");
+			Assert.IsTrue (mvar0_byref.IsAssignableFrom (mvar0_byref), "#21");
+			Assert.IsFalse (mvar0_byref.IsAssignableFrom (obj_byref), "#22");
+		}
+
+		public void Bug331126<T,K> () {}
+
+		public struct Size4 {
+			public int field;
+		}
+
+		public struct Size4b {
+			public int field;
+		}
+
+		[Test] // Bug #612780
+		public void CannotMakeDerivedTypesFromTypedByRef ()
+		{
+		try {
+	        typeof (global::System.TypedReference).MakeArrayType ();
+	        Assert.Fail ("#1");
+		} catch (TypeLoadException) { }
+
+		try {
+	        typeof (global::System.TypedReference).MakeByRefType ();
+	        Assert.Fail ("#2");
+		} catch (TypeLoadException) { }
+
+		try {
+	        typeof (global::System.TypedReference).MakePointerType ();
+	        Assert.Fail ("#3");
+		} catch (TypeLoadException) { }
+
+		}
+		
+		[Test] //Bug643890
+		public void DeclaringTypeOfGenericNestedTypeInstanceIsOpen ()
+		{
+			var type = typeof (Foo<int>.Nested<string>);
+			Assert.AreSame (typeof (Foo<>), type.DeclaringType, "#1");
+		}
+
+#if NET_4_0
+		interface IGetInterfaceMap<in T>
+		{
+		    string Bar (T t);
+		}
+
+		class GetInterfaceMap : IGetInterfaceMap<object>
+		{
+		    public string Bar (object t)
+		    {
+		        return t.GetType ().FullName;
+		    }
+		}
+
+		[Test]
+		public void GetInterfaceMapWorksWithVariantIfaces ()
+		{
+			InterfaceMapping res = typeof (GetInterfaceMap).GetInterfaceMap (typeof (IGetInterfaceMap <object>));
+			Assert.AreEqual (typeof (IGetInterfaceMap <object>), res.InterfaceType);
+			Assert.AreEqual (typeof (object), res.InterfaceMethods [0].GetParameters () [0].ParameterType);
+
+			res = typeof (GetInterfaceMap).GetInterfaceMap (typeof (IGetInterfaceMap <string>));
+			Assert.AreEqual (typeof (IGetInterfaceMap <string>), res.InterfaceType);
+			Assert.AreEqual (typeof (string), res.InterfaceMethods [0].GetParameters () [0].ParameterType);
+		}
+
+
+		public class MyType : TypeDelegator {
+			public int eq, ust;
+
+			public override bool Equals (Type t) {
+				++eq;
+				return base.Equals (t);
+			}
+
+			public override Type UnderlyingSystemType  {
+				get { 
+					++ust;
+					return typeof (int);
+				}
+			}
+		}
+
+		[Test]
+		public void NewV4EqualsBehavior ()
+		{
+			var ta = new MyType ();
+			var tb = new MyType ();
+			object a = ta, b = tb;
+
+			a.Equals (a);
+			Assert.AreEqual (1, ta.eq, "#1");
+			Assert.AreEqual (0, ta.ust, "#2");
+			a.Equals (b);
+			Assert.AreEqual (2, ta.eq, "#3");
+			Assert.AreEqual (1, ta.ust, "#4");
+			Assert.AreEqual (0, tb.eq, "#5");
+			Assert.AreEqual (1, tb.ust, "#6");
+		}
+
+		public enum MyRealEnum : short {
+			A,B,C
+		}
+
+
+		public enum MyRealEnum2 : byte {
+			A,B,C
+		}
+
+		public enum MyRealEnum3 : short {
+			A,B,C
+		}
+
+		public class MyEnum : TypeDelegator {
+			public bool is_enum { get; set; }
+			public int fields { get; set; }
+
+			public override bool IsSubclassOf (Type c) {
+				return c == typeof (Enum) && is_enum;
+			}
+
+			public override FieldInfo[] GetFields (BindingFlags bindingAttr) {
+				if (fields == 0)
+					return null;
+				FieldInfo[] res = new FieldInfo [fields];
+				for (int i = 0; i < fields; ++i) {
+					if ((bindingAttr & BindingFlags.Instance) != 0)
+						res [i] = typeof (MyRealEnum).GetField ("value__");
+					else
+						res [i] = typeof (MyRealEnum).GetField ("A");
+				}
+				return res;
+			}
+		}
+
+		[Test]
+		public void GetEnumUnderlyingType () {
+
+			try {
+				new MyEnum () { is_enum = false }.GetEnumUnderlyingType ();
+				Assert.Fail ("#1");
+			} catch (ArgumentException) {}
+
+			try {
+				new MyEnum () { is_enum = true, fields = 0 }.GetEnumUnderlyingType ();
+				Assert.Fail ("#2");
+			} catch (ArgumentException) {}
+
+			try {
+				new MyEnum () { is_enum = true, fields = 2 }.GetEnumUnderlyingType ();
+				Assert.Fail ("#3");
+			} catch (ArgumentException) {}
+
+			Assert.AreSame (typeof (short), new MyEnum () { is_enum = true, fields = 1 }.GetEnumUnderlyingType ());
+		}
+
+		[Test]
+		public void GetEnumNames () {
+			try {
+				new MyEnum () { is_enum = false }.GetEnumNames ();
+				Assert.Fail ("#1");
+			} catch (ArgumentException) {}
+
+			var res = new MyEnum () { is_enum = true, fields = 1 }.GetEnumNames ();
+			Assert.AreEqual (1, res.Length, "#2");
+			Assert.AreEqual ("A", res [0], "#3");
+
+			res = typeof (MyRealEnum).GetEnumNames ();
+			Assert.AreEqual (3, res.Length, "#4");
+			Assert.AreEqual ("A", res [0], "#5");
+			Assert.AreEqual ("B", res [1], "#6");
+			Assert.AreEqual ("C", res [2], "#7");
+		}
+
+		[Test]
+		public void GetEnumValues () {
+			try {
+				new MyEnum () { is_enum = false }.GetEnumValues ();
+				Assert.Fail ("#1");
+			} catch (ArgumentException) {}
+
+			try {
+				new MyEnum () { is_enum = true }.GetEnumValues ();
+				Assert.Fail ("#2");
+			} catch (NotImplementedException) {}
+
+			var array = typeof (MyRealEnum).GetEnumValues ();
+			Assert.AreEqual (typeof (MyRealEnum[]), array.GetType (), "#3");
+			MyRealEnum[] res = (MyRealEnum[])array;
+
+			Assert.AreEqual (3, res.Length, "#4");
+			Assert.AreEqual (MyRealEnum.A, res [0], "#5");
+			Assert.AreEqual (MyRealEnum.B, res [1], "#6");
+			Assert.AreEqual (MyRealEnum.C, res [2], "#7");
+		}
+
+		[Test]
+		public void GetEnumValue () {
+			try {
+				typeof (MyRealEnum).GetEnumName (null);
+				Assert.Fail ("#1");
+			} catch (ArgumentException) { }
+
+			try {
+				new MyEnum () { is_enum = false }.GetEnumName (99);
+				Assert.Fail ("#2");
+			} catch (ArgumentException) { }
+
+
+			Assert.IsNull (new MyEnum () { fields = 1, is_enum = true }.GetEnumName (77), "#3");
+			Assert.AreEqual ("A", new MyEnum () { fields = 1, is_enum = true }.GetEnumName (0), "#4");
+			Assert.AreEqual ("A", new MyEnum () { fields = 1, is_enum = true }.GetEnumName (MyRealEnum.A), "#5");
+			Assert.AreEqual ("A", new MyEnum () { fields = 1, is_enum = true }.GetEnumName (MyRealEnum2.A), "#6");
+
+			Assert.AreEqual ("A", typeof (MyRealEnum).GetEnumName (MyRealEnum.A), "#7");
+			Assert.AreEqual ("A", typeof (MyRealEnum).GetEnumName ((short)0), "#8");
+			Assert.AreEqual ("C", typeof (MyRealEnum).GetEnumName (2), "#9");
+			Assert.IsNull (typeof (MyRealEnum).GetEnumName (9), "#10");
+
+			Assert.AreEqual ("A", typeof (MyRealEnum).GetEnumName ((byte)0), "#11");
+			Assert.AreEqual ("A", typeof (MyRealEnum).GetEnumName ((sbyte)0), "#12");
+			try {
+				typeof (MyRealEnum).GetEnumName (false);
+				Assert.Fail ("#13");
+			} catch (ArgumentException) { }
+
+			Assert.AreEqual ("A", typeof (MyRealEnum).GetEnumName ((short)0), "#14");
+			Assert.AreEqual ("A", typeof (MyRealEnum).GetEnumName ((ushort)0), "#15");
+			try {
+				typeof (MyRealEnum).GetEnumName ('c');
+				Assert.Fail ("#16");
+			} catch (ArgumentException) { }
+
+			Assert.AreEqual ("A", typeof (MyRealEnum).GetEnumName ((int)0), "#17");
+			Assert.AreEqual ("A", typeof (MyRealEnum).GetEnumName ((uint)0), "#18");
+
+			Assert.AreEqual ("A", typeof (MyRealEnum).GetEnumName ((long)0), "#19");
+			Assert.AreEqual ("A", typeof (MyRealEnum).GetEnumName ((ulong)0), "#20");
+
+			try {
+				typeof (MyRealEnum).GetEnumName ((float)0);
+				Assert.Fail ("#21");
+			} catch (ArgumentException) { }
+			try {
+				typeof (MyRealEnum).GetEnumName ((double)0);
+				Assert.Fail ("#22");
+			} catch (ArgumentException) { }
+
+
+			Assert.AreEqual ("A", typeof (MyRealEnum2).GetEnumName ((byte)0), "#23");
+			Assert.AreEqual ("A", typeof (MyRealEnum2).GetEnumName ((sbyte)0), "#24");
+			try {
+				typeof (MyRealEnum2).GetEnumName (false);
+				Assert.Fail ("#22", "#25");
+			} catch (ArgumentException) { }
+
+			Assert.AreEqual ("A", typeof (MyRealEnum2).GetEnumName ((short)0), "#26");
+			Assert.AreEqual ("A", typeof (MyRealEnum2).GetEnumName ((ushort)0), "#27");
+
+			try {
+				typeof (MyRealEnum2).GetEnumName ('c');
+				Assert.Fail ("#28");
+			} catch (ArgumentException) { }
+
+			Assert.AreEqual ("A", typeof (MyRealEnum2).GetEnumName ((int)0), "#29");
+			Assert.AreEqual ("A", typeof (MyRealEnum2).GetEnumName ((uint)0), "#30");
+
+			Assert.AreEqual ("A", typeof (MyRealEnum2).GetEnumName ((long)0), "#31");
+			Assert.AreEqual ("A", typeof (MyRealEnum2).GetEnumName ((ulong)0), "#32");
+
+			try {
+				typeof (MyRealEnum2).GetEnumName ((float)0);
+				Assert.Fail ("#33");
+			} catch (ArgumentException) { }
+			try {
+				typeof (MyRealEnum2).GetEnumName ((double)0);
+				Assert.Fail ("#34");
+			} catch (ArgumentException) { }
+
+			Assert.IsNull (typeof (MyRealEnum2).GetEnumName (12345), "#35");
+		}
+
+		[Test]
+		public void IsEnumDefined () {
+			try {
+				typeof (MyRealEnum).IsEnumDefined (null);
+				Assert.Fail ("#1");
+			} catch (ArgumentException) { }
+
+			try {
+				new MyEnum () { is_enum = false }.IsEnumDefined (99);
+				Assert.Fail ("#2");
+			} catch (ArgumentException) { }
+
+			try {
+				typeof (MyRealEnum).IsEnumDefined (0);
+				Assert.Fail ("#3");
+			} catch (ArgumentException) { }
+
+			try {
+				typeof (MyRealEnum).IsEnumDefined ((ushort)0);
+				Assert.Fail ("#4");
+			} catch (ArgumentException) { }
+
+			try {
+				typeof (MyRealEnum).IsEnumDefined (MyRealEnum3.A);
+				Assert.Fail ("#5");
+			} catch (ArgumentException) { }
+
+			try {
+				typeof (MyRealEnum).IsEnumDefined (true);
+				Assert.Fail ("#6");
+			} catch (InvalidOperationException) { }
+
+			try {
+				typeof (MyRealEnum).IsEnumDefined (MyRealEnum2.A);
+				Assert.Fail ("#7");
+			} catch (ArgumentException) { }
+
+			try {
+				typeof (MyRealEnum).IsEnumDefined (typeof (MyRealEnum));
+				Assert.Fail ("#8");
+			} catch (InvalidOperationException) { }
+
+			Assert.IsTrue (typeof (MyRealEnum).IsEnumDefined ((short)0), "#9");
+			Assert.IsFalse (typeof (MyRealEnum).IsEnumDefined ((short)88), "#10");
+			Assert.IsTrue (typeof (MyRealEnum).IsEnumDefined (MyRealEnum.A), "#11");
+			Assert.IsFalse (typeof (MyRealEnum).IsEnumDefined ("d"), "#12");
+			Assert.IsTrue  (typeof (MyRealEnum).IsEnumDefined ("A"), "#13");
+			Assert.IsFalse  (new MyEnum () { is_enum = true, fields = 1 }.IsEnumDefined ((short)99), "#14");
+		}
+
+
+
+		public class Outer {
+			public class Inner {}
+		}
+
+
+		public class Outer<T> {
+			public class Inner {}
+		}
+
+		[Test]
+		public void GetTypeWithDelegates () {
+			var tname = typeof (MyRealEnum).AssemblyQualifiedName;
+			var res = Type.GetType (tname, name => {
+					return Assembly.Load (name);
+				},(asm,name,ignore) => {
+					return asm == null ? Type.GetType (name, false, ignore) : asm.GetType (name, false, ignore);
+				}, false, false);
+			Assert.AreEqual (typeof (MyRealEnum), res, "#1");
+
+
+			tname = typeof (Dictionary<int, string>).AssemblyQualifiedName;
+			res = Type.GetType (tname, name => {
+					return Assembly.Load (name);
+				},(asm,name,ignore) => {
+					return asm == null ? Type.GetType (name, false, ignore) : asm.GetType (name, false, ignore);
+				}, false, false);
+			Assert.AreEqual (typeof (Dictionary<int, string>), res, "#2");
+
+
+			tname = typeof (Foo<int>).AssemblyQualifiedName;
+			res = Type.GetType (tname, name => {
+					return Assembly.Load (name);
+				},(asm,name,ignore) => {
+					return asm == null ? Type.GetType (name, false, ignore) : asm.GetType (name, false, ignore);
+				}, false, false);
+			Assert.AreEqual (typeof (Foo<int>), res, "#3");
+
+
+			tname = typeof (Outer.Inner).AssemblyQualifiedName;
+			res = Type.GetType (tname, name => {
+					return Assembly.Load (name);
+				},(asm,name,ignore) => {
+					return asm == null ? Type.GetType (name, false, ignore) : asm.GetType (name, false, ignore);
+				}, false, false);
+			Assert.AreEqual (typeof (Outer.Inner), res, "#4");
+
+
+			tname = typeof (Outer<double>.Inner).AssemblyQualifiedName;
+			res = Type.GetType (tname, name => {
+					return Assembly.Load (name);
+				},(asm,name,ignore) => {
+					return asm == null ? Type.GetType (name, false, ignore) : asm.GetType (name, false, ignore);
+				}, false, false);
+			Assert.AreEqual (typeof (Outer<double>.Inner), res, "#5");
+
+
+			tname = "System.Collections.Generic.List`1[System.Int32]";
+			res = Type.GetType (tname, name => {
+					return Assembly.Load (name);
+				},(asm,name,ignore) => {
+					return asm == null ? Type.GetType (name, false, ignore) : asm.GetType (name, false, ignore);
+				}, false, false);
+			Assert.AreEqual (typeof (List<int>), res, "#6");
+
+
+			tname = typeof (Foo<>).FullName + "[,][]";
+			res = Type.GetType (tname, name => {
+					Console.WriteLine ("resolve-asm name {0}", name);
+					return Assembly.Load (name);
+				},(asm,name,ignore) => {
+					return asm == null ? Type.GetType (name, false, ignore) : asm.GetType (name, false, ignore);
+				}, false, false);
+			Assert.AreEqual (typeof (Foo<>).MakeArrayType (2).MakeArrayType (), res, "#7");
+
+			tname = string.Format("{0}[{1}][]*&", typeof (Foo<>).FullName, typeof (MyRealEnum).FullName);
+			res = Type.GetType (tname, name => {
+					return Assembly.Load (name);
+				},(asm,name,ignore) => {
+					return asm == null ? Type.GetType (name, false, ignore) : asm.GetType (name, false, ignore);
+				}, false, false);
+			Assert.AreEqual (typeof (Foo<MyRealEnum>[]).MakePointerType ().MakeByRefType (), res, "#8");
+
+
+			tname = typeof (MyRealEnum).FullName + "[][]";
+			res = Type.GetType (tname, name => {
+					return Assembly.Load (name);
+				},(asm,name,ignore) => {
+					return asm == null ? Type.GetType (name, false, ignore) : asm.GetType (name, false, ignore);
+				}, false, false);
+			Assert.AreEqual (typeof (MyRealEnum[][]), res, "#9");
+
+
+			tname = typeof (MyRealEnum).FullName + "[*]";
+			res = Type.GetType (tname, name => {
+					return Assembly.Load (name);
+				},(asm,name,ignore) => {
+					return asm == null ? Type.GetType (name, false, ignore) : asm.GetType (name, false, ignore);
+				}, false, false);
+			Assert.AreEqual (typeof (MyRealEnum).MakeArrayType (1), res, "#10");
+
+
+			tname = typeof (MyRealEnum).FullName + "&";
+			res = Type.GetType (tname, name => {
+					return Assembly.Load (name);
+				},(asm,name,ignore) => {
+					return asm == null ? Type.GetType (name, false, ignore) : asm.GetType (name, false, ignore);
+				}, false, false);
+			Assert.AreEqual (typeof (MyRealEnum).MakeByRefType (), res, "#11");
+
+
+			tname = typeof (MyRealEnum).FullName + "*";
+			res = Type.GetType (tname, name => {
+					return Assembly.Load (name);
+				},(asm,name,ignore) => {
+					return asm == null ? Type.GetType (name, false, ignore) : asm.GetType (name, false, ignore);
+				}, false, false);
+			Assert.AreEqual (typeof (MyRealEnum).MakePointerType (), res, "#12");
+		}
+
+
+		public class CustomGetType : TypeDelegator {
+			string name;
+
+			public CustomGetType (string name) { this.name = name; }
+
+			public override Type MakeGenericType (Type[] args) {
+				return new CustomGetType ("GINST");
+			}
+
+		 	public override Type GetNestedType(String name, BindingFlags bidingAttr) {
+				return new CustomGetType ("NESTED");
+			}
+
+			public override string ToString () { return "UT_" + name; }
+
+			public override string Name {
+				get { return  "UT_" + name; }
+			}
+		}
+
+		[Test]
+		public void GetTypeWithDelegatesAndUserTypes ()
+		{
+			var tname = "Magic[System.Int32]";
+			var res = Type.GetType (tname, name => {
+					return Assembly.Load (name);
+				},(asm,name,ignore) => {
+					if (name == "Magic") return new CustomGetType ("MAGIC");
+					return asm == null ? Type.GetType (name, false, ignore) : asm.GetType (name, false, ignore);
+				}, false, false);
+			Assert.AreEqual ("UT_GINST", res.Name, "#1");
+
+
+			tname = "Magic+MyRealEnum";
+			res = Type.GetType (tname, name => {
+					return Assembly.Load (name);
+				},(asm,name,ignore) => {
+					if (name == "Magic") return new CustomGetType ("MAGIC");
+					return asm == null ? Type.GetType (name, false, ignore) : asm.GetType (name, false, ignore);
+				}, false, false);
+			Assert.AreEqual ("UT_NESTED", res.Name, "#2");
+		}
+
+		void MustTLE (string tname) {
+			try {
+				var res = Type.GetType (tname, name => {
+					return Assembly.Load (name);
+				},(asm,name,ignore) => {
+					return (object)asm == null ? Type.GetType (name, false, ignore) : asm.GetType (name, false, ignore);
+				}, true, false);
+				Assert.Fail (tname);
+			} catch (TypeLoadException) {}
+		}
+
+		void MustANE (string tname) {
+			try {
+				var res = Type.GetType (tname, name => {
+					return Assembly.Load (name);
+				},(asm,name,ignore) => {
+					return (object)asm == null ? Type.GetType (name, false, ignore) : asm.GetType (name, false, ignore);
+				}, true, false);
+				Assert.Fail (tname);
+			} catch (ArgumentNullException) {}
+		}
+
+		void MustAE (string tname) {
+			try {
+				var res = Type.GetType (tname, name => {
+					return Assembly.Load (name);
+				},(asm,name,ignore) => {
+					return (object)asm == null ? Type.GetType (name, false, ignore) : asm.GetType (name, false, ignore);
+				}, true, false);
+				Assert.Fail (tname);
+			} catch (ArgumentException) {}
+		}
+
+		void MustFNFE (string tname) {
+			try {
+				var res = Type.GetType (tname, name => {
+					return Assembly.Load (name);
+				},(asm,name,ignore) => {
+					return (object)asm == null ? Type.GetType (name, false, ignore) : asm.GetType (name, false, ignore);
+				}, true, false);
+				Assert.Fail (tname);
+			} catch (FileNotFoundException) {}
+		}
+
+		[Test]
+		public void NewGetTypeErrors () {
+			MustANE (null);
+			MustAE (string.Format ("{0}[{1}&]", typeof (Foo<>).FullName, typeof (MyRealEnum).FullName));
+			MustAE (string.Format ("{0}[{1}*]", typeof (Foo<>).FullName, typeof (MyRealEnum).FullName));
+			MustAE (string.Format ("{0}&&", typeof (MyRealEnum).FullName));
+			MustAE (string.Format ("{0}&*", typeof (MyRealEnum).FullName));
+			MustAE (string.Format ("{0}&[{1}]", typeof (Foo<>).FullName, typeof (MyRealEnum).FullName));
+
+
+			MustAE (string.Format ("{0}[[{1},", typeof (Foo<>).FullName, typeof (MyRealEnum).FullName));
+			MustAE (string.Format ("{0}[[{1}]", typeof (Foo<>).FullName, typeof (MyRealEnum).FullName));
+			MustAE (string.Format ("{0}[[{1}],", typeof (Foo<>).FullName, typeof (MyRealEnum).FullName));
+			MustAE (string.Format ("{0}[[{1}]_", typeof (Foo<>).FullName, typeof (MyRealEnum).FullName));
+
+			MustAE (string.Format ("{0}[{1}", typeof (Foo<>).FullName, typeof (MyRealEnum).FullName));
+			MustAE (string.Format ("{0}[{1},", typeof (Foo<>).FullName, typeof (MyRealEnum).FullName));
+			MustAE (string.Format ("{0}[{1},,", typeof (Foo<>).FullName, typeof (MyRealEnum).FullName));
+			MustAE (string.Format ("{0}[{1} (", typeof (Foo<>).FullName, typeof (MyRealEnum).FullName));
+			MustAE (string.Format ("{0}[", typeof (Foo<>).FullName));
+
+			MustAE (string.Format ("{0}[**]", typeof (MyRealEnum).FullName));
+			MustAE (string.Format ("{0}[*,*]", typeof (MyRealEnum).FullName));
+			MustAE (string.Format ("{0}[*,]", typeof (MyRealEnum).FullName));
+			MustAE (string.Format ("{0}[,*]", typeof (MyRealEnum).FullName));
+			MustAE (string.Format ("{0}[,-]", typeof (MyRealEnum).FullName));
+			MustAE (string.Format ("{0}[,{0}]", typeof (MyRealEnum).FullName));
+
+			MustAE (string.Format ("{0}[{1}]]", typeof (Foo<>).FullName, typeof (MyRealEnum).FullName));
+			MustAE (string.Format ("{0}[,]]", typeof (MyRealEnum).FullName));
+
+
+			string aqn = typeof (MyRealEnum).Assembly.FullName;
+			MustFNFE (string.Format ("{0}, ZZZ{1}", typeof (MyRealEnum).FullName, aqn));
+			MustTLE (string.Format ("{0}ZZZZ", typeof (MyRealEnum).FullName));
+			MustTLE (string.Format ("{0}ZZZZ,{1}", typeof (MyRealEnum).FullName, aqn));
+		}
+
 #endif
+
+		public abstract class Stream : IDisposable
+		{
+			public void Dispose ()
+			{
+				Console.WriteLine ("stream::dispose");
+			}
+
+			protected virtual void Dispose (bool disposing)
+			{
+			}
+		}
+
+		public class NonClosingStream 
+			: Stream, IDisposable
+		{
+			void  IDisposable.Dispose()
+			{
+				Console.WriteLine ("ncs::dispose");
+			}
+
+			public override string ToString () { return ""; }
+		}
 
 		static bool ContainsProperty (PropertyInfo [] props, string name)
 		{
@@ -3627,7 +4232,6 @@ PublicKeyToken=b77a5c561934e089"));
 		}
 	}
 
-#if NET_2_0
 	class UserType : Type
 	{
 		protected Type type;
@@ -3638,7 +4242,7 @@ PublicKeyToken=b77a5c561934e089"));
 	
 		public override Type UnderlyingSystemType { get { return this.type; } }
 	
-		public override Assembly Assembly { get { return this.type.Assembly; } }
+		public override Assembly Assembly { get { return this.type == null ? null : this.type.Assembly; } }
 	
 		public override string AssemblyQualifiedName { get { return null; } }
 	
@@ -3819,5 +4423,4 @@ PublicKeyToken=b77a5c561934e089"));
 			return type.GetHashCode();
 		}
 	}
-#endif
 }

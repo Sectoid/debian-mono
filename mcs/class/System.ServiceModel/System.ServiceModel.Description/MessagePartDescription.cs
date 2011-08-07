@@ -94,15 +94,23 @@ namespace System.ServiceModel.Description
 			set { type = value; }
 		}
 
-		internal XmlQualifiedName TypeName {
-			get { return xml_schema_type_name; }
-			set { xml_schema_type_name = value; }
+#if !NET_2_1
+		internal XsdDataContractImporter DataContractImporter { get; set; }
+		internal XmlSerializerMessageContractImporterInternal XmlSerializationImporter { get; set; }
+		internal System.CodeDom.CodeTypeReference CodeTypeReference { get; set; }
+#endif
+
+		#region internals required for moonlight compatibility
+
+		ICustomAttributeProvider additional_att_provider;
+
+		internal ICustomAttributeProvider AdditionalAttributesProvider {
+			get { return additional_att_provider ?? MemberInfo; }
+			set { additional_att_provider = value; }
 		}
 
-		internal XmlTypeMapping XmlTypeMapping {
-			get { return xml_type_mapping; }
-			set { xml_type_mapping = value; }
-		}
+		internal int SerializationPosition { get; set; }
 
+		#endregion
 	}
 }

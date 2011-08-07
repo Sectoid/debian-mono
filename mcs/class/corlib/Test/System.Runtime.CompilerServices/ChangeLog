@@ -1,7 +1,26 @@
+2011-01-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix test suite as boehm doesn't support ephemerons
+
+2010-06-21 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ConditionalWeakTableTest.cs: Make test more resilient.
+
+2010-06-18 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ConditionalWeakTableTest.cs: Fix another test.
+
+2010-06-18 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ConditionalWeakTableTest.cs: Fix it.
+
+2010-05-11 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ConditionalWeakTableTest.cs: New test suite.
+
 2009-10-15  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* RuntimeHelpersTest.cs: Add more test cases for validations
-	[Backport r144208]
 
 2009-06-20  Zoltan Varga  <vargaz@gmail.com>
 

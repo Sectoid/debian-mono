@@ -41,7 +41,6 @@ namespace System.Web.UI.WebControls {
 	[Designer ("System.Web.UI.Design.WebControls.PanelDesigner, " + Consts.AssemblySystem_Design, "System.ComponentModel.Design.IDesigner")]
 	[ParseChildren (false)]
 	[PersistChildren (true)]
-	[ToolboxData ("<{0}:Panel runat=server>Panel</{0}:Panel>")]
 	public class Panel : WebControl {
 
 		public Panel () : base (HtmlTextWriterTag.Div) 
@@ -118,56 +117,12 @@ namespace System.Web.UI.WebControls {
 				w.AddAttribute (HtmlTextWriterAttribute.Align, align);
 #endif
 		}
-		
-#if !NET_2_0
-		[Bindable(true)]
-		[DefaultValue("")]
-		[Editor("System.Web.UI.Design.ImageUrlEditor, " + Consts.AssemblySystem_Design, typeof(System.Drawing.Design.UITypeEditor))]
-		[WebSysDescription ("")]
-		[WebCategory ("Appearance")]
-		public virtual string BackImageUrl {
-			get {
-				return ViewState.GetString ("BackImageUrl", "");
-			}
-			
-			set {
-				ViewState ["BackImageUrl"] = value;
-			}
-		}
-		
-		[Bindable(true)]
-		[DefaultValue(HorizontalAlign.NotSet)]
-		[WebSysDescription ("")]
-		[WebCategory ("Layout")]
-		public virtual HorizontalAlign HorizontalAlign {
-			get {
-				return (HorizontalAlign) ViewState.GetInt ("HorizontalAlign", (int) HorizontalAlign.NotSet);
-			}
-			set {
-				ViewState ["HorizontalAlign"] = (int) value;
-			}
-		}
-		
-		[Bindable(true)]
-		[DefaultValue(true)]
-		[WebSysDescription ("")]
-		[WebCategory ("Layout")]
-		public virtual bool Wrap {
-			get {
-				return ViewState.GetBool ("Wrap", true);
-			}
-			set {
-				ViewState ["Wrap"] = value;
-			}
-		}
-#endif
-
 #if NET_2_0
 		PanelStyle PanelStyle {
 			get { return (ControlStyle as PanelStyle); }
 		}
-		
-		[Bindable (true)]
+
+		[UrlProperty]
 		[DefaultValue ("")]
 		[Editor ("System.Web.UI.Design.ImageUrlEditor, " + Consts.AssemblySystem_Design, typeof (System.Drawing.Design.UITypeEditor))]
 		[WebSysDescription ("")]
@@ -190,7 +145,6 @@ namespace System.Web.UI.WebControls {
 			}
 		}
 
-		[Bindable (true)]
 		[DefaultValue (HorizontalAlign.NotSet)]
 		[WebSysDescription ("")]
 		[WebCategory ("Layout")]
@@ -212,7 +166,6 @@ namespace System.Web.UI.WebControls {
 			}
 		}
 
-		[Bindable (true)]
 		[DefaultValue (true)]
 		[WebSysDescription ("")]
 		[WebCategory ("Layout")]
@@ -235,6 +188,7 @@ namespace System.Web.UI.WebControls {
 		}
 		
 		[ThemeableAttribute (false)]
+		[DefaultValue ("")]
 		public virtual string DefaultButton {
 			get {
 				return ViewState.GetString ("DefaultButton", String.Empty);
@@ -244,6 +198,7 @@ namespace System.Web.UI.WebControls {
 			}
 		}
 
+		[DefaultValue (ContentDirection.NotSet)]
 		public virtual ContentDirection Direction {
 			get {
 				if (ControlStyleCreated) {
@@ -263,6 +218,7 @@ namespace System.Web.UI.WebControls {
 		}
 
 		[LocalizableAttribute (true)]
+		[DefaultValue ("")]
 		public virtual string GroupingText {
 			get {
 				return ViewState.GetString ("GroupingText", String.Empty);
@@ -272,6 +228,7 @@ namespace System.Web.UI.WebControls {
 			}
 		}
 
+		[DefaultValue (ScrollBars.None)]
 		public virtual ScrollBars ScrollBars {
 			get {
 				if (ControlStyleCreated) {
@@ -289,7 +246,11 @@ namespace System.Web.UI.WebControls {
 					ViewState ["ScrollBars"] = value;
 			}
 		}
-
+#if NET_4_0
+		public override bool SupportsDisabledAttribute {
+			get { return RenderingCompatibilityLessThan40; }
+		}
+#endif
 		protected override Style CreateControlStyle ()
 		{
 			return new PanelStyle (ViewState);

@@ -1,7 +1,44 @@
+2011-06-21  Sebastien Pouliot  <sebastien.pouliot@gmail.com>
+
+	Merge pull request #119 from konrad-kruczynski/SslStreamNoTimeout
+
+	Removed hard coded timeout for SslStreamBase.
+
+2010-07-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* ClientSessionCache.cs: Do not let the ValidityInterval be 
+	controlled by an environment variable for Moonlight
+	* HttpsClientStream.cs: Simplify code for Moonlight profile
+
+2010-05-10  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* CipherSuite.cs:
+	* DebugHelper.cs:
+	* RecordProtocol.cs:
+	* SslClientStream.cs:
+		Let them compile for Moonlight (where the files are 
+		compiled inside System.dll)
+
+2010-04-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Context.cs:
+	* SslStreamBase.cs:
+	* RecordProtocol.cs: differentiate a received 'CloseNotify' alert from
+	one that we sent. Disposing the stream will try to send the
+	'CloseNotify' alert, if it hasn't already, and ignore any errors. This
+	is needed for FTPS to work.
+
+2010-03-11 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* SslStreamBase.cs:
+	* SslClientStream.cs:
+	* SslServerStream.cs: modify the 2.0 callback to return more info.
+
 2010-03-01 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
-	* HttpsClientStream.cs: use Address instead of RequestUri to get
-	the right host name when the request is redirected.
+	* HttpsClientStream.cs: use Address instead
+	of RequestUri to get the right host name when the request is
+	redirected.
 
 	* SslStreamBase.cs:
 	* SslClientStream.cs:

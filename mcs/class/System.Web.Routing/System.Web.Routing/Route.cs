@@ -42,6 +42,9 @@ namespace System.Web.Routing
 	[AspNetHostingPermission (SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
 	public class Route : RouteBase
 	{
+#if NET_4_0
+		static readonly Type httpRequestBaseType = typeof (HttpRequestBase);
+#endif
 		PatternParser url;
 
 		public RouteValueDictionary Constraints { get; set; }
@@ -87,7 +90,7 @@ namespace System.Web.Routing
 			var pathInfo = httpContext.Request.PathInfo;
 
 			if (!String.IsNullOrEmpty (pathInfo))
-				throw new NotImplementedException ();
+				path += pathInfo;
 
 			// probably code like this causes ArgumentOutOfRangeException under .NET.
 			// It somehow allows such path that is completely equivalent to the Url. Dunno why.
@@ -99,11 +102,12 @@ namespace System.Web.Routing
 			if (values == null)
 				return null;
 
-			if (Constraints != null)
-				foreach (var p in Constraints)
+			RouteValueDictionary constraints = Constraints;
+			if (constraints != null)
+				foreach (var p in constraints)
 					if (!ProcessConstraint (httpContext, p.Value, p.Key, values, RouteDirection.IncomingRequest))
 						return null;
-
+			
 			var rd = new RouteData (this, RouteHandler);
 			RouteValueDictionary rdValues = rd.Values;
 			
@@ -139,7 +143,8 @@ namespace System.Web.Routing
 		}
 
 		internal static bool ProcessConstraintInternal (HttpContextBase httpContext, Route route, object constraint, string parameterName,
-								RouteValueDictionary values, RouteDirection routeDirection, out bool invalidConstraint)
+								RouteValueDictionary values, RouteDirection routeDirection, RequestContext reqContext,
+								out bool invalidConstraint)
 		{
 			invalidConstraint = false;
 			IRouteConstraint irc = constraint as IRouteConstraint;
@@ -148,14 +153,57 @@ namespace System.Web.Routing
 
 			string s = constraint as string;
 			if (s != null) {
-				string v = values [parameterName] as string;
+				string v;
+				object o;
+
+				if (values != null && values.TryGetValue (parameterName, out o))
+					v = o as string;
+				else
+					v = null;
+
 				if (!String.IsNullOrEmpty (v))
-					return Regex.Match (v, s).Success;
+					return MatchConstraintRegex (v, s);
+#if NET_4_0
+				else if (reqContext != null) {
+					RouteData rd = reqContext != null ? reqContext.RouteData : null;
+					RouteValueDictionary rdValues = rd != null ? rd.Values : null;
+
+					if (rdValues == null || rdValues.Count == 0)
+						return false;
+					
+					if (!rdValues.TryGetValue (parameterName, out o))
+						return false;
+
+					v = o as string;
+					if (String.IsNullOrEmpty (v))
+						return false;
+
+					return MatchConstraintRegex (v, s);
+				}
+#endif
 				return false;
 			}
 
 			invalidConstraint = true;
 			return false;
+		}
+
+		static bool MatchConstraintRegex (string rx, string constraint)
+		{
+			int rxlen = rx.Length;
+			if (rxlen > 0) {
+				// Bug #651966 - regexp constraints must be treated
+				// as absolute expressions
+				if (rx [0] != '^') {
+					rx = "^" + rx;
+					rxlen++;
+				}
+
+				if (rx [rxlen - 1] != '$')
+					rx += "$";
+			}
+
+			return Regex.Match (rx, constraint).Success;
 		}
 		
 		protected virtual bool ProcessConstraint (HttpContextBase httpContext, object constraint, string parameterName, RouteValueDictionary values, RouteDirection routeDirection)
@@ -166,14 +214,34 @@ namespace System.Web.Routing
 			// .NET "compatibility"
 			if (values == null)
 				throw new NullReferenceException ();
-			
+
+			RequestContext reqContext;
+#if NET_4_0
+			reqContext = SafeGetContext (httpContext != null ? httpContext.Request : null);
+#else
+			reqContext = null;
+#endif
 			bool invalidConstraint;
-			bool ret = ProcessConstraintInternal (httpContext, this, constraint, parameterName, values, routeDirection, out invalidConstraint);
+			bool ret = ProcessConstraintInternal (httpContext, this, constraint, parameterName, values, routeDirection, reqContext, out invalidConstraint);
 			
 			if (invalidConstraint)
-				throw new InvalidOperationException (String.Format ("Constraint parameter '{0}' must be either a string or an IRouteConstraint instance", parameterName));
+				throw new InvalidOperationException (
+					String.Format (
+						"Constraint parameter '{0}' on the route with URL '{1}' must have a string value type or be a type which implements IRouteConstraint",
+						parameterName, Url
+					)
+				);
 
 			return ret;
 		}
+#if NET_4_0
+		RequestContext SafeGetContext (HttpRequestBase req)
+		{
+			if (req == null || req.GetType () != httpRequestBaseType)
+				return null;
+				
+			return req.RequestContext;
+		}
+#endif
 	}
 }

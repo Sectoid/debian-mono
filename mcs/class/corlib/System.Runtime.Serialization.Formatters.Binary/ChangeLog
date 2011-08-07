@@ -1,8 +1,77 @@
+2011-03-12  Lucas Meijer  <lucas@unity3d.com>
+
+	Implmement a private BinaryFormatter.DefaultSurrogateSelector,
+	which enables embedders who want to make a sandbox, to specify a
+	default surrogate selector, which is required to get
+	System.Serialization be able to operate within a CoreCLR
+	environment.
+
+2010-09-24  Kyle Ambroff  <kyle@ambroff.com>
+
+	version tolerant serialization fails with missing primitive
+	members
+
+	Modifies ObjectReader so that when it encounters a primitive typed
+	member in an object stream which has no corresponding member in
+	the app domain, it will read the value anyway and throw it away.
+	That way it can read the next block from the stream.
+
+	Added a unit test which passes with the changes to ObjectReader.
+
+	Fixes bug #641821.
+
+2010-10-20  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Able to read MS serialized nullable<primitive>
+
+	Handle boxed primitive types for nullable fields. Fixes bug
+	#646556.
+
+2010-09-21  Andrés G. Aragoneses  <knocte@gmail.com>
+
+	[corlib] Prevent BinaryFormatter to throw on missing fields
+
+	This commit includes unit tests that were run in MS.NET > 2.0. The
+	old behaviour of MS.NET 1.1 is still included in the patch as an
+	ONLY_1_1 define, to be backport-friendly to other branches (but
+	can be removed from now on in next commits, as mono master doesn't
+	include this profile anymore). Fixes BNC#324144.
+
+2010-08-30  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* ObjectWriter.cs: Actually take SerializationBinder.BindToName
+	into account when serializing data.
+
+2010-08-23  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* ObjectWriter.cs: Make the .ctor take a single BinaryFormatter
+	parameter and get the information from there. This should make it
+	easier to do some 4.0 new assignations, instead of adding yet
+	another parameter (also, ObjectReader is doing exactly what we are
+	doing here now). * BinaryFormatter.cs: * MessageFormatter.cs:
+	Update call sites.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* BinaryCommon.cs: use MOONLIGHT symbol to disambiguate
+	MonoTouch and Moonlight code.
+
+2010-02-26  Robert Jordan  <robertj@gmx.net>
+
+	* ObjectReader.cs (ReadType, GetDeserializationType):
+	Add throwOnError parameter that specifies whether to throw an
+ 	exception if the type/assembly is not found.
+
+	* ObjectReader.cs (ReadTypeMetadata): Ignore unresolvable
+ 	types while reading the type info. Fixes #430583.
+
+	* ObjectReader.cs (GetDeserializationType): Rethrow caught
+ 	exceptions as SerializationExceptions.
+
 2009-10-31  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* BinaryCommon.cs: Disable MONO_REFLECTION_SERIALIZER override 
 	for Moonlight plugin.
-	[Backport r145147]
 
 2009-09-30 Gonzalo Paniagua Javier <gonzalo@novell.com>
 

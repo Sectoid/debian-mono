@@ -208,8 +208,9 @@ namespace System.Web.UI.WebControls {
 		override void OnPreRender (EventArgs e)
 		{
 			base.OnPreRender (e);
-			if (Page != null && Enabled)
-				Page.RegisterRequiresPostBack (this);
+			Page page = Page;
+			if (page != null && IsEnabled)
+				page.RegisterRequiresPostBack (this);
 		}
 
 #if NET_2_0
@@ -294,14 +295,10 @@ namespace System.Web.UI.WebControls {
 			RaisePostDataChangedEvent ();
 		}
 #if NET_2_0
-        protected internal override void VerifyMultiSelect()
-        {
-            //by default the ListControl will throw an exception in this method,
-            //therefor we should override the method if the class is supporting
-            //MultiSelect option.
-            if (this.SelectionMode != ListSelectionMode.Multiple)
-                throw new HttpException("Multiple select option is not supported");
-        }
+		internal override bool MultiSelectOk ()
+		{
+			return this.SelectionMode == ListSelectionMode.Multiple;
+		}
 #endif
 	}
 }

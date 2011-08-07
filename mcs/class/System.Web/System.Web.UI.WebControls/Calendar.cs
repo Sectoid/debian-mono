@@ -4,7 +4,7 @@
 // Authors:
 //    Jordi Mas i Hernandez (jordi@ximian.com)
 //
-// (C) 2005 Novell, Inc (http://www.novell.com)
+// (C) 2005-2010 Novell, Inc (http://www.novell.com)
 //
 //
 //
@@ -38,7 +38,8 @@ using System.Threading;
 using System.Text;
 using System.Web.Util;
 
-namespace System.Web.UI.WebControls {
+namespace System.Web.UI.WebControls
+{
 	// CAS
 	[AspNetHostingPermissionAttribute (SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
 	[AspNetHostingPermissionAttribute (SecurityAction.InheritanceDemand, Level = AspNetHostingPermissionLevel.Minimal)]
@@ -47,10 +48,8 @@ namespace System.Web.UI.WebControls {
 	[DefaultEvent("SelectionChanged")]
 	[DefaultProperty("SelectedDate")]
 	[Designer("System.Web.UI.Design.WebControls.CalendarDesigner, " + Consts.AssemblySystem_Design, "System.ComponentModel.Design.IDesigner")]
-#if NET_2_0
 	[ControlValueProperty ("SelectedDate", "1/1/0001 12:00:00 AM")]
 	[SupportsEventValidation]
-#endif		
 	public class Calendar : WebControl, IPostBackEventHandler
 	{
 		TableItemStyle dayHeaderStyle;
@@ -76,45 +75,28 @@ namespace System.Web.UI.WebControls {
 		{
 		}
 
-#if NET_2_0
 		[Localizable (true)]
 		[DefaultValue ("")]
 		[WebSysDescription ("")]
 		[WebCategoryAttribute ("Appearance")]
-		public virtual string Caption 
-		{
-			get {
-				return ViewState.GetString ("Caption", "");
-			}
-			set {
-				ViewState["Caption"] = value;
-			}
+		public virtual string Caption {
+			get { return ViewState.GetString ("Caption", String.Empty); }
+			set { ViewState["Caption"] = value; }
 		}
 
 		[DefaultValue (TableCaptionAlign.NotSet)]
 		[WebSysDescription ("")]
 		[WebCategoryAttribute ("Accessibility")]
-		public virtual TableCaptionAlign CaptionAlign 
-		{
-			get {
-				return (TableCaptionAlign)ViewState.GetInt ("CaptionAlign", (int)TableCaptionAlign.NotSet);
-			}
-			set {
-				ViewState ["CaptionAlign"] = value;
-			}
+		public virtual TableCaptionAlign CaptionAlign {
+			get { return (TableCaptionAlign)ViewState.GetInt ("CaptionAlign", (int)TableCaptionAlign.NotSet); }
+			set { ViewState ["CaptionAlign"] = value; }
 		}
-#endif
 
-#if ONLY_1_1
-		[Bindable(true)]
-#endif		
 		[DefaultValue(2)]
 		[WebSysDescription ("")]
 		[WebCategory ("Layout")]
 		public int CellPadding {
-			get {
-				return ViewState.GetInt ("CellPadding", 2);
-			}
+			get { return ViewState.GetInt ("CellPadding", 2); }
 
 			set {
 				if (value < -1)
@@ -124,16 +106,11 @@ namespace System.Web.UI.WebControls {
 			}
 		}
 
-#if ONLY_1_1
-		[Bindable(true)]
-#endif		
 		[DefaultValue(0)]
 		[WebSysDescription ("")]
 		[WebCategory ("Layout")]
 		public int CellSpacing {
-			get {
-				return ViewState.GetInt ("CellSpacing", 0);
-			}
+			get { return ViewState.GetInt ("CellSpacing", 0); }
 
 			set {
 				if (value < -1)
@@ -160,16 +137,11 @@ namespace System.Web.UI.WebControls {
 			}
 		}
 
-#if ONLY_1_1
-		[Bindable(true)]
-#endif		
 		[DefaultValue(DayNameFormat.Short)]
 		[WebSysDescription ("")]
 		[WebCategory ("Appearance")]
 		public DayNameFormat DayNameFormat {
-			get {
-				return (DayNameFormat) ViewState.GetInt ("DayNameFormat", (int) DayNameFormat.Short);
-			}
+			get { return (DayNameFormat) ViewState.GetInt ("DayNameFormat", (int) DayNameFormat.Short); }
 
 			set {
 				if (value != DayNameFormat.FirstLetter && value != DayNameFormat.FirstTwoLetters &&
@@ -199,16 +171,11 @@ namespace System.Web.UI.WebControls {
 			}
 		}
 
-#if ONLY_1_1
-		[Bindable(true)]
-#endif		
 		[DefaultValue(FirstDayOfWeek.Default)]
 		[WebSysDescription ("")]
 		[WebCategory ("Appearance")]
 		public FirstDayOfWeek FirstDayOfWeek {
-			get {
-				return (FirstDayOfWeek) ViewState.GetInt ("FirstDayOfWeek", (int) FirstDayOfWeek.Default);
-			}
+			get { return (FirstDayOfWeek) ViewState.GetInt ("FirstDayOfWeek", (int) FirstDayOfWeek.Default); }
 
 			set {
 				if (value < FirstDayOfWeek.Sunday || value > FirstDayOfWeek.Default) {
@@ -219,40 +186,24 @@ namespace System.Web.UI.WebControls {
 			}
 		}
 
-#if ONLY_1_1
-		[Bindable(true)]
-#endif		
 		[DefaultValue("&gt;")]
-#if NET_2_0
 		[Localizable (true)]
-#endif
 		[WebSysDescription ("")]
 		[WebCategory ("Appearance")]
 		public string NextMonthText {
-			get {
-				return ViewState.GetString ("NextMonthText", "&gt;");
-			}
-
-			set {
-				ViewState ["NextMonthText"] = value;
-			}
+			get { return ViewState.GetString ("NextMonthText", "&gt;"); }
+			set { ViewState ["NextMonthText"] = value; }
 		}
 
-#if ONLY_1_1
-		[Bindable(true)]
-#endif		
 		[DefaultValue(NextPrevFormat.CustomText)]
 		[WebSysDescription ("")]
 		[WebCategory ("Appearance")]
 		public NextPrevFormat NextPrevFormat {
-			get {
-				return (NextPrevFormat) ViewState.GetInt ("NextPrevFormat", (int) NextPrevFormat.CustomText);
-			}
+			get { return (NextPrevFormat) ViewState.GetInt ("NextPrevFormat", (int) NextPrevFormat.CustomText); }
 
 			set {
-				if (value != NextPrevFormat.CustomText && value != NextPrevFormat.ShortMonth && value != NextPrevFormat.FullMonth) {
+				if (value != NextPrevFormat.CustomText && value != NextPrevFormat.ShortMonth && value != NextPrevFormat.FullMonth)
 					throw new ArgumentOutOfRangeException ("The specified day name format is not one of the DayNameFormat values.");
-				}
 
 				ViewState ["NextPrevFormat"] = value;
 			}
@@ -293,30 +244,16 @@ namespace System.Web.UI.WebControls {
 			}
 		}
 
-#if ONLY_1_1
-		[Bindable(true)]
-#endif		
 		[DefaultValue("&lt;")]
-#if NET_2_0
 		[Localizable (true)]
-#endif
 		[WebSysDescription ("")]
 		[WebCategory ("Appearance")]
 		public string PrevMonthText {
-			get {
-				return ViewState.GetString ("PrevMonthText", "&lt;");
-			}
-
-			set {
-				ViewState ["PrevMonthText"] = value;
-			}
+			get { return ViewState.GetString ("PrevMonthText", "&lt;"); }
+			set { ViewState ["PrevMonthText"] = value; }
 		}
 
-#if NET_2_0
 		[Bindable(true, BindingDirection.TwoWay)]
-#else
-		[Bindable(true)]
-#endif		
 		[DefaultValue("1/1/0001 12:00:00 AM")]
 		[WebSysDescription ("")]
 		[WebCategory ("Appearance")]
@@ -328,9 +265,7 @@ namespace System.Web.UI.WebControls {
 				return DateTime.MinValue;
 			}
 
-			set {
-				SelectedDates.SelectRange (value, value);
-			}
+			set { SelectedDates.SelectRange (value, value); }
 		}
 
 		[Browsable(false)]
@@ -367,16 +302,11 @@ namespace System.Web.UI.WebControls {
 			}
 		}
 
-#if ONLY_1_1
-		[Bindable(true)]
-#endif		
 		[DefaultValue(CalendarSelectionMode.Day)]
 		[WebSysDescription ("")]
 		[WebCategory ("Behavior")]
 		public CalendarSelectionMode SelectionMode {
-			get {
-				return (CalendarSelectionMode) ViewState.GetInt ("SelectionMode", (int) CalendarSelectionMode.Day);
-			}
+			get { return (CalendarSelectionMode) ViewState.GetInt ("SelectionMode", (int) CalendarSelectionMode.Day); }
 
 			set {
 				if (value != CalendarSelectionMode.Day  && value != CalendarSelectionMode.DayWeek &&
@@ -387,23 +317,13 @@ namespace System.Web.UI.WebControls {
 			}
 		}
 
-#if ONLY_1_1
-		[Bindable(true)]
-#endif		
 		[DefaultValue("&gt;&gt;")]
-#if NET_2_0
 		[Localizable (true)]
-#endif
 		[WebSysDescription ("")]
 		[WebCategory ("Appearance")]
 		public string SelectMonthText {
-			get {
-				return ViewState.GetString ("SelectMonthText", "&gt;&gt;");
-			}
-
-			set {
-				ViewState ["SelectMonthText"] = value;
-			}
+			get { return ViewState.GetString ("SelectMonthText", "&gt;&gt;"); }
+			set { ViewState ["SelectMonthText"] = value; }
 		}
 
 		[DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
@@ -423,99 +343,52 @@ namespace System.Web.UI.WebControls {
 			}
 		}
 
-#if ONLY_1_1
-		[Bindable(true)]
-#endif		
 		[DefaultValue("&gt;")]
-#if NET_2_0		
 		[Localizable (true)]
-#endif		
 		[WebSysDescription ("")]
 		[WebCategory ("Appearance")]
 		public string SelectWeekText {
-			get {
-				return ViewState.GetString ("SelectWeekText", "&gt;");
-			}
-
-			set {
-				ViewState ["SelectWeekText"] = value;
-			}
+			get { return ViewState.GetString ("SelectWeekText", "&gt;"); }
+			set { ViewState ["SelectWeekText"] = value; }
 		}
 
-#if ONLY_1_1
-		[Bindable(true)]
-#endif		
 		[DefaultValue(true)]
 		[WebSysDescription ("")]
 		[WebCategory ("Appearance")]
 		public bool ShowDayHeader {
-			get {
-				return ViewState.GetBool ("ShowDayHeader", true);
-			}
-
-			set {
-				ViewState ["ShowDayHeader"] = value;
-			}
+			get { return ViewState.GetBool ("ShowDayHeader", true); }
+			set { ViewState ["ShowDayHeader"] = value; }
 		}
 
-#if ONLY_1_1
-		[Bindable(true)]
-#endif		
 		[DefaultValue(false)]
 		[WebSysDescription ("")]
 		[WebCategory ("Appearance")]
 		public bool ShowGridLines {
-			get {
-				return ViewState.GetBool ("ShowGridLines", false);
-			}
-
-			set {
-				ViewState ["ShowGridLines"] = value;
-			}
+			get { return ViewState.GetBool ("ShowGridLines", false); }
+			set { ViewState ["ShowGridLines"] = value; }
 		}
 
-#if ONLY_1_1
-		[Bindable(true)]
-#endif		
 		[DefaultValue(true)]
 		[WebSysDescription ("")]
 		[WebCategory ("Appearance")]
 		public bool ShowNextPrevMonth {
-			get {
-				return ViewState.GetBool ("ShowNextPrevMonth", true);
-			}
-
-			set {
-				ViewState ["ShowNextPrevMonth"] = value;
-			}
+			get { return ViewState.GetBool ("ShowNextPrevMonth", true); }
+			set { ViewState ["ShowNextPrevMonth"] = value; }
 		}
 
-#if ONLY_1_1
-		[Bindable(true)]
-#endif		
 		[DefaultValue(true)]
 		[WebSysDescription ("")]
 		[WebCategory ("Appearance")]
 		public bool ShowTitle {
-			get {
-				return ViewState.GetBool ("ShowTitle", true);
-			}
-
-			set {
-				ViewState ["ShowTitle"] = value;
-			}
+			get { return ViewState.GetBool ("ShowTitle", true); }
+			set { ViewState ["ShowTitle"] = value; }
 		}
 
-#if ONLY_1_1
-		[Bindable(true)]
-#endif		
 		[DefaultValue(TitleFormat.MonthYear)]
 		[WebSysDescription ("")]
 		[WebCategory ("Appearance")]
 		public TitleFormat TitleFormat {
-			get {
-				return (TitleFormat) ViewState.GetInt ("TitleFormat", (int) TitleFormat.MonthYear);
-			}
+			get { return (TitleFormat) ViewState.GetInt ("TitleFormat", (int) TitleFormat.MonthYear); }
 
 			set {
 				if (value != TitleFormat.Month && value != TitleFormat.MonthYear) {
@@ -561,9 +434,6 @@ namespace System.Web.UI.WebControls {
 			}
 		}
 
-#if ONLY_1_1
-		[Bindable(true)]
-#endif		
 		[Browsable(false)]
 		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		[WebSysDescription ("")]
@@ -578,25 +448,16 @@ namespace System.Web.UI.WebControls {
 				return today;
 			}
 
-			set {
-				ViewState ["TodaysDate"] = value.Date;
-			}
+			set { ViewState ["TodaysDate"] = value.Date; }
 		}
 
-#if NET_2_0
 		[DefaultValue (true)]
 		[WebSysDescription ("")]
 		[WebCategoryAttribute ("Accessibility")]
-		public virtual bool UseAccessibleHeader 
-		{
-			get {
-				return ViewState.GetBool ("UseAccessibleHeader", true);
-			}
-			set {
-				ViewState ["UseAccessibleHeader"] = value;
-			}
+		public virtual bool UseAccessibleHeader  {
+			get { return ViewState.GetBool ("UseAccessibleHeader", true); }
+			set { ViewState ["UseAccessibleHeader"] = value; }
 		}
-#endif		
 
 		[Bindable(true)]
 		[DefaultValue("1/1/0001 12:00:00 AM")]
@@ -612,9 +473,7 @@ namespace System.Web.UI.WebControls {
 				return DateTime.MinValue;
 			}
 
-			set {
-				ViewState ["VisibleDate"] = value.Date;
-			}
+			set { ViewState ["VisibleDate"] = value.Date; }
 		}
 
 		[DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
@@ -633,8 +492,11 @@ namespace System.Web.UI.WebControls {
 				return weekendDayStyle;
 			}
 		}
-
-
+#if NET_4_0
+		public override bool SupportsDisabledAttribute {
+			get { return RenderingCompatibilityLessThan40; }
+		}
+#endif
 		// Private properties
 		DateTimeFormatInfo DateInfo {
 			get {
@@ -677,20 +539,14 @@ namespace System.Web.UI.WebControls {
 			return false;
 		}
 		
-#if NET_2_0
 		void IPostBackEventHandler.RaisePostBackEvent (string eventArgument)
 		{
 			RaisePostBackEvent (eventArgument);
 		}
 
 		protected virtual void RaisePostBackEvent (string arg)
-#else
-		void IPostBackEventHandler.RaisePostBackEvent (string arg)
-#endif
 		{
-#if NET_2_0
 			ValidateEvent (UniqueID, arg);
-#endif
 			if (arg.Length < 1)
 				return;
 
@@ -765,21 +621,16 @@ namespace System.Web.UI.WebControls {
 		protected virtual void OnDayRender (TableCell cell, CalendarDay day)
 		{
 			DayRenderEventHandler eh = (DayRenderEventHandler) (Events [DayRenderEvent]);
-			if (eh != null)
-#if NET_2_0
-				if (Page != null)
-					eh (this, new DayRenderEventArgs (cell, day, Page.ClientScript.GetPostBackClientHyperlink (this, GetDaysFromZenith (day.Date).ToString (), true)));
+			if (eh != null) {
+				Page page = Page;
+				if (page != null)
+					eh (this, new DayRenderEventArgs (cell, day, page.ClientScript.GetPostBackClientHyperlink (this, GetDaysFromZenith (day.Date).ToString (), true)));
 				else
-#endif
-				eh (this, new DayRenderEventArgs (cell, day));
+					eh (this, new DayRenderEventArgs (cell, day));
+			}
 		}
 
-#if NET_2_0
-		protected internal
-#else		
-		protected
-#endif		
-		override void OnPreRender (EventArgs e)
+		protected internal override void OnPreRender (EventArgs e)
 		{
 			base.OnPreRender (e);
 		}
@@ -798,12 +649,7 @@ namespace System.Web.UI.WebControls {
 				eh (this, new MonthChangedEventArgs (newDate, previousDate));
 		}
 
-#if NET_2_0
-		protected internal
-#else		
-		protected
-#endif		
-		override void Render (HtmlTextWriter writer)
+		protected internal override void Render (HtmlTextWriter writer)
 		{
 			TableStyle ts = new TableStyle ();
 			ts.CellSpacing = CellSpacing;
@@ -817,18 +663,18 @@ namespace System.Web.UI.WebControls {
 			writer.AddAttribute (HtmlTextWriterAttribute.Id, ClientID);
 			writer.RenderBeginTag (HtmlTextWriterTag.Table);
 
-#if NET_2_0
-			if (Caption != "")
+			if (!String.IsNullOrEmpty (Caption))
 				WriteCaption (writer);
-#endif
 
+			bool enabled = IsEnabled;
+			
 			if (ShowTitle)
-				WriteTitle (writer);
-
+				WriteTitle (writer, enabled);
+			
 			if (ShowDayHeader)
-				WriteDayHeader (writer);
+				WriteDayHeader (writer, enabled);
 
-			WriteDays (writer);
+			WriteDays (writer, enabled);
 
 			writer.RenderEndTag ();
 		}
@@ -871,9 +717,8 @@ namespace System.Web.UI.WebControls {
 			states [0] = base.SaveViewState ();
 
 			for (int i = 0; i < states.Length; i++) {
-				if (states [i] != null) {
+				if (states [i] != null)
 					return states;
-				}
 			}
 
 			return null;
@@ -914,7 +759,7 @@ namespace System.Web.UI.WebControls {
 		//
 		// Private methods
 		//
-		void WriteDayHeader (HtmlTextWriter writer)
+		void WriteDayHeader (HtmlTextWriter writer, bool enabled)
 		{
 			int i, first;
 			string dayName;
@@ -942,7 +787,7 @@ namespace System.Web.UI.WebControls {
 					int days =  DateTime.DaysInMonth (DisplayDate.Year, DisplayDate.Month);
 
 					selector.RenderBeginTag (writer);
-					writer.Write (BuildLink ("R" + GetDaysFromZenith (date) + days, SelectMonthText, DayHeaderStyle.ForeColor, Enabled));
+					writer.Write (BuildLink ("R" + GetDaysFromZenith (date) + days, SelectMonthText, DayHeaderStyle.ForeColor, enabled));
 					selector.RenderEndTag (writer);
 				}
 			}
@@ -952,14 +797,11 @@ namespace System.Web.UI.WebControls {
 				DayOfWeek dayOfWeek = (DayOfWeek) i;
 				dayName = dti.GetDayName (dayOfWeek);
 
-#if NET_2_0
 				if (UseAccessibleHeader) {
 					writer.AddAttribute (HtmlTextWriterAttribute.Abbr, dayName);
 					writer.AddAttribute (HtmlTextWriterAttribute.Scope, "col", false);
 					cell = new TableHeaderCell();
-				}
-				else
-#endif
+				} else
 					cell = new TableCell();
 
 				cell.HorizontalAlign = HorizontalAlign.Center;
@@ -968,34 +810,31 @@ namespace System.Web.UI.WebControls {
 				cell.RenderBeginTag (writer);
 
 				switch (DayNameFormat) {
-				case DayNameFormat.FirstLetter:
-					dayName = dayName.Substring (0, 1);
-					break;
-				case DayNameFormat.FirstTwoLetters:
-					dayName = dayName.Substring (0, 2);
-					break;
-#if NET_2_0
-				case DayNameFormat.Shortest:
-					dayName = dti.GetShortestDayName (dayOfWeek);
-					break;
-#endif
-				case DayNameFormat.Full:
-					break;
-				case DayNameFormat.Short:
-				default:
-					dayName = dti.GetAbbreviatedDayName (dayOfWeek);
-					break;
+					case DayNameFormat.FirstLetter:
+						dayName = dayName.Substring (0, 1);
+						break;
+					case DayNameFormat.FirstTwoLetters:
+						dayName = dayName.Substring (0, 2);
+						break;
+					case DayNameFormat.Shortest:
+						dayName = dti.GetShortestDayName (dayOfWeek);
+						break;
+					case DayNameFormat.Full:
+						break;
+					case DayNameFormat.Short:
+					default:
+						dayName = dti.GetAbbreviatedDayName (dayOfWeek);
+						break;
 				}
 
 				writer.Write (dayName);
 				cell.RenderEndTag (writer);
 
-				if (i >= daysInAWeek - 1) {
+				if (i >= daysInAWeek - 1)
 					i = 0;
-				}
-				else {
+				else
 					i++;
-				}
+				
 				if (i == first)
 					break;
 			}
@@ -1003,7 +842,7 @@ namespace System.Web.UI.WebControls {
 			writer.RenderEndTag ();
 		}
 
-		void WriteDay (DateTime date, HtmlTextWriter writer)
+		void WriteDay (DateTime date, HtmlTextWriter writer, bool enabled)
 		{			
 			TableItemStyle style = new TableItemStyle ();
 			TableCell cell = new TableCell ();
@@ -1023,39 +862,34 @@ namespace System.Web.UI.WebControls {
 
 			OnDayRender (cell, day);
 					
-			if (dayStyle != null && !dayStyle.IsEmpty) {
+			if (dayStyle != null && !dayStyle.IsEmpty)
 				style.CopyFrom (dayStyle);
-			}
 
-			if (day.IsWeekend && weekendDayStyle != null && !weekendDayStyle.IsEmpty) {
+			if (day.IsWeekend && weekendDayStyle != null && !weekendDayStyle.IsEmpty)
 				style.CopyFrom (weekendDayStyle);
-			}
 
-			if (day.IsToday && todayDayStyle != null && !todayDayStyle.IsEmpty) {
+			if (day.IsToday && todayDayStyle != null && !todayDayStyle.IsEmpty)
 				style.CopyFrom (todayDayStyle);
-			}
 
-			if (day.IsOtherMonth && otherMonthDayStyle != null && !otherMonthDayStyle.IsEmpty) {
+			if (day.IsOtherMonth && otherMonthDayStyle != null && !otherMonthDayStyle.IsEmpty)
 				style.CopyFrom (otherMonthDayStyle);
-			}
 
-			if (day.IsSelected && Enabled) {
+			if (enabled && day.IsSelected) {
 				style.BackColor = Color.Silver;
 				style.ForeColor = Color.White;
-				if (selectedDayStyle != null && !selectedDayStyle.IsEmpty) {
+				if (selectedDayStyle != null && !selectedDayStyle.IsEmpty)
 					style.CopyFrom (selectedDayStyle);
-				}
 			}
 
 			cell.ApplyStyle (style);
 
 			lit.Text = BuildLink (GetDaysFromZenith (date).ToString (), day.DayNumberText,
-					      cell.ForeColor, day.IsSelectable && Enabled);
+					      cell.ForeColor, enabled && day.IsSelectable);
 
 			cell.RenderControl (writer);
 		}
 
-		void WriteDays (HtmlTextWriter writer)
+		void WriteDays (HtmlTextWriter writer, bool enabled)
 		{
 			DateTime date = new DateTime (DisplayDate.Year, DisplayDate.Month, 1); // first date
 			DateTime lastDate;
@@ -1087,12 +921,12 @@ namespace System.Web.UI.WebControls {
 					}
 
 					selectorCell.RenderBeginTag (writer);
-					writer.Write (BuildLink ("R" + GetDaysFromZenith (date) + "07", SelectWeekText, selectorCell.ForeColor, Enabled));
+					writer.Write (BuildLink ("R" + GetDaysFromZenith (date) + "07", SelectWeekText, selectorCell.ForeColor, enabled));
 					selectorCell.RenderEndTag (writer);
 				}
 
 				for (int i = 0; i < daysInAWeek; i++) {
-					WriteDay (date, writer);
+					WriteDay (date, writer, enabled);
 					date = GetGlobalCalendar().AddDays (date, 1);
 				}
 
@@ -1106,21 +940,18 @@ namespace System.Web.UI.WebControls {
 		{
 			StringBuilder str = new StringBuilder ();
 			Color clr;
-			hasLink = (Page != null && hasLink == true) ? true : false;
+			Page page = Page;
+			hasLink = (page != null && hasLink == true) ? true : false;
 
 			if (hasLink) {
 				str.Append ("<a href=\"");
-#if NET_2_0
-				str.Append (Page.ClientScript.GetPostBackClientHyperlink (this, arg, true));
-#else
-				str.Append (Page.ClientScript.GetPostBackClientHyperlink (this, arg));
-#endif			
+				str.Append (page.ClientScript.GetPostBackClientHyperlink (this, arg, true));
 				str.Append ('\"');
 			
 
-				if (!foreColor.IsEmpty) {
+				if (!foreColor.IsEmpty)
 					clr = foreColor;
-				} else {
+				else {
 					if (ForeColor.IsEmpty)
 						clr = Color.Black;
 					else
@@ -1131,8 +962,7 @@ namespace System.Web.UI.WebControls {
 				str.Append ("\">");
 				str.Append (text);
 				str.Append ("</a>");
-			}
-			else 
+			} else 
 				str.Append (text);
 
 			return str.ToString ();
@@ -1144,7 +974,6 @@ namespace System.Web.UI.WebControls {
 			return span.Days;
 		}
 
-#if NET_2_0
 		void WriteCaption (HtmlTextWriter writer)
 		{
 			if (CaptionAlign != TableCaptionAlign.NotSet)
@@ -1154,9 +983,8 @@ namespace System.Web.UI.WebControls {
 			writer.Write (Caption);
 			writer.RenderEndTag ();
 		}
-#endif
 
-		void WriteTitle (HtmlTextWriter writer)
+		void WriteTitle (HtmlTextWriter writer, bool enabled)
 		{
 			TableCell cellNextPrev = null;
 			TableCell titleCell = new TableCell ();
@@ -1166,19 +994,17 @@ namespace System.Web.UI.WebControls {
 
 			titleCell.ColumnSpan = HasWeekSelectors (SelectionMode) ? 8 : 7;
 
-			if (titleStyle != null && !titleStyle.IsEmpty && !titleStyle.BackColor.IsEmpty) {
+			if (titleStyle != null && !titleStyle.IsEmpty && !titleStyle.BackColor.IsEmpty)
 				titleCell.BackColor = titleStyle.BackColor;
-			} else {
+			else
 				titleCell.BackColor = Color.Silver;
-			}
 
 			titleCell.RenderBeginTag (writer);
 
 			// Table
 			tableTitle.Width =  Unit.Percentage (100);
-			if (titleStyle != null && !titleStyle.IsEmpty) {
+			if (titleStyle != null && !titleStyle.IsEmpty)
 				tableTitle.ApplyStyle (titleStyle);
-			}
 
 			tableTitle.RenderBeginTag (writer);
 			writer.RenderBeginTag (HtmlTextWriterTag.Tr);
@@ -1191,7 +1017,7 @@ namespace System.Web.UI.WebControls {
 				DateTime date = GetGlobalCalendar().AddMonths (DisplayDate, - 1);
 				date = GetGlobalCalendar ().AddDays (date, -date.Day + 1);
 				cellNextPrev.RenderBeginTag (writer);
-				writer.Write (BuildLink ("V" + GetDaysFromZenith (date), GetNextPrevFormatText (date, false), cellNextPrev.ForeColor, Enabled));
+				writer.Write (BuildLink ("V" + GetDaysFromZenith (date), GetNextPrevFormatText (date, false), cellNextPrev.ForeColor, enabled));
 				cellNextPrev.RenderEndTag (writer);
 			}
 
@@ -1220,7 +1046,7 @@ namespace System.Web.UI.WebControls {
 
 				cellNextPrev.HorizontalAlign = HorizontalAlign.Right;
 				cellNextPrev.RenderBeginTag (writer);
-				writer.Write (BuildLink ("V" + GetDaysFromZenith (date), GetNextPrevFormatText (date, true), cellNextPrev.ForeColor, Enabled));
+				writer.Write (BuildLink ("V" + GetDaysFromZenith (date), GetNextPrevFormatText (date, true), cellNextPrev.ForeColor, enabled));
 				cellNextPrev.RenderEndTag (writer);
 			}
 
@@ -1228,9 +1054,7 @@ namespace System.Web.UI.WebControls {
 			tableTitle.RenderEndTag (writer);
 			titleCell.RenderEndTag (writer);
 			writer.RenderEndTag (); //tr
-
 		}
-
 
 		string GetNextPrevFormatText (DateTime date, bool next)
 		{
@@ -1270,35 +1094,22 @@ namespace System.Web.UI.WebControls {
 		[WebSysDescription ("")]
 		[WebCategory ("Action")]
 		public event DayRenderEventHandler DayRender {
-			add {
-				Events.AddHandler (DayRenderEvent, value);
-			}
-			remove {
-				Events.RemoveHandler (DayRenderEvent, value);
-			}
+			add { Events.AddHandler (DayRenderEvent, value); }
+			remove { Events.RemoveHandler (DayRenderEvent, value); }
 		}
 
 		[WebSysDescription ("")]
 		[WebCategory ("Action")]
 		public event EventHandler SelectionChanged {
-			add {
-				Events.AddHandler (SelectionChangedEvent, value);
-			}
-			remove {
-				Events.RemoveHandler (SelectionChangedEvent, value);
-			}
+			add { Events.AddHandler (SelectionChangedEvent, value); }
+			remove { Events.RemoveHandler (SelectionChangedEvent, value); }
 		}
 
 		[WebSysDescription ("")]
 		[WebCategory ("Action")]
 		public event MonthChangedEventHandler VisibleMonthChanged {
-			add {
-				Events.AddHandler (VisibleMonthChangedEvent, value);
-			}
-			remove {
-				Events.RemoveHandler (VisibleMonthChangedEvent, value);
-			}
+			add { Events.AddHandler (VisibleMonthChangedEvent, value); }
+			remove { Events.RemoveHandler (VisibleMonthChangedEvent, value); }
 		}
 	}
 }
-

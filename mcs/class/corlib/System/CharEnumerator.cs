@@ -31,21 +31,14 @@
 //
 
 using System.Collections;
-#if NET_2_0
 using System.Collections.Generic;
-#endif
 using System.Runtime.InteropServices;
 
 namespace System
 {
 	[Serializable]
-#if NET_2_0
 	[ComVisible (true)]
-#endif
-	public sealed class CharEnumerator : IEnumerator, ICloneable
-#if NET_2_0
-	, IEnumerator <char>
-#endif
+	public sealed class CharEnumerator : IEnumerator, ICloneable, IEnumerator<char>
 	{
 		private string str;
 		private int index;
@@ -76,6 +69,15 @@ namespace System
 				return Current;
 			}
 		}
+		
+#if NET_4_0
+		public void Dispose ()
+#else
+		void IDisposable.Dispose ()
+#endif
+		{
+			// nop
+		}		
 
 		// Methods
 		public object Clone ()
@@ -112,11 +114,5 @@ namespace System
 		{
 			index = -1;
 		}
-#if NET_2_0
-		void IDisposable.Dispose ()
-		{
-			// nop
-		}
-#endif
 	}
 }

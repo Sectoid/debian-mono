@@ -1723,6 +1723,35 @@ namespace MonoTests.System.Xml
 				reader.ReadToNextSibling ("book"); // should not result in an infinite loop
 		}
 
+		// bug #676020
+		[Test]
+		public void ReadToNextSibling4 ()
+		{
+			string xml = @"<SerializableStringDictionary>
+<SerializableStringDictionary>
+<DictionaryEntry Key=""Key1"" Value=""Value1""/>
+<DictionaryEntry Key=""Key2"" Value=""Value2""/>
+<DictionaryEntry Key=""Key3"" Value=""Value3""/>
+</SerializableStringDictionary>
+</SerializableStringDictionary>";
+
+			var reader = XmlReader.Create (new StringReader (xml));
+
+			Assert.IsTrue (reader.ReadToDescendant ("SerializableStringDictionary"), "#1");
+			Assert.IsTrue (reader.ReadToDescendant ("DictionaryEntry"), "#2");
+
+			int count = 0;
+			do {
+				reader.MoveToAttribute ("Key");
+				var key = reader.ReadContentAsString ();
+				reader.MoveToAttribute ("Value");
+				var value = reader.ReadContentAsString ();
+				count++;
+			}
+			while (reader.ReadToNextSibling ("DictionaryEntry"));
+			Assert.AreEqual (3, count, "#3");
+		}
+
 		[Test]
 		public void ReadSubtree ()
 		{
@@ -2178,6 +2207,63 @@ namespace MonoTests.System.Xml
 				readerXml.Read ();
 				Assert.AreEqual (XmlNodeType.Element, readerXml.NodeType, "#2");
 			}
+		}
+		
+		[Test]
+		public void ReadContentAsBase64_3 () // bug #543332			
+		{
+			byte [] fakeState = new byte[25];
+			byte [] fixedSizeBuffer = new byte [25];
+			byte [] readDataBuffer = new byte [25];
+			var ms = new MemoryStream ();
+			var xw = XmlWriter.Create (ms);
+			xw.WriteStartElement ("root");
+			xw.WriteBase64 (fakeState, 0, fakeState.Length);
+			xw.WriteEndElement ();
+			xw.Close ();
+			var reader = XmlReader.Create (new MemoryStream (ms.ToArray ()));
+			reader.MoveToContent ();
+			// we cannot completely trust the length read to indicate the end.
+			int bytesRead;
+			bytesRead = reader.ReadElementContentAsBase64 (fixedSizeBuffer, 0, fixedSizeBuffer.Length);
+			Assert.AreEqual (25, bytesRead, "#1");
+			Assert.AreEqual (XmlNodeType.Text, reader.NodeType, "#2");
+			bytesRead = reader.ReadElementContentAsBase64 (fixedSizeBuffer, 0, fixedSizeBuffer.Length);
+			Assert.AreEqual (0, bytesRead, "#3");
+			Assert.AreEqual (XmlNodeType.EndElement, reader.NodeType, "#4");
+		}
+
+		[Test]
+		public void ReadElementContentAsQNameDefaultNS ()
+		{
+			var sw = new StringWriter ();
+			var xw = XmlWriter.Create (sw);
+			xw.WriteStartElement ("", "foo", "urn:foo");
+			xw.WriteValue (new XmlQualifiedName ("x", "urn:foo"));
+			xw.WriteEndElement ();
+			xw.Close ();
+			var xr = XmlReader.Create (new StringReader (sw.ToString ()));
+			xr.MoveToContent ();
+			var q = (XmlQualifiedName) xr.ReadElementContentAs (typeof (XmlQualifiedName), xr as IXmlNamespaceResolver);
+			Assert.AreEqual ("urn:foo", q.Namespace, "#1");
+		}
+
+		[Test]
+		public void ReadElementContentAsArray ()
+		{
+			var sw = new StringWriter ();
+			var xw = XmlWriter.Create (sw);
+			xw.WriteStartElement ("root");
+			xw.WriteAttributeString ("xmlns", "b", "http://www.w3.org/2000/xmlns/", "urn:bar");
+			var arr = new XmlQualifiedName [] { new XmlQualifiedName ("foo"), new XmlQualifiedName ("bar", "urn:bar") };
+			xw.WriteValue (arr);
+			xw.Close ();
+			var xr = XmlReader.Create (new StringReader (sw.ToString ()));
+			xr.MoveToContent ();
+			var ret = xr.ReadElementContentAs (typeof (XmlQualifiedName []), null) as XmlQualifiedName [];
+			Assert.IsNotNull (ret, "#1");
+			Assert.AreEqual (arr [0], ret [0], "#2");
+			Assert.AreEqual (arr [1], ret [1], "#3");
 		}
 #endif
 	}

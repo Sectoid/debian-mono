@@ -31,7 +31,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0 || BOOTSTRAP_NET_2_0
 
 using System;
 using System.Reflection;
@@ -42,9 +41,7 @@ using System.Runtime.InteropServices;
 
 namespace System.Reflection.Emit {
 
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public sealed class DynamicMethod : MethodInfo {
 
 #pragma warning disable 169, 414
@@ -130,12 +127,9 @@ namespace System.Reflection.Emit {
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private extern void create_dynamic_method (DynamicMethod m);
 
-		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		private extern void destroy_dynamic_method (DynamicMethod m);
-
 		private void CreateDynMethod () {
 			if (mhandle.Value == IntPtr.Zero) {
-				if (ilgen == null || (ILGenerator.Mono_GetCurrentOffset (ilgen) == 0))
+				if (ilgen == null || ilgen.ILOffset == 0)
 					throw new InvalidOperationException ("Method '" + name + "' does not have a method body.");
 
 				ilgen.label_fixup ();
@@ -159,11 +153,6 @@ namespace System.Reflection.Emit {
 
 				create_dynamic_method (this);
 			}
-		}
-
-		~DynamicMethod ()
-		{
-			destroy_dynamic_method (this);
 		}
 
 		[ComVisible (true)]
@@ -259,6 +248,11 @@ namespace System.Reflection.Emit {
 			}
 			return retval;
 		}
+		
+		internal override int GetParameterCount ()
+		{
+			return parameters == null ? 0 : parameters.Length;
+		}		
 
 		/*
 		public override object Invoke (object obj, object[] parameters) {
@@ -430,7 +424,7 @@ namespace System.Reflection.Emit {
 			throw new InvalidOperationException ();
 		}
 
-		public int GetToken (MemberInfo member) {
+		public int GetToken (MemberInfo member, bool create_open_instance) {
 			return m.AddRef (member);
 		}
 
@@ -440,4 +434,3 @@ namespace System.Reflection.Emit {
 	}
 }
 
-#endif

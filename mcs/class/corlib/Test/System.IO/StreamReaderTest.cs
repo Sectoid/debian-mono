@@ -734,6 +734,29 @@ public class StreamReaderTest
 #endif
 	}
 
+	// This is a special case, where the StreamReader has less than 4 bytes at 
+	// encoding detection time, so it tries to check for Unicode encoding, instead of
+	// waiting for more bytes to test against the UTF32 BOM.
+	[Test]
+	public void EncodingDetectionUnicode ()
+	{
+		byte [] bytes = new byte [3];
+		bytes [0] = 0xff;
+		bytes [1] = 0xfe;
+		bytes [2] = 0;
+		MemoryStream inStream = new MemoryStream (bytes);
+		StreamReader reader = new StreamReader (inStream, Encoding.UTF8, true);
+
+		// It should start with the encoding we used in the .ctor
+		Assert.AreEqual (Encoding.UTF8, reader.CurrentEncoding, "#A1");
+
+		reader.Read ();
+		//reader.Read ();
+		Assert.AreEqual (Encoding.Unicode, reader.CurrentEncoding, "#B1");
+
+		reader.Close ();
+	}
+
 	private bool CheckEncodingDetected(Encoding encoding)
 	{
 		MemoryStream outStream = new MemoryStream();
@@ -791,6 +814,28 @@ public class StreamReaderTest
 #endif
 		string str = reader.ReadToEnd ();
 		Assert.AreEqual ("bc", str);
+	}
+
+	[Test]
+	public void EncodingChangedAuto ()
+	{
+		int testlines = 2048; // all data should larger than stream reader default buffer size
+		string testdata = "test";
+		MemoryStream ms = new MemoryStream();
+		// write utf8 encoding data.
+		using (StreamWriter sw = new StreamWriter (ms, Encoding.UTF8)) {
+			for (int i = 0; i < testlines; i++)
+				sw.WriteLine (testdata);
+		}
+
+		MemoryStream readms = new MemoryStream (ms.GetBuffer());
+		using (StreamReader sr = new StreamReader(readms, Encoding.Unicode, true)) {
+			for (int i = 0; i < testlines; i++) {
+				string line = sr.ReadLine ();
+				if (line != testdata)
+					Assert.Fail ("Wrong line content");
+			}
+		}
 	}
 }
 

@@ -33,14 +33,13 @@ using System;
 using System.Collections;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Runtime.Serialization.Formatters;
 using System.Globalization;
 
 namespace System.Runtime.Serialization
 {
-#if NET_2_0
 	[System.Runtime.InteropServices.ComVisibleAttribute (true)]
-#endif
 	public sealed class FormatterServices
 	{
 		private const BindingFlags fieldFlags = BindingFlags.Public |
@@ -178,7 +177,6 @@ namespace System.Runtime.Serialization
 			return obj;
 		}
 		
-#if NET_1_1
 
 		public static void CheckTypeSecurity (Type t, TypeFilterLevel securityLevel)
 		{
@@ -208,6 +206,16 @@ namespace System.Runtime.Serialization
 			// type "Infrastructure".
 			
 			return GetUninitializedObject (type);
+		}
+
+#if NET_4_0
+		// This method was introduced in .Net due to a bug serializing objects with circular references
+		// which we don't appear to have, so we just return the same object.
+		// See http://support.microsoft.com/kb/927495/en-us/ in case of doubt.
+		[ComVisible (false)]
+		public static ISerializationSurrogate GetSurrogateForCyclicalReference (ISerializationSurrogate innerSurrogate)
+		{
+			return innerSurrogate;
 		}
 #endif
 	}

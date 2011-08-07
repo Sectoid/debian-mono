@@ -4,7 +4,7 @@
 // Authors:
 //	Lluis Sanchez Gual (lluis@novell.com)
 //
-// (C) 2005 Novell, Inc (http://www.novell.com)
+// (C) 2005-2010 Novell, Inc (http://www.novell.com)
 //
 
 //
@@ -28,15 +28,14 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 using System.Collections;
 using System.Collections.Specialized;
 using System.Web.UI;
 using System.ComponentModel;
 using System.Security.Permissions;
 
-namespace System.Web.UI.WebControls {
-
+namespace System.Web.UI.WebControls
+{
 	[AspNetHostingPermissionAttribute (SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
 	[AspNetHostingPermissionAttribute (SecurityAction.InheritanceDemand, Level = AspNetHostingPermissionLevel.Minimal)]
 	public class CheckBoxField : BoundField
@@ -49,33 +48,47 @@ namespace System.Web.UI.WebControls {
 			set { throw GetNotSupportedPropException ("ApplyFormatInEditMode"); }
 		}
 
-	    [EditorBrowsableAttribute (EditorBrowsableState.Never)]
-	    [BrowsableAttribute (false)]
-	    [DesignerSerializationVisibilityAttribute (DesignerSerializationVisibility.Hidden)]
+		[EditorBrowsableAttribute (EditorBrowsableState.Never)]
+		[BrowsableAttribute (false)]
+		[DesignerSerializationVisibilityAttribute (DesignerSerializationVisibility.Hidden)]
 		public override bool ConvertEmptyStringToNull {
 			get { throw GetNotSupportedPropException ("ConvertEmptyStringToNull"); } 
 			set { throw GetNotSupportedPropException ("ConvertEmptyStringToNull"); } 
 		}
-		
-	    [EditorBrowsableAttribute (EditorBrowsableState.Never)]
-	    [BrowsableAttribute (false)]
-	    [DesignerSerializationVisibilityAttribute (DesignerSerializationVisibility.Hidden)]
+
+		[TypeConverter ("System.Web.UI.Design.DataSourceBooleanViewSchemaConverter, " + Consts.AssemblySystem_Design)]
+		public override string DataField {
+			get { return base.DataField; }
+			set { base.DataField = value; }
+		}
+
+		[EditorBrowsableAttribute (EditorBrowsableState.Never)]
+		[BrowsableAttribute (false)]
+		[DesignerSerializationVisibilityAttribute (DesignerSerializationVisibility.Hidden)]
 		public override string DataFormatString {
 			get { throw GetNotSupportedPropException ("DataFormatString"); } 
 			set { throw GetNotSupportedPropException ("DataFormatString"); } 
 		}
 		
-	    [EditorBrowsableAttribute (EditorBrowsableState.Never)]
-	    [BrowsableAttribute (false)]
-	    [DesignerSerializationVisibilityAttribute (DesignerSerializationVisibility.Hidden)]
+		[EditorBrowsableAttribute (EditorBrowsableState.Never)]
+		[BrowsableAttribute (false)]
+		[DesignerSerializationVisibilityAttribute (DesignerSerializationVisibility.Hidden)]
 		public override bool HtmlEncode {
 			get { throw GetNotSupportedPropException ("HtmlEncode"); } 
 			set { throw GetNotSupportedPropException ("HtmlEncode"); } 
 		}
+
+		[Browsable (false)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
+		[EditorBrowsable (EditorBrowsableState.Never)]
+		public override bool HtmlEncodeFormatString {
+			get { return base.HtmlEncodeFormatString; }
+			set { base.HtmlEncodeFormatString = value; }
+		}
 		
-	    [EditorBrowsableAttribute (EditorBrowsableState.Never)]
-	    [BrowsableAttribute (false)]
-	    [DesignerSerializationVisibilityAttribute (DesignerSerializationVisibility.Hidden)]
+		[EditorBrowsableAttribute (EditorBrowsableState.Never)]
+		[BrowsableAttribute (false)]
+		[DesignerSerializationVisibilityAttribute (DesignerSerializationVisibility.Hidden)]
 		public override string NullDisplayText {
 			get { throw GetNotSupportedPropException ("NullDisplayText"); } 
 			set { throw GetNotSupportedPropException ("NullDisplayText"); } 
@@ -90,7 +103,7 @@ namespace System.Web.UI.WebControls {
 		[WebSysDescription ("")]
 		[WebCategoryAttribute ("Appearance")]
 		public virtual string Text {
-			get { return ViewState.GetString ("Text", ""); }
+			get { return ViewState.GetString ("Text", String.Empty); }
 			set {
 				ViewState ["Text"] = value;
 				OnFieldChanged ();
@@ -121,24 +134,38 @@ namespace System.Web.UI.WebControls {
 		protected override void OnDataBindField (object sender, EventArgs e)
 		{
 			try {
-				DataControlFieldCell cell = (DataControlFieldCell) sender;
-				CheckBox box = (CheckBox) cell.Controls [0];
-				object val = GetValue (cell.BindingContainer);
+				Control container = (Control) sender;
+				object val = GetValue (container.NamingContainer);
+				CheckBox box = sender as CheckBox;
+				if (box == null) {
+					DataControlFieldCell cell = sender as DataControlFieldCell;
+					if (cell != null) {
+						ControlCollection controls = cell.Controls;
+						int ccount = controls != null ? controls.Count : 0;
+						if (ccount == 1)
+							box = controls [0] as CheckBox;
+						if (box == null)
+							return;
+					}
+				}
+				
+				if (box == null)
+					throw new HttpException ("CheckBox field '" + DataField + "' contains a control that isn't a CheckBox.  Override OnDataBindField to inherit from CheckBoxField and add different controls.");
+				
 				if (val != null && val != DBNull.Value)
 					box.Checked = (bool) val;
-				else
+				else {
 					if (string.IsNullOrEmpty (DataField)) {
 						box.Visible = false;
 						return;
 					}
-
+				}
+				
 				if (!box.Visible)
 					box.Visible = true;
-			}
-			catch (HttpException) {
+			} catch (HttpException) {
 				throw;
-			}
-			catch (Exception ex) {
+			} catch (Exception ex) {
 				throw new HttpException (ex.Message, ex);
 			}
 		}
@@ -160,6 +187,11 @@ namespace System.Web.UI.WebControls {
 			field.ReadOnly = ReadOnly;
 			field.Text = Text;
 		}
+
+		public override void ValidateSupportsCallback ()
+		{
+			// why override?
+		}
 	}
 }
-#endif
+

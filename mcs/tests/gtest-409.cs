@@ -1,8 +1,13 @@
 using System;
 
 //
-// Parser conditional expression tests
+// Parser conditional and cast expression tests
 //
+
+class A<T>
+{
+	public static int Value;
+}
 
 public class ConditionalParsing
 {
@@ -79,6 +84,16 @@ public class ConditionalParsing
 		bool b = (1 == 2);
 		bool c = (1 == 1);
 		string a = (b ? (c ? "#" : "#") : "");
+	}
+
+	void Test_10 ()
+	{
+		int i = new int [] { 1, 2, 3 } [1];
+	}
+	
+	void Test_11 ()
+	{
+		int a = (int)(A<int>.Value);
 	}
 
 	public static void Main ()

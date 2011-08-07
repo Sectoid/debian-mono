@@ -1,59 +1,51 @@
-// Compiler options: -langversion:future
-
 using System;
-using System.Runtime.InteropServices;
-using System.Reflection;
+using System.Collections.Generic;
 
-public class C
+interface I<T> : I2<T>, IEnumerable<T>
 {
-	public static void TestA ([Optional][DefaultParameterValue (1)] int u)
-	{
-	}
+}
 
-	public static void TestB (long u = 12)
+interface I2<T2>
+{
+	void Foo<U> (IEnumerable<U> list) where U : T2;
+}
+
+class Impl<T> : I<T>
+{
+	public void Foo<U> (IEnumerable<U> list) where U : T
 	{
 	}
 	
-	public static void TestC (decimal d = decimal.MaxValue)
+	public IEnumerator<T> GetEnumerator ()
 	{
+		return null;
 	}
-
-	public static int Main ()
+	
+	System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator ()
 	{
-		ParameterInfo[] info = typeof (C).GetMethod ("TestA").GetParameters ();
-
-		if (info[0].DefaultValue.GetType () != typeof (int))
-			return 1;
-
-		if ((int) info[0].DefaultValue != 1)
-			return 2;
-
-		if (!info[0].IsOptional)
-			return 3;
-
-		info = typeof (C).GetMethod ("TestB").GetParameters ();
-
-		if (info[0].DefaultValue.GetType () != typeof (int))
-			return 11;
-
-		if ((int) info[0].DefaultValue != 12)
-			return 12;
-
-		if (!info[0].IsOptional)
-			return 13;
-
-		info = typeof (C).GetMethod ("TestC").GetParameters ();
-
-		if (info[0].DefaultValue.GetType () != typeof (decimal))
-			return 21;
-
-		if ((decimal) info[0].DefaultValue != decimal.MaxValue)
-			return 22;
-
-		if (!info[0].IsOptional)
-			return 23;
-
-		Console.WriteLine ("ok");
-		return 0;
+		return null;
 	}
 }
+
+class A<K>
+{
+	public I<K> Value = new Impl<K> ();
+}
+
+class Test<TT> : A<TT>
+{
+	public void Foo ()
+	{
+		var a = new Test<TT> ();
+		a.Value.Foo (Value);
+	}
+}
+
+class M 
+{
+	public static void Main ()
+	{
+		new Test<ulong> ().Foo ();
+	}
+}
+

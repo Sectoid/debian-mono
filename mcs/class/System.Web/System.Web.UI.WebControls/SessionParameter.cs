@@ -31,6 +31,7 @@
 #if NET_2_0
 using System.Collections;
 using System.Collections.Specialized;
+using System.Data;
 using System.Text;
 using System.ComponentModel;
 
@@ -57,13 +58,22 @@ namespace System.Web.UI.WebControls {
 		{
 			SessionField = sessionField;
 		}
+
+		public SessionParameter (string name, DbType dbType, string sessionField) : base (name, dbType)
+		{
+			SessionField = sessionField;
+		}
 		
 		protected override Parameter Clone ()
 		{
 			return new SessionParameter (this);
 		}
-		
-		protected override object Evaluate (HttpContext ctx, Control control)
+#if NET_4_0
+		protected internal
+#else
+		protected
+#endif
+		override object Evaluate (HttpContext ctx, Control control)
 		{
 			if (ctx == null || ctx.Session == null)
 				return null;

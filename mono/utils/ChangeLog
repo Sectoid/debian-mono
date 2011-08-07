@@ -1,8 +1,426 @@
+2011-07-12  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add shared_perfcounters option to enable minimal.
+
+2011-07-12  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Do DISABLE_PORTABILITY more agressively.
+
+2011-06-08  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix darwin-arm build.
+
+2011-04-01  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mach-support-*.c (mono_mach_arch_get_tls_value_from_thread):
+	This function now receives pthread_t instead of mach_port as
+	argument, so avoiding an expensive call to
+	pthread_from_mach_thread_np.
+
+2011-03-31  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mono-path.c (mono_path_canonicalize): Properly canonicalize non
+	UNC paths with an extra backslash. Eg: c:\foo\\bar was been
+	canonicalized to c:\\foo\bar.
+
+	This was breaking assembly loading in some rare cases.
+
+2011-03-29  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Cast p to char* since the offset is in byte units.
+
+2011-03-15  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Semaphore] Remove warnings
+
+2011-03-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Support NLS when opening assemblies on windows.
+
+	Patch by Horst Kakuschke that fixes bug #673793.
+
+2011-03-01  Zoltan Varga  <vargaz@gmail.com>
+
+	Use stdint.h for VS 2010 and later.
+
+2011-02-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Only use memory barriers on arm when running on armv6 or later.
+
+2011-02-21  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Implement proper TSD lookup for arm-darwin
+
+2011-02-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement mono_memory_barrier () and OP_MEMORY_BARRIER for ARM.
+
+2011-02-19  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Avoid leaking a mach_port every time we query the counters
+
+2011-02-19  Miguel de Icaza  <miguel@gnome.org>
+
+	Backport support for add support for new
+	PerformanceCounter("Process", "% Processor Time", "<process id as
+	string>" on OS X
+
+2011-01-29  Marek Habersack  <grendel@twistedcode.net>
+
+	[runtime] Use IOAMP-aware method of looking for domain
+	configuration file
+
+2011-01-24  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Avoid leaking the vmmap allocated by the kernel for the
+	thread_act_array_t
+
+2011-01-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Make the stacks of aot image non-executable.
+
+2011-01-08  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add CPSR to Apple arm ucontext macros as well
+
+2011-01-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Re-enable and fix the nacl changes.
+
+2011-01-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Revert a nacl change which is causing crashes.
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	.gitignore.
+
+2010-12-20  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Previous patch was wrong.
+
+2010-12-20  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[OSX] semaphore_timedwait might return > 0 for errors
+
+	Errors, including timeout, are reported with a positive return in
+	semaphore_timedwait.
+
+2010-12-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Mach uses wait_time not abs_time
+
+	The time to wait is relative in the Mac functions.
+
+2010-12-16  Elijah Taylor  <elijahtaylor@google.com>
+
+	Merged in rest of Native Client changes, untested
+
+2010-11-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Set the thumb bit in the CPSR when resuming from a signal handler
+	to a thumb function on arm.
+
+2010-11-18  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Hush cross-compilation warnings
+
+2010-11-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Wrong return value in mono_sem_timedwait()
+
+	The return value of mono_sem_timedwait() with a timeout 0 was
+	incorrect (0=failure, !0=success instead of 0=success). This
+	worked on non-Windows platforms because the only call with timeout
+	0 was expecting the incorrect return value, but it made the mono
+	threadpool in Windows fail.
+
+	Fixes bug #653928.
+
+2010-11-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove the unused and incomplete CMake build scripts for now.
+
+2010-11-01  Zoltan Varga  <vargaz@gmail.com>
+
+	Print double stats with more precision.
+
+2010-10-30  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix some copyright messages.
+
+2010-10-01  Geoff Norton  <gnorton@novell.com>
+
+	Fix a crash when using the embedding api
+
+	error_msg is null when passed into this function from a few
+	places, so lets not do a null deref here.
+
+2010-09-15  Zoltan Varga  <vargaz@gmail.com>
+
+	UCONTEXT_REG_RCX was defined twice on OpenBSD, and RBX was
+	missing. Fix that.
+
+2010-09-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Add casts to the macros on netbsd so the caller doesn't have to
+	reference ucontext_t which is not available on some platforms like
+	android.
+
+2010-09-13  Michael Hutchinson  <mhutchinson@novell.com>
+
+	[Embedding] Make mono-dl-fallback.h public-safe
+
+2010-09-11  Miguel de Icaza  <miguel@gnome.org>
+
+	Do not install sample header, add to EXTRA_DIST
+
+2010-09-10  Miguel de Icaza  <miguel@gnome.org>
+
+	[Embedded] Add new fallback API to allow hooking up to the
+	P/Invoke lookup system
+
+	This patch allows a developer to register a fallback for P/Invoke
+	when embedding Mono. Typically this is done when you statically
+	link all of your libraries in some embedded systems and you need
+	to dynamically resolve symbol names.
+
+	There is a *sample* API included (but not compiled into Mono
+	itself) called mono-embed.c that shows a layman use of the API. A
+	full implementation would mandate sorted tables, and would use a
+	bsearch or a hashtable instead of having linear searches.
+
+2010-08-25  Robert Nagy  <robert@bsd.hu>
+
+	Make sgen compile on OpenBSD, by adding the missing stuff
+
+2010-08-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Get rid of some #ifdef EGLIB_MAJORs.
+
+2010-08-09  Elijah Taylor  <elijahtaylor@google.com>
+
+	Don't use mmap/munmap under NACL.
+
+2010-08-09  Elijah Taylor  <elijahtaylor@google.com>
+
+	Use 32 as the min alignment when running under NACL.
+
+2010-07-27  Geoff Norton  <gnorton@novell.com>
+
+	* mono-sigcontext.h: Extend the macro's for darwin and linux
+	to expose r8-r11 as well.
+
+2010-07-16 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.c: fixes bug #622398 for real in OSX.
+	This was preventing the WSQ from working.
+
+2010-07-02  Michael Hutchinson  <mhutchinson@novell.com>
+
+	* mono-compiler.h: Add MONO_THREAD_VAR_OFFSET macro for s390x.
+
+2010-07-02  Michael Hutchinson  <mhutchinson@novell.com>
+
+	* Makefile.am: Add mono-error.h to public headers.
+	* mono-error.h: Use public version of API.
+
+Wed Jun 30 12:06:33 CEST 2010 Paolo Molaro <lupus@ximian.com>
+
+	* mono-compiler.h: define MONO_LLVM_INTERNAL for internal functions
+	that may be needed by the llvm backend module.
+
+2010-06-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* gc_wrapper.h: Avoid redefining pthread_ calls for SGEN, no longer needed.
+
+	* gc_wrapper.h: Define the mono_gc_ wrappers for Boehm too, runtime code should
+	call these instead of the pthread_ variants.
+
+2010-06-22  Geoff Norton  <gnorton@novell.com>
+
+	* mach-support-arm.c: Add arm support.
+
+2010-06-22 Geoff Norton  <gnorton@novell.com>
+
+	* mach-support-*.(c|h): We cannot allocate from the gc, so make
+	these functions alloc-less.
+
+2010-06-22  Geoff Norton  <gnorton@novell.com>
+
+	* Makefile.am
+	* mach-support-amd64.c
+	* mach-support-x86.c
+	* mach-support.c
+	* mach-support.h: Added a new suite of helpers for managing threads
+	on mach based kernels.
+
+2010-06-17  Geoff Norton  <gnorton@novell.com>
+
+	* mono-sigcontext.h: Add arm variants.
+
+2010-05-29  Marek Habersack  <mhabersack@novell.com>
+
+	* mono-dl.c (mono_dl_build_path): modify the logic to try the
+	use the passed name to build the path without suffix on the first
+	run (handles situations like "somelib.so.1.0" ->
+	"libsomelib.so.1.0") and, on subsequent run, append the platform
+	suffix(es) (handles situations like "libsomething" ->
+	"libsomething.so"). Fixes bugs #588143 and #610009
+
+2010-06-01  Geoff Norton  <gnorton@novell.com>
+
+	* mono-poll.c: poll() is broken on osx in several cases, so we use a select
+	based mono_poll() instead.
+
+2010-05-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-sigcontext.h: Define UCONTEXT_REG_ constants for amd64 even if the gregs
+	array is available.
+
+2010-05-05 Jonathan Chambers <joncham@gmail.com>
+
+	* mono-semaphore.c: Implement alertable wait on Windows similar to
+	other platforms. Always be alertable, but only return from wait if
+	user requested alertable state. Fixes soft debugger on Windows.
+
+2010-04-23  Geoff Norton  <gnorton@novell.com>
+
+	* mono-sigcontext.h: Darwin x86_64 support.
+
+2010-04-09 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.c: account for the time already spent in wait if
+	interrupted.
+
+2010-04-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-time.c (get_boot_time): Applied more openbsd changes from Robert Nagy
+	<robert@openbsd.org>.
+
+2010-04-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-proclib.c: Applied more openbsd changes from Robert Nagy
+	<robert@openbsd.org>.
+
+2010-04-08 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.c: set EINTR on windows too.
+
+2010-04-01 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.c: patch from Robert Nagy that makes this work in
+	OpenBSD.
+
+2010-04-01 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.[ch]: wait can be alertable now. Defaults to FALSE.
+
+2010-04-01  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* mono-logger.c, mono-logger-internal.h: Add a new "security"
+	category to logging infrastructure.
+
+2010-03-31  Miguel de Icaza  <miguel@novell.com>
+
+	* mono-semaphore.h: Use Windows semaphores on Windows, patch
+	contributed by Vincent Povirk from bugzilla #531767
+
+2010-03-31  Miguel de Icaza  <miguel@novell.com>
+
+	* mono-hash.c (test_prime): Remove warnings
+
+2010-03-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-ehash.c: Rename this to mono-hash.c.
+
+2010-03-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-ehash.c (rehash): Avoid function calls as macro arguments.
+
+Fri Mar 26 19:44:40 CET 2010 Paolo Molaro <lupus@ximian.com>
+
+	* Makefile.am, mono-hash.c: removed mono-hash.c, since now
+	mono-ehash.c is GC-aware it doesn't make sense to keep two
+	implementations.
+
+2010-03-26  Mark Probst  <mark.probst@gmail.com>
+
+	* mono-semaphore.h (MONO_SEM_POST): Fix on Darwin.
+
+2010-03-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-proclib.c mono-semaphore.c: Apply some openbsd changes from openbsd
+	ports.
+
+2010-03-25 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.[hc]: make sure the semaphore calls are restarted if
+	interrupted. Return 0 on success and -1 on failure on windows.
+
+2010-03-25  Mark Probst  <mark.probst@gmail.com>
+
+	* mono-hash.c, mono-ehash.c: Fix rehashing with regard to moving
+	GC.  Register root for ehash.
+
+2010-03-24  Andrés G. Aragoneses  <knocte@gmail.com>
+
+	* mono-dl.c: (mono_dl_build_path) Take in account the suffix
+	variable assigned wrt the prefix comparison to concat the final
+	path for dlopen. Fixes BNC#588143. r:vargaz
+
+2010-03-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.h: MONO_SEM_WAIT() return value inverted when using
+	the windows API.
+	* mono-semaphore.c: handle INFINITE timeout.
+
+2010-03-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-sigcontext.h: Define UCONTEXT accessors for openbsd/amd64.
+
+2010-03-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-sigcontext.h: Applied patch from Robert Nagy (Robert@openbsd.org).
+	Add OpenBSD definitions.
+
+2010-03-17 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.c: _timedwait takes an absolute time.
+
+2010-03-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* strtod.c: Get rid of locking so this works with eglib.
+
 2010-03-03 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* mono-mmap.c: apparently kill() can return ENOMEM. Also use signal 0
 	which is the documented way of testing for the existence of a PID.
 	Thanks to Cal Page.
+
+Thu Feb 25 11:59:22 CET 2010 Paolo Molaro <lupus@ximian.com>
+
+	* mono-logger.h, Makefile.am: expose in the API the ability to
+	set trace mask and level.
+	* mono-logger-internal.h: new header for mono internal use.
+	* mono-logger.c: fixed mono_trace_set_mask_string() to not change
+	the passed string argument.
+
+Wed Feb 24 15:50:55 CET 2010 Paolo Molaro <lupus@ximian.com>
+
+	* mono-publib.h, mono-publib.c: new public header file to allow
+	the removal of gli from the other public headers.
+	* Makefile.am: install only the public header mono-publib.h.
+
+2010-02-19 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.h: enable the #defines when io-layer is in use.
+	* Makefile.am: added new file.
+	* mono-semaphore.c: new mono_sem_timedwait() function.
+
+2010-02-19 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.h: set maximum count to 0x7fffffff.
 
 2010-01-28 Rodrigo Kumpera  <rkumpera@novell.com>
 
@@ -12,17 +430,51 @@
 
 	* mono-error.c: Implement mono_error_set_not_verifiable.
 
-	Backport of r150306.
+2010-01-26  U-anarquia\miguel  <miguel@anarquia>
+
+	* mono-dl.c: Removed debugging messages for the embeddable version
+	of mono-dl.
+
+2010-01-22 Miguel de Icaza (miguel@novell.com)
+
+	* mono-dl.c: Always strdup the return value, for consistency.
 
 2010-01-18  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* mono-error.c: Call va_end/va_start before reusing 'args'.
-	[Backport r149765]
+
+2010-01-15 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-hash.c: fix the null-gc build.
+
+2010-01-11  Miguel de Icaza  <miguel@novell.com>
+
+	* valgrind.h, memcheck.h: Add guards to prevent the gcc features
+	from being included in non-GCC builds like the Windows build.
 
 2010-01-03  Zoltan Varga  <vargaz@gmail.com>
 
 	* mono-path.c (mono_path_resolve_symlinks): Use g_strfreev () to free the
 	result of g_strplit.
+
+2009-12-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* valgrind.h memcheck.h: New files containing the BSD licensed valgrind
+	headers so we can use the valgrind user requests even if mono is compiled on
+	a system where they are not installed.
+
+2009-12-11  Marek Habersack  <mhabersack@novell.com>
+
+	* mono-io-portability.c: moved all the reporting code to the IOMAP
+	profiler module.
+	(mono_portability_find_file_internal): calls mono_profiler_iomap
+	whenever an adjustement is made.
+
+2009-12-02  Mark Probst  <mark.probst@gmail.com>
+
+	* mono-hash.c: Don't use MONO_ROOT_SETREF for setting keys and
+	values.  It's unnecessary - the hash table has a marking function
+	which takes care of all GC-tracked keys and values.
 
 2009-11-26  Zoltan Varga  <vargaz@gmail.com>
 
@@ -35,11 +487,26 @@
 
 	* mono-error.c: Same.
 
-	Backport of r146936.
-
 2009-11-25  Zoltan Varga  <vargaz@gmail.com>
 
 	* mono-hash.c (mono_g_hash_table_find): Implement this.
+
+2009-11-24  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-io-portability.c (append_report): g_string_append_vprintf is available
+	only in glib 2.14.
+
+2009-11-23  Andreas Färber  <andreas.faerber@web.de>
+
+	* mono-mmap.c (mono_mprotect): Use posix_madvise in absence of madvise.
+	
+	Code contributed under MIT/X11 license.
+
+2009-11-23  Marek Habersack  <mhabersack@novell.com>
+
+	* mono-io-portability.c: gather up and report misnamed files
+	accessed by the application if the 'report' option is present in
+	the MONO_IOMAP environment variable.
 
 2009-11-13 Jonathan Chambers <joncham@gmail.com>
 
@@ -53,31 +520,59 @@
 	split on the directory separator and check each level, as
 	readlink only checks the final destination.
 
-2009-11-10 Rodrigo Kumpera  <rkumpera@novell.com>
- 
-     * mono-error-internals.h: Add mono_error_set_argument and mono_error_raise_exception.
- 
-     * mono-error.h: Add new MONO_ERROR_ARGUMENT constant for
-     ArgumentException.
- 
-     * mono-error.c: Implement mono_error_set_argument, mono_error_raise_exception.
- 
-     * mono-error.c (mono_error_prepare_exception) Init error_out at the beginning. Add support
-     for MONO_ERROR_ARGUMENT.
+2009-11-08  Rodrigo Kumpera  <rkumpera@novell.com>
 
-	Backport of r145538.
+	* mono-sigcontext.h: Add ucontext support for FreeBSD/ppc64.
 
-2009-11-04 Rodrigo Kumpera  <rkumpera@novell.com>
+	Patch by Justin Hibbits <chmeeedalf@gmail.com>.
 
-    * mono-error.c, mono-error.h, mono-error-internal.h: New error handling
-    structures and functions.
+2009-11-06 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
-    * Makefile.am: Add new files.
+	* mono-error.c: VS does not like this.
+
+2009-11-05 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mono-error-internals.h: Add mono_error_set_argument and mono_error_raise_exception.
+
+	* mono-error.h: Add new MONO_ERROR_ARGUMENT constant for
+	ArgumentException.
+
+	* mono-error.c: Implement mono_error_set_argument, mono_error_raise_exception.
+
+ 	* mono-error.c (mono_error_prepare_exception) Init error_out at the beginning. Add support
+	for MONO_ERROR_ARGUMENT.
 
 2009-10-30 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* mono-proclib.c: hz is only multiplied by the number of cpus when
 	requesting "_Total".
+
+2009-10-29  Mark Probst  <mark.probst@gmail.com>
+
+	* mono-hash.c (mono_g_hash_mark): Don't use SET_NODE_KEY/VALUE here.
+
+2009-10-23  Alp Toker  <alp@nuanti.com>
+
+	Fix embedding API breakage from r144688. mono-compiler.h is an internal
+	header and should not be shipped:
+
+	* Makefile.am: Include newly added public header mono-error.h in HEADERS so
+	it gets installed.
+
+2009-10-23 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Makefile.am: Fix make dist.
+
+2009-10-22 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mono-compiler.h: Add MONO_DEPRECATED.
+
+2009-10-22 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mono-error.c, mono-error.h, mono-error-internal.h: New error handling
+	structures and functions.
+
+	* Makefile.am: Add new files.
 
 2009-10-12  Joel W. Reed <joelwreed@gmail.com>
 
@@ -90,6 +585,12 @@
 
 	* mono-compiler.h (MONO_INTERNAL): Disable this on solaris as it produces a
 	millions of warnings during compilation.
+
+2009-09-25  Jonathan Chambers  <joncham@gmail.com>
+
+	* mono-logger.c: Include mono-compiler.h for __func__ on MSVC.
+
+	Code is contributed under MIT/X11 license.
 
 2009-09-02 Rodrigo Kumpera  <rkumpera@novell.com>
 

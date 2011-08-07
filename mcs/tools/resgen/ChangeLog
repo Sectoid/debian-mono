@@ -1,3 +1,7 @@
+2010-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	Remove no longer used bootstrap profiles
+
 2008-09-09  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* monoresgen.cs: Make resgen2 report a bit more useful by considering

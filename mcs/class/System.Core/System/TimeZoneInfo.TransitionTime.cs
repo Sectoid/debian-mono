@@ -24,8 +24,9 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#if (INSIDE_CORLIB && (NET_4_0 || BOOTSTRAP_NET_4_0)) || (NET_2_1 && !INSIDE_CORLIB) || (NET_3_5 && !NET_4_0 && !BOOTSTRAP_NET_4_0)
+#if (INSIDE_CORLIB && (NET_4_0 || MOONLIGHT || MOBILE)) || (!INSIDE_CORLIB && (NET_3_5 && !NET_4_0 && !MOBILE))
 
+using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 
 namespace System
@@ -33,6 +34,11 @@ namespace System
 	public sealed partial class TimeZoneInfo 
 	{
 		[SerializableAttribute]
+#if NET_4_0
+		[TypeForwardedFrom (Consts.AssemblySystemCore_3_5)]
+#elif MOONLIGHT || MOBILE
+		[TypeForwardedFrom (Consts.AssemblySystem_Core)]
+#endif
 		public struct TransitionTime : IEquatable<TimeZoneInfo.TransitionTime>, ISerializable, IDeserializationCallback
 		{
 			DateTime timeOfDay;
@@ -177,15 +183,20 @@ namespace System
 				return !(t1 == t2);
 			}
 
+
+#if NET_4_0
+			void ISerializable.GetObjectData (SerializationInfo info, StreamingContext context)
+#else
 			public void GetObjectData (SerializationInfo info, StreamingContext context)
+#endif
 			{
 				throw new NotImplementedException ();
 			}
 	
-			public override bool Equals (object other)
+			public override bool Equals (object obj)
 			{
-				if (other is TransitionTime)
-					return this == (TransitionTime) other;
+				if (obj is TransitionTime)
+					return this == (TransitionTime) obj;
 				return false;
 			}
 
@@ -199,7 +210,11 @@ namespace System
 				return (day ^ (int)dayOfWeek ^ month ^ (int)timeOfDay.Ticks ^ week);
 			}
 
+#if NET_4_0
+			void IDeserializationCallback.OnDeserialization (object sender)
+#else
 			public void OnDeserialization (object sender)
+#endif
 			{
 				throw new NotImplementedException ();
 			}

@@ -1,13 +1,16 @@
+2010-03-19  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Timer.cs: Removed old NET_2_0 defines and added some new
+	MOONLIGHT defines (needed for the client stack)
+
 2009-09-29  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* Timer_2_1.cs: Removed. No longer needed by Moonlight
-	[Backport r142853]
 
 2009-09-27  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* Timer_2_1.cs: New. A smaller, internal subset of Timer for 
 	Moonlight - needed for Socket.Close(int)
-	[Backport of r142718]
 
 2009-09-24 Gonzalo Paniagua Javier <gonzalo@novell.com>
 

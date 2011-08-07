@@ -3,8 +3,10 @@
 //
 // Authors:
 //  Jonathan Pryor <jpryor@novell.com>
+//  Federico Di Gregorio <fog@initd.org>
 //
 // Copyright (C) 2008 Novell (http://www.novell.com)
+// Copyright (C) 2009 Federico Di Gregorio.
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -149,6 +151,88 @@ namespace NDesk.Options
 namespace Mono.Options
 #endif
 {
+	static class StringCoda {
+
+		public static IEnumerable<string> WrappedLines (string self, params int[] widths)
+		{
+			IEnumerable<int> w = widths;
+			return WrappedLines (self, w);
+		}
+
+		public static IEnumerable<string> WrappedLines (string self, IEnumerable<int> widths)
+		{
+			if (widths == null)
+				throw new ArgumentNullException ("widths");
+			return CreateWrappedLinesIterator (self, widths);
+		}
+
+		private static IEnumerable<string> CreateWrappedLinesIterator (string self, IEnumerable<int> widths)
+		{
+			if (string.IsNullOrEmpty (self)) {
+				yield return string.Empty;
+				yield break;
+			}
+			using (IEnumerator<int> ewidths = widths.GetEnumerator ()) {
+				bool? hw = null;
+				int width = GetNextWidth (ewidths, int.MaxValue, ref hw);
+				int start = 0, end;
+				do {
+					end = GetLineEnd (start, width, self);
+					char c = self [end-1];
+					if (char.IsWhiteSpace (c))
+						--end;
+					bool needContinuation = end != self.Length && !IsEolChar (c);
+					string continuation = "";
+					if (needContinuation) {
+						--end;
+						continuation = "-";
+					}
+					string line = self.Substring (start, end - start) + continuation;
+					yield return line;
+					start = end;
+					if (char.IsWhiteSpace (c))
+						++start;
+					width = GetNextWidth (ewidths, width, ref hw);
+				} while (end < self.Length);
+			}
+		}
+
+		private static int GetNextWidth (IEnumerator<int> ewidths, int curWidth, ref bool? eValid)
+		{
+			if (!eValid.HasValue || (eValid.HasValue && eValid.Value)) {
+				curWidth = (eValid = ewidths.MoveNext ()).Value ? ewidths.Current : curWidth;
+				// '.' is any character, - is for a continuation
+				const string minWidth = ".-";
+				if (curWidth < minWidth.Length)
+					throw new ArgumentOutOfRangeException ("widths",
+							string.Format ("Element must be >= {0}, was {1}.", minWidth.Length, curWidth));
+				return curWidth;
+			}
+			// no more elements, use the last element.
+			return curWidth;
+		}
+
+		private static bool IsEolChar (char c)
+		{
+			return !char.IsLetterOrDigit (c);
+		}
+
+		private static int GetLineEnd (int start, int length, string description)
+		{
+			int end = System.Math.Min (start + length, description.Length);
+			int sep = -1;
+			for (int i = start; i < end; ++i) {
+				if (description [i] == '\n')
+					return i+1;
+				if (IsEolChar (description [i]))
+					sep = i+1;
+			}
+			if (sep == -1 || end == description.Length)
+				return end;
+			return sep;
+		}
+	}
+
 	public class OptionValueCollection : IList, IList<string> {
 
 		List<string> values = new List<string> ();
@@ -460,6 +544,92 @@ namespace Mono.Options
 		}
 	}
 
+	public abstract class ArgumentSource {
+
+		protected ArgumentSource ()
+		{
+		}
+
+		public abstract string[] GetNames ();
+		public abstract string Description { get; }
+		public abstract bool GetArguments (string value, out IEnumerable<string> replacement);
+
+		public static IEnumerable<string> GetArgumentsFromFile (string file)
+		{
+			return GetArguments (File.OpenText (file), true);
+		}
+
+		public static IEnumerable<string> GetArguments (TextReader reader)
+		{
+			return GetArguments (reader, false);
+		}
+
+		// Cribbed from mcs/driver.cs:LoadArgs(string)
+		static IEnumerable<string> GetArguments (TextReader reader, bool close)
+		{
+			try {
+				StringBuilder arg = new StringBuilder ();
+
+				string line;
+				while ((line = reader.ReadLine ()) != null) {
+					int t = line.Length;
+
+					for (int i = 0; i < t; i++) {
+						char c = line [i];
+						
+						if (c == '"' || c == '\'') {
+							char end = c;
+							
+							for (i++; i < t; i++){
+								c = line [i];
+
+								if (c == end)
+									break;
+								arg.Append (c);
+							}
+						} else if (c == ' ') {
+							if (arg.Length > 0) {
+								yield return arg.ToString ();
+								arg.Length = 0;
+							}
+						} else
+							arg.Append (c);
+					}
+					if (arg.Length > 0) {
+						yield return arg.ToString ();
+						arg.Length = 0;
+					}
+				}
+			}
+			finally {
+				if (close)
+					reader.Close ();
+			}
+		}
+	}
+
+	public class ResponseFileSource : ArgumentSource {
+
+		public override string[] GetNames ()
+		{
+			return new string[]{"@file"};
+		}
+
+		public override string Description {
+			get {return "Read response file for more options.";}
+		}
+
+		public override bool GetArguments (string value, out IEnumerable<string> replacement)
+		{
+			if (string.IsNullOrEmpty (value) || !value.StartsWith ("@")) {
+				replacement = null;
+				return false;
+			}
+			replacement = ArgumentSource.GetArgumentsFromFile (value.Substring (1));
+			return true;
+		}
+	}
+
 	[Serializable]
 	public class OptionException : Exception {
 		private string option;
@@ -510,6 +680,7 @@ namespace Mono.Options
 		public OptionSet (Converter<string, string> localizer)
 		{
 			this.localizer = localizer;
+			this.roSources = new ReadOnlyCollection<ArgumentSource>(sources);
 		}
 
 		Converter<string, string> localizer;
@@ -517,6 +688,14 @@ namespace Mono.Options
 		public Converter<string, string> MessageLocalizer {
 			get {return localizer;}
 		}
+
+		List<ArgumentSource> sources = new List<ArgumentSource> ();
+		ReadOnlyCollection<ArgumentSource> roSources;
+
+		public ReadOnlyCollection<ArgumentSource> ArgumentSources {
+			get {return roSources;}
+		}
+
 
 		protected override string GetKeyForItem (Option item)
 		{
@@ -550,8 +729,8 @@ namespace Mono.Options
 
 		protected override void RemoveItem (int index)
 		{
-			base.RemoveItem (index);
 			Option p = Items [index];
+			base.RemoveItem (index);
 			// KeyedCollection.RemoveItem() handles the 0th item
 			for (int i = 1; i < p.Names.Length; ++i) {
 				Dictionary.Remove (p.Names [i]);
@@ -561,7 +740,6 @@ namespace Mono.Options
 		protected override void SetItem (int index, Option item)
 		{
 			base.SetItem (index, item);
-			RemoveItem (index);
 			AddImpl (item);
 		}
 
@@ -693,48 +871,30 @@ namespace Mono.Options
 			return Add (new ActionOption<TKey, TValue> (prototype, description, action));
 		}
 
+		public OptionSet Add (ArgumentSource source)
+		{
+			if (source == null)
+				throw new ArgumentNullException ("source");
+			sources.Add (source);
+			return this;
+		}
+
 		protected virtual OptionContext CreateOptionContext ()
 		{
 			return new OptionContext (this);
 		}
 
-#if LINQ
 		public List<string> Parse (IEnumerable<string> arguments)
 		{
-			bool process = true;
-			OptionContext c = CreateOptionContext ();
-			c.OptionIndex = -1;
-			var def = GetOptionForName ("<>");
-			var unprocessed = 
-				from argument in arguments
-				where ++c.OptionIndex >= 0 && (process || def != null)
-					? process
-						? argument == "--" 
-							? (process = false)
-							: !Parse (argument, c)
-								? def != null 
-									? Unprocessed (null, def, c, argument) 
-									: true
-								: false
-						: def != null 
-							? Unprocessed (null, def, c, argument)
-							: true
-					: true
-				select argument;
-			List<string> r = unprocessed.ToList ();
-			if (c.Option != null)
-				c.Option.Invoke (c);
-			return r;
-		}
-#else
-		public List<string> Parse (IEnumerable<string> arguments)
-		{
+			if (arguments == null)
+				throw new ArgumentNullException ("arguments");
 			OptionContext c = CreateOptionContext ();
 			c.OptionIndex = -1;
 			bool process = true;
 			List<string> unprocessed = new List<string> ();
 			Option def = Contains ("<>") ? this ["<>"] : null;
-			foreach (string argument in arguments) {
+			ArgumentEnumerator ae = new ArgumentEnumerator (arguments);
+			foreach (string argument in ae) {
 				++c.OptionIndex;
 				if (argument == "--") {
 					process = false;
@@ -744,6 +904,8 @@ namespace Mono.Options
 					Unprocessed (unprocessed, def, c, argument);
 					continue;
 				}
+				if (AddSource (ae, argument))
+					continue;
 				if (!Parse (argument, c))
 					Unprocessed (unprocessed, def, c, argument);
 			}
@@ -751,7 +913,50 @@ namespace Mono.Options
 				c.Option.Invoke (c);
 			return unprocessed;
 		}
-#endif
+
+		class ArgumentEnumerator : IEnumerable<string> {
+			List<IEnumerator<string>> sources = new List<IEnumerator<string>> ();
+
+			public ArgumentEnumerator (IEnumerable<string> arguments)
+			{
+				sources.Add (arguments.GetEnumerator ());
+			}
+
+			public void Add (IEnumerable<string> arguments)
+			{
+				sources.Add (arguments.GetEnumerator ());
+			}
+
+			public IEnumerator<string> GetEnumerator ()
+			{
+				do {
+					IEnumerator<string> c = sources [sources.Count-1];
+					if (c.MoveNext ())
+						yield return c.Current;
+					else {
+						c.Dispose ();
+						sources.RemoveAt (sources.Count-1);
+					}
+				} while (sources.Count > 0);
+			}
+
+			IEnumerator IEnumerable.GetEnumerator ()
+			{
+				return GetEnumerator ();
+			}
+		}
+
+		bool AddSource (ArgumentEnumerator ae, string argument)
+		{
+			foreach (ArgumentSource source in sources) {
+				IEnumerable<string> replacement;
+				if (!source.GetArguments (argument, out replacement))
+					continue;
+				ae.Add (replacement);
+				return true;
+			}
+			return false;
+		}
 
 		private static bool Unprocessed (ICollection<string> extra, Option def, OptionContext c, string argument)
 		{
@@ -829,7 +1034,7 @@ namespace Mono.Options
 		{
 			if (option != null)
 				foreach (string o in c.Option.ValueSeparators != null 
-						? option.Split (c.Option.ValueSeparators, StringSplitOptions.None)
+						? option.Split (c.Option.ValueSeparators, c.Option.MaxValueCount - c.OptionValues.Count, StringSplitOptions.None)
 						: new string[]{option}) {
 					c.OptionValues.Add (o);
 				}
@@ -922,6 +1127,37 @@ namespace Mono.Options
 				bool indent = false;
 				string prefix = new string (' ', OptionWidth+2);
 				foreach (string line in GetLines (localizer (GetDescription (p.Description)))) {
+					if (indent) 
+						o.Write (prefix);
+					o.WriteLine (line);
+					indent = true;
+				}
+			}
+
+			foreach (ArgumentSource s in sources) {
+				string[] names = s.GetNames ();
+				if (names == null || names.Length == 0)
+					continue;
+
+				int written = 0;
+
+				Write (o, ref written, "  ");
+				Write (o, ref written, names [0]);
+				for (int i = 1; i < names.Length; ++i) {
+					Write (o, ref written, ", ");
+					Write (o, ref written, names [i]);
+				}
+
+				if (written < OptionWidth)
+					o.Write (new string (' ', OptionWidth - written));
+				else {
+					o.WriteLine ();
+					o.Write (new string (' ', OptionWidth));
+				}
+
+				bool indent = false;
+				string prefix = new string (' ', OptionWidth+2);
+				foreach (string line in GetLines (localizer (GetDescription (s.Description)))) {
 					if (indent) 
 						o.Write (prefix);
 					o.WriteLine (line);
@@ -1055,46 +1291,9 @@ namespace Mono.Options
 
 		private static IEnumerable<string> GetLines (string description)
 		{
-			if (string.IsNullOrEmpty (description)) {
-				yield return string.Empty;
-				yield break;
-			}
-			int length = 80 - OptionWidth - 1;
-			int start = 0, end;
-			do {
-				end = GetLineEnd (start, length, description);
-				char c = description [end-1];
-				if (char.IsWhiteSpace (c))
-					--end;
-				bool writeContinuation = end != description.Length && !IsEolChar (c);
-				string line = description.Substring (start, end - start) +
-						(writeContinuation ? "-" : "");
-				yield return line;
-				start = end;
-				if (char.IsWhiteSpace (c))
-					++start;
-				length = 80 - OptionWidth - 2 - 1;
-			} while (end < description.Length);
-		}
-
-		private static bool IsEolChar (char c)
-		{
-			return !char.IsLetterOrDigit (c);
-		}
-
-		private static int GetLineEnd (int start, int length, string description)
-		{
-			int end = System.Math.Min (start + length, description.Length);
-			int sep = -1;
-			for (int i = start; i < end; ++i) {
-				if (description [i] == '\n')
-					return i+1;
-				if (IsEolChar (description [i]))
-					sep = i+1;
-			}
-			if (sep == -1 || end == description.Length)
-				return end;
-			return sep;
+			return StringCoda.WrappedLines (description, 
+					80 - OptionWidth, 
+					80 - OptionWidth - 2);
 		}
 	}
 }

@@ -28,32 +28,50 @@ using System.Net.Sockets;
 using System.Collections.Generic;
 
 using Mono.CSharp;
-using Mono.Attach;
 
 namespace Mono {
 
 	public class Driver {
+		public static string StartupEvalExpression;
 		
 		static int Main (string [] args)
 		{
+#if !ON_DOTNET
 			if (args.Length > 0 && args [0] == "--attach") {
 				new ClientCSharpShell (Int32.Parse (args [1])).Run (null);
 				return 0;
-			} else if (args.Length > 0 && args [0].StartsWith ("--agent:")) {
+			}
+
+			if (args.Length > 0 && args [0].StartsWith ("--agent:")) {
 				new CSharpAgent (args [0]);
 				return 0;
-			} else {
-				string [] startup_files;
-				try {
-					startup_files = Evaluator.InitAndGetStartupFiles (args);
-					Evaluator.InteractiveBaseClass = typeof (InteractiveBaseShell);
-				} catch {
-					return 1;
-				}
-
-				return new CSharpShell ().Run (startup_files);
 			}
+#endif
+			return Startup(args);
 		}
+
+		static int Startup (string[] args)
+		{
+			string[] startup_files;
+			try {
+				startup_files = Evaluator.InitAndGetStartupFiles (args, HandleExtraArguments);
+				Evaluator.DescribeTypeExpressions = true;
+				Evaluator.SetInteractiveBaseClass (typeof (InteractiveBaseShell));
+			} catch {
+				return 1;
+			}
+			return new CSharpShell ().Run (startup_files);
+		}
+
+		static int HandleExtraArguments (string [] args, int pos)
+		{
+			if (args [pos] == "-e" && pos+1 < args.Length){
+				StartupEvalExpression = args [pos+1];
+				return pos+1;
+			}
+			return -1;
+		}
+		
 	}
 
 	public class InteractiveBaseShell : InteractiveBase {
@@ -87,7 +105,7 @@ namespace Mono {
 	}
 	
 	public class CSharpShell {
-		static bool isatty = true;
+		static bool isatty = true, is_unix = false;
 		string [] startup_files;
 		
 		Mono.Terminal.LineEditor editor;
@@ -103,8 +121,11 @@ namespace Mono {
 		
 		void SetupConsole ()
 		{
-			string term = Environment.GetEnvironmentVariable ("TERM");
-			dumb = term == "dumb" || term == null || isatty == false;
+			if (is_unix){
+				string term = Environment.GetEnvironmentVariable ("TERM");
+				dumb = term == "dumb" || term == null || isatty == false;
+			} else
+				dumb = false;
 			
 			editor = new Mono.Terminal.LineEditor ("csharp", 300);
 			InteractiveBaseShell.Editor = editor;
@@ -162,9 +183,20 @@ namespace Mono {
 			Evaluate ("using System; using System.Linq; using System.Collections.Generic; using System.Collections;");
 		}
 
-		void InitTerminal ()
+		void InitTerminal (bool show_banner)
 		{
-			isatty = UnixUtils.isatty (0) && UnixUtils.isatty (1);
+#if ON_DOTNET
+			is_unix = false;
+			isatty = true;
+#else
+			int p = (int) Environment.OSVersion.Platform;
+			is_unix = (p == 4) || (p == 128);
+
+			if (is_unix)
+				isatty = UnixUtils.isatty (0) && UnixUtils.isatty (1);
+			else
+				isatty = true;
+#endif
 
 			// Work around, since Console is not accounting for
 			// cursor position when writing to Stderr.  It also
@@ -173,7 +205,7 @@ namespace Mono {
 //			Report.Stderr = Console.Out;
 			SetupConsole ();
 
-			if (isatty)
+			if (isatty && show_banner)
 				Console.WriteLine ("Mono C# Shell, type \"help;\" for help\n\nEnter statements below.");
 
 		}
@@ -183,8 +215,18 @@ namespace Mono {
 			foreach (string file in sources){
 				try {
 					try {
+						bool first = true;
+			
 						using (System.IO.StreamReader r = System.IO.File.OpenText (file)){
-							ReadEvalPrintLoopWith (p => r.ReadLine ());
+							ReadEvalPrintLoopWith (p => {
+								var line = r.ReadLine ();
+								if (first){
+									if (line.StartsWith ("#!"))
+										line = r.ReadLine ();
+									first = false;
+								}
+								return line;
+							});
 						}
 					} catch (FileNotFoundException){
 						Console.Error.WriteLine ("cs2001: Source file `{0}' not found", file);
@@ -243,18 +285,21 @@ namespace Mono {
 		public int ReadEvalPrintLoop ()
 		{
 			if (startup_files != null && startup_files.Length == 0)
-				InitTerminal ();
+				InitTerminal (startup_files.Length == 0 && Driver.StartupEvalExpression == null);
 
 			InitializeUsing ();
 
 			LoadStartupFiles ();
 
-			//
-			// Interactive or startup files provided?
-			//
 			if (startup_files.Length != 0)
 				ExecuteSources (startup_files, false);
-			else
+			else if (Driver.StartupEvalExpression != null){
+				ReadEvalPrintLoopWith (p => {
+					var ret = Driver.StartupEvalExpression;
+					Driver.StartupEvalExpression = null;
+					return ret;
+					});
+			} else
 				ReadEvalPrintLoopWith (GetLine);
 
 			return 0;
@@ -406,6 +451,7 @@ namespace Mono {
 		
 	}
 
+#if !ON_DOTNET
 	//
 	// A shell connected to a CSharpAgent running in a remote process.
 	//  - maybe add 'class_name' and 'method_name' arguments to LoadAgent.
@@ -428,7 +474,7 @@ namespace Mono {
 							  ((IPEndPoint)listener.Server.LocalEndPoint).Port,
 							  ((IPEndPoint)interrupt_listener.Server.LocalEndPoint).Port);
 	
-			VirtualMachine vm = new VirtualMachine (pid);
+			var vm = new Attach.VirtualMachine (pid);
 			vm.Attach (agent_assembly, agent_arg);
 	
 			/* Wait for the client to connect */
@@ -681,6 +727,7 @@ namespace Mono {
 			}
 		}
 	}
+#endif
 }
 	
 namespace Mono.Management
@@ -689,5 +736,4 @@ namespace Mono.Management
 		void LoadAgent (string filename, string args);
 	}
 }
-
 

@@ -24,14 +24,18 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#if NET_4_0 || BOOTSTRAP_NET_4_0
+#if NET_4_0 || MOONLIGHT || MOBILE
 
 using System.Runtime.CompilerServices;
 
 namespace System
 {
 	[Serializable]
-	[TypeForwardedFrom (Consts.AssemblySystemCore_3_5)]	
+#if NET_4_0
+	[TypeForwardedFrom (Consts.AssemblySystemCore_3_5)]
+#elif MOONLIGHT || MOBILE
+	[TypeForwardedFrom (Consts.AssemblySystem_Core)]
+#endif
 	public class InvalidTimeZoneException : Exception
 	{
 		public InvalidTimeZoneException () : base ()
@@ -40,10 +44,10 @@ namespace System
 		public InvalidTimeZoneException (string message) : base (message)
 		{}
 
-		public InvalidTimeZoneException (string message, Exception e) : base (message, e)
+		public InvalidTimeZoneException (string message, Exception innerException) : base (message, innerException)
 		{}
 
-		protected InvalidTimeZoneException (Runtime.Serialization.SerializationInfo info, Runtime.Serialization.StreamingContext sc) : base (info, sc)
+		protected InvalidTimeZoneException (Runtime.Serialization.SerializationInfo info, Runtime.Serialization.StreamingContext context) : base (info, context)
 		{}
 	}
 }

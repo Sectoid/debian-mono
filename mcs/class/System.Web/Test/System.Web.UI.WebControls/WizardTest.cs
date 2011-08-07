@@ -47,7 +47,7 @@ using MonoTests.SystemWeb.Framework;
 using MonoTests.stand_alone.WebHarness;
 using System.Threading;
 
-
+using MonoTests.Common;
 
 
 namespace MonoTests.System.Web.UI.WebControls
@@ -301,7 +301,67 @@ namespace MonoTests.System.Web.UI.WebControls
 			base.EnsureChildControls ();
 		}
 	}
+#if NET_4_0
+	class TestHeaderSpan : WebControl
+	{
+		public TestHeaderSpan ()
+			: base (HtmlTextWriterTag.Span)
+		{ }
+	}
+	class TestHeaderTemplate : ITemplate
+	{
+		public void InstantiateIn (Control container)
+		{
+			container.Controls.Add (new LiteralControl ("Header"));
+		}
+	}
 
+	class TestLayoutTemplate : ITemplate
+	{
+		public bool HasHeaderPlaceHolder { get; set; }
+		public bool HasNavigationPlaceHolder { get; set; }
+		public bool HasSideBarPlaceHolder { get; set; }
+		public bool HasWizardStepPlaceHolder { get; set; }
+
+		public Type HeaderPlaceHolderType { get; set; }
+		public Type NavigationPlaceHolderType { get; set; }
+		public Type SideBarPlaceHolderType { get; set; }
+		public Type WizardStepPlaceHolderType { get; set; }
+
+		public TestLayoutTemplate ()
+		{
+			HeaderPlaceHolderType = typeof (PlaceHolder);
+			NavigationPlaceHolderType = typeof (PlaceHolder);
+			SideBarPlaceHolderType = typeof (PlaceHolder);
+			WizardStepPlaceHolderType = typeof (PlaceHolder);
+		}
+
+		public void InstantiateIn (Control container)
+		{
+			if (HasHeaderPlaceHolder)
+				container.Controls.Add (MakePlaceHolder (HeaderPlaceHolderType, Wizard.HeaderPlaceholderId));
+
+			if (HasSideBarPlaceHolder)
+				container.Controls.Add (MakePlaceHolder (SideBarPlaceHolderType, Wizard.SideBarPlaceholderId));
+
+			if (HasNavigationPlaceHolder)
+				container.Controls.Add (MakePlaceHolder (NavigationPlaceHolderType, Wizard.NavigationPlaceholderId));
+
+			if (HasWizardStepPlaceHolder)
+				container.Controls.Add (MakePlaceHolder (WizardStepPlaceHolderType, Wizard.WizardStepPlaceholderId));
+		}
+
+		Control MakePlaceHolder (Type type, string id)
+		{
+			Control ctl = Activator.CreateInstance (type) as Control;
+			if (ctl == null)
+				throw new InvalidOperationException ("Placeholder must descend from the Control type.");
+
+			ctl.ID = id;
+			return ctl;
+		}
+	}
+#endif
 	[TestFixture]
 	public class WizardTest
 	{
@@ -315,6 +375,12 @@ namespace MonoTests.System.Web.UI.WebControls
 			Assert.AreEqual ("MoveNext", Wizard.MoveNextCommandName, "MoveNextCommandName");
 			Assert.AreEqual ("MovePrevious", Wizard.MovePreviousCommandName, "MovePreviousCommandName");
 			Assert.AreEqual ("Move", Wizard.MoveToCommandName, "MoveToCommandName");
+#if NET_4_0
+			Assert.AreEqual ("headerPlaceholder", Wizard.HeaderPlaceholderId, "HeaderPlaceHolderId");
+			Assert.AreEqual ("navigationPlaceholder", Wizard.NavigationPlaceholderId, "NavigationPlaceHolderId");
+			Assert.AreEqual ("sideBarPlaceholder", Wizard.SideBarPlaceholderId, "SidePlaceholderId");
+			Assert.AreEqual ("wizardStepPlaceholder", Wizard.WizardStepPlaceholderId, "WizardStepPlaceholderId");
+#endif
 			// Protected Fields 
 			Assert.AreEqual ("CancelButton", PokerWizard.PokerCancelButtonID, "CancelButtonID");
 			Assert.AreEqual ("CustomFinishButton", PokerWizard.PokerCustomFinishButtonID, "CustomFinishButtonID");
@@ -472,21 +538,15 @@ namespace MonoTests.System.Web.UI.WebControls
 		[Category ("NunitWeb")]
 		public void Wizard_CancelButtonPropertyRendering ()
 		{
-
 			WebTest t = new WebTest (PageInvoker.CreateOnPreInit (_CancelButtonPropertyRendering));
 			string html = t.Run ();
-			string origin = @"<table cellspacing=""0"" cellpadding=""0"" border=""0"" style=""border-collapse:collapse;"">
-								<tr style=""height:100%;"">
-									<td>Start</td>
-								</tr><tr>
-									<td align=""right""><table cellspacing=""5"" cellpadding=""5"" border=""0"">
-										<tr>
-											<td align=""right""><input type=""submit"" name=""ctl00$StartNavigationTemplateContainerID$StartNextButton"" value=""Next"" id=""ctl00_StartNavigationTemplateContainerID_StartNextButton"" /></td><td align=""right""><input type=""submit"" name=""ctl00$StartNavigationTemplateContainerID$CancelButton"" value=""CancelButtonText"" id=""ctl00_StartNavigationTemplateContainerID_CancelButton"" style=""border-color:Red;"" /></td>
-										</tr>
-									</table></td>
-								</tr>
-							</table>";
-			HtmlDiff.AssertAreEqual (origin, HtmlDiff.GetControlFromPageHtml (html), "CancelButtonPropertyRendering");
+#if NET_4_0
+			string origin = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr style=\"height:100%;\">\r\n\t\t<td>Start</td>\r\n\t</tr><tr>\r\n\t\t<td align=\"right\"><table cellspacing=\"5\" cellpadding=\"5\">\r\n\t\t\t<tr>\r\n\t\t\t\t<td align=\"right\"><input type=\"submit\" name=\"ctl00$StartNavigationTemplateContainerID$StartNextButton\" value=\"Next\" id=\"ctl00_StartNavigationTemplateContainerID_StartNextButton\" /></td><td align=\"right\"><input type=\"submit\" name=\"ctl00$StartNavigationTemplateContainerID$CancelButton\" value=\"CancelButtonText\" id=\"ctl00_StartNavigationTemplateContainerID_CancelButton\" style=\"border-color:Red;\" /></td>\r\n\t\t\t</tr>\r\n\t\t</table></td>\r\n\t</tr>\r\n</table>";
+#else
+			string origin = "<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr style=\"height:100%;\">\r\n\t\t<td>Start</td>\r\n\t</tr><tr>\r\n\t\t<td align=\"right\"><table cellspacing=\"5\" cellpadding=\"5\" border=\"0\">\r\n\t\t\t<tr>\r\n\t\t\t\t<td align=\"right\"><input type=\"submit\" name=\"ctl00$StartNavigationTemplateContainerID$StartNextButton\" value=\"Next\" id=\"ctl00_StartNavigationTemplateContainerID_StartNextButton\" /></td><td align=\"right\"><input type=\"submit\" name=\"ctl00$StartNavigationTemplateContainerID$CancelButton\" value=\"CancelButtonText\" id=\"ctl00_StartNavigationTemplateContainerID_CancelButton\" style=\"border-color:Red;\" /></td>\r\n\t\t\t</tr>\r\n\t\t</table></td>\r\n\t</tr>\r\n</table>";
+#endif
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (html);
+			HtmlDiff.AssertAreEqual (origin, renderedHtml, "CancelButtonPropertyRendering");
 		}
 
 		public static void _CancelButtonPropertyRendering (Page p)
@@ -526,18 +586,13 @@ namespace MonoTests.System.Web.UI.WebControls
 
 			WebTest t = new WebTest (PageInvoker.CreateOnPreInit (_FinishButtonPropertyRendering));
 			string html = t.Run ();
-			string origin = @"<table cellspacing=""0"" cellpadding=""0"" border=""0"" style=""border-collapse:collapse;"">
-								<tr style=""height:100%;"">
-									<td>Finish</td>
-								</tr><tr>
-									<td align=""right""><table cellspacing=""5"" cellpadding=""5"" border=""0"">
-										<tr>
-											<td align=""right""><input type=""image"" name=""ctl00$FinishNavigationTemplateContainerID$FinishPreviousImageButton"" id=""ctl00_FinishNavigationTemplateContainerID_FinishPreviousImageButton"" src=""http://FinishPreviousButtonImageUrl"" alt=""FinishPreviousButtonText"" style=""background-color:Red;border-width:0px;"" /></td><td align=""right""><a id=""ctl00_FinishNavigationTemplateContainerID_FinishLinkButton"" href=""javascript:__doPostBack('ctl00$FinishNavigationTemplateContainerID$FinishLinkButton','')"" style=""border-color:Red;"">FinishCompleteButtonText</a></td>
-										</tr>
-									</table></td>
-								</tr>
-							</table>";
-			HtmlDiff.AssertAreEqual (origin, HtmlDiff.GetControlFromPageHtml (html), "CancelButtonPropertyRendering");
+#if NET_4_0
+			string origin = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr style=\"height:100%;\">\r\n\t\t<td>Finish</td>\r\n\t</tr><tr>\r\n\t\t<td align=\"right\"><table cellspacing=\"5\" cellpadding=\"5\">\r\n\t\t\t<tr>\r\n\t\t\t\t<td align=\"right\"><input type=\"image\" name=\"ctl00$FinishNavigationTemplateContainerID$FinishPreviousImageButton\" id=\"ctl00_FinishNavigationTemplateContainerID_FinishPreviousImageButton\" src=\"http://FinishPreviousButtonImageUrl\" alt=\"FinishPreviousButtonText\" style=\"background-color:Red;\" /></td><td align=\"right\"><a id=\"ctl00_FinishNavigationTemplateContainerID_FinishLinkButton\" href=\"javascript:__doPostBack(&#39;ctl00$FinishNavigationTemplateContainerID$FinishLinkButton&#39;,&#39;&#39;)\" style=\"border-color:Red;\">FinishCompleteButtonText</a></td>\r\n\t\t\t</tr>\r\n\t\t</table></td>\r\n\t</tr>\r\n</table>";
+#else			
+			string origin = "<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr style=\"height:100%;\">\r\n\t\t<td>Finish</td>\r\n\t</tr><tr>\r\n\t\t<td align=\"right\"><table cellspacing=\"5\" cellpadding=\"5\" border=\"0\">\r\n\t\t\t<tr>\r\n\t\t\t\t<td align=\"right\"><input type=\"image\" name=\"ctl00$FinishNavigationTemplateContainerID$FinishPreviousImageButton\" id=\"ctl00_FinishNavigationTemplateContainerID_FinishPreviousImageButton\" src=\"http://FinishPreviousButtonImageUrl\" alt=\"FinishPreviousButtonText\" style=\"background-color:Red;border-width:0px;\" /></td><td align=\"right\"><a id=\"ctl00_FinishNavigationTemplateContainerID_FinishLinkButton\" href=\"javascript:__doPostBack('ctl00$FinishNavigationTemplateContainerID$FinishLinkButton','')\" style=\"border-color:Red;\">FinishCompleteButtonText</a></td>\r\n\t\t\t</tr>\r\n\t\t</table></td>\r\n\t</tr>\r\n</table>";
+#endif
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (html);
+			HtmlDiff.AssertAreEqual (origin, renderedHtml, "CancelButtonPropertyRendering");
 		}
 
 		public static void _FinishButtonPropertyRendering (Page p)
@@ -580,20 +635,13 @@ namespace MonoTests.System.Web.UI.WebControls
 		{
 			WebTest t = new WebTest (PageInvoker.CreateOnPreInit (_HeaderRendering));
 			string html = t.Run ();
-			string origin = @"<table cellspacing=""0"" cellpadding=""0"" border=""0"" style=""border-collapse:collapse;"">
-								<tr>
-									<td style=""background-color:Red;""><input name=""ctl00$HeaderContainer$TextBox1"" type=""text"" id=""ctl00_HeaderContainer_TextBox1"" /></td>
-								</tr><tr style=""height:100%;"">
-									<td>Finish</td>
-								</tr><tr>
-									<td align=""right""><table cellspacing=""5"" cellpadding=""5"" border=""0"">
-										<tr>
-											<td align=""right""><input type=""submit"" name=""ctl00$FinishNavigationTemplateContainerID$FinishPreviousButton"" value=""Previous"" id=""ctl00_FinishNavigationTemplateContainerID_FinishPreviousButton"" /></td><td align=""right""><input type=""submit"" name=""ctl00$FinishNavigationTemplateContainerID$FinishButton"" value=""Finish"" id=""ctl00_FinishNavigationTemplateContainerID_FinishButton"" /></td>
-										</tr>
-									</table></td>
-								</tr>
-							</table>";
-			HtmlDiff.AssertAreEqual (origin, HtmlDiff.GetControlFromPageHtml (html), "HeaderRendering");
+#if NET_4_0
+			string origin = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr>\r\n\t\t<td style=\"background-color:Red;\"><input name=\"ctl00$HeaderContainer$TextBox1\" type=\"text\" id=\"ctl00_HeaderContainer_TextBox1\" /></td>\r\n\t</tr><tr style=\"height:100%;\">\r\n\t\t<td>Finish</td>\r\n\t</tr><tr>\r\n\t\t<td align=\"right\"><table cellspacing=\"5\" cellpadding=\"5\">\r\n\t\t\t<tr>\r\n\t\t\t\t<td align=\"right\"><input type=\"submit\" name=\"ctl00$FinishNavigationTemplateContainerID$FinishPreviousButton\" value=\"Previous\" id=\"ctl00_FinishNavigationTemplateContainerID_FinishPreviousButton\" /></td><td align=\"right\"><input type=\"submit\" name=\"ctl00$FinishNavigationTemplateContainerID$FinishButton\" value=\"Finish\" id=\"ctl00_FinishNavigationTemplateContainerID_FinishButton\" /></td>\r\n\t\t\t</tr>\r\n\t\t</table></td>\r\n\t</tr>\r\n</table>";
+#else
+			string origin = "<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr>\r\n\t\t<td style=\"background-color:Red;\"><input name=\"ctl00$HeaderContainer$TextBox1\" type=\"text\" id=\"ctl00_HeaderContainer_TextBox1\" /></td>\r\n\t</tr><tr style=\"height:100%;\">\r\n\t\t<td>Finish</td>\r\n\t</tr><tr>\r\n\t\t<td align=\"right\"><table cellspacing=\"5\" cellpadding=\"5\" border=\"0\">\r\n\t\t\t<tr>\r\n\t\t\t\t<td align=\"right\"><input type=\"submit\" name=\"ctl00$FinishNavigationTemplateContainerID$FinishPreviousButton\" value=\"Previous\" id=\"ctl00_FinishNavigationTemplateContainerID_FinishPreviousButton\" /></td><td align=\"right\"><input type=\"submit\" name=\"ctl00$FinishNavigationTemplateContainerID$FinishButton\" value=\"Finish\" id=\"ctl00_FinishNavigationTemplateContainerID_FinishButton\" /></td>\r\n\t\t\t</tr>\r\n\t\t</table></td>\r\n\t</tr>\r\n</table>";
+#endif
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (html);
+			HtmlDiff.AssertAreEqual (origin, renderedHtml, "HeaderRendering");
 		}
 
 		public static void _HeaderRendering (Page p)
@@ -638,28 +686,13 @@ namespace MonoTests.System.Web.UI.WebControls
 		{
 			WebTest t = new WebTest (PageInvoker.CreateOnPreInit (_SideBarRendering));
 			string html = t.Run ();
-			string origin = @"<table cellspacing=""0"" cellpadding=""0"" border=""0"" style=""border-collapse:collapse;"">
-								<tr>
-									<td style=""background-color:Red;height:100%;""><a href=""#ctl00_SkipLink""><img alt=""Skip Navigation Links."" height=""0"" width=""0"" src=""/NunitWeb/WebResource.axd?d=u9knZDluAzVeq3S7b_Cm7w2&amp;t=632875336762459244"" style=""border-width:0px;"" /></a><table id=""ctl00_SideBarContainer_SideBarList"" cellspacing=""0"" border=""0"" style=""border-collapse:collapse;"">
-										<tr>
-											<td><input type=""button"" name=""ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton"" value=""step1"" onclick=""javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton','')"" id=""ctl00_SideBarContainer_SideBarList_ctl00_SideBarButton"" /></td>
-										</tr><tr>
-											<td><input type=""button"" name=""ctl00$SideBarContainer$SideBarList$ctl01$SideBarButton"" value=""step2"" onclick=""javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl01$SideBarButton','')"" id=""ctl00_SideBarContainer_SideBarList_ctl01_SideBarButton"" /></td>
-										</tr>
-									</table><a id=""ctl00_SkipLink""></a></td><td style=""height:100%;""><table cellspacing=""0"" cellpadding=""0"" border=""0"" style=""height:100%;width:100%;border-collapse:collapse;"">
-										<tr style=""height:100%;"">
-											<td>Step 1</td>
-										</tr><tr>
-											<td align=""right""><table cellspacing=""5"" cellpadding=""5"" border=""0"">
-												<tr>
-													<td align=""right""><input type=""submit"" name=""ctl00$StartNavigationTemplateContainerID$StartNextButton"" value=""Next"" id=""ctl00_StartNavigationTemplateContainerID_StartNextButton"" /></td>
-												</tr>
-											</table></td>
-										</tr>
-									</table></td>
-								</tr>
-							</table>";
-			HtmlDiff.AssertAreEqual (origin, HtmlDiff.GetControlFromPageHtml (html), "SideBarRendering");
+#if NET_4_0
+			string origin = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr>\r\n\t\t<td style=\"background-color:Red;height:100%;\"><a href=\"#ctl00_SkipLink\"><img alt=\"Skip Navigation Links.\" height=\"0\" width=\"0\" src=\"/NunitWeb/WebResource.axd?d=8VpphgAbakKUC_J8R6hR0Q2&amp;t=634067491135766272\" style=\"border-width:0px;\" /></a><table id=\"ctl00_SideBarContainer_SideBarList\" cellspacing=\"0\" style=\"border-collapse:collapse;\">\r\n\t\t\t<tr>\r\n\t\t\t\t<td><input type=\"button\" name=\"ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton\" value=\"step1\" onclick=\"javascript:__doPostBack(&#39;ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton&#39;,&#39;&#39;)\" id=\"ctl00_SideBarContainer_SideBarList_SideBarButton_0\" /></td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td><input type=\"button\" name=\"ctl00$SideBarContainer$SideBarList$ctl01$SideBarButton\" value=\"step2\" onclick=\"javascript:__doPostBack(&#39;ctl00$SideBarContainer$SideBarList$ctl01$SideBarButton&#39;,&#39;&#39;)\" id=\"ctl00_SideBarContainer_SideBarList_SideBarButton_1\" /></td>\r\n\t\t\t</tr>\r\n\t\t</table><a id=\"ctl00_SkipLink\"></a></td><td style=\"height:100%;\"><table cellspacing=\"0\" cellpadding=\"0\" style=\"height:100%;width:100%;border-collapse:collapse;\">\r\n\t\t\t<tr style=\"height:100%;\">\r\n\t\t\t\t<td>Step 1</td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td align=\"right\"><table cellspacing=\"5\" cellpadding=\"5\">\r\n\t\t\t\t\t<tr>\r\n\t\t\t\t\t\t<td align=\"right\"><input type=\"submit\" name=\"ctl00$StartNavigationTemplateContainerID$StartNextButton\" value=\"Next\" id=\"ctl00_StartNavigationTemplateContainerID_StartNextButton\" /></td>\r\n\t\t\t\t\t</tr>\r\n\t\t\t\t</table></td>\r\n\t\t\t</tr>\r\n\t\t</table></td>\r\n\t</tr>\r\n</table>";
+#else
+			string origin = "<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr>\r\n\t\t<td style=\"background-color:Red;height:100%;\"><a href=\"#ctl00_SkipLink\"><img alt=\"Skip Navigation Links.\" height=\"0\" width=\"0\" src=\"/NunitWeb/WebResource.axd?d=4RHYfeNnynkXiM59uthjZg2&amp;t=633802729995006876\" style=\"border-width:0px;\" /></a><table id=\"ctl00_SideBarContainer_SideBarList\" cellspacing=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\r\n\t\t\t<tr>\r\n\t\t\t\t<td><input type=\"button\" name=\"ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton\" value=\"step1\" onclick=\"javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton','')\" id=\"ctl00_SideBarContainer_SideBarList_ctl00_SideBarButton\" /></td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td><input type=\"button\" name=\"ctl00$SideBarContainer$SideBarList$ctl01$SideBarButton\" value=\"step2\" onclick=\"javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl01$SideBarButton','')\" id=\"ctl00_SideBarContainer_SideBarList_ctl01_SideBarButton\" /></td>\r\n\t\t\t</tr>\r\n\t\t</table><a id=\"ctl00_SkipLink\"></a></td><td style=\"height:100%;\"><table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"height:100%;width:100%;border-collapse:collapse;\">\r\n\t\t\t<tr style=\"height:100%;\">\r\n\t\t\t\t<td>Step 1</td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td align=\"right\"><table cellspacing=\"5\" cellpadding=\"5\" border=\"0\">\r\n\t\t\t\t\t<tr>\r\n\t\t\t\t\t\t<td align=\"right\"><input type=\"submit\" name=\"ctl00$StartNavigationTemplateContainerID$StartNextButton\" value=\"Next\" id=\"ctl00_StartNavigationTemplateContainerID_StartNextButton\" /></td>\r\n\t\t\t\t\t</tr>\r\n\t\t\t\t</table></td>\r\n\t\t\t</tr>\r\n\t\t</table></td>\r\n\t</tr>\r\n</table>";
+#endif
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (html);
+			HtmlDiff.AssertAreEqual (origin, renderedHtml, "SideBarRendering");
 		}
 
 		public static void _SideBarRendering (Page p)
@@ -710,28 +743,13 @@ namespace MonoTests.System.Web.UI.WebControls
 		{
 			WebTest t = new WebTest (PageInvoker.CreateOnPreInit (_NavigationRendering));
 			string html = t.Run ();
-			string origin = @"<table cellspacing=""0"" cellpadding=""0"" border=""0"" style=""border-collapse:collapse;"">
-								<tr>
-									<td style=""height:100%;""><a href=""#ctl00_SkipLink""><img alt=""Skip Navigation Links."" height=""0"" width=""0"" src=""/NunitWeb/WebResource.axd?d=u9knZDluAzVeq3S7b_Cm7w2&amp;t=632875336762459244"" style=""border-width:0px;"" /></a><table id=""ctl00_SideBarContainer_SideBarList"" cellspacing=""0"" border=""0"" style=""border-collapse:collapse;"">
-										<tr>
-											<td style=""font-weight:bold;""><a id=""ctl00_SideBarContainer_SideBarList_ctl00_SideBarButton"" href=""javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton','')"">step1</a></td>
-										</tr><tr>
-											<td><a id=""ctl00_SideBarContainer_SideBarList_ctl01_SideBarButton"" href=""javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl01$SideBarButton','')"">step2</a></td>
-										</tr>
-									</table><a id=""ctl00_SkipLink""></a></td><td style=""height:100%;""><table cellspacing=""0"" cellpadding=""0"" border=""0"" style=""height:100%;width:100%;border-collapse:collapse;"">
-										<tr style=""height:100%;"">
-											<td>Start</td>
-										</tr><tr>
-											<td align=""right"" style=""background-color:Yellow;""><table cellspacing=""5"" cellpadding=""5"" border=""0"">
-												<tr>
-													<td align=""right""><input type=""submit"" name=""ctl00$StartNavigationTemplateContainerID$StartNextButton"" value=""Next"" id=""ctl00_StartNavigationTemplateContainerID_StartNextButton"" style=""background-color:Red;"" /></td>
-												</tr>
-											</table></td>
-										</tr>
-									</table></td>
-								</tr>
-							</table>";
-			HtmlDiff.AssertAreEqual (origin, HtmlDiff.GetControlFromPageHtml (html), "NavigationRendering");
+#if NET_4_0
+			string origin = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr>\r\n\t\t<td style=\"height:100%;\"><a href=\"#ctl00_SkipLink\"><img alt=\"Skip Navigation Links.\" height=\"0\" width=\"0\" src=\"/NunitWeb/WebResource.axd?d=8VpphgAbakKUC_J8R6hR0Q2&amp;t=634067491135766272\" style=\"border-width:0px;\" /></a><table id=\"ctl00_SideBarContainer_SideBarList\" cellspacing=\"0\" style=\"border-collapse:collapse;\">\r\n\t\t\t<tr>\r\n\t\t\t\t<td style=\"font-weight:bold;\"><a id=\"ctl00_SideBarContainer_SideBarList_SideBarButton_0\" href=\"javascript:__doPostBack(&#39;ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton&#39;,&#39;&#39;)\">step1</a></td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td><a id=\"ctl00_SideBarContainer_SideBarList_SideBarButton_1\" href=\"javascript:__doPostBack(&#39;ctl00$SideBarContainer$SideBarList$ctl01$SideBarButton&#39;,&#39;&#39;)\">step2</a></td>\r\n\t\t\t</tr>\r\n\t\t</table><a id=\"ctl00_SkipLink\"></a></td><td style=\"height:100%;\"><table cellspacing=\"0\" cellpadding=\"0\" style=\"height:100%;width:100%;border-collapse:collapse;\">\r\n\t\t\t<tr style=\"height:100%;\">\r\n\t\t\t\t<td>Start</td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td align=\"right\" style=\"background-color:Yellow;\"><table cellspacing=\"5\" cellpadding=\"5\">\r\n\t\t\t\t\t<tr>\r\n\t\t\t\t\t\t<td align=\"right\"><input type=\"submit\" name=\"ctl00$StartNavigationTemplateContainerID$StartNextButton\" value=\"Next\" id=\"ctl00_StartNavigationTemplateContainerID_StartNextButton\" style=\"background-color:Red;\" /></td>\r\n\t\t\t\t\t</tr>\r\n\t\t\t\t</table></td>\r\n\t\t\t</tr>\r\n\t\t</table></td>\r\n\t</tr>\r\n</table>";
+#else
+			string origin = "<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr>\r\n\t\t<td style=\"height:100%;\"><a href=\"#ctl00_SkipLink\"><img alt=\"Skip Navigation Links.\" height=\"0\" width=\"0\" src=\"/NunitWeb/WebResource.axd?d=4RHYfeNnynkXiM59uthjZg2&amp;t=633802729995006876\" style=\"border-width:0px;\" /></a><table id=\"ctl00_SideBarContainer_SideBarList\" cellspacing=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\r\n\t\t\t<tr>\r\n\t\t\t\t<td style=\"font-weight:bold;\"><a id=\"ctl00_SideBarContainer_SideBarList_ctl00_SideBarButton\" href=\"javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton','')\">step1</a></td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td><a id=\"ctl00_SideBarContainer_SideBarList_ctl01_SideBarButton\" href=\"javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl01$SideBarButton','')\">step2</a></td>\r\n\t\t\t</tr>\r\n\t\t</table><a id=\"ctl00_SkipLink\"></a></td><td style=\"height:100%;\"><table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"height:100%;width:100%;border-collapse:collapse;\">\r\n\t\t\t<tr style=\"height:100%;\">\r\n\t\t\t\t<td>Start</td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td align=\"right\" style=\"background-color:Yellow;\"><table cellspacing=\"5\" cellpadding=\"5\" border=\"0\">\r\n\t\t\t\t\t<tr>\r\n\t\t\t\t\t\t<td align=\"right\"><input type=\"submit\" name=\"ctl00$StartNavigationTemplateContainerID$StartNextButton\" value=\"Next\" id=\"ctl00_StartNavigationTemplateContainerID_StartNextButton\" style=\"background-color:Red;\" /></td>\r\n\t\t\t\t\t</tr>\r\n\t\t\t\t</table></td>\r\n\t\t\t</tr>\r\n\t\t</table></td>\r\n\t</tr>\r\n</table>";
+#endif
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (html);
+			HtmlDiff.AssertAreEqual (origin, renderedHtml, "NavigationRendering");
 		}
 
 		public static void _NavigationRendering (Page p)
@@ -766,28 +784,13 @@ namespace MonoTests.System.Web.UI.WebControls
 		{
 			WebTest t = new WebTest (PageInvoker.CreateOnPreInit (_StartTypeRendering));
 			string html = t.Run ();
-			string origin = @"<table cellspacing=""0"" cellpadding=""0"" border=""0"" style=""border-collapse:collapse;"">
-								<tr>
-									<td style=""height:100%;""><a href=""#ctl00_SkipLink""><img alt=""Skip Navigation Links."" height=""0"" width=""0"" src=""/NunitWeb/WebResource.axd?d=u9knZDluAzVeq3S7b_Cm7w2&amp;t=632875336762459244"" style=""border-width:0px;"" /></a><table id=""ctl00_SideBarContainer_SideBarList"" cellspacing=""0"" border=""0"" style=""border-collapse:collapse;"">
-										<tr>
-											<td style=""font-weight:bold;""><a id=""ctl00_SideBarContainer_SideBarList_ctl00_SideBarButton"" href=""javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton','')"">step1</a></td>
-										</tr><tr>
-											<td><a id=""ctl00_SideBarContainer_SideBarList_ctl01_SideBarButton"" href=""javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl01$SideBarButton','')"">step2</a></td>
-										</tr>
-									</table><a id=""ctl00_SkipLink""></a></td><td style=""height:100%;""><table cellspacing=""0"" cellpadding=""0"" border=""0"" style=""height:100%;width:100%;border-collapse:collapse;"">
-										<tr style=""height:100%;"">
-											<td>Start</td>
-										</tr><tr>
-											<td align=""right""><table cellspacing=""5"" cellpadding=""5"" border=""0"">
-												<tr>
-													<td align=""right""><input type=""submit"" name=""ctl00$StartNavigationTemplateContainerID$StartNextButton"" value=""StartNextButtonText"" id=""ctl00_StartNavigationTemplateContainerID_StartNextButton"" style=""background-color:Red;"" /></td>
-												</tr>
-											</table></td>
-										</tr>
-									</table></td>
-								</tr>
-							</table>";
-			HtmlDiff.AssertAreEqual (origin, HtmlDiff.GetControlFromPageHtml (html), "StartTypeRendering");
+#if NET_4_0
+			string origin = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr>\r\n\t\t<td style=\"height:100%;\"><a href=\"#ctl00_SkipLink\"><img alt=\"Skip Navigation Links.\" height=\"0\" width=\"0\" src=\"/NunitWeb/WebResource.axd?d=8VpphgAbakKUC_J8R6hR0Q2&amp;t=634067491135766272\" style=\"border-width:0px;\" /></a><table id=\"ctl00_SideBarContainer_SideBarList\" cellspacing=\"0\" style=\"border-collapse:collapse;\">\r\n\t\t\t<tr>\r\n\t\t\t\t<td style=\"font-weight:bold;\"><a id=\"ctl00_SideBarContainer_SideBarList_SideBarButton_0\" href=\"javascript:__doPostBack(&#39;ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton&#39;,&#39;&#39;)\">step1</a></td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td><a id=\"ctl00_SideBarContainer_SideBarList_SideBarButton_1\" href=\"javascript:__doPostBack(&#39;ctl00$SideBarContainer$SideBarList$ctl01$SideBarButton&#39;,&#39;&#39;)\">step2</a></td>\r\n\t\t\t</tr>\r\n\t\t</table><a id=\"ctl00_SkipLink\"></a></td><td style=\"height:100%;\"><table cellspacing=\"0\" cellpadding=\"0\" style=\"height:100%;width:100%;border-collapse:collapse;\">\r\n\t\t\t<tr style=\"height:100%;\">\r\n\t\t\t\t<td>Start</td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td align=\"right\"><table cellspacing=\"5\" cellpadding=\"5\">\r\n\t\t\t\t\t<tr>\r\n\t\t\t\t\t\t<td align=\"right\"><input type=\"submit\" name=\"ctl00$StartNavigationTemplateContainerID$StartNextButton\" value=\"StartNextButtonText\" id=\"ctl00_StartNavigationTemplateContainerID_StartNextButton\" style=\"background-color:Red;\" /></td>\r\n\t\t\t\t\t</tr>\r\n\t\t\t\t</table></td>\r\n\t\t\t</tr>\r\n\t\t</table></td>\r\n\t</tr>\r\n</table>";
+#else
+			string origin = "<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr>\r\n\t\t<td style=\"height:100%;\"><a href=\"#ctl00_SkipLink\"><img alt=\"Skip Navigation Links.\" height=\"0\" width=\"0\" src=\"/NunitWeb/WebResource.axd?d=4RHYfeNnynkXiM59uthjZg2&amp;t=633802729995006876\" style=\"border-width:0px;\" /></a><table id=\"ctl00_SideBarContainer_SideBarList\" cellspacing=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\r\n\t\t\t<tr>\r\n\t\t\t\t<td style=\"font-weight:bold;\"><a id=\"ctl00_SideBarContainer_SideBarList_ctl00_SideBarButton\" href=\"javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton','')\">step1</a></td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td><a id=\"ctl00_SideBarContainer_SideBarList_ctl01_SideBarButton\" href=\"javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl01$SideBarButton','')\">step2</a></td>\r\n\t\t\t</tr>\r\n\t\t</table><a id=\"ctl00_SkipLink\"></a></td><td style=\"height:100%;\"><table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"height:100%;width:100%;border-collapse:collapse;\">\r\n\t\t\t<tr style=\"height:100%;\">\r\n\t\t\t\t<td>Start</td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td align=\"right\"><table cellspacing=\"5\" cellpadding=\"5\" border=\"0\">\r\n\t\t\t\t\t<tr>\r\n\t\t\t\t\t\t<td align=\"right\"><input type=\"submit\" name=\"ctl00$StartNavigationTemplateContainerID$StartNextButton\" value=\"StartNextButtonText\" id=\"ctl00_StartNavigationTemplateContainerID_StartNextButton\" style=\"background-color:Red;\" /></td>\r\n\t\t\t\t\t</tr>\r\n\t\t\t\t</table></td>\r\n\t\t\t</tr>\r\n\t\t</table></td>\r\n\t</tr>\r\n</table>";
+#endif
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (html);
+			HtmlDiff.AssertAreEqual (origin, renderedHtml, "StartTypeRendering");
 		}
 
 		public static void _StartTypeRendering (Page p)
@@ -824,22 +827,13 @@ namespace MonoTests.System.Web.UI.WebControls
 		{
 			WebTest t = new WebTest (PageInvoker.CreateOnPreInit (_StartTemplateRendering));
 			string html = t.Run ();
-			string origin = @"<table cellspacing=""0"" cellpadding=""0"" border=""0"" style=""border-collapse:collapse;"">
-						<tr>
-							<td style=""height:100%;""><a href=""#ctl00_SkipLink""><img alt=""Skip Navigation Links."" height=""0"" width=""0"" src=""/NunitWeb/WebResource.axd?d=gZrz8lvSQfolS1pG07HX9g2&amp;t=632784640484505569"" style=""border-width:0px;"" /></a><table id=""ctl00_SideBarContainer_SideBarList"" cellspacing=""0"" border=""0"" style=""border-collapse:collapse;"">
-								<tr>
-									<td style=""font-weight:bold;""><a id=""ctl00_SideBarContainer_SideBarList_ctl00_SideBarButton"" href=""javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton','')"">step1</a></td>
-								</tr>
-							</table><a id=""ctl00_SkipLink""></a></td><td style=""height:100%;""><table cellspacing=""0"" cellpadding=""0"" border=""0"" style=""height:100%;width:100%;border-collapse:collapse;"">
-								<tr style=""height:100%;"">
-									<td>Start</td>
-								</tr><tr>
-									<td align=""right""><input type=""submit"" name=""ctl00$StartNavigationTemplateContainerID$SideBarButton"" value="""" id=""ctl00_StartNavigationTemplateContainerID_SideBarButton"" style=""background-color:Red;"" /></td>
-								</tr>
-							</table></td>
-						</tr>
-					</table>";
-			HtmlDiff.AssertAreEqual (origin, HtmlDiff.GetControlFromPageHtml (html), "StartTemplateRendering");
+#if NET_4_0
+			string origin = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr>\r\n\t\t<td style=\"height:100%;\"><a href=\"#ctl00_SkipLink\"><img alt=\"Skip Navigation Links.\" height=\"0\" width=\"0\" src=\"/NunitWeb/WebResource.axd?d=8VpphgAbakKUC_J8R6hR0Q2&amp;t=634067491135766272\" style=\"border-width:0px;\" /></a><table id=\"ctl00_SideBarContainer_SideBarList\" cellspacing=\"0\" style=\"border-collapse:collapse;\">\r\n\t\t\t<tr>\r\n\t\t\t\t<td style=\"font-weight:bold;\"><a id=\"ctl00_SideBarContainer_SideBarList_SideBarButton_0\" href=\"javascript:__doPostBack(&#39;ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton&#39;,&#39;&#39;)\">step1</a></td>\r\n\t\t\t</tr>\r\n\t\t</table><a id=\"ctl00_SkipLink\"></a></td><td style=\"height:100%;\"><table cellspacing=\"0\" cellpadding=\"0\" style=\"height:100%;width:100%;border-collapse:collapse;\">\r\n\t\t\t<tr style=\"height:100%;\">\r\n\t\t\t\t<td>Start</td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td align=\"right\"><input type=\"submit\" name=\"ctl00$StartNavigationTemplateContainerID$SideBarButton\" value=\"\" id=\"ctl00_StartNavigationTemplateContainerID_SideBarButton\" style=\"background-color:Red;\" /></td>\r\n\t\t\t</tr>\r\n\t\t</table></td>\r\n\t</tr>\r\n</table>";
+#else
+			string origin = "<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr>\r\n\t\t<td style=\"height:100%;\"><a href=\"#ctl00_SkipLink\"><img alt=\"Skip Navigation Links.\" height=\"0\" width=\"0\" src=\"/NunitWeb/WebResource.axd?d=4RHYfeNnynkXiM59uthjZg2&amp;t=633802729995006876\" style=\"border-width:0px;\" /></a><table id=\"ctl00_SideBarContainer_SideBarList\" cellspacing=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\r\n\t\t\t<tr>\r\n\t\t\t\t<td style=\"font-weight:bold;\"><a id=\"ctl00_SideBarContainer_SideBarList_ctl00_SideBarButton\" href=\"javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton','')\">step1</a></td>\r\n\t\t\t</tr>\r\n\t\t</table><a id=\"ctl00_SkipLink\"></a></td><td style=\"height:100%;\"><table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"height:100%;width:100%;border-collapse:collapse;\">\r\n\t\t\t<tr style=\"height:100%;\">\r\n\t\t\t\t<td>Start</td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td align=\"right\"><input type=\"submit\" name=\"ctl00$StartNavigationTemplateContainerID$SideBarButton\" value=\"\" id=\"ctl00_StartNavigationTemplateContainerID_SideBarButton\" style=\"background-color:Red;\" /></td>\r\n\t\t\t</tr>\r\n\t\t</table></td>\r\n\t</tr>\r\n</table>";
+#endif
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (html);
+			HtmlDiff.AssertAreEqual (origin, renderedHtml, "StartTemplateRendering");
 		}
 
 		public static void _StartTemplateRendering (Page p)
@@ -875,30 +869,13 @@ namespace MonoTests.System.Web.UI.WebControls
 		{
 			WebTest t = new WebTest (PageInvoker.CreateOnPreInit (_StepTypeRendering));
 			string html = t.Run ();
-			string origin = @"<table cellspacing=""0"" cellpadding=""0"" border=""0"" style=""border-collapse:collapse;"">
-								<tr>
-									<td style=""height:100%;""><a href=""#ctl00_SkipLink""><img alt=""Skip Navigation Links."" height=""0"" width=""0"" src=""/NunitWeb/WebResource.axd?d=u9knZDluAzVeq3S7b_Cm7w2&amp;t=632875336762459244"" style=""border-width:0px;"" /></a><table id=""ctl00_SideBarContainer_SideBarList"" cellspacing=""0"" border=""0"" style=""border-collapse:collapse;"">
-										<tr>
-											<td><a id=""ctl00_SideBarContainer_SideBarList_ctl00_SideBarButton"" href=""javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton','')"">step1</a></td>
-										</tr><tr>
-											<td style=""font-weight:bold;""><a id=""ctl00_SideBarContainer_SideBarList_ctl01_SideBarButton"" href=""javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl01$SideBarButton','')"">step2</a></td>
-										</tr><tr>
-											<td><a id=""ctl00_SideBarContainer_SideBarList_ctl02_SideBarButton"" href=""javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl02$SideBarButton','')"">step3</a></td>
-										</tr>
-									</table><a id=""ctl00_SkipLink""></a></td><td style=""height:100%;""><table cellspacing=""0"" cellpadding=""0"" border=""0"" style=""height:100%;width:100%;border-collapse:collapse;"">
-										<tr style=""height:100%;"">
-											<td style=""background-color:Red;"">Step2</td>
-										</tr><tr>
-											<td align=""right""><table cellspacing=""5"" cellpadding=""5"" border=""0"">
-												<tr>
-													<td align=""right""><a id=""ctl00_StepNavigationTemplateContainerID_StepPreviousLinkButton"" href=""javascript:__doPostBack('ctl00$StepNavigationTemplateContainerID$StepPreviousLinkButton','')"" style=""background-color:Red;"">StepPreviousButtonText</a></td><td align=""right""><input type=""image"" name=""ctl00$StepNavigationTemplateContainerID$StepNextImageButton"" id=""ctl00_StepNavigationTemplateContainerID_StepNextImageButton"" src=""http://StepNextButtonImageUrl"" alt=""StepNextButtonText"" style=""background-color:Red;border-width:0px;"" /></td>
-												</tr>
-											</table></td>
-										</tr>
-									</table></td>
-								</tr>
-							</table>";
-			HtmlDiff.AssertAreEqual (origin, HtmlDiff.GetControlFromPageHtml (html), "StepRendering");
+#if NET_4_0
+			string origin = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr>\r\n\t\t<td style=\"height:100%;\"><a href=\"#ctl00_SkipLink\"><img alt=\"Skip Navigation Links.\" height=\"0\" width=\"0\" src=\"/NunitWeb/WebResource.axd?d=8VpphgAbakKUC_J8R6hR0Q2&amp;t=634067491135766272\" style=\"border-width:0px;\" /></a><table id=\"ctl00_SideBarContainer_SideBarList\" cellspacing=\"0\" style=\"border-collapse:collapse;\">\r\n\t\t\t<tr>\r\n\t\t\t\t<td><a id=\"ctl00_SideBarContainer_SideBarList_SideBarButton_0\" href=\"javascript:__doPostBack(&#39;ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton&#39;,&#39;&#39;)\">step1</a></td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td style=\"font-weight:bold;\"><a id=\"ctl00_SideBarContainer_SideBarList_SideBarButton_1\" href=\"javascript:__doPostBack(&#39;ctl00$SideBarContainer$SideBarList$ctl01$SideBarButton&#39;,&#39;&#39;)\">step2</a></td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td><a id=\"ctl00_SideBarContainer_SideBarList_SideBarButton_2\" href=\"javascript:__doPostBack(&#39;ctl00$SideBarContainer$SideBarList$ctl02$SideBarButton&#39;,&#39;&#39;)\">step3</a></td>\r\n\t\t\t</tr>\r\n\t\t</table><a id=\"ctl00_SkipLink\"></a></td><td style=\"height:100%;\"><table cellspacing=\"0\" cellpadding=\"0\" style=\"height:100%;width:100%;border-collapse:collapse;\">\r\n\t\t\t<tr style=\"height:100%;\">\r\n\t\t\t\t<td style=\"background-color:Red;\">Step2</td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td align=\"right\"><table cellspacing=\"5\" cellpadding=\"5\">\r\n\t\t\t\t\t<tr>\r\n\t\t\t\t\t\t<td align=\"right\"><a id=\"ctl00_StepNavigationTemplateContainerID_StepPreviousLinkButton\" href=\"javascript:__doPostBack(&#39;ctl00$StepNavigationTemplateContainerID$StepPreviousLinkButton&#39;,&#39;&#39;)\" style=\"background-color:Red;\">StepPreviousButtonText</a></td><td align=\"right\"><input type=\"image\" name=\"ctl00$StepNavigationTemplateContainerID$StepNextImageButton\" id=\"ctl00_StepNavigationTemplateContainerID_StepNextImageButton\" src=\"http://StepNextButtonImageUrl\" alt=\"StepNextButtonText\" style=\"background-color:Red;\" /></td>\r\n\t\t\t\t\t</tr>\r\n\t\t\t\t</table></td>\r\n\t\t\t</tr>\r\n\t\t</table></td>\r\n\t</tr>\r\n</table>";
+#else
+			string origin = "<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr>\r\n\t\t<td style=\"height:100%;\"><a href=\"#ctl00_SkipLink\"><img alt=\"Skip Navigation Links.\" height=\"0\" width=\"0\" src=\"/NunitWeb/WebResource.axd?d=4RHYfeNnynkXiM59uthjZg2&amp;t=633802729995006876\" style=\"border-width:0px;\" /></a><table id=\"ctl00_SideBarContainer_SideBarList\" cellspacing=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\r\n\t\t\t<tr>\r\n\t\t\t\t<td><a id=\"ctl00_SideBarContainer_SideBarList_ctl00_SideBarButton\" href=\"javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton','')\">step1</a></td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td style=\"font-weight:bold;\"><a id=\"ctl00_SideBarContainer_SideBarList_ctl01_SideBarButton\" href=\"javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl01$SideBarButton','')\">step2</a></td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td><a id=\"ctl00_SideBarContainer_SideBarList_ctl02_SideBarButton\" href=\"javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl02$SideBarButton','')\">step3</a></td>\r\n\t\t\t</tr>\r\n\t\t</table><a id=\"ctl00_SkipLink\"></a></td><td style=\"height:100%;\"><table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"height:100%;width:100%;border-collapse:collapse;\">\r\n\t\t\t<tr style=\"height:100%;\">\r\n\t\t\t\t<td style=\"background-color:Red;\">Step2</td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td align=\"right\"><table cellspacing=\"5\" cellpadding=\"5\" border=\"0\">\r\n\t\t\t\t\t<tr>\r\n\t\t\t\t\t\t<td align=\"right\"><a id=\"ctl00_StepNavigationTemplateContainerID_StepPreviousLinkButton\" href=\"javascript:__doPostBack('ctl00$StepNavigationTemplateContainerID$StepPreviousLinkButton','')\" style=\"background-color:Red;\">StepPreviousButtonText</a></td><td align=\"right\"><input type=\"image\" name=\"ctl00$StepNavigationTemplateContainerID$StepNextImageButton\" id=\"ctl00_StepNavigationTemplateContainerID_StepNextImageButton\" src=\"http://StepNextButtonImageUrl\" alt=\"StepNextButtonText\" style=\"background-color:Red;border-width:0px;\" /></td>\r\n\t\t\t\t\t</tr>\r\n\t\t\t\t</table></td>\r\n\t\t\t</tr>\r\n\t\t</table></td>\r\n\t</tr>\r\n</table>";
+#endif
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (html);
+			HtmlDiff.AssertAreEqual (origin, renderedHtml, "StepRendering");
 		}
 
 		public static void _StepTypeRendering (Page p)
@@ -948,24 +925,13 @@ namespace MonoTests.System.Web.UI.WebControls
 		{
 			WebTest t = new WebTest (PageInvoker.CreateOnPreInit (_StepNavigationTemplate));
 			string html = t.Run ();
-			string origin = @"<table cellspacing=""0"" cellpadding=""0"" border=""0"" style=""border-collapse:collapse;"">
-						<tr>
-							<td style=""height:100%;""><a href=""#ctl00_SkipLink""><img alt=""Skip Navigation Links."" height=""0"" width=""0"" src=""/NunitWeb/WebResource.axd?d=gZrz8lvSQfolS1pG07HX9g2&amp;t=632784640484505569"" style=""border-width:0px;"" /></a><table id=""ctl00_SideBarContainer_SideBarList"" cellspacing=""0"" border=""0"" style=""border-collapse:collapse;"">
-								<tr>
-									<td style=""font-weight:bold;""><a id=""ctl00_SideBarContainer_SideBarList_ctl00_SideBarButton"" href=""javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton','')"">step1</a></td>
-								</tr><tr>
-									<td><a id=""ctl00_SideBarContainer_SideBarList_ctl01_SideBarButton"" href=""javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl01$SideBarButton','')"">step2</a></td>
-								</tr>
-							</table><a id=""ctl00_SkipLink""></a></td><td style=""height:100%;""><table cellspacing=""0"" cellpadding=""0"" border=""0"" style=""height:100%;width:100%;border-collapse:collapse;"">
-								<tr style=""height:100%;"">
-									<td>Step1</td>
-								</tr><tr>
-									<td align=""right""><input type=""submit"" name=""ctl00$StepNavigationTemplateContainerID$SideBarButton"" value="""" id=""ctl00_StepNavigationTemplateContainerID_SideBarButton"" style=""background-color:Red;"" />Test text</td>
-								</tr>
-							</table></td>
-						</tr>
-					</table>";
-			HtmlDiff.AssertAreEqual (origin, HtmlDiff.GetControlFromPageHtml (html), "StepNavigationTemplateRendering");
+#if NET_4_0
+			string origin = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr>\r\n\t\t<td style=\"height:100%;\"><a href=\"#ctl00_SkipLink\"><img alt=\"Skip Navigation Links.\" height=\"0\" width=\"0\" src=\"/NunitWeb/WebResource.axd?d=8VpphgAbakKUC_J8R6hR0Q2&amp;t=634067491135766272\" style=\"border-width:0px;\" /></a><table id=\"ctl00_SideBarContainer_SideBarList\" cellspacing=\"0\" style=\"border-collapse:collapse;\">\r\n\t\t\t<tr>\r\n\t\t\t\t<td style=\"font-weight:bold;\"><a id=\"ctl00_SideBarContainer_SideBarList_SideBarButton_0\" href=\"javascript:__doPostBack(&#39;ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton&#39;,&#39;&#39;)\">step1</a></td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td><a id=\"ctl00_SideBarContainer_SideBarList_SideBarButton_1\" href=\"javascript:__doPostBack(&#39;ctl00$SideBarContainer$SideBarList$ctl01$SideBarButton&#39;,&#39;&#39;)\">step2</a></td>\r\n\t\t\t</tr>\r\n\t\t</table><a id=\"ctl00_SkipLink\"></a></td><td style=\"height:100%;\"><table cellspacing=\"0\" cellpadding=\"0\" style=\"height:100%;width:100%;border-collapse:collapse;\">\r\n\t\t\t<tr style=\"height:100%;\">\r\n\t\t\t\t<td>Step1</td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td align=\"right\"><input type=\"submit\" name=\"ctl00$StepNavigationTemplateContainerID$SideBarButton\" value=\"\" id=\"ctl00_StepNavigationTemplateContainerID_SideBarButton\" style=\"background-color:Red;\" />Test text</td>\r\n\t\t\t</tr>\r\n\t\t</table></td>\r\n\t</tr>\r\n</table>";
+#else
+			string origin = "<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr>\r\n\t\t<td style=\"height:100%;\"><a href=\"#ctl00_SkipLink\"><img alt=\"Skip Navigation Links.\" height=\"0\" width=\"0\" src=\"/NunitWeb/WebResource.axd?d=4RHYfeNnynkXiM59uthjZg2&amp;t=633802729995006876\" style=\"border-width:0px;\" /></a><table id=\"ctl00_SideBarContainer_SideBarList\" cellspacing=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\r\n\t\t\t<tr>\r\n\t\t\t\t<td style=\"font-weight:bold;\"><a id=\"ctl00_SideBarContainer_SideBarList_ctl00_SideBarButton\" href=\"javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl00$SideBarButton','')\">step1</a></td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td><a id=\"ctl00_SideBarContainer_SideBarList_ctl01_SideBarButton\" href=\"javascript:__doPostBack('ctl00$SideBarContainer$SideBarList$ctl01$SideBarButton','')\">step2</a></td>\r\n\t\t\t</tr>\r\n\t\t</table><a id=\"ctl00_SkipLink\"></a></td><td style=\"height:100%;\"><table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"height:100%;width:100%;border-collapse:collapse;\">\r\n\t\t\t<tr style=\"height:100%;\">\r\n\t\t\t\t<td>Step1</td>\r\n\t\t\t</tr><tr>\r\n\t\t\t\t<td align=\"right\"><input type=\"submit\" name=\"ctl00$StepNavigationTemplateContainerID$SideBarButton\" value=\"\" id=\"ctl00_StepNavigationTemplateContainerID_SideBarButton\" style=\"background-color:Red;\" />Test text</td>\r\n\t\t\t</tr>\r\n\t\t</table></td>\r\n\t</tr>\r\n</table>";
+#endif
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (html);
+			HtmlDiff.AssertAreEqual (origin, renderedHtml, "StepNavigationTemplateRendering");
 		}
 
 		public static void _StepNavigationTemplate (Page p)
@@ -1198,6 +1164,15 @@ namespace MonoTests.System.Web.UI.WebControls
 			step3.AllowReturn = false;
 			result = wizard.PokerAllowNavigationToStep (2);
 			Assert.AreEqual (false, result, "AllowNavigationToStep#2");
+		}
+
+		[Test]
+		public void Wizard_AllowNavigationToStep_NoIndexCheck ()
+		{
+			PokerWizard wizard = new PokerWizard ();
+			Assert.IsTrue (wizard.PokerAllowNavigationToStep (0), "#A1-1");
+			Assert.IsTrue (wizard.PokerAllowNavigationToStep (10), "#A1-2");
+			Assert.IsTrue (wizard.PokerAllowNavigationToStep (-10), "#A1-3");
 		}
 
 		[Test]
@@ -1469,8 +1444,13 @@ namespace MonoTests.System.Web.UI.WebControls
 		{
 			string html = new WebTest (PageInvoker.CreateOnPreInit (
 				new PageDelegate (WizardPreInit))).Run ();
-
-			HtmlDiff.AssertAreEqual ("<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"border-collapse:collapse;\"><tr style=\"height:100%;\"><td>123</td></tr><tr><td align=\"right\"><table cellspacing=\"5\" cellpadding=\"5\" border=\"0\"><tr><td align=\"right\"><input type=\"submit\" name=\"ctl02$FinishNavigationTemplateContainerID$FinishButton\" value=\"Finish\" id=\"ctl02_FinishNavigationTemplateContainerID_FinishButton\" /></td></tr></table></td></tr></table>", HtmlDiff.GetControlFromPageHtml (html), "BaseRender");
+#if NET_4_0
+			string origHtml = "<table cellspacing=\"0\" cellpadding=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr style=\"height:100%;\">\r\n\t\t<td>123</td>\r\n\t</tr><tr>\r\n\t\t<td align=\"right\"><table cellspacing=\"5\" cellpadding=\"5\">\r\n\t\t\t<tr>\r\n\t\t\t\t<td align=\"right\"><input type=\"submit\" name=\"ctl00$FinishNavigationTemplateContainerID$FinishButton\" value=\"Finish\" id=\"ctl00_FinishNavigationTemplateContainerID_FinishButton\" /></td>\r\n\t\t\t</tr>\r\n\t\t</table></td>\r\n\t</tr>\r\n</table>";
+#else
+			string origHtml = "<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr style=\"height:100%;\">\r\n\t\t<td>123</td>\r\n\t</tr><tr>\r\n\t\t<td align=\"right\"><table cellspacing=\"5\" cellpadding=\"5\" border=\"0\">\r\n\t\t\t<tr>\r\n\t\t\t\t<td align=\"right\"><input type=\"submit\" name=\"ctl00$FinishNavigationTemplateContainerID$FinishButton\" value=\"Finish\" id=\"ctl00_FinishNavigationTemplateContainerID_FinishButton\" /></td>\r\n\t\t\t</tr>\r\n\t\t</table></td>\r\n\t</tr>\r\n</table>";
+#endif
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (html);
+			HtmlDiff.AssertAreEqual (origHtml, renderedHtml, "BaseRender");
 		}
 
 		public static void WizardPreInit (Page p)
@@ -1551,7 +1531,229 @@ namespace MonoTests.System.Web.UI.WebControls
 				Assert.Fail ("FinishButtonNotCreated");
 			Assert.AreEqual (-1, result.IndexOf ("Next"), "NextButtonCreatedOnLastPage");
 		}
+#if NET_4_0
+		[Test]
+		public void Wizard_LayoutTemplate ()
+		{
+			var w = new Wizard ();
 
+			Assert.IsNull (w.LayoutTemplate, "#A1");
+		}
+
+		[Test]
+		public void Wizard_LayoutTemplate_Empty ()
+		{
+			WebTest t = new WebTest (PageInvoker.CreateOnInit (LayoutTemplateRender));
+			t.UserData = "Empty";
+			string result;
+
+			AssertExtensions.Throws<InvalidOperationException> (() => {
+				result = t.Run ();
+			}, "#A1");
+		}
+
+		[Test]
+		public void Wizard_LayoutTemplate_OptionalSideBar ()
+		{
+			WebTest t = new WebTest (PageInvoker.CreateOnInit (LayoutTemplateRender));
+			t.UserData = "OptionalSideBar_NoSideBar";
+			string result = t.Run ();
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (result);
+
+			Assert.AreEqual (String.Empty, renderedHtml, "#A1");
+
+			t.UserData = "OptionalSideBar_WithSideBar";
+			AssertExtensions.Throws<InvalidOperationException> (() => {
+				result = t.Run ();
+			}, "#A2");
+		}
+
+		[Test]
+		public void Wizard_LayoutTemplate_RenderSideBar ()
+		{
+			WebTest t = new WebTest (PageInvoker.CreateOnInit (LayoutTemplateRender));
+			t.UserData = "RenderSideBar";
+			string result = t.Run ();
+#if DOT_NET
+			string origHtml = "<table id=\"MyWizard_SideBarList\" cellspacing=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr>\r\n\t\t<td style=\"font-weight:bold;\"><a id=\"MyWizard_SideBarList_SideBarButton_0\" href=\"javascript:__doPostBack(&#39;MyWizard$SideBarList$ctl00$SideBarButton&#39;,&#39;&#39;)\">step1</a></td>\r\n\t</tr>\r\n</table><table cellspacing=\"5\" cellpadding=\"5\">\r\n\t<tr>\r\n\t\t<td align=\"right\"><input type=\"submit\" name=\"MyWizard$StepNavigationTemplateContainerID$StepPreviousButton\" value=\"Previous\" id=\"MyWizard_StepNavigationTemplateContainerID_StepPreviousButton\" /></td><td align=\"right\"><input type=\"submit\" name=\"MyWizard$StepNavigationTemplateContainerID$StepNextButton\" value=\"Next\" id=\"MyWizard_StepNavigationTemplateContainerID_StepNextButton\" /></td>\r\n\t</tr>\r\n</table>Step";
+#else
+			string origHtml = "<table id=\"MyWizard_SideBarList\" cellspacing=\"0\" style=\"border-collapse:collapse;\">\r\n\t<tr>\r\n\t\t<td style=\"font-weight:bold;\"><a id=\"MyWizard_SideBarList_ctl00_SideBarButton_0\" href=\"javascript:__doPostBack(&#39;MyWizard$SideBarList$ctl00$SideBarButton&#39;,&#39;&#39;)\">step1</a></td>\r\n\t</tr>\r\n</table><table cellspacing=\"5\" cellpadding=\"5\">\r\n\t<tr>\r\n\t\t<td align=\"right\"><input type=\"submit\" name=\"MyWizard$StepNavigationTemplateContainerID$StepPreviousButton\" value=\"Previous\" id=\"MyWizard_StepNavigationTemplateContainerID_StepPreviousButton\" /></td><td align=\"right\"><input type=\"submit\" name=\"MyWizard$StepNavigationTemplateContainerID$StepNextButton\" value=\"Next\" id=\"MyWizard_StepNavigationTemplateContainerID_StepNextButton\" /></td>\r\n\t</tr>\r\n</table>Step";
+#endif
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (result);
+			Console.WriteLine (origHtml);
+			Console.WriteLine ("----------------------------");
+			Console.WriteLine (renderedHtml);
+			
+			Assert.AreEqual (origHtml, renderedHtml, "#A1");
+		}
+
+		[Test]
+		public void Wizard_LayoutTemplate_OptionalHeader ()
+		{
+			WebTest t = new WebTest (PageInvoker.CreateOnInit (LayoutTemplateRender));
+			t.UserData = "OptionalHeader_NoHeaderTemplate";
+			string result = t.Run ();
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (result);
+
+			Assert.AreEqual (String.Empty, renderedHtml, "#A1");
+
+			t.UserData = "OptionalHeader_WithHeaderTemplate";
+			AssertExtensions.Throws<InvalidOperationException> (() => {
+				result = t.Run ();
+			}, "#A2");
+		}
+
+		[Test]
+		public void Wizard_LayoutTemplate_RenderHeader ()
+		{
+			WebTest t = new WebTest (PageInvoker.CreateOnInit (LayoutTemplateRender));
+			t.UserData = "RenderHeader";
+			string result = t.Run ();
+			string origHtml = "Header<table cellspacing=\"5\" cellpadding=\"5\">\r\n\t<tr>\r\n\t\t<td align=\"right\"><input type=\"submit\" name=\"MyWizard$StepNavigationTemplateContainerID$StepPreviousButton\" value=\"Previous\" id=\"MyWizard_StepNavigationTemplateContainerID_StepPreviousButton\" /></td><td align=\"right\"><input type=\"submit\" name=\"MyWizard$StepNavigationTemplateContainerID$StepNextButton\" value=\"Next\" id=\"MyWizard_StepNavigationTemplateContainerID_StepNextButton\" /></td>\r\n\t</tr>\r\n</table>Step";
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (result);
+
+			Assert.AreEqual (origHtml, renderedHtml, "#A1");
+
+			t.UserData = "RenderHeader_InSpan";
+			result = t.Run ();
+			origHtml = "Header<table cellspacing=\"5\" cellpadding=\"5\">\r\n\t<tr>\r\n\t\t<td align=\"right\"><input type=\"submit\" name=\"MyWizard$StepNavigationTemplateContainerID$StepPreviousButton\" value=\"Previous\" id=\"MyWizard_StepNavigationTemplateContainerID_StepPreviousButton\" /></td><td align=\"right\"><input type=\"submit\" name=\"MyWizard$StepNavigationTemplateContainerID$StepNextButton\" value=\"Next\" id=\"MyWizard_StepNavigationTemplateContainerID_StepNextButton\" /></td>\r\n\t</tr>\r\n</table>Step";
+			renderedHtml = HtmlDiff.GetControlFromPageHtml (result);
+			Assert.AreEqual (origHtml, renderedHtml, "#A2");
+		}
+
+		[Test]
+		public void Wizard_LayoutTemplate_StepPlaceHolder ()
+		{
+			WebTest t = new WebTest (PageInvoker.CreateOnInit (LayoutTemplateRender));
+			t.UserData = "StepPlaceHolder";
+			AssertExtensions.Throws<InvalidOperationException> (() => {
+				string result = t.Run ();
+			}, "#A1");
+		}
+
+		[Test]
+		public void Wizard_LayoutTemplate_NavigationPlaceHolder ()
+		{
+			WebTest t = new WebTest (PageInvoker.CreateOnInit (LayoutTemplateRender));
+			t.UserData = "NavigationPlaceHolder";
+			AssertExtensions.Throws<InvalidOperationException> (() => {
+				string result = t.Run ();
+			}, "#A1");
+		}
+
+		public static void LayoutTemplateRender (Page p)
+		{
+			var w = new Wizard ();
+			w.ID = "MyWizard";
+			WebTest curTest = WebTest.CurrentTest;
+			string id = (string)curTest.UserData;
+
+			switch (id) {
+				case "Empty":
+					w.LayoutTemplate = new TestLayoutTemplate ();
+					break;
+
+				case "OptionalSideBar_NoSideBar":
+					w.LayoutTemplate = new TestLayoutTemplate {
+						HasHeaderPlaceHolder = true,
+						HasNavigationPlaceHolder = true,
+						HasWizardStepPlaceHolder = true
+					};
+					w.DisplaySideBar = false;
+					break;
+
+				case "OptionalSideBar_WithSideBar":
+					w.LayoutTemplate = new TestLayoutTemplate {
+						HasHeaderPlaceHolder = true,
+						HasNavigationPlaceHolder = true,
+						HasWizardStepPlaceHolder = true
+					};
+					w.DisplaySideBar = true;
+					break;
+
+				case "RenderSideBar":
+					w.LayoutTemplate = new TestLayoutTemplate {
+						HasHeaderPlaceHolder = true,
+						HasNavigationPlaceHolder = true,
+						HasWizardStepPlaceHolder = true,
+						HasSideBarPlaceHolder = true
+					};
+					AddWizardStep (w, "Step", "step1");
+					break;
+
+				case "OptionalHeader_NoHeaderTemplate":
+					w.LayoutTemplate = new TestLayoutTemplate {
+						HasNavigationPlaceHolder = true,
+						HasWizardStepPlaceHolder = true
+					};
+					w.DisplaySideBar = false;
+					break;
+
+				case "OptionalHeader_WithHeaderTemplate":
+					w.LayoutTemplate = new TestLayoutTemplate {
+						HasNavigationPlaceHolder = true,
+						HasWizardStepPlaceHolder = true
+					};
+					w.HeaderTemplate = new TestHeaderTemplate ();
+					w.DisplaySideBar = false;
+					break;
+
+				case "RenderHeader":
+					w.LayoutTemplate = new TestLayoutTemplate {
+						HasNavigationPlaceHolder = true,
+						HasWizardStepPlaceHolder = true,
+						HasHeaderPlaceHolder = true
+					};
+					w.HeaderTemplate = new TestHeaderTemplate ();
+					w.DisplaySideBar = false;
+					AddWizardStep (w, "Step", "step1");
+					break;
+
+				case "RenderHeader_InSpan":
+					w.LayoutTemplate = new TestLayoutTemplate {
+						HasNavigationPlaceHolder = true,
+						HasWizardStepPlaceHolder = true,
+						HasHeaderPlaceHolder = true,
+						HeaderPlaceHolderType = typeof (TestHeaderSpan)
+					};
+					w.HeaderTemplate = new TestHeaderTemplate ();
+					w.DisplaySideBar = false;
+					AddWizardStep (w, "Step", "step1");
+					break;
+
+				case "StepPlaceHolder":
+					w.LayoutTemplate = new TestLayoutTemplate {
+						HasNavigationPlaceHolder = true,
+					};
+					w.DisplaySideBar = false;
+					break;
+
+				case "NavigationPlaceHolder":
+					w.LayoutTemplate = new TestLayoutTemplate {
+						HasWizardStepPlaceHolder = true,
+					};
+					w.DisplaySideBar = false;
+					break;
+
+				default:
+					throw new InvalidOperationException ("Unknown id '" + id + "'");
+			}
+
+			p.Form.Controls.Add (new LiteralControl (HtmlDiff.BEGIN_TAG));
+			p.Form.Controls.Add (w);
+			p.Form.Controls.Add (new LiteralControl (HtmlDiff.END_TAG));
+		}
+
+		static void AddWizardStep (Wizard w, string stepText, string stepID, WizardStepType type = WizardStepType.Step)
+		{
+			var ws = new WizardStep ();
+			ws.ID = stepID;
+			ws.StepType = type;
+			ws.Controls.Add (new LiteralControl (stepText));
+
+			w.WizardSteps.Add (ws);
+		}
+#endif
 		[Test]
 		[Category ("NunitWeb")]
 		public void Wizard_RenderTestCompleteItem ()
@@ -1619,48 +1821,31 @@ namespace MonoTests.System.Web.UI.WebControls
 			FormRequest fr = new FormRequest (t.Response, "form1");
 
 			//Cancel
-#if DOT_NET
 			fr.Controls.Add ("__EVENTTARGET");
 			fr.Controls.Add ("__EVENTARGUMENT");
 			fr.Controls.Add ("Wizard1$StartNavigationTemplateContainerID$CancelButton");
-			fr.Controls["__EVENTTARGET"].Value = "";
-			fr.Controls["__EVENTARGUMENT"].Value = "";
-			fr.Controls["Wizard1$StartNavigationTemplateContainerID$CancelButton"].Value = "Cancel";
-#else
-			fr.Controls.Add ("__EVENTTARGET");
-			fr.Controls.Add ("__EVENTARGUMENT");
-			fr.Controls.Add ("Wizard1$StartNavContainer$CancelButtonButton");
 			fr.Controls ["__EVENTTARGET"].Value = "";
 			fr.Controls ["__EVENTARGUMENT"].Value = "";
-			fr.Controls ["Wizard1$StartNavContainer$CancelButtonButton"].Value = "Cancel";
-#endif
+			fr.Controls ["Wizard1$StartNavigationTemplateContainerID$CancelButton"].Value = "Cancel";
+
 			t.Request = fr;
 			html = t.Run ();
 			Assert.AreEqual ("CancelButtonClick", t.UserData.ToString (), "Cancel");
 			
 			// Next
-#if DOT_NET
 			fr.Controls.Add ("__EVENTTARGET");
 			fr.Controls.Add ("__EVENTARGUMENT");
 			fr.Controls.Add ("Wizard1$StartNavigationTemplateContainerID$StartNextButton");
 			fr.Controls["__EVENTTARGET"].Value = "";
 			fr.Controls["__EVENTARGUMENT"].Value = "";
 			fr.Controls["Wizard1$StartNavigationTemplateContainerID$StartNextButton"].Value = "Next";
-#else
-			fr.Controls.Add ("__EVENTTARGET");
-			fr.Controls.Add ("__EVENTARGUMENT");
-			fr.Controls.Add ("Wizard1$StartNavContainer$StartNextButtonButton");
-			fr.Controls["__EVENTTARGET"].Value = "";
-			fr.Controls["__EVENTARGUMENT"].Value = "";
-			fr.Controls ["Wizard1$StartNavContainer$StartNextButtonButton"].Value = "Next";
-#endif
+
 			t.Request = fr;
 			html = t.Run ();
 			Assert.AreEqual ("NextButtonClick", t.UserData.ToString (), "Next");
 
 			// Previous
 			fr = new FormRequest (t.Response, "form1");
-#if DOT_NET
 			fr.Controls.Add ("__EVENTTARGET");
 			fr.Controls.Add ("__EVENTARGUMENT");
 			fr.Controls.Add ("Wizard1$FinishNavigationTemplateContainerID$FinishPreviousButton");
@@ -1668,15 +1853,7 @@ namespace MonoTests.System.Web.UI.WebControls
 			fr.Controls["__EVENTTARGET"].Value = "";
 			fr.Controls["__EVENTARGUMENT"].Value = "";
 			fr.Controls["Wizard1$FinishNavigationTemplateContainerID$FinishPreviousButton"].Value = "Previous";
-#else
-			fr.Controls.Add ("__EVENTTARGET");
-			fr.Controls.Add ("__EVENTARGUMENT");
-			fr.Controls.Add ("Wizard1$FinishNavContainer$FinishPreviousButtonButton");
 
-			fr.Controls ["__EVENTTARGET"].Value = "";
-			fr.Controls ["__EVENTARGUMENT"].Value = "";
-			fr.Controls ["Wizard1$FinishNavContainer$FinishPreviousButtonButton"].Value = "Previous";
-#endif
 			t.Request = fr;
 			html = t.Run ();
 			Assert.AreEqual ("PreviousButtonClick", t.UserData.ToString (), "Previous");
@@ -1695,42 +1872,24 @@ namespace MonoTests.System.Web.UI.WebControls
 			FormRequest fr = new FormRequest (t.Response, "form1");
 
 			// Next
-#if DOT_NET
 			fr.Controls.Add ("__EVENTTARGET");
 			fr.Controls.Add ("__EVENTARGUMENT");
 			fr.Controls.Add ("Wizard1$StartNavigationTemplateContainerID$StartNextButton");
 			fr.Controls["__EVENTTARGET"].Value = "";
 			fr.Controls["__EVENTARGUMENT"].Value = "";
 			fr.Controls["Wizard1$StartNavigationTemplateContainerID$StartNextButton"].Value = "Next";
-#else
-			fr.Controls.Add ("__EVENTTARGET");
-			fr.Controls.Add ("__EVENTARGUMENT");
-			fr.Controls.Add ("Wizard1$StartNavContainer$StartNextButtonButton");
-			fr.Controls ["__EVENTTARGET"].Value = "";
-			fr.Controls ["__EVENTARGUMENT"].Value = "";
-			fr.Controls ["Wizard1$StartNavContainer$StartNextButtonButton"].Value = "Next";
-#endif
 			t.Request = fr;
 			html = t.Run ();
 			Assert.AreEqual ("NextButtonClick", t.UserData.ToString (), "Next");
 
 			// Finish
 			fr = new FormRequest (t.Response, "form1");
-#if DOT_NET
 			fr.Controls.Add ("__EVENTTARGET");
 			fr.Controls.Add ("__EVENTARGUMENT");
 			fr.Controls.Add ("Wizard1$FinishNavigationTemplateContainerID$FinishButton");
 			fr.Controls["__EVENTTARGET"].Value = "";
 			fr.Controls["__EVENTARGUMENT"].Value = "";
 			fr.Controls["Wizard1$FinishNavigationTemplateContainerID$FinishButton"].Value = "Finish";
-#else
-			fr.Controls.Add ("__EVENTTARGET");
-			fr.Controls.Add ("__EVENTARGUMENT");
-			fr.Controls.Add ("Wizard1$FinishNavContainer$FinishButtonButton");
-			fr.Controls ["__EVENTTARGET"].Value = "";
-			fr.Controls ["__EVENTARGUMENT"].Value = "";
-			fr.Controls ["Wizard1$FinishNavContainer$FinishButtonButton"].Value = "Finish";
-#endif
 			t.Request = fr;
 			t.Run ();
 			Assert.AreEqual ("FinishButtonClick", t.UserData.ToString (), "Finish");
@@ -1750,19 +1909,11 @@ namespace MonoTests.System.Web.UI.WebControls
 
 			//SideBarButton
 			fr = new FormRequest (t.Response, "form1");
-#if DOT_NET
-			fr.Controls.Add ("__EVENTTARGET");
-			fr.Controls.Add ("__EVENTARGUMENT");
-
-			fr.Controls["__EVENTTARGET"].Value = "Wizard1$SideBarContainer$SideBarList$ctl01$SideBarButton";
-			fr.Controls["__EVENTARGUMENT"].Value = "";
-#else
 			fr.Controls.Add ("__EVENTTARGET");
 			fr.Controls.Add ("__EVENTARGUMENT");
 
 			fr.Controls ["__EVENTTARGET"].Value = "Wizard1$SideBarContainer$SideBarList$ctl01$SideBarButton";
 			fr.Controls ["__EVENTARGUMENT"].Value = "";
-#endif
 			t.Request = fr;
 			html = t.Run ();
 			Assert.AreEqual ("SideBarButtonClick", t.UserData.ToString (), "SideBarButton");

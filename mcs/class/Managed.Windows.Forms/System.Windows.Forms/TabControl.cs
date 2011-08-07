@@ -33,10 +33,8 @@ using System.Windows.Forms.Theming;
 using System.Windows.Forms.VisualStyles;
 
 namespace System.Windows.Forms {
-#if NET_2_0
 	[ComVisibleAttribute (true)]
 	[ClassInterfaceAttribute (ClassInterfaceType.AutoDispatch)]
-#endif
 	[DefaultEvent("SelectedIndexChanged")]
 	[DefaultProperty("TabPages")]
 	[Designer("System.Windows.Forms.Design.TabControlDesigner, " + Consts.AssemblySystem_Design, "System.ComponentModel.Design.IDesigner")]
@@ -49,6 +47,7 @@ namespace System.Windows.Forms {
 		private bool multiline;
 		private ImageList image_list;
 		private Size item_size = Size.Empty;
+		private bool item_size_manual;
 		private Point padding;
 		private int row_count = 0;
 		private bool hottrack;
@@ -61,13 +60,14 @@ namespace System.Windows.Forms {
 		private int slider_pos = 0;
 		TabPage entered_tab_page;
 		bool mouse_down_on_a_tab_page;
-#if NET_2_0
+		ToolTip tooltip;
+		ToolTip.TipState tooltip_state = ToolTip.TipState.Down;
+		Timer tooltip_timer;
+
 		private bool rightToLeftLayout;
-#endif		
 		#endregion	// Fields
 
 		#region UIA Framework Events
-#if NET_2_0
 		static object UIAHorizontallyScrollableChangedEvent = new object ();
 
 		internal event EventHandler UIAHorizontallyScrollableChanged {
@@ -97,15 +97,12 @@ namespace System.Windows.Forms {
 			if (eh != null)
 				eh (this, e);
 		}
-#endif
 		#endregion
 
 		#region UIA Framework Property
-#if NET_2_0
 		internal double UIAHorizontalViewSize {
 			get { return LeftScrollButtonArea.Left * 100 / TabPages [TabCount - 1].TabBounds.Right; }
 		}
-#endif
 		#endregion
 
 		#region Public Constructors
@@ -114,7 +111,6 @@ namespace System.Windows.Forms {
 			tab_pages = new TabPageCollection (this);
 			SetStyle (ControlStyles.UserPaint, false);
 			padding = ThemeEngine.Current.TabControlDefaultPadding;
-			item_size = ThemeEngine.Current.TabControlDefaultItemSize;
 
 			MouseDown += new MouseEventHandler (MouseDownHandler);
 			MouseLeave += new EventHandler (OnMouseLeave);
@@ -167,14 +163,12 @@ namespace System.Windows.Forms {
 			set { base.BackgroundImage = value; }
 		}
 
-#if NET_2_0
 		[Browsable (false)]
 		[EditorBrowsable (EditorBrowsableState.Never)]
 		public override ImageLayout BackgroundImageLayout {
 			get { return base.BackgroundImageLayout; }
 			set { base.BackgroundImageLayout = value; }
 		}
-#endif
 		
 		public override Rectangle DisplayRectangle {
 			get {
@@ -182,13 +176,11 @@ namespace System.Windows.Forms {
 			}
 		}
 
-#if NET_2_0
 		[EditorBrowsable (EditorBrowsableState.Never)]
 		protected override bool DoubleBuffered {
 			get { return base.DoubleBuffered; }
 			set { base.DoubleBuffered = value; }
 		}
-#endif
 
 		[DefaultValue(TabDrawMode.Normal)]
 		public TabDrawMode DrawMode {
@@ -219,24 +211,41 @@ namespace System.Windows.Forms {
 			}
 		}
 
-#if NET_2_0
 		[RefreshProperties (RefreshProperties.Repaint)]
-#endif
 		[DefaultValue(null)]
 		public ImageList ImageList {
 			get { return image_list; }
-			set { image_list = value; }
+			set { 
+				image_list = value; 
+				Redraw ();
+			}
 		}
 
 		[Localizable(true)]
 		public Size ItemSize {
 			get {
-				return item_size;
+				if (item_size_manual)
+					return item_size;
+
+				if (!IsHandleCreated)
+					return Size.Empty;
+
+				Size size = item_size;
+				if (SizeMode != TabSizeMode.Fixed) {
+					size.Width += padding.X * 2;
+					size.Height += padding.Y * 2;
+				}
+
+				if (tab_pages.Count == 0)
+					size.Width = 0;
+
+				return size;
 			}
 			set {
 				if (value.Height < 0 || value.Width < 0)
 					throw new ArgumentException ("'" + value + "' is not a valid value for 'ItemSize'.");
 				item_size = value;
+				item_size_manual = true;
 				Redraw ();
 			}
 		}
@@ -256,9 +265,7 @@ namespace System.Windows.Forms {
 
 		[Localizable(true)]
 		public
-#if NET_2_0
 		new
-#endif
 		Point Padding {
 			get { return padding; }
 			set {
@@ -272,7 +279,6 @@ namespace System.Windows.Forms {
 
 		}
 
-#if NET_2_0
 		[MonoTODO ("RTL not supported")]
 		[Localizable (true)]
 		[DefaultValue (false)]
@@ -285,7 +291,6 @@ namespace System.Windows.Forms {
 				}
 			}
 		}
-#endif
 
 		[Browsable(false)]
 		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -300,20 +305,12 @@ namespace System.Windows.Forms {
 			set {
 
 				if (value < -1) {
-#if NET_2_0
 					throw new ArgumentOutOfRangeException ("SelectedIndex", "Value of '" + value + "' is valid for 'SelectedIndex'. " +
 						"'SelectedIndex' must be greater than or equal to -1.");
-#else
-					throw new ArgumentException ("'" + value + "' is not a valid value for 'value'. " +
-						"'value' must be greater than or equal to -1.");
-#endif
 				}
 				if (!this.IsHandleCreated) {
 					if (selected_index != value) {
 						selected_index = value;
-#if !NET_2_0
-						OnSelectedIndexChanged (EventArgs.Empty);
-#endif
 					}
 					return;
 				}
@@ -330,27 +327,23 @@ namespace System.Windows.Forms {
 					return;
 				}
 
-#if NET_2_0
 				TabControlCancelEventArgs ret = new TabControlCancelEventArgs (SelectedTab, selected_index, false, TabControlAction.Deselecting);
 				OnDeselecting (ret);
 				if (ret.Cancel)
 					return;
 
-#endif
 				Focus ();
 				int old_index = selected_index;
 				int new_index = value;
 
 				selected_index = new_index;
 
-#if NET_2_0
 				ret = new TabControlCancelEventArgs (SelectedTab, selected_index, false, TabControlAction.Selecting);
 				OnSelecting (ret);
 				if (ret.Cancel) {
 					selected_index = old_index;
 					return;
 				}
-#endif
 
 				SuspendLayout ();
 
@@ -367,7 +360,7 @@ namespace System.Windows.Forms {
 					int re = LeftScrollButtonArea.Left;
 					if (show_slider && le > re) {
 						int i = 0;
-						for (i = 0; i < new_index - 1; i++) {
+						for (i = 0; i < new_index; i++) {
 							if (TabPages [i].TabBounds.Left < 0) // tab scrolled off the visible area, ignore
 								continue;
 
@@ -446,7 +439,6 @@ namespace System.Windows.Forms {
 				if (show_tool_tips == value)
 					return;
 				show_tool_tips = value;
-				Redraw ();
 			}
 		}
 
@@ -470,11 +462,7 @@ namespace System.Windows.Forms {
 			}
 		}
 
-#if NET_2_0
 		[Editor ("System.Windows.Forms.Design.TabPageCollectionEditor, " + Consts.AssemblySystem_Design, typeof (System.Drawing.Design.UITypeEditor))]
-#else
-		[DefaultValue(null)]
-#endif
 		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		[MergableProperty(false)]
 		public TabPageCollection TabPages {
@@ -496,10 +484,8 @@ namespace System.Windows.Forms {
 			set {
 				show_slider = value;
 
-#if NET_2_0
 				// UIA Framework Event: HorizontallyScrollable Changed
 				OnUIAHorizontallyScrollableChanged (EventArgs.Empty);
-#endif
 			}
 		}
 
@@ -556,6 +542,11 @@ namespace System.Windows.Forms {
 					area_to_invalidate.Dispose ();
 				} else
 					entered_tab_page = value;
+
+				if (value == null)
+					CloseToolTip ();
+				else
+					SetToolTip (GetToolTipText (value));
 			}
 		}
 		#endregion	// Internal Properties
@@ -586,7 +577,6 @@ namespace System.Windows.Forms {
 			return GetTab (index);
 		}
 
-#if NET_2_0
 		public void SelectTab (TabPage tabPage)
 		{
 			if (tabPage == null)
@@ -637,7 +627,6 @@ namespace System.Windows.Forms {
 			}
 		}
 
-#endif
 
 		public override string ToString ()
 		{
@@ -686,6 +675,7 @@ namespace System.Windows.Forms {
 
 		protected override void Dispose (bool disposing)
 		{
+			CloseToolTip ();
 			base.Dispose (disposing);
 		}
 
@@ -739,7 +729,6 @@ namespace System.Windows.Forms {
 			pe.Handled = true;
 		}
 
-#if NET_2_0
 		protected override void OnEnter (EventArgs e)
 		{
 			base.OnEnter (e);
@@ -807,7 +796,6 @@ namespace System.Windows.Forms {
 			if (this.SelectedTab != null)
 				this.SelectedTab.FireEnter ();
 		}
-#endif
 
 		#endregion
 
@@ -909,11 +897,7 @@ namespace System.Windows.Forms {
 		}
 		#endregion
 
-#if NET_2_0
 		protected void UpdateTabSelection (bool updateFocus)
-#else
-		protected void UpdateTabSelection (bool uiselected)
-#endif
 		{
 			ResizeTabPages ();
 		}
@@ -928,8 +912,6 @@ namespace System.Windows.Forms {
 		{
 			switch ((Msg)m.Msg) {
 			case Msg.WM_SETFOCUS:
-				if (selected_index == -1 && this.TabCount > 0)
-					this.SelectedIndex = 0;
 				if (selected_index != -1)
 					Invalidate(GetTabRect(selected_index));
 				base.WndProc (ref m);
@@ -972,10 +954,8 @@ namespace System.Windows.Forms {
 						slider_pos++;
 						SizeTabs ();
 
-#if NET_2_0
 						// UIA Framework Event: Horizontally Scrolled
 						OnUIAHorizontallyScrolled (EventArgs.Empty);
-#endif
 
 						switch (this.Alignment) {
 							case TabAlignment.Top:
@@ -1002,10 +982,8 @@ namespace System.Windows.Forms {
 						slider_pos--;
 						SizeTabs ();
 
-#if NET_2_0
 						// UIA Framework Event: Horizontally Scrolled
 						OnUIAHorizontallyScrolled (EventArgs.Empty);
-#endif
 
 						switch (this.Alignment) {
 							case TabAlignment.Top:
@@ -1136,6 +1114,8 @@ namespace System.Windows.Forms {
 				row_count = 1;
 			show_slider = false;
 			
+			CalculateItemSize ();
+
 			for (int i = 0; i < TabPages.Count; i++) {
 				TabPage page = TabPages [i];
 				int aux = 0;
@@ -1144,6 +1124,34 @@ namespace System.Windows.Forms {
 
 			if (SelectedIndex != -1 && TabPages.Count > SelectedIndex && TabPages[SelectedIndex].Row != BottomRow)
 				DropRow (TabPages [SelectedIndex].Row);
+		}
+
+		// ItemSize per-se is used mostly only to retrieve the Height,
+		// since the actual Width of the tabs is computed individually,
+		// except when SizeMode is TabSizeMode.Fixed, where Width is used as well.
+		private void CalculateItemSize ()
+		{
+			if (item_size_manual)
+				return;
+
+			SizeF size;
+			if (tab_pages.Count > 0) {
+				// .Net uses the first tab page if available.
+				size = TextRenderer.MeasureString (tab_pages [0].Text, Font);
+
+			} else {
+				size = TextRenderer.MeasureString ("a", Font);
+				size.Width = 0;
+			}
+
+			if (size_mode == TabSizeMode.Fixed)
+				size.Width = 96;
+			if (size.Width < MinimumTabWidth)
+				size.Width = MinimumTabWidth;
+			if (image_list != null && image_list.ImageSize.Height > size.Height)
+				size.Height = image_list.ImageSize.Height;
+
+			item_size = size.ToSize ();
 		}
 
 		private int BottomRow {
@@ -1264,22 +1272,23 @@ namespace System.Windows.Forms {
 			if (SizeMode == TabSizeMode.Fixed) {
 				width = item_size.Width;
 			} else {			
-				width = MeasureStringWidth (DeviceContext, page.Text, page.Font);
+				width = MeasureStringWidth (DeviceContext, page.Text, Font);
 				width += (Padding.X * 2) + 2;
 
-				if (ImageList != null && page.ImageIndex >= 0 && page.ImageIndex < ImageList.Images.Count) {
+				if (ImageList != null && page.ImageIndex >= 0) {
 					width += ImageList.ImageSize.Width + ThemeEngine.Current.TabControlImagePadding.X;
 
 					int image_size = ImageList.ImageSize.Height + ThemeEngine.Current.TabControlImagePadding.Y;
 					if (item_size.Height < image_size)
 						item_size.Height = image_size;
 				}
+
+				if (width < MinimumTabWidth)
+					width = MinimumTabWidth;
 			}
 
-			height = item_size.Height - ThemeEngine.Current.TabControlSelectedDelta.Height; // full height only for selected tab
-
-			if (width < MinimumTabWidth)
-				width = MinimumTabWidth;
+			// Use ItemSize property to recover the padding info as well.
+			height = ItemSize.Height - ThemeEngine.Current.TabControlSelectedDelta.Height; // full height only for selected tab
 
 			if (i == SelectedIndex)
 				width += ThemeEngine.Current.TabControlSelectedSpacing;
@@ -1308,12 +1317,6 @@ namespace System.Windows.Forms {
 
 				switch (Alignment) {
 					case TabAlignment.Top:
-						page.TabBounds = new Rectangle (
-							xpos + CalcXPos (),
-							ypos + (height + spacing.Height) * (row_count - page.Row) + CalcYPos (),
-							width, 
-							height);
-						break;
 					case TabAlignment.Bottom:
 						page.TabBounds = new Rectangle (
 							xpos + CalcXPos (),
@@ -1415,21 +1418,8 @@ namespace System.Windows.Forms {
 				return;
 
 			Rectangle r = page.TabBounds;
-			switch (Alignment) {
-				case TabAlignment.Top:
-				case TabAlignment.Left:
-					r.Y -= ThemeEngine.Current.TabControlSelectedDelta.Y;
-					r.X -= ThemeEngine.Current.TabControlSelectedDelta.X;
-					break;
-				case TabAlignment.Bottom:
-					r.Y -= ThemeEngine.Current.TabControlSelectedDelta.Y;
-					r.X -= ThemeEngine.Current.TabControlSelectedDelta.X;
-					break;
-				case TabAlignment.Right:
-					r.Y -= ThemeEngine.Current.TabControlSelectedDelta.Y;
-					r.X -= ThemeEngine.Current.TabControlSelectedDelta.X;
-					break;
-			}
+			r.Y -= ThemeEngine.Current.TabControlSelectedDelta.Y;
+			r.X -= ThemeEngine.Current.TabControlSelectedDelta.X;
 
 			r.Width += ThemeEngine.Current.TabControlSelectedDelta.Width;
 			r.Height += ThemeEngine.Current.TabControlSelectedDelta.Height;
@@ -1462,7 +1452,6 @@ namespace System.Windows.Forms {
 			this.Controls.SetChildIndex (value, index);
 			Redraw ();
 		}
-#if NET_2_0
 		private void InsertTab (int index, TabPage value)
 		{
 			if (!tab_pages.Contains (value)) {
@@ -1471,7 +1460,6 @@ namespace System.Windows.Forms {
 			this.Controls.SetChildIndex (value, index);
 			Redraw ();
 		}
-#endif
 		internal void Redraw ()
 		{
 			if (!IsHandleCreated)
@@ -1497,6 +1485,55 @@ namespace System.Windows.Forms {
 			rect = regions[0].GetBounds(graphics);
 
 			return (int)(rect.Width);
+		}
+
+		void SetToolTip (string text)
+		{
+			if (!show_tool_tips)
+				return;
+
+			if (text == null || text.Length == 0) {
+				CloseToolTip ();
+				return;
+			}
+
+			if (tooltip == null) {
+				tooltip = new ToolTip ();
+				tooltip_timer = new Timer ();
+				tooltip_timer.Tick += new EventHandler (ToolTipTimerTick);
+			}
+
+			CloseToolTip ();
+
+			tooltip_state = ToolTip.TipState.Initial;
+			tooltip_timer.Interval = 500;
+			tooltip_timer.Start ();
+		}
+
+		void CloseToolTip ()
+		{
+			if (tooltip == null)
+				return;
+
+			tooltip.Hide (this);
+			tooltip_timer.Stop ();
+			tooltip_state = ToolTip.TipState.Down;
+		}
+
+		void ToolTipTimerTick (object o, EventArgs args)
+		{
+			switch (tooltip_state) {
+				case ToolTip.TipState.Initial:
+					tooltip_timer.Stop ();
+					tooltip_timer.Interval = 5000;
+					tooltip_timer.Start ();
+					tooltip_state = ToolTip.TipState.Show;
+					tooltip.Present (this, GetToolTipText (EnteredTabPage));
+					break;
+				case ToolTip.TipState.Show:
+					CloseToolTip ();
+					break;
+			}
 		}
 
 		void OnMouseMove (object sender, MouseEventArgs e)
@@ -1557,7 +1594,6 @@ namespace System.Windows.Forms {
 			remove { base.BackgroundImageChanged -= value; }
 		}
 
-#if NET_2_0
 		[Browsable (false)]
 		[EditorBrowsable (EditorBrowsableState.Never)]
 		public new event EventHandler BackgroundImageLayoutChanged
@@ -1565,7 +1601,6 @@ namespace System.Windows.Forms {
 			add { base.BackgroundImageLayoutChanged += value; }
 			remove { base.BackgroundImageLayoutChanged -= value; }
 		}
-#endif
 
 		[Browsable(false)]
 		[EditorBrowsable(EditorBrowsableState.Never)]
@@ -1601,7 +1636,6 @@ namespace System.Windows.Forms {
 			remove { Events.RemoveHandler (SelectedIndexChangedEvent, value); }
 		}
 		
-#if NET_2_0
 		static object SelectedEvent = new object ();
 		
 		public event TabControlEventHandler Selected {
@@ -1639,14 +1673,11 @@ namespace System.Windows.Forms {
 			add { Events.AddHandler (RightToLeftLayoutChangedEvent, value); }
 			remove { Events.RemoveHandler (RightToLeftLayoutChangedEvent, value); }
 		}
-#endif
 		#endregion	// Events
 
 
 		#region Class TaControl.ControlCollection
-#if NET_2_0
 		[ComVisible (false)]
-#endif
 		public new class ControlCollection : System.Windows.Forms.Control.ControlCollection {
 
 			private TabControl owner;
@@ -1694,9 +1725,11 @@ namespace System.Windows.Forms {
 					owner.selected_index = -1;
 
 					owner.SelectedIndex = --prev_selected_index;
+					owner.Invalidate ();
 				} else if (change_index) {
 					owner.selected_index = -1;
 					owner.OnSelectedIndexChanged (EventArgs.Empty);
+					owner.Invalidate ();
 				} else
 					owner.Redraw ();
 			}
@@ -1732,7 +1765,6 @@ namespace System.Windows.Forms {
 					owner.SetTab (index, value);
 				}
 			}
-#if NET_2_0
 			public virtual TabPage this [string key] {
 				get {
 					if (string.IsNullOrEmpty (key))
@@ -1745,7 +1777,6 @@ namespace System.Windows.Forms {
 					return this[index];
 				}
 			}
-#endif
 
 			internal int this[TabPage tabPage] {
 				get {
@@ -1788,7 +1819,6 @@ namespace System.Windows.Forms {
 				owner.Controls.Add (value);
 			}
 
-#if NET_2_0
 			public void Add (string text)
 			{
 				TabPage page = new TabPage (text);
@@ -1818,7 +1848,6 @@ namespace System.Windows.Forms {
 				page.ImageKey = imageKey;
 				this.Add (page);
 			}
-#endif
 
 			public void AddRange (TabPage [] pages)
 			{
@@ -1840,13 +1869,11 @@ namespace System.Windows.Forms {
 				return owner.Controls.Contains (page);
 			}
 
-#if NET_2_0
 			public virtual bool ContainsKey (string key)
 			{
 				int index = this.IndexOfKey (key);
 				return (index >= 0 && index < this.Count);
 			}
-#endif
 
 			public IEnumerator GetEnumerator ()
 			{
@@ -1858,7 +1885,6 @@ namespace System.Windows.Forms {
 				return owner.Controls.IndexOf (page);
 			}
 
-#if NET_2_0
 			public virtual int IndexOfKey(string key)
 			{
 				if (string.IsNullOrEmpty (key))
@@ -1873,7 +1899,6 @@ namespace System.Windows.Forms {
 
 				return -1;
 			}
-#endif
 
 			public void Remove (TabPage value)
 			{
@@ -1887,14 +1912,12 @@ namespace System.Windows.Forms {
 				owner.Invalidate ();
 			}
 
-#if NET_2_0
 			public virtual void RemoveByKey (string key)
 			{
 				int index = this.IndexOfKey (key);
 				if (index >= 0 && index < this.Count)
 					this.RemoveAt (index);
 			}
-#endif
 
 			void ICollection.CopyTo (Array dest, int index)
 			{
@@ -1926,16 +1949,11 @@ namespace System.Windows.Forms {
 				return IndexOf (tabPage);
 			}
 
-#if NET_2_0
 			void IList.Insert (int index, object tabPage)
-#else
-			void IList.Insert (int index, object value)
-#endif
 			{
 				throw new NotSupportedException ();
 			}
 
-#if NET_2_0
 			public void Insert (int index, string text)
 			{
 				owner.InsertTab (index, new TabPage (text));
@@ -1968,7 +1986,6 @@ namespace System.Windows.Forms {
 				owner.InsertTab (index, page);
 				page.ImageKey = imageKey;
 			}
-#endif
 			void IList.Remove (object value)
 			{
 				TabPage page = value as TabPage;

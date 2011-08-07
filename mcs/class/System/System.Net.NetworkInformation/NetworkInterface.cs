@@ -42,9 +42,6 @@ using System.Globalization;
 
 namespace System.Net.NetworkInformation {
 	public abstract class NetworkInterface {
-		[DllImport ("libc")]
-		static extern int uname (IntPtr buf);
-
 		static Version windowsVer51 = new Version (5, 1);
 		static internal readonly bool runningOnUnix = (Environment.OSVersion.Platform == PlatformID.Unix);
 		
@@ -56,17 +53,8 @@ namespace System.Net.NetworkInformation {
 		public static NetworkInterface [] GetAllNetworkInterfaces ()
 		{
 			if (runningOnUnix) {
-				bool darwin = false;
-				IntPtr buf = Marshal.AllocHGlobal (8192);
-				if (uname (buf) == 0) {
-					string os = Marshal.PtrToStringAnsi (buf);
-					if (os == "Darwin")
-						darwin = true;
-				}
-				Marshal.FreeHGlobal (buf);
-
 				try {
-					if (darwin)
+					if (Platform.IsMacOS)
 						return MacOsNetworkInterface.ImplGetAllNetworkInterfaces ();
 					else
 						return LinuxNetworkInterface.ImplGetAllNetworkInterfaces ();
@@ -135,7 +123,7 @@ namespace System.Net.NetworkInformation {
 		protected IPInterfaceProperties ipproperties;
 		
 		string               name;
-		int                  index;
+		//int                  index;
 		protected List <IPAddress> addresses;
 		byte[]               macAddress;
 		NetworkInterfaceType type;
@@ -158,7 +146,7 @@ namespace System.Net.NetworkInformation {
 
 		internal void SetLinkLayerInfo (int index, byte[] macAddress, NetworkInterfaceType type)
 		{
-			this.index = index;
+			//this.index = index;
 			this.macAddress = macAddress;
 			this.type = type;
 		}
@@ -233,7 +221,7 @@ namespace System.Net.NetworkInformation {
 		const int AF_INET6  = 10;
 		const int AF_PACKET = 17;
 		
-		NetworkInterfaceType type;
+		//NetworkInterfaceType type;
 		string               iface_path;
 		string               iface_operstate_path;
 		string               iface_flags_path;		
@@ -272,6 +260,7 @@ namespace System.Net.NetworkInformation {
 							if (((int)sockaddrll.sll_halen) > sockaddrll.sll_addr.Length){
 								Console.Error.WriteLine ("Got a bad hardware address length for an AF_PACKET {0} {1}",
 											 sockaddrll.sll_halen, sockaddrll.sll_addr.Length);
+								next = addr.ifa_next;
 								continue;
 							}
 							
@@ -480,7 +469,7 @@ namespace System.Net.NetworkInformation {
 							MacOsStructs.sockaddr_dl sockaddrdl = (MacOsStructs.sockaddr_dl) Marshal.PtrToStructure (addr.ifa_addr, typeof (MacOsStructs.sockaddr_dl));
 
 							macAddress = new byte [(int) sockaddrdl.sdl_alen];
-							Array.Copy (sockaddrdl.sdl_data, sockaddrdl.sdl_nlen, macAddress, 0, macAddress.Length);
+							Array.Copy (sockaddrdl.sdl_data, sockaddrdl.sdl_alen, macAddress, 0, Math.Min (macAddress.Length, sockaddrdl.sdl_data.Length - sockaddrdl.sdl_alen));
 							index = sockaddrdl.sdl_index;
 
 							int hwtype = (int) sockaddrdl.sdl_type;

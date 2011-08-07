@@ -75,7 +75,7 @@ namespace MonoTests.System.Web.UI.WebControls
 				dataBindTrace.Append ("[End PerformSelect]");
 			}
 
-			protected override void PerformDataBinding () {
+			protected internal override void PerformDataBinding () {
 				dataBindTrace.Append ("[Start PerformDataBinding]");
 				base.PerformDataBinding ();
 				dataBindTrace.Append ("[End PerformDataBinding]");
@@ -130,7 +130,7 @@ namespace MonoTests.System.Web.UI.WebControls
 		class MyHierarchicalDataBoundControlAdapter : HierarchicalDataBoundControlAdapter
 		{
 			internal bool perform_data_binding_called;
-			protected override void PerformDataBinding ()
+			protected internal override void PerformDataBinding ()
 			{
 				perform_data_binding_called = true;
 			}
@@ -141,6 +141,7 @@ namespace MonoTests.System.Web.UI.WebControls
 		}
 
 		[Test]
+		[Category ("NotDotNet")] // .NET doesn't use ResolveAdapter in this case
 		public void PerformDataBinding_UsesAdapter ()
 		{
 			MyHierarchicalDataBoundControl c = new MyHierarchicalDataBoundControl ();
@@ -246,12 +247,12 @@ namespace MonoTests.System.Web.UI.WebControls
 		{
 			List<TestNode> list = new List<TestNode> ();
 			list.Add (new TestNode ("test", null, null));
-                        TestHierarchy hierarchy = new TestHierarchy (list);
+			TestHierarchy hierarchy = new TestHierarchy (list);
 			MyHierarchicalDataBoundControl c = new MyHierarchicalDataBoundControl ();
 			c.DataSource = hierarchy;
 			c.DataBind ();
 			HierarchicalDataSourceView view = c.GetData ("");
-		        Assert.IsNotNull (view);
+			Assert.IsNotNull (view);
 		}
 	}
 }

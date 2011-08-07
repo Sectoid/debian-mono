@@ -1,3 +1,7 @@
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the Mono.Security build for monodroid
+
 2004-04-28  Sebastien Pouliot <sebastien@ximian.com>
 
 	* AssemblyInfo.cs: Re-activated ClsCompliant(true).

@@ -36,18 +36,19 @@ using System;
 using System.Collections;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Net.Sockets;
 using System.Runtime.Serialization;
 using System.Text;
-#if NET_2_0
-using System.IO.Compression;
-#endif
 
 namespace System.Net 
 {
+#if MOONLIGHT
+	internal class HttpWebResponse : WebResponse, ISerializable, IDisposable {
+#else
 	[Serializable]
-	public class HttpWebResponse : WebResponse, ISerializable, IDisposable
-	{
+	public class HttpWebResponse : WebResponse, ISerializable, IDisposable {
+#endif
 		Uri uri;
 		WebHeaderCollection webHeaders;
 		CookieCollection cookieCollection;
@@ -77,13 +78,8 @@ namespace System.Net
 
 			try {
 				string cl = webHeaders ["Content-Length"];
-#if NET_2_0
 				if (String.IsNullOrEmpty (cl) || !Int64.TryParse (cl, out contentLength))
 					contentLength = -1;
-#else
-				if (cl != null && cl != String.Empty)
-					contentLength = (long) UInt64.Parse (cl);
-#endif
 			} catch (Exception) {
 				contentLength = -1;
 			}
@@ -92,18 +88,15 @@ namespace System.Net
 				this.cookie_container = container;	
 				FillCookies ();
 			}
-#if NET_2_0
+
 			string content_encoding = webHeaders ["Content-Encoding"];
 			if (content_encoding == "gzip" && (data.request.AutomaticDecompression & DecompressionMethods.GZip) != 0)
 				stream = new GZipStream (stream, CompressionMode.Decompress);
 			else if (content_encoding == "deflate" && (data.request.AutomaticDecompression & DecompressionMethods.Deflate) != 0)
 				stream = new DeflateStream (stream, CompressionMode.Decompress);
-#endif
 		}
 
-#if NET_2_0
 		[Obsolete ("Serialization is obsoleted for this type", false)]
-#endif
 		protected HttpWebResponse (SerializationInfo serializationInfo, StreamingContext streamingContext)
 		{
 			SerializationInfo info = serializationInfo;
@@ -130,7 +123,7 @@ namespace System.Net
 				if (contentType == null)
 					return "ISO-8859-1";
 				string val = contentType.ToLower (); 					
-				int pos = val.IndexOf ("charset=");
+				int pos = val.IndexOf ("charset=", StringComparison.Ordinal);
 				if (pos == -1)
 					return "ISO-8859-1";
 				pos += 8;
@@ -181,14 +174,10 @@ namespace System.Net
 		
 		public override WebHeaderCollection Headers {		
 			get {
-#if ONLY_1_1
-				CheckDisposed ();
-#endif
 				return webHeaders; 
 			}
 		}
 
-#if NET_2_0
 		static Exception GetMustImplement ()
 		{
 			return new NotImplementedException ();
@@ -201,7 +190,6 @@ namespace System.Net
 				throw GetMustImplement ();
 			}
 		}
-#endif
 		
 		public DateTime LastModified {
 			get {
@@ -257,12 +245,6 @@ namespace System.Net
 		}
 
 		// Methods
-#if !NET_2_0
-		public override int GetHashCode ()
-		{
-			return base.GetHashCode ();
-		}
-#endif
 		
 		public string GetResponseHeader (string headerName)
 		{
@@ -299,11 +281,8 @@ namespace System.Net
 			GetObjectData (serializationInfo, streamingContext);
 		}
 
-#if NET_2_0
-		protected override
-#endif
-		void GetObjectData (SerializationInfo serializationInfo,
-				    StreamingContext streamingContext)
+		protected override void GetObjectData (SerializationInfo serializationInfo,
+			StreamingContext streamingContext)
 		{
 			SerializationInfo info = serializationInfo;
 
@@ -321,7 +300,12 @@ namespace System.Net
 
 		public override void Close ()
 		{
-			((IDisposable) this).Dispose ();
+			if (stream != null) {
+				Stream st = stream;
+				stream = null;
+				if (st != null)
+					st.Close ();
+			}
 		}
 		
 		void IDisposable.Dispose ()
@@ -330,32 +314,11 @@ namespace System.Net
 			GC.SuppressFinalize (this);  
 		}
 
-#if !NET_2_0
-		protected virtual
-#endif
 		void Dispose (bool disposing) 
 		{
-			if (this.disposed)
-				return;
 			this.disposed = true;
-			
-			if (disposing) {
-				// release managed resources
-				uri = null;
-#if !NET_2_0
-				webHeaders = null;
-#endif
-				cookieCollection = null;
-				method = null;
-				version = null;
-				statusDescription = null;
-			}
-			
-			// release unmanaged resources
-			Stream st = stream;
-			stream = null;
-			if (st != null)
-				st.Close ();
+			if (disposing)
+				Close ();
 		}
 		
 		private void CheckDisposed () 
@@ -414,11 +377,9 @@ namespace System.Net
 					if (cookie.Domain == "")
 						cookie.Domain = val;
 					break;
-#if NET_2_0
 				case "HTTPONLY":
 					cookie.HttpOnly = true;
 					break;
-#endif
 				case "MAX-AGE": // RFC Style Set-Cookie2
 					if (cookie.Expires == DateTime.MinValue) {
 						try {
@@ -430,7 +391,7 @@ namespace System.Net
 					if (cookie.Expires != DateTime.MinValue)
 						break;
 
-					cookie.Expires = TryParseCookieExpires (val);
+					cookie.Expires = CookieParser.TryParseCookieExpires (val);
 					break;
 				case "PATH":
 					cookie.Path = val;
@@ -450,6 +411,9 @@ namespace System.Net
 				}
 			}
 
+			if (cookie == null)
+				return;
+
 			if (cookieCollection == null)
 				cookieCollection = new CookieCollection ();
 
@@ -468,118 +432,6 @@ namespace System.Net
 			foreach (string cookie_str in cookies)
 				SetCookie (cookie_str);
 		}
-
-		string[] cookieExpiresFormats =
-			new string[] { "r",
-					"ddd, dd'-'MMM'-'yyyy HH':'mm':'ss 'GMT'",
-					"ddd, dd'-'MMM'-'yy HH':'mm':'ss 'GMT'" };
-
-		DateTime TryParseCookieExpires (string value)
-		{
-			if (value == null || value.Length == 0)
-				return DateTime.MinValue;
-
-			for (int i = 0; i < cookieExpiresFormats.Length; i++)
-			{
-				try {
-					DateTime cookieExpiresUtc = DateTime.ParseExact (value, cookieExpiresFormats [i], CultureInfo.InvariantCulture);
-
-					//convert UTC/GMT time to local time
-#if NET_2_0
-					cookieExpiresUtc = DateTime.SpecifyKind (cookieExpiresUtc, DateTimeKind.Utc);
-					return TimeZone.CurrentTimeZone.ToLocalTime (cookieExpiresUtc);
-#else
-					//DateTime.Kind is only available on .NET 2.0, so do some calculation
-					TimeSpan localOffset = TimeZone.CurrentTimeZone.GetUtcOffset (cookieExpiresUtc.Date);
-					return cookieExpiresUtc.Add (localOffset);
-#endif
-				} catch {}
-			}
-
-			//If we can't parse Expires, use cookie as session cookie (expires is DateTime.MinValue)
-			return DateTime.MinValue;
-		}
 	}	
-
-	class CookieParser {
-		string header;
-		int pos;
-		int length;
-
-		public CookieParser (string header) : this (header, 0)
-		{
-		}
-
-		public CookieParser (string header, int position)
-		{
-			this.header = header;
-			this.pos = position;
-			this.length = header.Length;
-		}
-
-		public bool GetNextNameValue (out string name, out string val)
-		{
-			name = null;
-			val = null;
-
-			if (pos >= length)
-				return false;
-
-			name = GetCookieName ();
-			if (pos < header.Length && header [pos] == '=') {
-				pos++;
-				val = GetCookieValue ();
-			}
-
-			if (pos < length && header [pos] == ';')
-				pos++;
-
-			return true;
-		}
-
-		string GetCookieName ()
-		{
-			int k = pos;
-			while (k < length && Char.IsWhiteSpace (header [k]))
-				k++;
-
-			int begin = k;
-			while (k < length && header [k] != ';' &&  header [k] != '=')
-				k++;
-
-			pos = k;
-			return header.Substring (begin, k - begin).Trim ();
-		}
-
-		string GetCookieValue ()
-		{
-			if (pos >= length)
-				return null;
-
-			int k = pos;
-			while (k < length && Char.IsWhiteSpace (header [k]))
-				k++;
-
-			int begin;
-			if (header [k] == '"'){
-				int j;
-				begin = ++k;
-
-				while (k < length && header [k] != '"')
-					k++;
-
-				for (j = k; j < length && header [j] != ';'; j++)
-					;
-				pos = j;
-			} else {
-				begin = k;
-				while (k < length && header [k] != ';')
-					k++;
-				pos = k;
-			}
-				
-			return header.Substring (begin, k - begin).Trim ();
-		}
-	}
 }
 

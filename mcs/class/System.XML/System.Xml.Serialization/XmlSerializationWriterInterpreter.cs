@@ -279,6 +279,8 @@ namespace System.Xml.Serialization
 		bool MemberHasValue (XmlTypeMapMember member, object ob, bool isValueList)
 		{
 			if (isValueList) {
+				if (member.IsOptionalValueType && !member.GetValueSpecified (ob))
+					return false;
 				return member.GlobalIndex < ((object[])ob).Length;
 			}
 			else if (member.DefaultValue != System.DBNull.Value) {
@@ -473,8 +475,11 @@ namespace System.Xml.Serialization
 			}
 
 			Array elems = (Array) memberValue;
-			foreach (XmlNode elem in elems)
+			foreach (var elem_ in elems)
 			{
+				XmlNode elem = elem_ as XmlNode;
+				if (elem == null)
+					throw new InvalidOperationException (String.Format ("XmlAnyElementAttribute can only be applied to members of type XmlElement, XmlElement[] or XmlNode[]. The target object is {0}", elem_ != null ? elem_.GetType () : null));
 				if (elem is XmlElement) 
 				{
 					if (member.IsElementDefined (elem.Name, elem.NamespaceURI))

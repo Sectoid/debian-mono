@@ -1,3 +1,194 @@
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add pfx to the mobile profile
+
+2011-01-07  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Remove now unused internal classes
+
+2011-01-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix comments
+
+2011-01-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Protect SpinLock's Enter method against asynchronous exception
+
+2011-01-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use correct exception when a key is not found in
+	ConcurrentDictionary
+
+2010-12-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Remove a leftover debugging scwl
+
+2010-12-16  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add support for storing elements with the same hashcode in
+	ConcurrentDictionary. Add corresponding unit test.
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Some 4.0 API tweaks
+
+2010-12-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Yet more parameter manual fixup
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Some .net 4.0 api compatibility fixes
+
+2010-11-22  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Improve fallback SpinWait to include the initial logic of SpinWait
+
+2010-11-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Define more correctly
+
+2010-11-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add a default implementation of SpinWait when SplitOrderedList is
+	built with Sys.Web 2.0 and add it to the build
+
+2010-11-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Partitioner] Use custom made enumerator for GetPartitions
+	proxying from GetOrderablePartitions
+
+2010-11-09  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use ulong to represent element hashes internally allowing full
+	width 32bits hashes. Replace SpinLock+ManualResetEvent based
+	bucket resize with a simpler reader-writer lock. Revert from two
+	layers storage to a bare array storage for buckets temporarily as
+	it causes a weird concurrency bug.
+
+2010-11-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	ConcurrentDictionary performance improvements
+
+2010-11-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fixicate net_4_0_bootstrap build.
+
+2010-11-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Implement Partitioner.Create int and long overloads. Add
+	corresponding unit tests.
+
+2010-08-24  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Correctly support calling lazily factory lambdas in
+	ConcurrentDictionary.
+
+2010-08-19  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Little 4.0 API signature tweaks
+
+2010-08-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Move the count increment at a semantically more correct place in
+	ConcurrentQueue
+
+2010-08-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Move NET_4_0 define checks at the right position under the licence
+	text
+
+2010-08-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add comments on some of SplitOrderedList's methods.
+
+2010-08-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	When hard node deletion fails in SplitOrderedList, restart the
+	process from the saved start point instead of straight from the
+	head.
+
+2010-08-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Cache new segment array creation in SplitOrderedList to reuse it
+	in case CAS fails.
+
+2010-08-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Tweak SplitOrderedList MaxLoad value (i.e. less pair per bucket).
+
+2010-08-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix GetParent method in SplitOrderedList, it wasn't returning a
+	meaningful value.
+
+2010-08-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Port ConcurrentDictionary to use SplitOrderedList class.
+
+2010-08-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add auxiliary methods to SplitOrderedList to allow better
+	integration with ConcurrentDictionary API.
+
+	Several method in ConcurrentDictionary do a combination of two
+	actions or two different actions depending on a test. These
+	additional methods to the standard SplitOrderedList operation set
+	are for these.
+
+2010-08-10  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fixicate SplitOrderedList and tune default values
+
+2010-08-10  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Compilable implementation of SplitOrderList
+
+2010-08-09  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add new split ordered list type based on the eponymous data
+	structure.
+
+	This data structure is to be used internally by
+	ConcurrentDictionary. Theory from paper "Split-Ordered Lists:
+	Lock-Free Extensible Hash Tables" and "A Pragmatic Implementation
+	of Non-Blocking Linked-Lists".
+
+2010-04-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* ConcurrentDictionary.cs:
+	* ConcurrentSkipList.cs:
+	* OrderablePartitioner.cs:
+	* Partitioner.cs: Add BOOTSTRAP_NET_4_0 define
+
+2010-03-24  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* ConcurrentDictionary.cs: Remove while looping
+
+2010-03-24  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* ConcurrentDictionary.cs: Enable tracking on SpinLock
+	* ConcurrentSkipList.cs: Use Spinlock instead of Monitor and
+	refactor to use a saner lock acquiring scheme.
+
+2010-03-24  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* ConcurrentDictionary.cs: Fix lock releasing
+
+2010-03-24  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* ConcurrentDictionary.cs: Use SpinLock instead of Monitor
+	for basket locking
+
+2010-02-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* ConcurrentDictionary.cs:
+	* ConcurrentQueue.cs:
+	* ConcurrentStack.cs:
+	* Partitioner.cs: Port to .NET 4 beta 2 API
+
+	* ConcurrentSkipList.cs: Use Monitor for locking
+
 2009-08-19  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	* Partitioner.cs: Fix infinite recursion when calling Create

@@ -27,7 +27,6 @@
 using System.Collections;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
 using System.Reflection;
 
 namespace System.Windows.Forms
@@ -643,8 +642,8 @@ namespace System.Windows.Forms
 				Console.Error.WriteLine ("warning: requesting icon that not been tuned {0}_{1} {2}", width, name, image.Width);
 				int height = (image.Height * width)/image.Width;
 				Bitmap b = new Bitmap (width, height);
-				Graphics g = Graphics.FromImage (b);
-				g.DrawImage (image, 0, 0, width, height);
+				using (Graphics g = Graphics.FromImage (b))
+					g.DrawImage (image, 0, 0, width, height);
 				ResPool.AddUIImage (b, name, width);
 
 				return b;
@@ -984,6 +983,7 @@ namespace System.Windows.Forms
 		#region BalloonWindow
 #if NET_2_0
 		public abstract void ShowBalloonWindow (IntPtr handle, int timeout, string title, string text, ToolTipIcon icon);
+		public abstract void HideBalloonWindow (IntPtr handle);
 		public abstract void DrawBalloonWindow (Graphics dc, Rectangle clip, NotifyIcon.BalloonWindow control);
 		public abstract Rectangle BalloonWindowRect (NotifyIcon.BalloonWindow control);
 #endif

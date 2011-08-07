@@ -22,7 +22,7 @@ namespace MonoTests.SystemWeb.Framework
 	/// <seealso cref="Invoker"/>
 	/// <seealso cref="Run"/>
 	[Serializable]
-	public class WebTest
+	public partial class WebTest
 	{
 		/// <summary>
 		/// Thrown when trying to copy a resource after appdomain was created. Please call
@@ -123,8 +123,9 @@ namespace MonoTests.SystemWeb.Framework
 		/// <seealso cref="MonoTests.SystemWeb.Framework.Response.Body"/>
 		public string Run ()
 		{
+#if !DOTNET
 			SystemWebTestShim.BuildManager.SuppressDebugModeMessages ();
-
+#endif
 			if (Request.Url == null)
 				Request.Url = Invoker.GetDefaultUrl ();
 			_unloadHandler.StartingRequest();
@@ -302,6 +303,8 @@ namespace MonoTests.SystemWeb.Framework
 		/// <example><code>CopyResource (GetType (), "Default.skin", "App_Themes/Black/Default.skin");</code></example>
 		public static void CopyResource (Type type, string resourceName, string targetUrl)
 		{
+			if (type == null)
+				throw new ArgumentNullException ("type");
 #if !TARGET_JVM
 			using (Stream source = type.Assembly.GetManifestResourceStream (resourceName)) {
 				if (source == null)
@@ -313,6 +316,28 @@ namespace MonoTests.SystemWeb.Framework
 #endif
 		}
 
+		public static void CopyPrefixedResources (Type type, string namePrefix, string targetDir)
+		{
+			if (type == null)
+				throw new ArgumentNullException ("type");
+			
+			string[] manifestResources = type.Assembly.GetManifestResourceNames ();
+			if (manifestResources == null || manifestResources.Length == 0)
+				return;
+
+			foreach (string resource in manifestResources) {
+				if (resource == null || resource.Length == 0)
+					continue;
+				
+				if (!resource.StartsWith (namePrefix))
+					continue;
+				 
+				// The Replace part is for VisualStudio which compiles .resx files despite them being marked as
+				// embedded resources, which breaks the tests.
+				CopyResource (type, resource, Path.Combine (targetDir, resource.Substring (namePrefix.Length).Replace (".remove_extension", String.Empty)));
+			}
+		}
+		
 		/// <summary>
 		/// Copy a chunk of data as a file into the web application.
 		/// </summary>
@@ -519,7 +544,7 @@ namespace MonoTests.SystemWeb.Framework
 
 		private static void CopyAssembly (Assembly ass, string dir)
 		{
-			if (ass.GlobalAssemblyCache)
+			if (ass.GlobalAssemblyCache || ass.FullName.StartsWith ("mscorlib"))
 				return;
 			string oldfn = ass.Location;
 			if (oldfn.EndsWith (".exe"))
@@ -570,43 +595,19 @@ namespace MonoTests.SystemWeb.Framework
 
 		public static void CopyResources ()
 		{
-			CopyResource (typeof (WebTest), "My.ashx", "My.ashx");
-			CopyResource (typeof (WebTest), "Global.asax", "Global.asax");
-#if VISUAL_STUDIO
-			CopyResource (typeof (WebTest),
-				"MonoTests.SystemWeb.Framework.Resources.Web.config",
-				"Web.config");
-			CopyResource (typeof (WebTest),
-				"MonoTests.SystemWeb.Framework.Resources.MyPage.aspx",
-				"MyPage.aspx");
-			CopyResource (typeof (WebTest),
-				"MonoTests.SystemWeb.Framework.Resources.MyPage.aspx.cs",
-				"MyPage.aspx.cs");
-			CopyResource (typeof (WebTest),
-				"MonoTests.SystemWeb.Framework.Resources.MyPageWithMaster.aspx",
-				"MyPageWithMaster.aspx");
-			CopyResource (typeof (WebTest),
-				"MonoTests.SystemWeb.Framework.Resources.My.master",
-				"My.master");
-#else
-#if NET_2_0
-#if INSIDE_SYSTEM_WEB
-			CopyResource (typeof (WebTest), "Common.resx", "App_GlobalResources/Common.resx");
-			CopyResource (typeof (WebTest), "Common.fr-FR.resx", "App_GlobalResources/Common.fr-FR.resx");
-			CopyResource (typeof (WebTest), "Resource1.resx", "App_GlobalResources/Resource1.resx");
-			CopyResource (typeof (WebTest), "EnumConverterControl.cs", "App_Code/EnumConverterControl.cs");
-#endif
-			CopyResource (typeof (WebTest), "Web.mono.config", "Web.config");
-			CopyResource (typeof (WebTest), "MyPage.aspx", "MyPage.aspx");
-			CopyResource (typeof (WebTest), "MyPage.aspx.cs", "MyPage.aspx.cs");
-#else
-			CopyResource (typeof (WebTest), "MyPage_1.1.aspx", "MyPage.aspx");
-			CopyResource (typeof (WebTest), "Web.mono.config.1.1", "Web.config");
-#endif
-			CopyResource (typeof (WebTest), "MyPageWithMaster.aspx", "MyPageWithMaster.aspx");
-			CopyResource (typeof (WebTest), "My.master", "My.master");
-#endif
+			Type myself = typeof (WebTest);
+			
+			CopyResource (myself, "My.ashx", "My.ashx");
+			CopyResource (myself, "Global.asax", "Global.asax");
+			CopyResource (myself, "MyPage.aspx", "MyPage.aspx");
+			CopyResource (myself, "MyPage.aspx.cs", "MyPage.aspx.cs");
+			CopyResource (myself, "MyPageWithMaster.aspx", "MyPageWithMaster.aspx");
+			CopyResource (myself, "My.master", "My.master");
+
+			CopyResourcesLocal ();
 		}
+
+		static partial void CopyResourcesLocal ();
 #endif
 	}
 }

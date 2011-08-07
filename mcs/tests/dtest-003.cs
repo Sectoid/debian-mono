@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Dynamic;
 using System.Linq.Expressions;
 using Microsoft.CSharp.RuntimeBinder;
+using System.Runtime.CompilerServices;
 
 enum Enum
 {
@@ -24,11 +25,10 @@ class AssertDynamicObject : DynamicMetaObject
 	DynamicMetaObject GetFakeMetaObject (object value)
 	{
 		Type t = value == null ? typeof (object) : value.GetType ();
-		var v = Expression.Variable (t);
-		Expression e = Expression.Block (new[] { v }, Expression.Default (t));
+		Expression<Func<object>> et = () => value;
 
 		Expression restr = Expression.Constant (true);
-		return new DynamicMetaObject (e, BindingRestrictions.GetExpressionRestriction (restr));
+		return new DynamicMetaObject (Expression.Convert (et.Body, t), BindingRestrictions.GetExpressionRestriction (restr));
 	}
 
 	public override DynamicMetaObject BindBinaryOperation (BinaryOperationBinder binder, DynamicMetaObject arg)
@@ -36,7 +36,7 @@ class AssertDynamicObject : DynamicMetaObject
 		if (mock.BinaryOperation == null)
 			throw new ApplicationException ("Unexpected BindBinaryOperation");
 
-		mock.BinaryOperation ((CSharpBinaryOperationBinder) binder, arg.Value);
+		mock.BinaryOperation (binder, arg.Value);
 
 		return GetFakeMetaObject (new object ());
 	}
@@ -46,7 +46,7 @@ class AssertDynamicObject : DynamicMetaObject
 		if (mock.ConvertOperation == null)
 			throw new ApplicationException ("Unexpected BindConvert");
 
-		var r = mock.ConvertOperation ((CSharpConvertBinder) binder);
+		var r = mock.ConvertOperation (binder);
 
 		return GetFakeMetaObject (r);
 	}
@@ -56,7 +56,7 @@ class AssertDynamicObject : DynamicMetaObject
 		if (mock.GetIndexOperation == null)
 			throw new ApplicationException ("Unexpected TryGetIndex");
 
-		mock.GetIndexOperation ((CSharpGetIndexBinder) binder, indexes.Select (l => l.Value).ToArray ());
+		mock.GetIndexOperation (binder, indexes.Select (l => l.Value).ToArray ());
 
 		return GetFakeMetaObject (new object ());
 	}
@@ -66,9 +66,9 @@ class AssertDynamicObject : DynamicMetaObject
 		if (mock.GetMemberOperation == null)
 			throw new ApplicationException ("Unexpected BindGetMember");
 
-		mock.GetMemberOperation ((CSharpGetMemberBinder) binder);
+		var r = mock.GetMemberOperation (binder);
 
-		return GetFakeMetaObject (new object ());
+		return GetFakeMetaObject (r);
 	}
 
 	public override DynamicMetaObject BindInvoke (InvokeBinder binder, DynamicMetaObject[] args)
@@ -76,7 +76,7 @@ class AssertDynamicObject : DynamicMetaObject
 		if (mock.InvokeOperation == null)
 			throw new ApplicationException ("Unexpected BindInvoke");
 
-		mock.InvokeOperation ((CSharpInvokeBinder) binder, args.Select (l => l.Value).ToArray ());
+		mock.InvokeOperation (binder, args.Select (l => l.Value).ToArray ());
 
 		return GetFakeMetaObject (new object ());
 	}
@@ -86,7 +86,7 @@ class AssertDynamicObject : DynamicMetaObject
 		if (mock.InvokeMemberOperation == null)
 			throw new ApplicationException ("Unexpected BindInvokeMember");
 
-		mock.InvokeMemberOperation ((CSharpInvokeMemberBinder) binder, args.Select (l => l.Value).ToArray ());
+		mock.InvokeMemberOperation (binder, args.Select (l => l.Value).ToArray ());
 
 		return GetFakeMetaObject (new object ());
 	}
@@ -96,7 +96,7 @@ class AssertDynamicObject : DynamicMetaObject
 		if (mock.SetIndexOperation == null)
 			throw new ApplicationException ("Unexpected TrySetIndex");
 
-		mock.SetIndexOperation ((CSharpSetIndexBinder) binder, indexes.Select (l => l.Value).ToArray (), value.Value);
+		mock.SetIndexOperation (binder, indexes.Select (l => l.Value).ToArray (), value.Value);
 
 		return GetFakeMetaObject (new object ());
 	}
@@ -106,7 +106,7 @@ class AssertDynamicObject : DynamicMetaObject
 		if (mock.SetMemberOperation == null)
 			throw new ApplicationException ("Unexpected BindSetMember");
 
-		mock.SetMemberOperation ((CSharpSetMemberBinder) binder, value.Value);
+		mock.SetMemberOperation (binder, value.Value);
 
 		return GetFakeMetaObject (new object ());
 	}
@@ -116,7 +116,7 @@ class AssertDynamicObject : DynamicMetaObject
 		if (mock.UnaryOperation == null)
 			throw new ApplicationException ("Unexpected BindUnaryOperation");
 
-		var r = mock.UnaryOperation ((CSharpUnaryOperationBinder) binder);
+		var r = mock.UnaryOperation (binder);
 
 		return GetFakeMetaObject (r);
 	}
@@ -137,15 +137,15 @@ class DynamicObjectMock : DynamicObject
 		return new AssertDynamicObject (this, parameter);
 	}
 
-	public Action<CSharpBinaryOperationBinder, object> BinaryOperation;
-	public Func<CSharpConvertBinder, object> ConvertOperation;
-	public Action<CSharpGetIndexBinder, object[]> GetIndexOperation;
-	public Action<CSharpGetMemberBinder> GetMemberOperation;
-	public Action<CSharpInvokeBinder, object[]> InvokeOperation;
-	public Action<CSharpInvokeMemberBinder, object[]> InvokeMemberOperation;
-	public Action<CSharpSetIndexBinder, object[], object> SetIndexOperation;
-	public Action<CSharpSetMemberBinder, object> SetMemberOperation;
-	public Func<CSharpUnaryOperationBinder, object> UnaryOperation;
+	public Action<BinaryOperationBinder, object> BinaryOperation;
+	public Func<ConvertBinder, object> ConvertOperation;
+	public Action<GetIndexBinder, object[]> GetIndexOperation;
+	public Func<GetMemberBinder, object> GetMemberOperation;
+	public Action<InvokeBinder, object[]> InvokeOperation;
+	public Action<InvokeMemberBinder, object[]> InvokeMemberOperation;
+	public Action<SetIndexBinder, object[], object> SetIndexOperation;
+	public Action<SetMemberBinder, object> SetMemberOperation;
+	public Func<UnaryOperationBinder, object> UnaryOperation;
 
 	// Dynamic arguments methods
 	public DynamicObjectMock (int i)
@@ -186,7 +186,7 @@ class Tester : DynamicObjectMock
 		if (!EqualityComparer<T>.Default.Equals (expected, value)) {
 			if (!string.IsNullOrEmpty (name))
 				name += ": ";
-			throw new ApplicationException (name + expected + " != " + value);
+			throw new ApplicationException (name + "Expected " + expected + " != " + value);
 		}
 	}
 
@@ -207,17 +207,29 @@ class Tester : DynamicObjectMock
 		}
 	}
 
+	static FieldInfo flags = typeof (CSharpArgumentInfo).GetField ("flags", BindingFlags.NonPublic | BindingFlags.Instance);
+
+	static void AssertArgument (CallSiteBinder obj, CSharpArgumentInfo[] expected, string name)
+	{
+		var ai = obj.GetType ().GetField ("argumentInfo", BindingFlags.NonPublic | BindingFlags.Instance);
+		IList<CSharpArgumentInfo> values = (IList<CSharpArgumentInfo>) ai.GetValue (obj);
+		if (values.Count != expected.Length)
+			throw new ApplicationException (name + ": Array length does not match " + values.Count + " != " + expected.Length);
+
+		for (int i = 0; i < expected.Length; i++) {
+			Assert (flags.GetValue (expected[i]), flags.GetValue (values[i]), "flags");
+		}
+	}
+
 #pragma warning disable 168, 169, 219
 
 	void BinaryAdd_1 (dynamic d, DynamicObjectMock mock)
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.Add, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new [] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -230,11 +242,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.Add, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, null, "arg");
@@ -248,11 +258,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.Add, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.UseCompileTimeType | CSharpArgumentInfoFlags.LiteralConstant, null)	// CSC bug?
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.UseCompileTimeType | CSharpArgumentInfoFlags.Constant, null)
 			}, "ArgumentInfo");
 
 			Assert (arg, Enum.A, "arg");
@@ -265,11 +273,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.Add, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 7, "arg");
@@ -282,11 +288,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.Add, "Operation");
-			Assert (binder.IsChecked, true, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.UseCompileTimeType | CSharpArgumentInfoFlags.LiteralConstant, null) },
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.UseCompileTimeType | CSharpArgumentInfoFlags.Constant, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 3, "arg");
@@ -294,16 +298,14 @@ class Tester : DynamicObjectMock
 
 		d = checked (d + 3);
 	}
-	
+
 	void BinaryAddChecked_2 (dynamic d, DynamicObjectMock mock)
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.Add, "Operation");
-			Assert (binder.IsChecked, true, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.UseCompileTimeType | CSharpArgumentInfoFlags.LiteralConstant, null) },
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.UseCompileTimeType | CSharpArgumentInfoFlags.Constant, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 3, "arg");
@@ -313,7 +315,7 @@ class Tester : DynamicObjectMock
 		checked {
 			r = () => d + 3;
 		}
-		
+
 		r ();
 	}
 
@@ -321,11 +323,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.AddAssign, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -338,11 +338,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.AddAssign, "Operation");
-			Assert (binder.IsChecked, true, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -357,11 +355,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.And, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -374,11 +370,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.AndAssign, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -391,11 +385,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.Divide, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -408,11 +400,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.DivideAssign, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -425,11 +415,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.Equal, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -442,11 +430,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.ExclusiveOr, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -459,11 +445,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.ExclusiveOrAssign, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -476,11 +460,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.GreaterThan, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -493,11 +475,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.GreaterThanOrEqual, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -510,11 +490,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.LeftShift, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -527,11 +505,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.LeftShiftAssign, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -544,11 +520,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.LessThan, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -561,11 +535,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.LessThanOrEqual, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -574,15 +546,27 @@ class Tester : DynamicObjectMock
 		d = d <= 1;
 	}
 
+	void BinaryLogicalAnd_1 (dynamic d, DynamicObjectMock mock)
+	{
+		mock.HitCounter = 1;
+		bool b = false;
+		d = b && d;
+	}
+
+	void BinaryLogicalOr_1 (dynamic d, DynamicObjectMock mock)
+	{
+		mock.HitCounter = 1;
+		bool b = true;
+		d = b || d;
+	}
+
 	void BinaryModulo_1 (dynamic d, DynamicObjectMock mock)
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.Modulo, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -595,11 +579,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.ModuloAssign, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -612,11 +594,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.Multiply, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -629,11 +609,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.MultiplyAssign, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -646,11 +624,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.NotEqual, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 4, "arg");
@@ -663,11 +639,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.Or, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 2, "arg");
@@ -680,11 +654,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.OrAssign, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 2, "arg");
@@ -697,11 +669,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.RightShift, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -714,11 +684,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.RightShiftAssign, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -731,11 +699,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.Subtract, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -748,11 +714,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.SubtractAssign, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
 			Assert (arg, 1, "arg");
@@ -765,7 +729,6 @@ class Tester : DynamicObjectMock
 	{
 		mock.ConvertOperation = (binder) => {
 			Assert (binder.Explicit, true, "Explicit");
-			Assert (binder.IsChecked, false, "IsChecked");
 			Assert (binder.Type, typeof (byte), "Type");
 			return (byte) 1;
 		};
@@ -777,12 +740,11 @@ class Tester : DynamicObjectMock
 	{
 		mock.ConvertOperation = (binder) => {
 			Assert (binder.Explicit, false, "Explicit");
-			Assert (binder.IsChecked, false, "IsChecked");
 			Assert (binder.Type, typeof (int), "Type");
-			return 2;
+			return 1;
 		};
 
-		object[] o = new object [2];
+		object[] o = new object[2];
 		d = o[d];
 	}
 
@@ -790,19 +752,18 @@ class Tester : DynamicObjectMock
 	{
 		mock.ConvertOperation = (binder) => {
 			Assert (binder.Explicit, true, "Explicit");
-			Assert (binder.IsChecked, true, "IsChecked");
+//			Assert (binder.IsChecked, true, "IsChecked");
 			Assert (binder.Type, typeof (byte), "Type");
 			return (byte) 2;
 		};
 
-		object b = checked((byte) d);
+		object b = checked ((byte) d);
 	}
 
 	void Convert_4 (dynamic d, DynamicObjectMock mock)
 	{
 		mock.ConvertOperation = (binder) => {
 			Assert (binder.Explicit, false, "Explicit");
-			Assert (binder.IsChecked, false, "IsChecked");
 			Assert (binder.Type, typeof (int), "Type");
 			return 5;
 		};
@@ -810,31 +771,43 @@ class Tester : DynamicObjectMock
 		var g = new int[d];
 	}
 
+	void Convert_5 (dynamic d, DynamicObjectMock mock)
+	{
+		int counter = 0;
+		mock.ConvertOperation = (binder) => {
+			Assert (binder.Explicit, false, "Explicit");
+			Assert (binder.Type, typeof (System.Collections.IEnumerable), "Type");
+			return new object[] { 1 };
+		};
+
+		foreach (int v in d) {
+//			Console.WriteLine (v);
+		}
+	}
+
 	void GetIndex_1 (dynamic d, DynamicObjectMock mock)
 	{
 		mock.GetIndexOperation = (binder, args) => {
 			Assert (binder.CallInfo, new CallInfo (1, new string[0]), "CallInfo");
-			Assert (binder.CallingContext, typeof (Tester), "CallingContext");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
-			Assert ((IList<object>)args, new object[] { 0 }, "args");
+			Assert ((IList<object>) args, new object[] { 0 }, "args");
 		};
 
-		var o = d [0];
+		var o = d[0];
 	}
 
 	void GetIndex_2 (dynamic d, DynamicObjectMock mock)
 	{
 		mock.GetIndexOperation = (binder, args) => {
 			Assert (binder.CallInfo, new CallInfo (2, new string[0]), "CallInfo");
-			Assert (binder.CallingContext, typeof (Tester), "CallingContext");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 			"ArgumentInfo");
 
 			Assert ((IList<object>) args, new object[] { 2, 3 }, "args");
@@ -848,10 +821,9 @@ class Tester : DynamicObjectMock
 	{
 		mock.GetIndexOperation = (binder, args) => {
 			Assert (binder.CallInfo, new CallInfo (1, new string[0]), "CallInfo");
-			Assert (binder.CallingContext, typeof (Tester), "CallingContext");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.UseCompileTimeType, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.UseCompileTimeType, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null) },
 				"ArgumentInfo");
 
 			Assert ((IList<object>) args, new object[] { d }, "args");
@@ -865,10 +837,11 @@ class Tester : DynamicObjectMock
 		mock.GetMemberOperation = (binder) => {
 			Assert (binder.Name, "Foo", "Name");
 			Assert (binder.IgnoreCase, false, "IgnoreCase");
-			Assert (binder.CallingContext, typeof (Tester), "CallingContext");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null) },
 				"ArgumentInfo");
+
+			return null;
 		};
 
 		var g = d.Foo;
@@ -878,12 +851,11 @@ class Tester : DynamicObjectMock
 	{
 		mock.InvokeOperation = (binder, args) => {
 			Assert (binder.CallInfo, new CallInfo (2, new string[0]), "CallInfo");
-			Assert (binder.CallingContext, typeof (Tester), "CallingContext");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null)
-			}, 	"ArgumentInfo");
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant, null)
+			}, "ArgumentInfo");
 
 			Assert ((IList<object>) args, new object[] { "foo", null }, "args");
 		};
@@ -895,9 +867,8 @@ class Tester : DynamicObjectMock
 	{
 		mock.InvokeOperation = (binder, args) => {
 			Assert (binder.CallInfo, new CallInfo (0, new string[0]), "CallInfo");
-			Assert (binder.CallingContext, typeof (Tester), "CallingContext");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null) },
 				"ArgumentInfo");
 
 			Assert ((IList<object>) args, new object[0], "args");
@@ -919,33 +890,59 @@ class Tester : DynamicObjectMock
 	{
 		mock.InvokeOperation = (binder, args) => {
 			Assert (binder.CallInfo, new CallInfo (2, new string[] { "name" }), "CallInfo");
-			Assert (binder.CallingContext, typeof (Tester), "CallingContext");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.UseCompileTimeType, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.NamedArgument | CSharpArgumentInfoFlags.UseCompileTimeType | CSharpArgumentInfoFlags.LiteralConstant, "name")	// CSC bug?
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.UseCompileTimeType, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.NamedArgument | CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, "name")
 			}, "ArgumentInfo");
 
 			Assert ((IList<object>) args, new object[] { typeof (bool), -1 }, "args");
 		};
 
-		d (typeof (bool), name:-1);
+		d (typeof (bool), name: -1);
+	}
+
+	void Invoke_5 (dynamic d, DynamicObjectMock mock)
+	{
+		mock.InvokeOperation = (binder, args) => {
+			Assert (binder.CallInfo, new CallInfo (1, new string[0]), "CallInfo");
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.UseCompileTimeType | CSharpArgumentInfoFlags.Constant, null)
+			}, "ArgumentInfo");
+
+			Assert ((IList<object>) args, new object[] { "a" }, "args");
+		};
+
+		Action<dynamic> a = (i) => { i ("a"); };
+		a (d);
+	}
+
+	void Invoke_6 (dynamic d, DynamicObjectMock mock)
+	{
+		mock.InvokeOperation = (binder, args) => {
+			Assert (binder.CallInfo, new CallInfo (1, new string[0]), "CallInfo");
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.UseCompileTimeType | CSharpArgumentInfoFlags.Constant, null)
+			}, "ArgumentInfo");
+
+			Assert ((IList<object>) args, new object[] { 3 }, "args");
+		};
+
+		d (1 + 2);
 	}
 
 	void InvokeMember_1 (dynamic d, DynamicObjectMock mock)
 	{
 		mock.InvokeMemberOperation = (binder, args) => {
 			Assert (binder.CallInfo, new CallInfo (1, new string[0]), "CallInfo");
-			Assert (binder.CallingContext, typeof (Tester), "CallingContext");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null)},
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null)},
 				"ArgumentInfo");
 
-			Assert (binder.Flags, CSharpCallFlags.None, "Flags");
 			Assert (binder.IgnoreCase, false, "IgnoreCase");
-			Assert (binder.TypeArguments, new Type[0], "TypeArguments");
-
 			Assert ((IList<object>) args, new object[] { 'a' }, "args");
 		};
 
@@ -956,16 +953,12 @@ class Tester : DynamicObjectMock
 	{
 		mock.InvokeMemberOperation = (binder, args) => {
 			Assert (binder.CallInfo, new CallInfo (1, new string[0]), "CallInfo");
-			Assert (binder.CallingContext, typeof (Tester), "CallingContext");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.UseCompileTimeType, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null)},
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.UseCompileTimeType, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null)},
 				"ArgumentInfo");
 
-			Assert (binder.Flags, CSharpCallFlags.None, "Flags");
 			Assert (binder.IgnoreCase, false, "IgnoreCase");
-			Assert (binder.TypeArguments, new Type[0], "TypeArguments");
-
 			Assert ((IList<object>) args, new object[] { mock }, "args");
 		};
 
@@ -976,16 +969,12 @@ class Tester : DynamicObjectMock
 	{
 		mock.InvokeMemberOperation = (binder, args) => {
 			Assert (binder.CallInfo, new CallInfo (1, new string[0]), "CallInfo");
-			Assert (binder.CallingContext, typeof (Tester), "CallingContext");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.IsRef | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.IsRef | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
 				"ArgumentInfo");
 
-			Assert (binder.Flags, CSharpCallFlags.None, "Flags");
 			Assert (binder.IgnoreCase, false, "IgnoreCase");
-			Assert (binder.TypeArguments, new Type[0], "TypeArguments");
-
 			Assert ((IList<object>) args, new object[] { 9 }, "args");
 		};
 
@@ -997,16 +986,12 @@ class Tester : DynamicObjectMock
 	{
 		mock.InvokeMemberOperation = (binder, args) => {
 			Assert (binder.CallInfo, new CallInfo (1, new string[0]), "CallInfo");
-			Assert (binder.CallingContext, typeof (Tester), "CallingContext");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.IsOut | CSharpArgumentInfoFlags.UseCompileTimeType, null)	},
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.IsOut | CSharpArgumentInfoFlags.UseCompileTimeType, null)	},
 				"ArgumentInfo");
 
-			Assert (binder.Flags, CSharpCallFlags.None, "Flags");
 			Assert (binder.IgnoreCase, false, "IgnoreCase");
-			Assert (binder.TypeArguments, new Type[0], "TypeArguments");
-
 			Assert ((IList<object>) args, new object[] { 0 }, "args");
 		};
 
@@ -1023,16 +1008,13 @@ class Tester : DynamicObjectMock
 	{
 		InvokeMemberOperation = (binder, args) => {
 			Assert (binder.CallInfo, new CallInfo (2, new string[0]), "CallInfo");
-			Assert (binder.CallingContext, typeof (Tester), "CallingContext");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.UseCompileTimeType, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.UseCompileTimeType | CSharpArgumentInfoFlags.LiteralConstant, null),
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.UseCompileTimeType, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant, null),
 			}, "ArgumentInfo");
-			Assert (binder.Flags, CSharpCallFlags.SimpleNameCall, "Flags");
-			Assert (binder.IgnoreCase, false, "IgnoreCase");
-			Assert (binder.TypeArguments, Type.EmptyTypes, "TypeArguments");
 
+			Assert (binder.IgnoreCase, false, "IgnoreCase");
 			Assert ((IList<object>) args, new object[] { d, null }, "args");
 		};
 
@@ -1043,29 +1025,42 @@ class Tester : DynamicObjectMock
 	{
 		mock.InvokeMemberOperation = (binder, args) => {
 			Assert (binder.CallInfo, new CallInfo (0, new string[0]), "CallInfo");
-			Assert (binder.CallingContext, typeof (Tester), "CallingContext");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null)
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null)
 			}, "ArgumentInfo");
-			Assert (binder.Flags, CSharpCallFlags.None, "Flags");
-			Assert (binder.IgnoreCase, false, "IgnoreCase");
-			Assert (binder.TypeArguments, new Type[] { typeof (object) }, "TypeArguments");
 
+			Assert (binder.IgnoreCase, false, "IgnoreCase");
 			Assert ((IList<object>) args, new object[0], "args");
 		};
 
 		d.Max<dynamic> ();
 	}
 
+	void InvokeMember_8 (dynamic d, DynamicObjectMock mock)
+	{
+		mock.InvokeMemberOperation = (binder, args) => {
+			Assert (binder.CallInfo, new CallInfo (1, new string[0]), "CallInfo");
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.IsRef | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+				"ArgumentInfo");
+
+			Assert (binder.IgnoreCase, false, "IgnoreCase");
+			Assert ((IList<object>) args, new object[] { 9 }, "args");
+		};
+
+		dynamic i = 9;
+		d.Max (ref i);
+	}
+
 	void SetIndex_1 (dynamic d, DynamicObjectMock mock)
 	{
 		mock.SetIndexOperation = (binder, args, value) => {
 			Assert (binder.CallInfo, new CallInfo (1, new string[0]), "CallInfo");
-			Assert (binder.CallingContext, typeof (Tester), "CallingContext");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null)},
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null)},
 				"ArgumentInfo");
 
 			Assert ((IList<object>) args, new object[] { 0 }, "args");
@@ -1079,12 +1074,11 @@ class Tester : DynamicObjectMock
 	{
 		mock.SetIndexOperation = (binder, args, value) => {
 			Assert (binder.CallInfo, new CallInfo (2, new string[0]), "CallInfo");
-			Assert (binder.CallingContext, typeof (Tester), "CallingContext");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.UseCompileTimeType, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null)
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.UseCompileTimeType, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant | CSharpArgumentInfoFlags.UseCompileTimeType, null)
 			}, "ArgumentInfo");
 
 			Assert ((IList<object>) args, new object[] { 2, 3 }, "args");
@@ -1099,11 +1093,10 @@ class Tester : DynamicObjectMock
 	{
 		mock.SetIndexOperation = (binder, args, value) => {
 			Assert (binder.CallInfo, new CallInfo (1, new string[0]), "CallInfo");
-			Assert (binder.CallingContext, typeof (Tester), "CallingContext");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.UseCompileTimeType, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.UseCompileTimeType, null)
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.UseCompileTimeType, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.UseCompileTimeType, null)
 			}, "ArgumentInfo");
 
 			Assert ((IList<object>) args, new object[] { d }, "args");
@@ -1120,11 +1113,10 @@ class Tester : DynamicObjectMock
 		mock.SetMemberOperation = (binder, value) => {
 			Assert (binder.Name, "Foo", "Name");
 			Assert (binder.IgnoreCase, false, "IgnoreCase");
-			Assert (binder.CallingContext, typeof (Tester), "CallingContext");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.UseCompileTimeType | CSharpArgumentInfoFlags.LiteralConstant, null)	// CSC bug?
-			}, 	"ArgumentInfo");
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.UseCompileTimeType | CSharpArgumentInfoFlags.Constant, null)
+			}, "ArgumentInfo");
 
 			Assert (value, d_const, "value");
 		};
@@ -1132,13 +1124,46 @@ class Tester : DynamicObjectMock
 		d.Foo = d_const;
 	}
 
+	void SetMember_2 (dynamic d, DynamicObjectMock mock)
+	{
+		mock.GetMemberOperation = (binder) => {
+			Assert (binder.Name, "Foo", "Name");
+			Assert (binder.IgnoreCase, false, "IgnoreCase");
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null) },
+				"ArgumentInfo");
+
+			return mock;
+		};
+
+		mock.BinaryOperation = (binder, arg) => {
+			Assert (binder.Operation, ExpressionType.MultiplyAssign, "Operation");
+			AssertArgument (binder, new[] {
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+			    CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant, null) },
+				"ArgumentInfo");
+
+			Assert (arg, null, "arg");
+		};
+
+		mock.SetMemberOperation = (binder, value) => {
+			Assert (binder.Name, "Foo", "Name");
+			Assert (binder.IgnoreCase, false, "IgnoreCase");
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null)
+			}, "ArgumentInfo");
+		};
+
+		d.Foo *= null;
+	}
+
 	void UnaryPlus_1 (dynamic d, DynamicObjectMock mock)
 	{
 		mock.UnaryOperation = (binder) => {
 			Assert (binder.Operation, ExpressionType.UnaryPlus, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null)
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null)
 			}, "ArgumentInfo");
 
 			return null;
@@ -1151,9 +1176,8 @@ class Tester : DynamicObjectMock
 	{
 		mock.UnaryOperation = (binder) => {
 			Assert (binder.Operation, ExpressionType.Negate, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null)
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null)
 			}, "ArgumentInfo");
 
 			return null;
@@ -1166,9 +1190,8 @@ class Tester : DynamicObjectMock
 	{
 		mock.UnaryOperation = (binder) => {
 			Assert (binder.Operation, ExpressionType.Not, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null)
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null)
 			}, "ArgumentInfo");
 
 			return null;
@@ -1181,9 +1204,8 @@ class Tester : DynamicObjectMock
 	{
 		mock.UnaryOperation = (binder) => {
 			Assert (binder.Operation, ExpressionType.OnesComplement, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null)
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null)
 			}, "ArgumentInfo");
 
 			return null;
@@ -1196,9 +1218,8 @@ class Tester : DynamicObjectMock
 	{
 		mock.UnaryOperation = (binder) => {
 			Assert (binder.Operation, ExpressionType.Decrement, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null)
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null)
 			}, "ArgumentInfo");
 
 			return null;
@@ -1211,9 +1232,8 @@ class Tester : DynamicObjectMock
 	{
 		mock.UnaryOperation = (binder) => {
 			Assert (binder.Operation, ExpressionType.Decrement, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null)
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null)
 			}, "ArgumentInfo");
 
 			return new object ();
@@ -1226,9 +1246,8 @@ class Tester : DynamicObjectMock
 	{
 		mock.UnaryOperation = (binder) => {
 			Assert (binder.Operation, ExpressionType.Increment, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null)
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null)
 			}, "ArgumentInfo");
 
 			return null;
@@ -1241,9 +1260,8 @@ class Tester : DynamicObjectMock
 	{
 		mock.UnaryOperation = (binder) => {
 			Assert (binder.Operation, ExpressionType.Increment, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null)
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null)
 			}, "ArgumentInfo");
 
 			return new object ();
@@ -1256,9 +1274,8 @@ class Tester : DynamicObjectMock
 	{
 		mock.UnaryOperation = (binder) => {
 			Assert (binder.Operation, ExpressionType.IsFalse, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null)
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null)
 			}, "ArgumentInfo");
 
 			return true;
@@ -1266,11 +1283,9 @@ class Tester : DynamicObjectMock
 
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.Equal, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant, null) },
 				"ArgumentInfo");
 
 			Assert (arg, null, "arg");
@@ -1283,9 +1298,8 @@ class Tester : DynamicObjectMock
 	{
 		mock.UnaryOperation = (binder) => {
 			Assert (binder.Operation, ExpressionType.IsFalse, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null)
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null)
 			}, "ArgumentInfo");
 
 			return true;
@@ -1293,11 +1307,9 @@ class Tester : DynamicObjectMock
 
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.NotEqual, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant, null) },
 				"ArgumentInfo");
 
 			Assert (arg, null, "arg");
@@ -1310,9 +1322,8 @@ class Tester : DynamicObjectMock
 	{
 		mock.UnaryOperation = (binder) => {
 			Assert (binder.Operation, ExpressionType.IsFalse, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null)
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null)
 			}, "ArgumentInfo");
 
 			return true;
@@ -1320,11 +1331,9 @@ class Tester : DynamicObjectMock
 
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.And, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant, null) },
 				"ArgumentInfo");
 
 			Assert (arg, null, "arg");
@@ -1337,24 +1346,22 @@ class Tester : DynamicObjectMock
 	{
 		mock.UnaryOperation = (binder) => {
 			Assert (binder.Operation, ExpressionType.IsTrue, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null)
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null)
 			}, "ArgumentInfo");
 
 			return true;
 		};
 
-		object g = d ? 1 :4;
+		object g = d ? 1 : 4;
 	}
 
 	void UnaryIsTrue_2 (dynamic d, DynamicObjectMock mock)
 	{
 		mock.UnaryOperation = (binder) => {
 			Assert (binder.Operation, ExpressionType.IsTrue, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null)
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null)
 			}, "ArgumentInfo");
 
 			return false;
@@ -1362,11 +1369,9 @@ class Tester : DynamicObjectMock
 
 		mock.BinaryOperation = (binder, arg) => {
 			Assert (binder.Operation, ExpressionType.Or, "Operation");
-			Assert (binder.IsChecked, false, "IsChecked");
-			Assert (binder.IsMemberAccess, false, "IsMemberAccess");
-			Assert (binder.ArgumentInfo, new[] {
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.None, null),
-				new CSharpArgumentInfo (CSharpArgumentInfoFlags.LiteralConstant | CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.Constant, null) },
 				"ArgumentInfo");
 
 			Assert (arg, null, "arg");
@@ -1374,7 +1379,32 @@ class Tester : DynamicObjectMock
 
 		object x = d || null;
 	}
-	
+
+	void UnaryIsTrue_3 (dynamic d, DynamicObjectMock mock)
+	{
+		mock.UnaryOperation = (binder) => {
+			Assert (binder.Operation, ExpressionType.IsTrue, "Operation");
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null)
+			}, "ArgumentInfo");
+
+			return false;
+		};
+
+		mock.BinaryOperation = (binder, arg) => {
+			Assert (binder.Operation, ExpressionType.Or, "Operation");
+			AssertArgument (binder, new[] {
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.None, null),
+				CSharpArgumentInfo.Create (CSharpArgumentInfoFlags.UseCompileTimeType, null) },
+				"ArgumentInfo");
+
+			Assert (arg, false, "arg");
+		};
+
+		bool b = false;
+		object x = d || b;
+	}
+
 #pragma warning restore 168, 169, 219
 
 	static bool RunTest (MethodInfo test)
@@ -1382,7 +1412,7 @@ class Tester : DynamicObjectMock
 		Console.Write ("Running test {0, -25}", test.Name);
 		try {
 			var d = new DynamicObjectMock ();
-			test.Invoke (new Tester (), new [] { d, d });
+			test.Invoke (new Tester (), new[] { d, d });
 			if (d.HitCounter < 1)
 				Assert (true, false, "HitCounter");
 

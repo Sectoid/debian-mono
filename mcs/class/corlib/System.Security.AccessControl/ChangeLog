@@ -1,3 +1,15 @@
+2010-12-04  Kenneth Bell  <ken.git@chezbell.org.uk>
+
+	Implement RawSecurityDescriptor.
+
+	* Marshals to/from SDDL and binary form.
+
+	* Supports 'Common' ACEs and 'Object' ACEs
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Some .net 4.0 api compatibility fixes
+
 2009-08-29  Zoltan Varga  <vargaz@gmail.com>
 
 	* ObjectSecurity_T.cs: New file, empty stub for new net 4.0 class.

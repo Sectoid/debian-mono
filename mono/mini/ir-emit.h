@@ -54,14 +54,42 @@ alloc_freg (MonoCompile *cfg)
 }
 
 static inline guint32
+alloc_ireg_ref (MonoCompile *cfg)
+{
+	int vreg = alloc_ireg (cfg);
+
+#ifdef HAVE_SGEN_GC
+	if (cfg->compute_gc_maps)
+		mono_mark_vreg_as_ref (cfg, vreg);
+#endif
+
+	return vreg;
+}
+
+static inline guint32
+alloc_ireg_mp (MonoCompile *cfg)
+{
+	int vreg = alloc_ireg (cfg);
+
+#ifdef HAVE_SGEN_GC
+	if (cfg->compute_gc_maps)
+		mono_mark_vreg_as_mp (cfg, vreg);
+#endif
+
+	return vreg;
+}
+
+static inline guint32
 alloc_dreg (MonoCompile *cfg, MonoStackType stack_type)
 {
 	switch (stack_type) {
 	case STACK_I4:
 	case STACK_PTR:
-	case STACK_MP:
-	case STACK_OBJ:
 		return alloc_ireg (cfg);
+	case STACK_MP:
+		return alloc_ireg_mp (cfg);
+	case STACK_OBJ:
+		return alloc_ireg_ref (cfg);
 	case STACK_R8:
 		return alloc_freg (cfg);
 	case STACK_I8:
@@ -159,7 +187,7 @@ alloc_dreg (MonoCompile *cfg, MonoStackType stack_type)
         MONO_INST_NEW ((cfg), (dest), (op)); \
         (dest)->dreg = dr; \
         (dest)->sreg1 = sr; \
-        (dest)->inst_p1 = (gpointer)(gssize)(imm); \
+        (dest)->inst_imm = (imm); \
 	} while (0)
 
 #ifdef MONO_ARCH_NEED_GOT_VAR
@@ -365,6 +393,12 @@ alloc_dreg (MonoCompile *cfg, MonoStackType stack_type)
 	(dest)->flags = ss_loc ? MONO_INST_SINGLE_STEP_LOC : 0; \
 	} while (0)
 
+#define NEW_GC_PARAM_SLOT_LIVENESS_DEF(cfg,dest,offset,type) do { \
+	MONO_INST_NEW ((cfg), (dest), OP_GC_PARAM_SLOT_LIVENESS_DEF); \
+	(dest)->inst_offset = (offset); \
+	(dest)->inst_vtype = (type); \
+	} while (0)
+
 /*
  * Variants which do an emit as well.
  */
@@ -417,7 +451,7 @@ alloc_dreg (MonoCompile *cfg, MonoStackType stack_type)
  */
 
 #define EMIT_NEW_VARLOAD_SFLOAT(cfg,dest,var,vartype) do { \
-        if (!(vartype)->byref && (vartype)->type == MONO_TYPE_R4) { \
+		if (COMPILE_SOFT_FLOAT ((cfg)) && !(vartype)->byref && (vartype)->type == MONO_TYPE_R4) { \
              MonoInst *iargs [1]; \
              EMIT_NEW_VARLOADA (cfg, iargs [0], (var), (vartype)); \
              (dest) = mono_emit_jit_icall (cfg, mono_fload_r4, iargs); \
@@ -427,7 +461,7 @@ alloc_dreg (MonoCompile *cfg, MonoStackType stack_type)
     } while (0)
 
 #define EMIT_NEW_VARSTORE_SFLOAT(cfg,dest,var,vartype,inst) do {	\
-        if (!(vartype)->byref && (vartype)->type == MONO_TYPE_R4) { \
+		if (COMPILE_SOFT_FLOAT ((cfg)) && !(vartype)->byref && (vartype)->type == MONO_TYPE_R4) { \
              MonoInst *iargs [2]; \
              iargs [0] = (inst); \
              EMIT_NEW_VARLOADA (cfg, iargs [1], (var), (vartype)); \
@@ -487,6 +521,7 @@ alloc_dreg (MonoCompile *cfg, MonoStackType stack_type)
 
 #define EMIT_NEW_STORE_MEMBASE_TYPE(cfg,dest,ltype,base,offset,sr) do { NEW_STORE_MEMBASE_TYPE ((cfg), (dest), (ltype), (base), (offset), (sr)); MONO_ADD_INS ((cfg)->cbb, (dest)); } while (0)
 
+#define EMIT_NEW_GC_PARAM_SLOT_LIVENESS_DEF(cfg,dest,offset,type) do { NEW_GC_PARAM_SLOT_LIVENESS_DEF ((cfg), (dest), (offset), (type)); MONO_ADD_INS ((cfg)->cbb, (dest)); } while (0)
 /*
  * Variants which do not take an dest argument, but take a dreg argument.
  */
@@ -568,7 +603,7 @@ alloc_dreg (MonoCompile *cfg, MonoStackType stack_type)
         MONO_INST_NEW ((cfg), (inst), (op)); \
         inst->dreg = dr; \
         inst->sreg1 = sr; \
-        inst->inst_p1 = (gpointer)(gssize)(imm); \
+        inst->inst_imm = (mgreg_t)(imm);		\
 	    MONO_ADD_INS (cfg->cbb, inst); \
 	} while (0)
 
@@ -576,15 +611,30 @@ alloc_dreg (MonoCompile *cfg, MonoStackType stack_type)
         MonoInst *inst; \
         MONO_INST_NEW ((cfg), (inst), (OP_COMPARE_IMM)); \
         inst->sreg1 = sr1; \
-        inst->inst_p1 = (gpointer)imm; \
+        inst->inst_imm = (imm);			 \
 	    MONO_ADD_INS ((cfg)->cbb, inst); \
 	} while (0)
 
 #define	MONO_EMIT_NEW_ICOMPARE_IMM(cfg,sr1,imm) do { \
         MonoInst *inst; \
-        MONO_INST_NEW ((cfg), (inst), sizeof (void*) == 8 ? OP_ICOMPARE_IMM : OP_COMPARE_IMM); \
+        MONO_INST_NEW ((cfg), (inst), sizeof (mgreg_t) == 8 ? OP_ICOMPARE_IMM : OP_COMPARE_IMM); \
         inst->sreg1 = sr1; \
-        inst->inst_p1 = (gpointer)imm; \
+        inst->inst_imm = (imm);			 \
+	    MONO_ADD_INS ((cfg)->cbb, inst); \
+	} while (0)
+
+/* This is used on 32 bit machines too when running with LLVM */
+#define	MONO_EMIT_NEW_LCOMPARE_IMM(cfg,sr1,imm) do { \
+        MonoInst *inst; \
+        MONO_INST_NEW ((cfg), (inst), (OP_LCOMPARE_IMM)); \
+        inst->sreg1 = sr1;									\
+        if (SIZEOF_REGISTER == 4 && COMPILE_LLVM (cfg))  { 	\
+			guint64 _l = (imm);								\
+			inst->inst_imm = _l & 0xffffffff;				\
+			inst->inst_offset = _l >> 32;						\
+		} else { \
+			inst->inst_imm = (imm);		 \
+		}								 \
 	    MONO_ADD_INS ((cfg)->cbb, inst); \
 	} while (0)
 
@@ -613,7 +663,7 @@ alloc_dreg (MonoCompile *cfg, MonoStackType stack_type)
         MONO_INST_NEW ((cfg), (inst), (op)); \
         inst->inst_destbasereg = base; \
         inst->inst_offset = offset; \
-        inst->inst_p1 = (gpointer)(gssize)imm; \
+        inst->inst_imm = (mgreg_t)(imm); \
         MONO_ADD_INS ((cfg)->cbb, inst); \
 	} while (0)
 
@@ -725,15 +775,93 @@ static int ccount = 0;
 	    (cfg)->cbb = (bblock); \
     } while (0)
 
+/* This marks a place in code where an implicit exception could be thrown */
+#define MONO_EMIT_NEW_IMPLICIT_EXCEPTION(cfg) do { \
+		if (COMPILE_LLVM ((cfg))) {									\
+			MONO_EMIT_NEW_UNALU (cfg, OP_IMPLICIT_EXCEPTION, -1, -1);	\
+		} \
+	} while (0)
+
+/* Loads/Stores which can fault are handled correctly by the LLVM mono branch */
+#define MONO_EMIT_NEW_IMPLICIT_EXCEPTION_LOAD_STORE(cfg) do { \
+	if (COMPILE_LLVM (cfg) && !IS_LLVM_MONO_BRANCH)			\
+		MONO_EMIT_NEW_IMPLICIT_EXCEPTION ((cfg));			\
+    } while (0)
+
+/* Emit an explicit null check which doesn't depend on SIGSEGV signal handling */
+#define MONO_EMIT_NULL_CHECK(cfg, reg) do { \
+		if (cfg->explicit_null_checks) {							  \
+			MONO_EMIT_NEW_BIALU_IMM (cfg, OP_COMPARE_IMM, -1, (reg), 0); \
+			MONO_EMIT_NEW_COND_EXC (cfg, EQ, "NullReferenceException"); \
+		} else {			\
+			MONO_EMIT_NEW_IMPLICIT_EXCEPTION_LOAD_STORE (cfg);						\
+		}																\
+	} while (0)
+
+#define MONO_EMIT_NEW_CHECK_THIS(cfg, sreg) do { \
+		cfg->flags |= MONO_CFG_HAS_CHECK_THIS;	 \
+		if (cfg->explicit_null_checks) {		 \
+			MONO_EMIT_NULL_CHECK (cfg, sreg);				\
+		} else {											\
+			MONO_EMIT_NEW_UNALU (cfg, OP_CHECK_THIS, -1, sreg);			\
+			MONO_EMIT_NEW_IMPLICIT_EXCEPTION_LOAD_STORE (cfg);			\
+		}																\
+		MONO_EMIT_NEW_UNALU (cfg, OP_NOT_NULL, -1, sreg);				\
+	} while (0)
+
+#define NEW_LOAD_MEMBASE_FLAGS(cfg,dest,op,dr,base,offset,ins_flags) do {	\
+		int __ins_flags = ins_flags; \
+		if (__ins_flags & MONO_INST_FAULT) {								\
+			MONO_EMIT_NULL_CHECK ((cfg), (base));						\
+			if (cfg->explicit_null_checks)								\
+				__ins_flags &= ~MONO_INST_FAULT;							\
+		}																\
+		NEW_LOAD_MEMBASE ((cfg), (dest), (op), (dr), (base), (offset));	\
+		(dest)->flags = (__ins_flags);									\
+	} while (0)
+
+#define MONO_EMIT_NEW_LOAD_MEMBASE_OP_FLAGS(cfg,op,dr,base,offset,ins_flags) do { \
+        MonoInst *inst;													\
+		int __ins_flags = ins_flags; \
+	    if (__ins_flags & MONO_INST_FAULT) {									\
+			MONO_EMIT_NULL_CHECK ((cfg), (base));						\
+			if (cfg->explicit_null_checks)								\
+				__ins_flags &= ~MONO_INST_FAULT;							\
+		}																\
+		NEW_LOAD_MEMBASE ((cfg), (inst), (op), (dr), (base), (offset)); \
+		inst->flags = (__ins_flags); \
+	    MONO_ADD_INS (cfg->cbb, inst); \
+    } while (0)
+
+#define MONO_EMIT_NEW_LOAD_MEMBASE_FLAGS(cfg,dr,base,offset,ins_flags) MONO_EMIT_NEW_LOAD_MEMBASE_OP_FLAGS ((cfg), (OP_LOAD_MEMBASE), (dr), (base), (offset),(ins_flags))
+
+/* A load which can cause a nullref */
+#define NEW_LOAD_MEMBASE_FAULT(cfg,dest,op,dr,base,offset) NEW_LOAD_MEMBASE_FLAGS ((cfg), (dest), (op), (dr), (base), (offset), MONO_INST_FAULT)
+
+#define EMIT_NEW_LOAD_MEMBASE_FAULT(cfg,dest,op,dr,base,offset) do { \
+		NEW_LOAD_MEMBASE_FAULT ((cfg), (dest), (op), (dr), (base), (offset)); \
+		MONO_ADD_INS ((cfg)->cbb, (dest)); \
+	} while (0)
+
+#define MONO_EMIT_NEW_LOAD_MEMBASE_OP_FAULT(cfg,op,dr,base,offset) MONO_EMIT_NEW_LOAD_MEMBASE_OP_FLAGS ((cfg), (op), (dr), (base), (offset), MONO_INST_FAULT)
+
+#define MONO_EMIT_NEW_LOAD_MEMBASE_FAULT(cfg,dr,base,offset) MONO_EMIT_NEW_LOAD_MEMBASE_OP_FAULT ((cfg), (OP_LOAD_MEMBASE), (dr), (base), (offset))
+
 /*Object Model related macros*/
 
-#ifndef MONO_ARCH_EMIT_BOUNDS_CHECK
-#define MONO_ARCH_EMIT_BOUNDS_CHECK(cfg, array_reg, offset, index_reg) do { \
+/* Default bounds check implementation for most architectures + llvm */
+#define MONO_EMIT_DEFAULT_BOUNDS_CHECK(cfg, array_reg, offset, index_reg, fault) do { \
 			int _length_reg = alloc_ireg (cfg); \
-			MONO_EMIT_NEW_LOAD_MEMBASE_OP (cfg, OP_LOADI4_MEMBASE, _length_reg, array_reg, offset); \
+			if (fault) \
+				MONO_EMIT_NEW_LOAD_MEMBASE_OP_FAULT (cfg, OP_LOADI4_MEMBASE, _length_reg, array_reg, offset); \
+			else \
+				MONO_EMIT_NEW_LOAD_MEMBASE_OP_FLAGS (cfg, OP_LOADI4_MEMBASE, _length_reg, array_reg, offset, MONO_INST_CONSTANT_LOAD); \
 			MONO_EMIT_NEW_BIALU (cfg, OP_COMPARE, -1, _length_reg, index_reg); \
 			MONO_EMIT_NEW_COND_EXC (cfg, LE_UN, "IndexOutOfRangeException"); \
 	} while (0)
+
+#ifndef MONO_ARCH_EMIT_BOUNDS_CHECK
+#define MONO_ARCH_EMIT_BOUNDS_CHECK(cfg, array_reg, offset, index_reg) MONO_EMIT_DEFAULT_BOUNDS_CHECK ((cfg), (array_reg), (offset), (index_reg), TRUE)
 #endif
 
 /* cfg is the MonoCompile been used
@@ -743,18 +871,25 @@ static int ccount = 0;
  * index_reg is the vreg holding the index
  */
 #define MONO_EMIT_BOUNDS_CHECK(cfg, array_reg, array_type, array_length_field, index_reg) do { \
-            if (!(cfg->opt & MONO_OPT_ABCREM)) { \
-                MONO_ARCH_EMIT_BOUNDS_CHECK ((cfg), (array_reg), G_STRUCT_OFFSET (array_type, array_length_field), (index_reg)); \
-            } else { \
-                MonoInst *ins; \
-                MONO_INST_NEW ((cfg), ins, OP_BOUNDS_CHECK); \
-                ins->sreg1 = array_reg; \
-                ins->sreg2 = index_reg; \
-                ins->inst_imm = G_STRUCT_OFFSET (array_type, array_length_field); \
-                MONO_ADD_INS ((cfg)->cbb, ins); \
-			    (cfg)->flags |= MONO_CFG_HAS_ARRAY_ACCESS; \
-                (cfg)->cbb->has_array_access = TRUE; \
-            } \
+		if (!(cfg->opt & MONO_OPT_UNSAFE)) {							\
+		if (!(cfg->opt & MONO_OPT_ABCREM)) {							\
+			MONO_EMIT_NULL_CHECK (cfg, array_reg);						\
+			if (COMPILE_LLVM (cfg)) \
+				MONO_EMIT_DEFAULT_BOUNDS_CHECK ((cfg), (array_reg), G_STRUCT_OFFSET (array_type, array_length_field), (index_reg), TRUE); \
+			else \
+				MONO_ARCH_EMIT_BOUNDS_CHECK ((cfg), (array_reg), G_STRUCT_OFFSET (array_type, array_length_field), (index_reg)); \
+		} else {														\
+			MonoInst *ins;												\
+			MONO_INST_NEW ((cfg), ins, OP_BOUNDS_CHECK);				\
+			ins->sreg1 = array_reg;										\
+			ins->sreg2 = index_reg;										\
+			ins->inst_imm = G_STRUCT_OFFSET (array_type, array_length_field); \
+			ins->flags |= MONO_INST_FAULT; \
+			MONO_ADD_INS ((cfg)->cbb, ins);								\
+			(cfg)->flags |= MONO_CFG_HAS_ARRAY_ACCESS;					\
+			(cfg)->cbb->has_array_access = TRUE;						\
+		}																\
+		}																\
     } while (0)
 
 G_END_DECLS

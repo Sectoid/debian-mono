@@ -933,15 +933,14 @@ namespace System.Windows.Forms {
 
 			int start_line_top = line.Y;			
 
-			int end_line_bottom;
-			Line end_line;
-
-			end_line = GetLine (line.line_no + line_count);
+			Line end_line = GetLine (line.line_no + line_count);
 			if (end_line == null)
 				end_line = GetLine (lines);
 
-
-			end_line_bottom = end_line.Y + end_line.height;
+			if (end_line == null)
+				return;
+			
+			int end_line_bottom = end_line.Y + end_line.height;
 			
 			if (RecalculateDocument(owner.CreateGraphicsInternal(), line.line_no, line.line_no + line_count, true)) {
 				// Lineheight changed, invalidate the rest of the document
@@ -1691,8 +1690,12 @@ namespace System.Windows.Forms {
 		internal void GetVisibleLineIndexes (Rectangle clip, out int start, out int end)
 		{
 			if (multiline) {
-				start = GetLineByPixel(clip.Top + viewport_y - offset_y, false).line_no;
-				end = GetLineByPixel(clip.Bottom + viewport_y - offset_y, false).line_no;
+				/* Expand the region slightly to be sure to
+				 * paint the full extent of the line of text.
+				 * See bug 464464.
+				 */
+				start = GetLineByPixel(clip.Top + viewport_y - offset_y - 1, false).line_no;
+				end = GetLineByPixel(clip.Bottom + viewport_y - offset_y + 1, false).line_no;
 			} else {
 				start = GetLineByPixel(clip.Left + viewport_x - offset_x, false).line_no;
 				end = GetLineByPixel(clip.Right + viewport_x - offset_x, false).line_no;

@@ -1,3 +1,12 @@
+2011-03-30  Marek Safar  <marek.safar@gmail.com>
+
+	[666033] Fixes Mono.WebBrowser versioning [backported by shana]
+
+2010-12-12  Bojan Rajkovic  <bojan@airpoweranalytics.com>
+
+	Update build-csproj2k5 script to use /bin/sh, since there are no
+	obvious bash-isms in the script.
+
 2008-11-23  Andreia Gaita <shana@jitted.com>
 
 	* Mono.Mozilla/Callback.cs: Catch redirecting and update url accordingly. 

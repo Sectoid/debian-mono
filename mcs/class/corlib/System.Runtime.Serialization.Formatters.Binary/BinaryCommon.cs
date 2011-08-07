@@ -81,7 +81,7 @@ namespace System.Runtime.Serialization.Formatters.Binary
 
 			// TimeStamp does not have a TypeCode, so it is managed as a special
 			// case in GetTypeCode()
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 			// This environment variable is only for test and benchmarking purposes.
 			// By default, mono will always use IL generated class serializers.
 			string s = Environment.GetEnvironmentVariable("MONO_REFLECTION_SERIALIZER");
@@ -201,12 +201,8 @@ namespace System.Runtime.Serialization.Formatters.Binary
 
 		FormatMask = 15,
 
-#if NET_2_0
 		GenericArguments = 0x8000,
 		NeedsInfoArrayMask = 4 + 8 + 64 + 128 + 0x8000,
-#else
-		NeedsInfoArrayMask = 4 + 8 + 64 + 128,
-#endif
 	}
 
 	internal enum ReturnTypeTag : byte

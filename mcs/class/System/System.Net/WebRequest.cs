@@ -31,6 +31,7 @@ using System.Collections;
 using System.Collections.Specialized;
 using System.Configuration;
 using System.IO;
+using System.Reflection;
 using System.Runtime.Serialization;
 using System.Globalization;
 #if NET_2_0
@@ -40,7 +41,7 @@ using System.Net.Cache;
 using System.Security.Principal;
 #endif
 
-#if MONOTOUCH
+#if NET_2_1
 using ConfigurationException = System.ArgumentException;
 
 namespace System.Net.Configuration {
@@ -50,26 +51,46 @@ namespace System.Net.Configuration {
 
 namespace System.Net 
 {
+#if MOONLIGHT
+	internal abstract class WebRequest : ISerializable {
+#else
 	[Serializable]
-	public abstract class WebRequest : MarshalByRefObject, ISerializable
-	{
+	public abstract class WebRequest : MarshalByRefObject, ISerializable {
+#endif
 		static HybridDictionary prefixes = new HybridDictionary ();
 #if NET_2_0
 		static bool isDefaultWebProxySet;
 		static IWebProxy defaultWebProxy;
+		static RequestCachePolicy defaultCachePolicy;
+		static MethodInfo cfGetDefaultProxy;
 #endif
 		
 		// Constructors
 		
 		static WebRequest ()
 		{
+			if (Platform.IsMacOS) {
 #if MONOTOUCH
+				Type type = Type.GetType ("MonoTouch.CoreFoundation.CFNetwork, monotouch");
+#else
+				Type type = Type.GetType ("MonoMac.CoreFoundation.CFNetwork, monomac");
+#endif
+				if (type != null)
+					cfGetDefaultProxy = type.GetMethod ("GetDefaultProxy");
+			}
+			
+#if NET_2_1
 			AddPrefix ("http", typeof (HttpRequestCreator));
 			AddPrefix ("https", typeof (HttpRequestCreator));
+	#if MOBILE
 			AddPrefix ("file", typeof (FileWebRequestCreator));
 			AddPrefix ("ftp", typeof (FtpRequestCreator));
+	#endif
 #else
-#if NET_2_0 && CONFIGURATION_DEP
+	#if NET_2_0
+			defaultCachePolicy = new HttpRequestCachePolicy (HttpRequestCacheLevel.NoCacheNoStore);
+	#endif
+	#if NET_2_0 && CONFIGURATION_DEP
 			object cfg = ConfigurationManager.GetSection ("system.net/webRequestModules");
 			WebRequestModulesSection s = cfg as WebRequestModulesSection;
 			if (s != null) {
@@ -78,7 +99,7 @@ namespace System.Net
 					AddPrefix (el.Prefix, el.Type);
 				return;
 			}
-#endif
+	#endif
 			ConfigurationSettings.GetConfig ("system.net/webRequestModules");
 #endif
 		}
@@ -114,11 +135,10 @@ namespace System.Net
 			}
 		}
 
+		[MonoTODO ("Implement the caching system. Currently always returns a policy with the NoCacheNoStore level")]
 		public virtual RequestCachePolicy CachePolicy
 		{
-			get {
-				throw GetMustImplement ();
-			}
+			get { return DefaultCachePolicy; }
 			set {
 			}
 		}
@@ -147,9 +167,7 @@ namespace System.Net
 #if NET_2_0
 		public static RequestCachePolicy DefaultCachePolicy
 		{
-			get {
-				throw GetMustImplement ();
-			}
+			get { return defaultCachePolicy; }
 			set {
 				throw GetMustImplement ();
 			}
@@ -161,7 +179,7 @@ namespace System.Net
 			set { throw GetMustImplement (); }
 		}
 		
-#if NET_2_0
+#if NET_2_0 && !MOONLIGHT
 		public TokenImpersonationLevel ImpersonationLevel {
 			get { throw GetMustImplement (); }
 			set { throw GetMustImplement (); }
@@ -338,6 +356,10 @@ namespace System.Net
 					return new WebProxy (uri);
 				} catch (UriFormatException) { }
 			}
+			
+			if (cfGetDefaultProxy != null)
+				return (IWebProxy) cfGetDefaultProxy.Invoke (null, null);
+			
 			return new WebProxy ();
 		}
 #endif

@@ -82,14 +82,13 @@
 /*                When value type methods are called through the    */
 /*		  vtable we need to unbox the 'this' argument.	    */
 /*		                               		 	    */
-/* Parameters   - gsctx  - Generic sharing context		    */
-/*                method - Methd pointer			    */
+/* Parameters   - method - Methd pointer			    */
 /*		  addr   - Pointer to native code for method	    */
 /*		                               		 	    */
 /*------------------------------------------------------------------*/
 
 gpointer
-mono_arch_get_unbox_trampoline (MonoGenericSharingContext *gsctx, MonoMethod *method, gpointer addr)
+mono_arch_get_unbox_trampoline (MonoMethod *method, gpointer addr)
 {
 	guint8 *code, *start;
 	int this_pos = s390_r2;
@@ -263,11 +262,14 @@ mono_arch_get_vcall_slot (guint8 *code, mgreg_t *regs, int *displacement)
 /*------------------------------------------------------------------*/
 
 guchar*
-mono_arch_create_trampoline_code (MonoTrampolineType tramp_type)
+mono_arch_create_generic_trampoline (MonoTrampolineType tramp_type, MonoTrampInfo **info, gboolean aot)
 {
-
 	guint8 *buf, *tramp, *code;
 	int i, offset, lmfOffset;
+
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
 
 	/* Now we'll create in 'buf' the S/390 trampoline code. This
 	   is the trampoline code common to all methods  */
@@ -499,7 +501,7 @@ mono_arch_create_specific_trampoline (gpointer arg1, MonoTrampolineType tramp_ty
 /*========================= End of Function ========================*/
 
 gpointer
-mono_arch_create_rgctx_lazy_fetch_trampoline (guint32 encoded_offset)
+mono_arch_create_rgctx_lazy_fetch_trampoline (guint32 slot, MonoTrampInfo **info, gboolean aot)
 {
 	/* FIXME: implement! */
 	g_assert_not_reached ();

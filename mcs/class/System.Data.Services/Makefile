@@ -4,14 +4,11 @@ include ../../build/rules.make
 
 LIBRARY = System.Data.Services.dll
 
-LIBRARY_SNK = ../mono.snk
-LIBRARY_PACKAGE = none
-
 LIB_MCS_FLAGS = \
+	-d:NET_3_5	\
 	-r:System.dll \
 	-r:System.Core.dll \
 	-r:System.ServiceModel.dll \
 	-r:System.ServiceModel.Web.dll \
-	-keyfile:$(LIBRARY_SNK)
 
 include ../../build/library.make

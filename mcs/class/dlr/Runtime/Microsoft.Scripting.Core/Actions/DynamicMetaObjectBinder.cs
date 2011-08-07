@@ -2,35 +2,24 @@
  *
  * Copyright (c) Microsoft Corporation. 
  *
- * This source code is subject to terms and conditions of the Microsoft Public License. A 
+ * This source code is subject to terms and conditions of the Apache License, Version 2.0. A 
  * copy of the license can be found in the License.html file at the root of this distribution. If 
- * you cannot locate the  Microsoft Public License, please send an email to 
+ * you cannot locate the  Apache License, Version 2.0, please send an email to 
  * dlr@microsoft.com. By using this source code in any fashion, you are agreeing to be bound 
- * by the terms of the Microsoft Public License.
+ * by the terms of the Apache License, Version 2.0.
  *
  * You must not remove this notice, or any other, from this software.
  *
  *
  * ***************************************************************************/
-using System; using Microsoft;
 
-
-using System.Collections.ObjectModel;
-using System.Diagnostics;
-#if CODEPLEX_40
-using System.Dynamic.Utils;
+#if CLR2
+using Microsoft.Scripting.Ast;
+using Microsoft.Scripting.Ast.Compiler;
+#else
 using System.Linq.Expressions;
 using System.Linq.Expressions.Compiler;
-#else
-using Microsoft.Scripting.Utils;
-using Microsoft.Linq.Expressions;
-using Microsoft.Linq.Expressions.Compiler;
 #endif
-using System.Runtime.CompilerServices;
-#if !CODEPLEX_40
-using Microsoft.Runtime.CompilerServices;
-#endif
-
 
 #if SILVERLIGHT
 using System.Core;
@@ -38,11 +27,12 @@ using System.Core;
 using System.Runtime.Remoting;
 #endif
 
-#if CODEPLEX_40
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Dynamic.Utils;
+using System.Runtime.CompilerServices;
+
 namespace System.Dynamic {
-#else
-namespace Microsoft.Scripting {
-#endif
     /// <summary>
     /// The dynamic call site binder that participates in the <see cref="DynamicMetaObject"/> binding protocol.
     /// </summary>
@@ -76,7 +66,7 @@ namespace Microsoft.Scripting {
         /// <param name="returnLabel">A LabelTarget used to return the result of the dynamic binding.</param>
         /// <returns>
         /// An Expression that performs tests on the dynamic operation arguments, and
-        /// performs the dynamic operation if hte tests are valid. If the tests fail on
+        /// performs the dynamic operation if the tests are valid. If the tests fail on
         /// subsequent occurrences of the dynamic operation, Bind will be called again
         /// to produce a new <see cref="Expression"/> for the new argument types.
         /// </returns>
