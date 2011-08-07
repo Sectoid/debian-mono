@@ -1,3 +1,31 @@
+2011-07-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Same test for TaskCompletionSource
+
+2011-07-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Ensure that Task is in a correct initial state before starting it
+	for real
+
+2011-07-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Test that futures throw Exception through Result property when
+	they are Faulted
+
+2011-07-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add testcase to ensure unobserved exception on Task are correctly
+	propagated
+
+2011-03-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Revert fcbb5717c18ff8393f2300a254bb13e6fab9c7e4 and implement it
+	differently.
+
+	The commit had the good idea but since some values of the
+	enumeration overlap it broke the correct behavior. Instead we now
+	turn off the extra options and use the previous way to check.
+
 2011-02-15  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Implement TaskFactory.FromAsync

@@ -3,8 +3,10 @@
 //
 // Author:
 //   Marek Sieradzki (marek.sieradzki@gmail.com)
+//   Ankit Jain (jankit@novell.com)
 //
 // (C) 2005 Marek Sieradzki
+// Copyright 2011 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -32,6 +34,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Xml;
@@ -141,8 +144,7 @@ namespace Microsoft.Build.BuildEngine {
 			if (!String.IsNullOrEmpty (importCondition))
 				importElement.SetAttribute ("Condition", importCondition);
 
-			Import import = new Import (importElement, this, null);
-			imports.Add (import);
+			AddImport (importElement, null, false);
 			MarkProjectAsDirty ();
 			NeedToReevaluate ();
 		}
@@ -274,7 +276,7 @@ namespace Microsoft.Build.BuildEngine {
 		{
 			return Build (targetNames, targetOutputs, BuildSettings.None);
 		}
-		
+
 		[MonoTODO ("Not tested")]
 		public bool Build (string [] targetNames,
 				   IDictionary targetOutputs,
@@ -295,6 +297,13 @@ namespace Microsoft.Build.BuildEngine {
 					Directory.SetCurrentDirectory (Path.GetDirectoryName (fullFileName));
 				building = true;
 				result = BuildInternal (targetNames, targetOutputs, buildFlags);
+			} catch (InvalidProjectFileException ie) {
+				ParentEngine.LogErrorWithFilename (fullFileName, ie.Message);
+				ParentEngine.LogMessage (MessageImportance.Low, String.Format ("{0}: {1}", fullFileName, ie.ToString ()));
+			} catch (Exception e) {
+				ParentEngine.LogErrorWithFilename (fullFileName, e.Message);
+				ParentEngine.LogMessage (MessageImportance.Low, String.Format ("{0}: {1}", fullFileName, e.ToString ()));
+				throw;
 			} finally {
 				ParentEngine.EndProjectBuild (this, result);
 				current_settings = BuildSettings.None;
@@ -314,7 +323,11 @@ namespace Microsoft.Build.BuildEngine {
 				needToReevaluate = false;
 				Reevaluate ();
 			}
-			
+
+#if NET_4_0
+			ProcessBeforeAndAfterTargets ();
+#endif
+
 			if (targetNames == null || targetNames.Length == 0) {
 				if (defaultTargets != null && defaultTargets.Length != 0) {
 					targetNames = defaultTargets;
@@ -338,9 +351,13 @@ namespace Microsoft.Build.BuildEngine {
 				initialTargetsBuilt = true;
 			}
 
-			foreach (string target in targetNames)
+			foreach (string target in targetNames) {
+				if (target == null)
+					throw new ArgumentNullException ("Target name cannot be null");
+
 				if (!BuildTarget (target.Trim (), targetOutputs))
 					return false;
+			}
 				
 			return true;
 		}
@@ -387,6 +404,44 @@ namespace Microsoft.Build.BuildEngine {
 				sb.AppendFormat (" {0}:{1}", bp.Name, bp.FinalValue);
 			return sb.ToString ();
 		}
+
+#if NET_4_0
+		void ProcessBeforeAndAfterTargets ()
+		{
+			var beforeTable = Targets.AsIEnumerable ()
+						.SelectMany (target => GetTargetNamesFromString (target.BeforeTargets),
+								(target, before_target) => new {before_target, name = target.Name})
+						.ToLookup (x => x.before_target, x => x.name)
+						.ToDictionary (x => x.Key, x => x.Distinct ().ToList ());
+
+			foreach (var pair in beforeTable) {
+				if (targets.Exists (pair.Key))
+					targets [pair.Key].BeforeThisTargets = pair.Value;
+				else
+					LogWarning (FullFileName, "Target '{0}', not found in the project", pair.Key);
+			}
+
+			var afterTable = Targets.AsIEnumerable ()
+						.SelectMany (target => GetTargetNamesFromString (target.AfterTargets),
+								(target, after_target) => new {after_target, name = target.Name})
+						.ToLookup (x => x.after_target, x => x.name)
+						.ToDictionary (x => x.Key, x => x.Distinct ().ToList ());
+
+			foreach (var pair in afterTable) {
+				if (targets.Exists (pair.Key))
+					targets [pair.Key].AfterThisTargets = pair.Value;
+				else
+					LogWarning (FullFileName, "Target '{0}', not found in the project", pair.Key);
+			}
+		}
+
+		string[] GetTargetNamesFromString (string targets)
+		{
+			Expression expr = new Expression ();
+			expr.Parse (targets, ParseOptions.AllowItemsNoMetadataAndSplit);
+			return (string []) expr.ConvertTo (this, typeof (string []));
+		}
+#endif
 
 		[MonoTODO]
 		public string [] GetConditionedPropertyValues (string propertyName)
@@ -474,6 +529,7 @@ namespace Microsoft.Build.BuildEngine {
 			string filename = fullFileName;
 			if (String.Compare (Path.GetExtension (fullFileName), ".sln", true) == 0) {
 				Project tmp_project = ParentEngine.CreateNewProject ();
+				tmp_project.FullFileName = filename;
 				SolutionParser sln_parser = new SolutionParser ();
 				sln_parser.ParseSolution (fullFileName, tmp_project, delegate (int errorNumber, string message) {
 						LogWarning (filename, message);
@@ -879,7 +935,7 @@ namespace Microsoft.Build.BuildEngine {
 						AddUsingTask (xe, ip);
 						break;
 					case "Import":
-						AddImport (xe, ip);
+						AddImport (xe, ip, true);
 						break;
 					case "ItemGroup":
 						AddItemGroup (xe, ip);
@@ -929,6 +985,7 @@ namespace Microsoft.Build.BuildEngine {
 			BuildProperty bp;
 
 			evaluatedProperties = new BuildPropertyGroup (null, null, null, true);
+			conditionedProperties = new Dictionary<string, List<string>> ();
 
 			foreach (BuildProperty gp in GlobalProperties) {
 				bp = new BuildProperty (gp.Name, gp.Value, PropertyType.Global);
@@ -967,10 +1024,9 @@ namespace Microsoft.Build.BuildEngine {
 				throw new Exception (String.Format ("Invalid tools version '{0}', no tools path set for this.", effective_tools_version));
 			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildBinPath", toolsPath, PropertyType.Reserved));
 			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildToolsPath", toolsPath, PropertyType.Reserved));
+			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildToolsRoot", Path.GetDirectoryName (toolsPath), PropertyType.Reserved));
 			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildToolsVersion", effective_tools_version, PropertyType.Reserved));
-			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildExtensionsPath", ExtensionsPath, PropertyType.Reserved));
-			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildExtensionsPath32", ExtensionsPath, PropertyType.Reserved));
-			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildExtensionsPath64", ExtensionsPath, PropertyType.Reserved));
+			SetExtensionsPathProperties (DefaultExtensionsPath);
 			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildProjectDefaultTargets", DefaultTargets, PropertyType.Reserved));
 			evaluatedProperties.AddProperty (new BuildProperty ("OS", OS, PropertyType.Environment));
 
@@ -987,6 +1043,15 @@ namespace Microsoft.Build.BuildEngine {
 				// Just re-inited the properties, but according to the stack,
 				// we should have a MSBuild*This* property set
 				SetMSBuildThisFileProperties (this_file_property_stack.Peek ());
+		}
+
+		internal void SetExtensionsPathProperties (string extn_path)
+		{
+			if (!String.IsNullOrEmpty (extn_path)) {
+				evaluatedProperties.AddProperty (new BuildProperty ("MSBuildExtensionsPath", extn_path, PropertyType.Reserved));
+				evaluatedProperties.AddProperty (new BuildProperty ("MSBuildExtensionsPath32", extn_path, PropertyType.Reserved));
+				evaluatedProperties.AddProperty (new BuildProperty ("MSBuildExtensionsPath64", extn_path, PropertyType.Reserved));
+			}
 		}
 
 		// precedence:
@@ -1035,23 +1100,52 @@ namespace Microsoft.Build.BuildEngine {
 			usingTask = new UsingTask (xmlElement, this, importedProject);
 			UsingTasks.Add (usingTask);
 		}
-		
-		void AddImport (XmlElement xmlElement, ImportedProject importingProject)
+
+		void AddImport (XmlElement xmlElement, ImportedProject importingProject, bool evaluate_properties)
 		{
 			// eval all the properties etc till the import
-			groupingCollection.Evaluate (EvaluationType.Property);
+			if (evaluate_properties)
+				groupingCollection.Evaluate (EvaluationType.Property);
 
-			Import import = new Import (xmlElement, this, importingProject);
-			if (!ConditionParser.ParseAndEvaluate (import.Condition, this))
-				return;
+			try {
+				PushThisFileProperty (importingProject != null ? importingProject.FullFileName : FullFileName);
 
-			if (Imports.Contains (import)) {
-				LogWarning (importingProject != null ? importingProject.FullFileName : fullFileName,
-						"A circular reference was found involving the import of {0}. Only" +
-						" the first import of this file will be used, ignoring others.",
-						import.ProjectPath);
+				string project_attribute = xmlElement.GetAttribute ("Project");
+				if (String.IsNullOrEmpty (project_attribute))
+					throw new InvalidProjectFileException ("The required attribute \"Project\" is missing from element <Import>.");
 
-				return;
+				Import.ForEachExtensionPathTillFound (xmlElement, this, importingProject,
+					(importPath, from_source_msg) => AddSingleImport (xmlElement, importPath, importingProject, from_source_msg));
+			} finally {
+				PopThisFileProperty ();
+			}
+		}
+
+		bool AddSingleImport (XmlElement xmlElement, string projectPath, ImportedProject importingProject, string from_source_msg)
+		{
+			Import import = new Import (xmlElement, projectPath, this, importingProject);
+			if (!ConditionParser.ParseAndEvaluate (import.Condition, this)) {
+				ParentEngine.LogMessage (MessageImportance.Low,
+						"Not importing project '{0}' as the condition '{1}' is false",
+						import.ProjectPath, import.Condition);
+				return false;
+			}
+
+			Import existingImport;
+			if (Imports.TryGetImport (import, out existingImport)) {
+				if (importingProject == null)
+					LogWarning (fullFileName,
+							"Cannot import project '{0}' again. It was already imported by " +
+							"'{1}'. Ignoring.",
+							projectPath, existingImport.ContainedInProjectFileName);
+				else
+					LogWarning (importingProject != null ? importingProject.FullFileName : fullFileName,
+						"A circular reference was found involving the import of '{0}'. " +
+						"It was earlier imported by '{1}'. Only " +
+						"the first import of this file will be used, ignoring others.",
+						import.EvaluatedProjectPath, existingImport.ContainedInProjectFileName);
+
+				return false;
 			}
 
 			if (String.Compare (fullFileName, import.EvaluatedProjectPath) == 0) {
@@ -1059,13 +1153,19 @@ namespace Microsoft.Build.BuildEngine {
 						"The main project file was imported here, which creates a circular " +
 						"reference. Ignoring this import.");
 
-				return;
+				return false;
 			}
 
 			Imports.Add (import);
+			string importingFile = importingProject != null ? importingProject.FullFileName : FullFileName;
+			ParentEngine.LogMessage (MessageImportance.Low,
+					"{0}: Importing project {1} {2}",
+					importingFile, import.EvaluatedProjectPath, from_source_msg);
+
 			import.Evaluate (project_load_settings == ProjectLoadSettings.IgnoreMissingImports);
+			return true;
 		}
-		
+
 		void AddItemGroup (XmlElement xmlElement, ImportedProject importedProject)
 		{
 			BuildItemGroup big = new BuildItemGroup (xmlElement, this, importedProject, false);
@@ -1325,7 +1425,7 @@ namespace Microsoft.Build.BuildEngine {
 			ParentEngine.EventSource.FireErrorRaised (this, beea);
 		}
 
-		static string ExtensionsPath {
+		internal static string DefaultExtensionsPath {
 			get {
 				if (extensions_path == null) {
 					// NOTE: code from mcs/tools/gacutil/driver.cs

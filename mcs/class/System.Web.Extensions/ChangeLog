@@ -1,3 +1,8 @@
+2011-04-21  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented composite scripts support in
+	System.Web.Extensions
+
 2011-01-04  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Failing tests fixes.

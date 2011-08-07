@@ -1,3 +1,24 @@
+2011-07-26  Atsushi Eno  <atsushieno@veritas-vos-liberabit.com>
+
+	Fix bug #16: use Owner node instead of Parent. Patch by Martin
+	Potter.
+
+2011-03-26  Atsushi Eno  <atsushi@ximian.com>
+
+	XStreamingElement should be covered in WriteTo(). It's not derived
+	from XNode.
+
+2011-03-08  Atsushi Eno  <atsushi@ximian.com>
+
+	In XNodeWriter, extra xmlns was written and often rejected for
+	duplicate decls.
+
+	Fixed bug #675620.
+
+2011-03-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Set ProhibitDtd = false on uri-based Load(). Fixed bug #676009.
+
 2011-01-31  Atsushi Eno  <atsushi@ximian.com>
 
 	Fixed bug #666872; XElement.Changed and .Changing were not

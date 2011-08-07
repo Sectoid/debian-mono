@@ -1,3 +1,7 @@
+2011-02-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix 2.0 test build (disable it).
+
 2011-02-16  Atsushi Eno  <atsushi@ximian.com>
 
 	xsi:type parsing is wrong in default namespace resolution.

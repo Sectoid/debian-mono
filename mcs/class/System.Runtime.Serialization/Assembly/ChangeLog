@@ -1,3 +1,18 @@
+2011-03-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Temporarily disable InternalsVisibleTo(System.ServiceModel).
+
+	until mcs (in 2-10 or later release) fixes the issue.
+
+2011-03-08  Atsushi Eno  <atsushi@ximian.com>
+
+	More xml output fixes in XmlSyndicationContent and
+	SydicationElementExtension.
+
+	They have couple of complicated xml outputs in both
+	GetReader(AtContent) and Write(Contents)To methods... check new
+	tests for details.
+
 2009-04-22  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* AssemblyInfo.cs: Open up the internals to System.ServiceModel.Web, 

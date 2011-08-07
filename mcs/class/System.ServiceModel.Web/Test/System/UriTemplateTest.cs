@@ -218,6 +218,17 @@ namespace MonoTests.System
 		}
 
 		[Test]
+		public void BindByName2 ()
+		{
+			var t = new UriTemplate ("{foo}/{bar}");
+			var n = new NameValueCollection ();
+			n.Add ("Bar", "value1"); // case insensitive
+			n.Add ("FOO", "value2"); // case insensitive
+			var u = t.BindByName (new Uri ("http://localhost/x"), n);
+			Assert.AreEqual ("http://localhost/x/value2/value1", u.ToString ());
+		}
+
+		[Test]
 		public void BindByNameManySlashes ()
 		{
 			var t = new UriTemplate ("////{foo}/{bar}/");
@@ -447,5 +458,13 @@ namespace MonoTests.System
 			Assert.AreEqual ("http://localhost:8080/id-aaa/bbb", uri.ToString ());
 		}
 
+		[Test]
+		public void NamedWildcard ()
+		{
+			UriTemplate template = new UriTemplate ("{*path}");
+			UriTemplateMatch match = template.Match (new Uri ("http://localhost"), new Uri ("http://localhost/something"));
+			Assert.IsNotNull (match, "#1");
+			Assert.AreEqual ("something", match.BoundVariables ["path"], "#2");
+		}
 	}
 }

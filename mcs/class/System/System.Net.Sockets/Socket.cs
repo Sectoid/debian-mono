@@ -9,7 +9,7 @@
 //
 // Copyright (C) 2001, 2002 Phillip Pearson and Ximian, Inc.
 //    http://www.myelin.co.nz
-// (c) 2004-2006 Novell, Inc. (http://www.novell.com)
+// (c) 2004-2011 Novell, Inc. (http://www.novell.com)
 //
 
 //
@@ -522,8 +522,8 @@ namespace System.Net.Sockets
 
 			e.curSocket = this;
 			Worker w = e.Worker;
-			w.Init (this, null, e.AcceptCallback, SocketOperation.Accept);
-			socket_pool_queue (w.Accept, w.result);
+			w.Init (this, e, SocketOperation.Accept);
+			socket_pool_queue (Worker.Dispatcher, w.result);
 			return true;
 		}
 #endif
@@ -605,8 +605,7 @@ namespace System.Net.Sockets
 				throw new InvalidOperationException ();
 
 			SocketAsyncResult req = new SocketAsyncResult (this, state, callback, SocketOperation.Accept);
-			Worker worker = new Worker (req);
-			socket_pool_queue (worker.Accept, req);
+			socket_pool_queue (Worker.Dispatcher, req);
 			return req;
 		}
 
@@ -621,12 +620,11 @@ namespace System.Net.Sockets
 				throw new ArgumentOutOfRangeException ("receiveSize", "receiveSize is less than zero");
 
 			SocketAsyncResult req = new SocketAsyncResult (this, state, callback, SocketOperation.AcceptReceive);
-			Worker worker = new Worker (req);
 			req.Buffer = new byte[receiveSize];
 			req.Offset = 0;
 			req.Size = receiveSize;
 			req.SockFlags = SocketFlags.None;
-			socket_pool_queue (worker.AcceptReceive, req);
+			socket_pool_queue (Worker.Dispatcher, req);
 			return req;
 		}
 
@@ -658,60 +656,12 @@ namespace System.Net.Sockets
 			}
 			
 			SocketAsyncResult req = new SocketAsyncResult (this, state, callback, SocketOperation.AcceptReceive);
-			Worker worker = new Worker (req);
 			req.Buffer = new byte[receiveSize];
 			req.Offset = 0;
 			req.Size = receiveSize;
 			req.SockFlags = SocketFlags.None;
 			req.AcceptSocket = acceptSocket;
-			socket_pool_queue (worker.AcceptReceive, req);
-			return(req);
-		}
-
-		public IAsyncResult BeginConnect(EndPoint end_point,
-						 AsyncCallback callback,
-						 object state) {
-
-			if (disposed && closed)
-				throw new ObjectDisposedException (GetType ().ToString ());
-
-			if (end_point == null)
-				throw new ArgumentNullException ("end_point");
-
-			SocketAsyncResult req = new SocketAsyncResult (this, state, callback, SocketOperation.Connect);
-			req.EndPoint = end_point;
-
-			// Bug #75154: Connect() should not succeed for .Any addresses.
-			if (end_point is IPEndPoint) {
-				IPEndPoint ep = (IPEndPoint) end_point;
-				if (ep.Address.Equals (IPAddress.Any) || ep.Address.Equals (IPAddress.IPv6Any)) {
-					req.Complete (new SocketException ((int) SocketError.AddressNotAvailable), true);
-					return req;
-				}
-			}
-
-			int error = 0;
-			if (!blocking) {
-				SocketAddress serial = end_point.Serialize ();
-				Connect_internal (socket, serial, out error);
-				if (error == 0) {
-					// succeeded synch
-					connected = true;
-					req.Complete (true);
-				} else if (error != (int) SocketError.InProgress && error != (int) SocketError.WouldBlock) {
-					// error synch
-					connected = false;
-					req.Complete (new SocketException (error), true);
-				}
-			}
-
-			if (blocking || error == (int) SocketError.InProgress || error == (int) SocketError.WouldBlock) {
-				// continue asynch
-				connected = false;
-				Worker worker = new Worker (req);
-				socket_pool_queue (worker.Connect, req);
-			}
-
+			socket_pool_queue (Worker.Dispatcher, req);
 			return(req);
 		}
 
@@ -728,40 +678,14 @@ namespace System.Net.Sockets
 			if (address.ToString ().Length == 0)
 				throw new ArgumentException ("The length of the IP address is zero");
 
+			if (port <= 0 || port > 65535)
+				throw new ArgumentOutOfRangeException ("port", "Must be > 0 and < 65536");
+
 			if (islistening)
 				throw new InvalidOperationException ();
 
 			IPEndPoint iep = new IPEndPoint (address, port);
 			return(BeginConnect (iep, callback, state));
-		}
-
-		public IAsyncResult BeginConnect (IPAddress[] addresses,
-						  int port,
-						  AsyncCallback callback,
-						  object state)
-		{
-			if (disposed && closed)
-				throw new ObjectDisposedException (GetType ().ToString ());
-
-			if (addresses == null)
-				throw new ArgumentNullException ("addresses");
-
-			if (this.AddressFamily != AddressFamily.InterNetwork &&
-				this.AddressFamily != AddressFamily.InterNetworkV6)
-				throw new NotSupportedException ("This method is only valid for addresses in the InterNetwork or InterNetworkV6 families");
-
-			if (islistening)
-				throw new InvalidOperationException ();
-
-			SocketAsyncResult req = new SocketAsyncResult (this, state, callback, SocketOperation.Connect);
-			req.Addresses = addresses;
-			req.Port = port;
-			
-			connected = false;
-			Worker worker = new Worker (req);
-			socket_pool_queue (worker.Connect, req);
-			
-			return(req);
 		}
 
 		public IAsyncResult BeginConnect (string host, int port,
@@ -778,11 +702,13 @@ namespace System.Net.Sockets
 				address_family != AddressFamily.InterNetworkV6)
 				throw new NotSupportedException ("This method is valid only for sockets in the InterNetwork and InterNetworkV6 families");
 
+			if (port <= 0 || port > 65535)
+				throw new ArgumentOutOfRangeException ("port", "Must be > 0 and < 65536");
+
 			if (islistening)
 				throw new InvalidOperationException ();
 
-			IPAddress [] addresses = Dns.GetHostAddresses (host);
-			return (BeginConnect (addresses, port, callback, state));
+			return BeginConnect (Dns.GetHostAddresses (host), port, callback, state);
 		}
 
 		public IAsyncResult BeginDisconnect (bool reuseSocket,
@@ -794,10 +720,7 @@ namespace System.Net.Sockets
 
 			SocketAsyncResult req = new SocketAsyncResult (this, state, callback, SocketOperation.Disconnect);
 			req.ReuseSocket = reuseSocket;
-			
-			Worker worker = new Worker (req);
-			socket_pool_queue (worker.Disconnect, req);
-			
+			socket_pool_queue (Worker.Dispatcher, req);
 			return(req);
 		}
 		
@@ -824,14 +747,13 @@ namespace System.Net.Sockets
 			req.Offset = offset;
 			req.Size = size;
 			req.SockFlags = socket_flags;
-			Worker worker = new Worker (req);
 			int count;
 			lock (readQ) {
-				readQ.Enqueue (worker);
+				readQ.Enqueue (req.Worker);
 				count = readQ.Count;
 			}
 			if (count == 1)
-				socket_pool_queue (worker.Receive, req);
+				socket_pool_queue (Worker.Dispatcher, req);
 			return req;
 		}
 
@@ -867,14 +789,13 @@ namespace System.Net.Sockets
 			SocketAsyncResult req = new SocketAsyncResult (this, state, callback, SocketOperation.ReceiveGeneric);
 			req.Buffers = buffers;
 			req.SockFlags = socketFlags;
-			Worker worker = new Worker (req);
 			int count;
 			lock(readQ) {
-				readQ.Enqueue (worker);
+				readQ.Enqueue (req.Worker);
 				count = readQ.Count;
 			}
 			if (count == 1)
-				socket_pool_queue (worker.ReceiveGeneric, req);
+				socket_pool_queue (Worker.Dispatcher, req);
 			return req;
 		}
 		
@@ -922,14 +843,13 @@ namespace System.Net.Sockets
 			req.Size = size;
 			req.SockFlags = socket_flags;
 			req.EndPoint = remote_end;
-			Worker worker = new Worker (req);
 			int count;
 			lock (readQ) {
-				readQ.Enqueue (worker);
+				readQ.Enqueue (req.Worker);
 				count = readQ.Count;
 			}
 			if (count == 1)
-				socket_pool_queue (worker.ReceiveFrom, req);
+				socket_pool_queue (Worker.Dispatcher, req);
 			return req;
 		}
 
@@ -983,14 +903,13 @@ namespace System.Net.Sockets
 			req.Offset = offset;
 			req.Size = size;
 			req.SockFlags = socket_flags;
-			Worker worker = new Worker (req);
 			int count;
 			lock (writeQ) {
-				writeQ.Enqueue (worker);
+				writeQ.Enqueue (req.Worker);
 				count = writeQ.Count;
 			}
 			if (count == 1)
-				socket_pool_queue (worker.Send, req);
+				socket_pool_queue (Worker.Dispatcher, req);
 			return req;
 		}
 
@@ -1029,14 +948,13 @@ namespace System.Net.Sockets
 			SocketAsyncResult req = new SocketAsyncResult (this, state, callback, SocketOperation.SendGeneric);
 			req.Buffers = buffers;
 			req.SockFlags = socketFlags;
-			Worker worker = new Worker (req);
 			int count;
 			lock (writeQ) {
-				writeQ.Enqueue (worker);
+				writeQ.Enqueue (req.Worker);
 				count = writeQ.Count;
 			}
 			if (count == 1)
-				socket_pool_queue (worker.SendGeneric, req);
+				socket_pool_queue (Worker.Dispatcher, req);
 			return req;
 		}
 
@@ -1156,14 +1074,13 @@ namespace System.Net.Sockets
 			req.Size = size;
 			req.SockFlags = socket_flags;
 			req.EndPoint = remote_end;
-			Worker worker = new Worker (req);
 			int count;
 			lock (writeQ) {
-				writeQ.Enqueue (worker);
+				writeQ.Enqueue (req.Worker);
 				count = writeQ.Count;
 			}
 			if (count == 1)
-				socket_pool_queue (worker.SendTo, req);
+				socket_pool_queue (Worker.Dispatcher, req);
 			return req;
 		}
 
@@ -1191,27 +1108,6 @@ namespace System.Net.Sockets
 			seed_endpoint = local_end;
 		}
 
-#if !MOONLIGHT
-		public bool ConnectAsync (SocketAsyncEventArgs e)
-		{
-			// NO check is made whether e != null in MS.NET (NRE is thrown in such case)
-			
-			if (disposed && closed)
-				throw new ObjectDisposedException (GetType ().ToString ());
-			if (islistening)
-				throw new InvalidOperationException ("You may not perform this operation after calling the Listen method.");
-			if (e.RemoteEndPoint == null)
-				throw new ArgumentNullException ("remoteEP", "Value cannot be null.");
-			if (e.BufferList != null)
-				throw new ArgumentException ("Multiple buffers cannot be used with this method.");
-
-			e.DoOperation (SocketAsyncOperation.Connect, this);
-
-			// We always return true for now
-			return true;
-		}
-#endif
-		
 		public void Connect (IPAddress address, int port)
 		{
 			Connect (new IPEndPoint (address, port));
@@ -1278,8 +1174,8 @@ namespace System.Net.Sockets
 				throw new ObjectDisposedException (GetType ().ToString ());
 
 			e.curSocket = this;
-			e.Worker.Init (this, null, e.DisconnectCallback, SocketOperation.Disconnect);
-			socket_pool_queue (e.Worker.Disconnect, e.Worker.result);
+			e.Worker.Init (this, e, SocketOperation.Disconnect);
+			socket_pool_queue (Worker.Dispatcher, e.Worker.result);
 			return true;
 		}
 #endif
@@ -1719,7 +1615,7 @@ namespace System.Net.Sockets
 				throw new ArgumentNullException ("remoteEP", "Value cannot be null.");
 
 			e.curSocket = this;
-			e.Worker.Init (this, null, e.ReceiveFromCallback, SocketOperation.ReceiveFrom);
+			e.Worker.Init (this, e, SocketOperation.ReceiveFrom);
 			SocketAsyncResult res = e.Worker.result;
 			res.Buffer = e.Buffer;
 			res.Offset = e.Offset;
@@ -1733,7 +1629,7 @@ namespace System.Net.Sockets
 				count = readQ.Count;
 			}
 			if (count == 1)
-				socket_pool_queue (e.Worker.ReceiveFrom, res);
+				socket_pool_queue (Worker.Dispatcher, res);
 			return true;
 		}
 #endif
@@ -2057,7 +1953,7 @@ namespace System.Net.Sockets
 				throw new ArgumentNullException ("remoteEP", "Value cannot be null.");
 
 			e.curSocket = this;
-			e.Worker.Init (this, null, e.SendToCallback, SocketOperation.SendTo);
+			e.Worker.Init (this, e, SocketOperation.SendTo);
 			SocketAsyncResult res = e.Worker.result;
 			res.Buffer = e.Buffer;
 			res.Offset = e.Offset;
@@ -2071,7 +1967,7 @@ namespace System.Net.Sockets
 				count = writeQ.Count;
 			}
 			if (count == 1)
-				socket_pool_queue (e.Worker.SendTo, res);
+				socket_pool_queue (Worker.Dispatcher, res);
 			return true;
 		}
 #endif

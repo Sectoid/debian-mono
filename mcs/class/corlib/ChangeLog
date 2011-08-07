@@ -1,3 +1,10 @@
+2011-02-05  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[threadpool] Added dynamic concurrent queue implementation
+
+	Replace the big lock around the list+array used to queue work
+	items with a dynamic concurrent queue to reduce contention.
+
 2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Kill old IScheduler interface.

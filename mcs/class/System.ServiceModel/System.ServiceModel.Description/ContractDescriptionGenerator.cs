@@ -95,8 +95,7 @@ namespace System.ServiceModel.Description
 			return table;
 		}
 
-		public static ContractDescription GetContract (
-			Type contractType) {
+		public static ContractDescription GetContract (Type contractType) {
 			return GetContract (contractType, (Type) null);
 		}
 
@@ -140,6 +139,8 @@ namespace System.ServiceModel.Description
 
 		internal static ContractDescription GetContractInternal (Type givenContractType, Type givenServiceType, Type serviceTypeForCallback)
 		{
+			if (givenContractType == null)
+				throw new ArgumentNullException ("givenContractType");
 			// FIXME: serviceType should be used for specifying attributes like OperationBehavior.
 
 			Type exactContractType = null;
@@ -186,12 +187,14 @@ namespace System.ServiceModel.Description
 			foreach (var icd in cd.GetInheritedContracts ()) {
 				FillOperationsForInterface (icd, icd.ContractType, givenServiceType, false);
 				foreach (var od in icd.Operations)
-					cd.Operations.Add (od);
+					if (!cd.Operations.Any(o => o.Name == od.Name && o.SyncMethod == od.SyncMethod && 
+							       o.BeginMethod == od.BeginMethod && o.InCallbackContract == od.InCallbackContract))
+						cd.Operations.Add (od);
 			}
 			
 			FillOperationsForInterface (cd, cd.ContractType, givenServiceType, false);
 			
-			if (cd.CallbackContractType != null && cd.CallbackContractType != cd.ContractType)
+			if (cd.CallbackContractType != null)
 				FillOperationsForInterface (cd, cd.CallbackContractType, null, true);
 
 			// FIXME: enable this when I found where this check is needed.
@@ -232,7 +235,7 @@ namespace System.ServiceModel.Description
 					if (GetOperationContractAttribute (end) != null)
 						throw new InvalidOperationException ("Async 'End' method must not have OperationContractAttribute. It is automatically treated as the EndMethod of the corresponding 'Begin' method.");
 				}
-				OperationDescription od = GetOrCreateOperation (cd, mi, serviceMethods [i], oca, end != null ? end.ReturnType : null, isCallback);
+				OperationDescription od = GetOrCreateOperation (cd, mi, serviceMethods [i], oca, end != null ? end.ReturnType : null, isCallback, givenServiceType);
 				if (end != null)
 					od.EndMethod = end;
 			}
@@ -266,11 +269,12 @@ namespace System.ServiceModel.Description
 			ContractDescription cd, MethodInfo mi, MethodInfo serviceMethod,
 			OperationContractAttribute oca,
 			Type asyncReturnType,
-			bool isCallback)
+			bool isCallback,
+			Type givenServiceType)
 		{
 			string name = oca.Name ?? (oca.AsyncPattern ? mi.Name.Substring (5) : mi.Name);
 
-			OperationDescription od = isCallback ? null : cd.Operations.FirstOrDefault (o => o.Name == name);
+			OperationDescription od = cd.Operations.FirstOrDefault (o => o.Name == name && o.InCallbackContract == isCallback);
 			if (od == null) {
 				od = new OperationDescription (name, cd);
 				od.IsOneWay = oca.IsOneWay;
@@ -280,6 +284,15 @@ namespace System.ServiceModel.Description
 				if (HasInvalidMessageContract (mi, oca.AsyncPattern))
 					throw new InvalidOperationException (String.Format ("The operation {0} contains more than one parameters and one or more of them are marked with MessageContractAttribute, but the attribute must be used within an operation that has only one parameter.", od.Name));
 
+#if !MOONLIGHT
+				var xfa = serviceMethod.GetCustomAttribute<XmlSerializerFormatAttribute> (false);
+				if (xfa != null)
+					od.Behaviors.Add (new XmlSerializerOperationBehavior (od, xfa));
+#endif
+				var dfa = serviceMethod.GetCustomAttribute<DataContractFormatAttribute> (false);
+				if (dfa != null)
+					od.Behaviors.Add (new DataContractSerializerOperationBehavior (od, dfa));
+
 				od.Messages.Add (GetMessage (od, mi, oca, true, isCallback, null));
 				if (!od.IsOneWay)
 					od.Messages.Add (GetMessage (od, mi, oca, false, isCallback, asyncReturnType));
@@ -288,7 +301,7 @@ namespace System.ServiceModel.Description
 						    mi.GetCustomAttributes (typeof (ServiceKnownTypeAttribute), false)).Union (
 						    serviceMethod.GetCustomAttributes (typeof (ServiceKnownTypeAttribute), false));
 				foreach (ServiceKnownTypeAttribute a in knownTypeAtts)
-					foreach (Type t in a.GetTypes ())
+					foreach (Type t in a.GetTypes (givenServiceType))
 						od.KnownTypes.Add (t);
 				foreach (FaultContractAttribute a in mi.GetCustomAttributes (typeof (FaultContractAttribute), false)) {
 					var fname = a.Name ?? a.DetailType.Name + "Fault";

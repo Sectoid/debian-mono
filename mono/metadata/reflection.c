@@ -6,6 +6,7 @@
  *
  * Copyright 2001-2003 Ximian, Inc (http://www.ximian.com)
  * Copyright 2004-2009 Novell, Inc (http://www.novell.com)
+ * Copyright 2011 Rodrigo Kumpera
  *
  */
 #include <config.h>
@@ -2743,7 +2744,7 @@ mono_image_get_fieldref_token (MonoDynamicImage *assembly, MonoObject *f, MonoCl
 		if (is_field_on_inst (field))
 			type = get_field_on_inst_generic_type (field);
 		else
-			type = field->type;
+			type = mono_field_get_type (field);
 	}
 	token = mono_image_get_memberref_token (assembly, &field->parent->byval_arg,
 											mono_field_get_name (field),
@@ -10617,27 +10618,11 @@ mono_reflection_generic_class_initialize (MonoReflectionGenericClass *type, Mono
 	gklass = gclass->container_class;
 	mono_class_init (gklass);
 
-	dgclass->count_methods = methods ? mono_array_length (methods) : 0;
-	dgclass->count_ctors = ctors ? mono_array_length (ctors) : 0;
 	dgclass->count_fields = fields ? mono_array_length (fields) : 0;
 
-	dgclass->methods = mono_image_set_new0 (gclass->owner, MonoMethod *, dgclass->count_methods);
-	dgclass->ctors = mono_image_set_new0 (gclass->owner, MonoMethod *, dgclass->count_ctors);
 	dgclass->fields = mono_image_set_new0 (gclass->owner, MonoClassField, dgclass->count_fields);
 	dgclass->field_objects = mono_image_set_new0 (gclass->owner, MonoObject*, dgclass->count_fields);
 	dgclass->field_generic_types = mono_image_set_new0 (gclass->owner, MonoType*, dgclass->count_fields);
-
-	for (i = 0; i < dgclass->count_methods; i++) {
-		MonoObject *obj = mono_array_get (methods, gpointer, i);
-
-		dgclass->methods [i] = inflate_method ((MonoReflectionType*)type, obj);
-	}
-
-	for (i = 0; i < dgclass->count_ctors; i++) {
-		MonoObject *obj = mono_array_get (ctors, gpointer, i);
-
-		dgclass->ctors [i] = inflate_method ((MonoReflectionType*)type, obj);
-	}
 
 	for (i = 0; i < dgclass->count_fields; i++) {
 		MonoObject *obj = mono_array_get (fields, gpointer, i);
@@ -10964,6 +10949,7 @@ typebuilder_setup_fields (MonoClass *klass, MonoError *error)
 	klass->size_inited = 1;
 
 	for (i = 0; i < klass->field.count; ++i) {
+		MonoArray *rva_data;
 		fb = mono_array_get (tb->fields, gpointer, i);
 		field = &klass->fields [i];
 		field->name = mono_string_to_utf8_image (image, fb->name, error);
@@ -10975,8 +10961,14 @@ typebuilder_setup_fields (MonoClass *klass, MonoError *error)
 		} else {
 			field->type = mono_reflection_type_get_handle ((MonoReflectionType*)fb->type);
 		}
-		if ((fb->attrs & FIELD_ATTRIBUTE_HAS_FIELD_RVA) && fb->rva_data)
-			klass->ext->field_def_values [i].data = mono_array_addr (fb->rva_data, char, 0);
+
+		if ((fb->attrs & FIELD_ATTRIBUTE_HAS_FIELD_RVA) && (rva_data = fb->rva_data)) {
+			char *base = mono_array_addr (rva_data, char, 0);
+			size_t size = mono_array_length (rva_data);
+			char *data = mono_image_alloc (klass->image, size);
+			memcpy (data, base, size);
+			klass->ext->field_def_values [i].data = data;
+		}
 		if (fb->offset != -1)
 			field->offset = fb->offset;
 		field->parent = klass;

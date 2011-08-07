@@ -1,3 +1,11 @@
+2011-03-12  Lucas Meijer  <lucas@unity3d.com>
+
+	Implmement a private BinaryFormatter.DefaultSurrogateSelector,
+	which enables embedders who want to make a sandbox, to specify a
+	default surrogate selector, which is required to get
+	System.Serialization be able to operate within a CoreCLR
+	environment.
+
 2010-09-24  Kyle Ambroff  <kyle@ambroff.com>
 
 	version tolerant serialization fails with missing primitive

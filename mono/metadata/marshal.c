@@ -9033,7 +9033,7 @@ mono_marshal_get_isinst_with_cache (void)
 	if (cached)
 		return cached;
 
-	mb = mono_mb_new (mono_defaults.object_class, "__isisnt_with_cache", MONO_WRAPPER_CASTCLASS);
+	mb = mono_mb_new (mono_defaults.object_class, "__isinst_with_cache", MONO_WRAPPER_CASTCLASS);
 	sig = mono_metadata_signature_alloc (mono_defaults.corlib, 3);
 	sig->params [0] = &mono_defaults.object_class->byval_arg;
 	sig->params [1] = &mono_defaults.int_class->byval_arg;
@@ -10452,6 +10452,7 @@ mono_marshal_get_array_address (int rank, int elem_size)
 		elem_addr_cache [elem_addr_cache_next].rank = rank;
 		elem_addr_cache [elem_addr_cache_next].elem_size = elem_size;
 		elem_addr_cache [elem_addr_cache_next].method = ret;
+		elem_addr_cache_next ++;
 
 		info = mono_image_alloc0 (mono_defaults.corlib, sizeof (ElementAddrWrapperInfo));
 		info->rank = rank;

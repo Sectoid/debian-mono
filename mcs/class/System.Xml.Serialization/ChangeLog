@@ -1,3 +1,8 @@
+2011-04-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Add InternalsVisibleTo(Sys.Xml.Serialization.dll) to
+	Sys.ServiceModel in 2.1.
+
 2010-10-21  Atsushi Eno  <atsushi@ximian.com>
 
 	Add some WCF types in moonlight_raw System.Xml.Serialization.dll.

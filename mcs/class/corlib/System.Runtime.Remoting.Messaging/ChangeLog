@@ -1,3 +1,7 @@
+2011-03-30  Louis Salin  <louis@lonestardevs.com>
+
+	implement getter and setter for HostContext property
+
 2010-10-15  Marek Safar  <marek.safar@gmail.com>
 
 	Warnings cleanup

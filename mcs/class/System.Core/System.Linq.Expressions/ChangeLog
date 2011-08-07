@@ -1,3 +1,7 @@
+2011-03-15  Jb Evain  <jbevain@gmail.com>
+
+	Handle conversion to System.Enum
+
 2010-12-30  Jb Evain  <jbevain@gmail.com>
 
 	[LINQ] Fix non generic AsQueryable issue #661462

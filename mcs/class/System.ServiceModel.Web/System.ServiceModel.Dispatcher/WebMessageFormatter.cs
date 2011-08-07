@@ -169,7 +169,7 @@ namespace System.ServiceModel.Dispatcher
 				throw new ArgumentNullException ("messageVersion");
 
 			if (!MessageVersion.None.Equals (messageVersion))
-				throw new ArgumentException ("Only MessageVersion.None is supported");
+				throw new ArgumentException (String.Format ("Only MessageVersion.None is supported. {0} is not.", messageVersion));
 		}
 
 		protected MessageDescription GetMessageDescription (MessageDirection dir)
@@ -197,7 +197,7 @@ namespace System.ServiceModel.Dispatcher
 #endif
 				return json_serializer;
 			default:
-				throw new NotImplementedException ();
+				throw new NotImplementedException (msgfmt.ToString ());
 			}
 		}
 
@@ -358,6 +358,9 @@ namespace System.ServiceModel.Dispatcher
 				if (parameters == null)
 					throw new ArgumentNullException ("parameters");
 				CheckMessageVersion (message.Version);
+
+				if (message.IsEmpty)
+					return null; // empty message, could be returned by HttpReplyChannel.
 
 				string pname = WebBodyFormatMessageProperty.Name;
 				if (!message.Properties.ContainsKey (pname))
@@ -541,11 +544,6 @@ namespace System.ServiceModel.Dispatcher
 				
 				var wp = message.Properties [WebBodyFormatMessageProperty.Name] as WebBodyFormatMessageProperty;
 				var fmt = wp != null ? wp.Format : WebContentFormat.Xml;
-				if (fmt == WebContentFormat.Raw) {
-					var rmsg = (RawMessage) message;
-					parameters [0] = rmsg.Stream;
-					return;
-				}
 
 				Uri to = message.Headers.To;
 				UriTemplateMatch match = UriTemplate.Match (Endpoint.Address.Uri, to);
@@ -563,7 +561,10 @@ namespace System.ServiceModel.Dispatcher
 					var str = match.BoundVariables [name];
 					if (str != null)
 						parameters [i] = Converter.ConvertStringToValue (str, p.Type);
-					else {
+					else if (fmt == WebContentFormat.Raw && p.Type == typeof (Stream)) {
+						var rmsg = (RawMessage) message;
+						parameters [i] = rmsg.Stream;
+					} else {
 						var serializer = GetSerializer (fmt, IsRequestBodyWrapped, p);
 						parameters [i] = DeserializeObject (serializer, message, md, IsRequestBodyWrapped, fmt);
 					}
@@ -601,7 +602,57 @@ namespace System.ServiceModel.Dispatcher
 
 			protected override void OnWriteBodyContents (XmlDictionaryWriter writer)
 			{
-				throw new NotSupportedException ();
+				writer.WriteString ("-- message body is raw binary --");
+			}
+
+			protected override MessageBuffer OnCreateBufferedCopy (int maxBufferSize)
+			{
+				var ms = Stream as MemoryStream;
+				if (ms == null) {
+					ms = new MemoryStream ();
+#if NET_4_0 || NET_2_1
+					Stream.CopyTo (ms);
+#else
+					byte [] tmp = new byte [0x1000];
+					int size;
+					do {
+						size = Stream.Read (tmp, 0, tmp.Length);
+						ms.Write (tmp, 0, size);
+					} while (size > 0);
+#endif
+					this.Stream = ms;
+				}
+				return new RawMessageBuffer (ms.ToArray (), headers, properties);
+			}
+		}
+		
+		internal class RawMessageBuffer : MessageBuffer
+		{
+			byte [] buffer;
+			MessageHeaders headers;
+			MessageProperties properties;
+
+			public RawMessageBuffer (byte [] buffer, MessageHeaders headers, MessageProperties properties)
+			{
+				this.buffer = buffer;
+				this.headers = new MessageHeaders (headers);
+				this.properties = new MessageProperties (properties);
+			}
+			
+			public override int BufferSize {
+				get { return buffer.Length; }
+			}
+			
+			public override void Close ()
+			{
+			}
+			
+			public override Message CreateMessage ()
+			{
+				var msg = new RawMessage (new MemoryStream (buffer));
+				msg.Headers.CopyHeadersFrom (headers);
+				msg.Properties.CopyProperties (properties);
+				return msg;
 			}
 		}
 	}

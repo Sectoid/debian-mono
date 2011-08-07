@@ -1,3 +1,8 @@
+2011-03-29  Vincent Povirk  <madewokherd@gmail.com>
+
+	System.Windows.Forms.Mime: Use freedesktop.org only on Unix
+	platforms.
+
 2011-02-11  Miguel de Icaza  <miguel@gnome.org>
 
 	[fix] changing Form.Enabled sometimes can change the list of

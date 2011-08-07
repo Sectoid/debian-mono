@@ -1,3 +1,13 @@
+2011-03-08  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Avoid null refs when capacity set to 0
+
+	This fixes bug #676060.
+
+2011-02-24  Steve Bjorg  <steve.bjorg@gmail.com>
+
+	added units tests for TextReader ReadLine() and ReadToEnd()
+
 2010-10-24  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	BinaryWriter.BaseStream calls Flush()

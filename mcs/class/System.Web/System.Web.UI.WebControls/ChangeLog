@@ -1,3 +1,13 @@
+2011-03-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #670714. Menu is rendered correctly in 4.0
+	now (highlighting works)
+
+2011-03-16  Jason Cohen  <web23-sles@steltek.com>
+
+	[asp.net] Fix for bug #678705. Menu list rendered properly closes
+	the list now.
+
 2010-10-29  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Fix for bug #646505. BoundField must not assume the

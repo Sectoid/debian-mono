@@ -1,3 +1,27 @@
+2011-06-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Construct properly rooted paths when assigning values
+	from resources
+
+2011-05-19  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Ignore JavaScript blocks enclosed in HTML comments
+
+2011-03-22  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Use List <string> instead of ArrayList to keep assembly
+	locations in TemplateParser
+
+2011-03-22  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Use List <string> instead of ArrayList to keep file
+	dependencies
+
+2011-03-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #670874. Match request URLs against
+	precompiled dictionary using absolute paths.
+
 2011-02-09  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Fix for bug #669048. Fix up virtual precompiled app

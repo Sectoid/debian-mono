@@ -1022,7 +1022,7 @@ mini_jit_info_table_find (MonoDomain *domain, char *addr, MonoDomain **out_domai
 {
 	MonoJitInfo *ji;
 	MonoInternalThread *t = mono_thread_internal_current ();
-	GSList *l;
+	gpointer *refs;
 
 	if (out_domain)
 		*out_domain = NULL;
@@ -1044,12 +1044,13 @@ mini_jit_info_table_find (MonoDomain *domain, char *addr, MonoDomain **out_domai
 		}
 	}
 
-	for (l = t->appdomain_refs; l; l = l->next) {
-		if (l->data != domain) {
-			ji = mono_jit_info_table_find ((MonoDomain*)l->data, addr);
+	refs = (t->appdomain_refs) ? *(gpointer *) t->appdomain_refs : NULL;
+	for (; refs && *refs; refs++) {
+		if (*refs != domain && *refs != mono_get_root_domain ()) {
+			ji = mono_jit_info_table_find ((MonoDomain*) *refs, addr);
 			if (ji) {
 				if (out_domain)
-					*out_domain = (MonoDomain*)l->data;
+					*out_domain = (MonoDomain*) *refs;
 				return ji;
 			}
 		}
@@ -1131,6 +1132,18 @@ wrap_non_exception_throws (MonoMethod *m)
 #define DOES_STACK_GROWS_UP 0
 #endif
 
+
+#define setup_managed_stacktrace_information() do {	\
+	if (mono_ex && !initial_trace_ips) {	\
+		trace_ips = g_list_reverse (trace_ips);	\
+		MONO_OBJECT_SETREF (mono_ex, trace_ips, glist_to_array (trace_ips, mono_defaults.int_class));	\
+		if (has_dynamic_methods)	\
+			/* These methods could go away anytime, so compute the stack trace now */	\
+			MONO_OBJECT_SETREF (mono_ex, stack_trace, ves_icall_System_Exception_get_trace (mono_ex));	\
+	}	\
+	g_list_free (trace_ips);	\
+	trace_ips = NULL;	\
+} while (0)
 /*
  * mono_handle_exception_internal_first_pass:
  *
@@ -1204,14 +1217,7 @@ mono_handle_exception_internal_first_pass (MonoContext *ctx, gpointer obj, gpoin
 		}
 
 		if (!unwind_res) {
-			if (mono_ex && !initial_trace_ips) {
-				trace_ips = g_list_reverse (trace_ips);
-				MONO_OBJECT_SETREF (mono_ex, trace_ips, glist_to_array (trace_ips, mono_defaults.int_class));
-				if (has_dynamic_methods)
-					/* These methods could go away anytime, so compute the stack trace now */
-					MONO_OBJECT_SETREF (mono_ex, stack_trace, ves_icall_System_Exception_get_trace (mono_ex));
-			}
-			g_list_free (trace_ips);
+			setup_managed_stacktrace_information ();
 			return FALSE;
 		}
 
@@ -1274,18 +1280,18 @@ mono_handle_exception_internal_first_pass (MonoContext *ctx, gpointer obj, gpoin
 					ex_obj = obj;
 
 				if (ei->flags == MONO_EXCEPTION_CLAUSE_FILTER) {
+					gboolean is_user_frame = ji->method->wrapper_type == MONO_WRAPPER_NONE || ji->method->wrapper_type == MONO_WRAPPER_DYNAMIC_METHOD;
 					mono_perfcounters->exceptions_filters++;
 					mono_debugger_call_exception_handler (ei->data.filter, MONO_CONTEXT_GET_SP (ctx), ex_obj);
-					if (mono_ex && !initial_trace_ips) {
-						trace_ips = g_list_reverse (trace_ips);
-						MONO_OBJECT_SETREF (mono_ex, trace_ips, glist_to_array (trace_ips, mono_defaults.int_class));
 
-						if (has_dynamic_methods)
-							/* These methods could go away anytime, so compute the stack trace now */
-							MONO_OBJECT_SETREF (mono_ex, stack_trace, ves_icall_System_Exception_get_trace (mono_ex));
-					}
-					g_list_free (trace_ips);
-					trace_ips = NULL;
+					/*
+					Here's the thing, if this is a filter clause done by a wrapper like runtime invoke, we don't want to
+					trim the stackframe since if it returns FALSE we lose information.
+
+					FIXME Not 100% sure if it's a good idea even with user clauses.
+					*/
+					if (is_user_frame)
+						setup_managed_stacktrace_information ();
 
 					if (ji->from_llvm) {
 #ifdef MONO_CONTEXT_SET_LLVM_EXC_REG
@@ -1308,6 +1314,8 @@ mono_handle_exception_internal_first_pass (MonoContext *ctx, gpointer obj, gpoin
 					filter_idx ++;
 
 					if (filtered) {
+						if (!is_user_frame)
+							setup_managed_stacktrace_information ();
 						/* mono_debugger_agent_handle_exception () needs this */
 						MONO_CONTEXT_SET_IP (ctx, ei->handler_start);
 						return TRUE;
@@ -1315,14 +1323,10 @@ mono_handle_exception_internal_first_pass (MonoContext *ctx, gpointer obj, gpoin
 				}
 
 				if (ei->flags == MONO_EXCEPTION_CLAUSE_NONE && mono_object_isinst (ex_obj, catch_class)) {
-					if (mono_ex && !initial_trace_ips) {
-						trace_ips = g_list_reverse (trace_ips);
-						MONO_OBJECT_SETREF (mono_ex, trace_ips, glist_to_array (trace_ips, mono_defaults.int_class));
-						if (has_dynamic_methods)
-							/* These methods could go away anytime, so compute the stack trace now */
-							MONO_OBJECT_SETREF (mono_ex, stack_trace, ves_icall_System_Exception_get_trace (mono_ex));
-					}
-					g_list_free (trace_ips);
+					setup_managed_stacktrace_information ();
+
+					if (out_ji)
+						*out_ji = ji;
 
 					/* mono_debugger_agent_handle_exception () needs this */
 					MONO_CONTEXT_SET_IP (ctx, ei->handler_start);
@@ -1463,7 +1467,7 @@ mono_handle_exception_internal (MonoContext *ctx, gpointer obj, gpointer origina
 		mono_profiler_exception_thrown (obj);
 		jit_tls->orig_ex_ctx_set = FALSE;
 
-		res = mono_handle_exception_internal_first_pass (&ctx_cp, obj, original_ip, &first_filter_idx, out_ji, non_exception);
+		res = mono_handle_exception_internal_first_pass (&ctx_cp, obj, original_ip, &first_filter_idx, &ji, non_exception);
 
 		if (!res) {
 			if (mono_break_on_exc)
@@ -1480,7 +1484,14 @@ mono_handle_exception_internal (MonoContext *ctx, gpointer obj, gpointer origina
 			// we are handling a stack overflow
 			mono_unhandled_exception (obj);
 		} else {
-			mono_debugger_agent_handle_exception (obj, ctx, &ctx_cp);
+			//
+			// Treat exceptions that are "handled" by mono_runtime_invoke() as unhandled.
+			// See bug #669836.
+			//
+			if (ji && ji->method->wrapper_type == MONO_WRAPPER_RUNTIME_INVOKE)
+				mono_debugger_agent_handle_exception (obj, ctx, NULL);
+			else
+				mono_debugger_agent_handle_exception (obj, ctx, &ctx_cp);
 		}
 	}
 
@@ -2238,7 +2249,7 @@ static void
 mono_print_thread_dump_internal (void *sigctx, MonoContext *start_ctx)
 {
 	MonoInternalThread *thread = mono_thread_internal_current ();
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(MONO_ARCH_HAVE_SIGCTX_TO_MONOCTX)
 	MonoContext ctx;
 #endif
 	GString* text = g_string_new (0);

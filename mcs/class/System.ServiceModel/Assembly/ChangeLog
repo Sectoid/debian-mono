@@ -1,3 +1,12 @@
+2011-04-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Temporarily disable InternalsVisibleTo(Sys.Xml.Serialization).
+
+2011-04-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Add InternalsVisibleTo(Sys.Xml.Serialization.dll) to
+	Sys.ServiceModel in 2.1.
+
 2010-11-22  Jonathan Pryor  <jonpryor@vt.edu>
 
 	Remove IVT from System.ServiceModel on MonoDroid, MonoTouch
