@@ -65,6 +65,11 @@
 # endif
 
 /* Determine the machine type: */
+# if defined(__native_client__)
+#    define NACL
+#    define I386
+#    define mach_type_known
+# endif
 # if defined(__arm__) || defined(__thumb__)
 #    define ARM32
 #    if !defined(LINUX) && !defined(NETBSD) && !defined(DARWIN)
@@ -231,6 +236,10 @@
 #    define I386
 #    define mach_type_known
 # endif
+# if defined(OPENBSD) && defined(__amd64__)
+#    define X86_64
+#    define mach_type_known
+# endif
 # if defined(LINUX) && defined(__x86_64__)
 #    define X86_64
 #    define mach_type_known
@@ -327,14 +336,14 @@
 #    endif
 #    include <unistd.h>
 #    define GETPAGESIZE() getpagesize()
-      /* There seems to be some issues with trylock hanging on darwin. This
-         should be looked into some more */
-#     define NO_PTHREAD_TRYLOCK
 #   elif defined(__arm__)
 #    define ARM
 #    define mach_type_known
 #    define DARWIN_DONT_PARSE_STACK
 #    define GC_DONT_REGISTER_MAIN_STATIC_DATA
+#   elif defined(__x86_64)
+#    define X86_64
+#    define mach_type_known
 #   endif
 # endif
 # if defined(NeXT) && defined(mc68000)
@@ -713,6 +722,9 @@
 #	     if defined(__GLIBC__)&& __GLIBC__>=2
 #              define SEARCH_FOR_DATA_START
 #	     else /* !GLIBC2 */
+#              if defined(PLATFORM_ANDROID)
+#                      define __environ environ
+#              endif
                extern char **__environ;
 #              define DATASTART ((ptr_t)(&__environ))
                              /* hideous kludge: __environ is the first */
@@ -1079,13 +1091,19 @@
 # endif
 
 # ifdef I386
-#   define MACH_TYPE "I386"
-#   if defined(__LP64__) || defined(_WIN64)
-#     define CPP_WORDSZ 64
-#     define ALIGNMENT 8
-#   else
+#   if defined( NACL )
+#     define MACH_TYPE "NACL"
 #     define CPP_WORDSZ 32
 #     define ALIGNMENT 4
+#   else
+#     define MACH_TYPE "I386"
+#     if defined(__LP64__) || defined(_WIN64)
+#       define CPP_WORDSZ 64
+#       define ALIGNMENT 8
+#     else
+#       define CPP_WORDSZ 32
+#       define ALIGNMENT 4
+#     endif
 			/* Appears to hold for all "32 bit" compilers	*/
 			/* except Borland.  The -a4 option fixes 	*/
 			/* Borland.					*/
@@ -1181,7 +1199,32 @@
 #	  define HEAP_START DATAEND
 #	endif /* USE_MMAP */
 #   endif /* DGUX */
-
+#   ifdef NACL
+#	define OS_TYPE "NACL"
+	extern int etext[];
+#	define DATASTART ((ptr_t)((((word) (etext)) + 0xfff) & ~0xfff))
+	extern int _end[];
+#	define DATAEND (_end)
+#	ifdef STACK_GRAN
+#	  undef STACK_GRAN
+#	endif /* STACK_GRAN */
+#	define STACK_GRAN 0x10000
+#	define HEURISTIC1
+#	ifdef USE_MMAP
+#	  undef USE_MMAP
+#	endif
+#	ifdef USE_MUNMAP
+#	  undef USE_MUNMAP
+#	endif
+#	ifdef USE_MMAP_ANON
+#	  undef USE_MMAP_ANON
+#	endif
+#	ifdef USE_MMAP_FIXED
+#	  undef USE_MMAP_FIXED
+#	endif
+#	define GETPAGESIZE() 65536
+#	define MAX_NACL_GC_THREADS 1024
+#   endif
 #   ifdef LINUX
 #	ifndef __GNUC__
 	  /* The Intel compiler doesn't like inline assembly */
@@ -1301,6 +1344,18 @@
 #   endif
 #   ifdef OPENBSD
 #	define OS_TYPE "OPENBSD"
+#    ifdef GC_OPENBSD_THREADS
+#       define UTHREAD_SP_OFFSET 192
+#    else
+#       include <sys/param.h>
+#       include <uvm/uvm_extern.h>
+#       define STACKBOTTOM USRSTACK
+#    endif
+        extern int __data_start[];
+#       define DATASTART ((ptr_t)(__data_start))
+        extern char _end[];
+#       define DATAEND ((ptr_t)(&_end))
+#       define DYNAMIC_LOADING
 #   endif
 #   ifdef FREEBSD
 #	define OS_TYPE "FREEBSD"
@@ -2037,6 +2092,27 @@
 #	    define PREFETCH_FOR_WRITE(x) __builtin_prefetch((x), 1)
 #	endif
 #   endif
+#   ifdef DARWIN
+#     define OS_TYPE "DARWIN"
+#     define DARWIN_DONT_PARSE_STACK
+#     define DYNAMIC_LOADING
+      /* XXX: see get_end(3), get_etext() and get_end() should not be used.
+         These aren't used when dyld support is enabled (it is by default) */
+#     define DATASTART ((ptr_t) get_etext())
+#     define DATAEND    ((ptr_t) get_end())
+#     define STACKBOTTOM ((ptr_t) 0x7fff5fc00000)
+#     ifndef USE_MMAP
+#       define USE_MMAP
+#     endif
+#     define USE_MMAP_ANON
+#     ifdef GC_DARWIN_THREADS
+#       define MPROTECT_VDB
+#     endif
+#     include <unistd.h>
+#     define GETPAGESIZE() getpagesize()
+      /* There seems to be some issues with trylock hanging on darwin. This
+         should be looked into some more */
+#   endif
 #   ifdef FREEBSD
 #	define OS_TYPE "FREEBSD"
 #	ifndef GC_FREEBSD_THREADS
@@ -2061,6 +2137,22 @@
 #	define HEURISTIC2
 	extern char etext[];
 #	define SEARCH_FOR_DATA_START
+#   endif
+#   ifdef OPENBSD
+#       define OS_TYPE "OPENBSD"
+#       define ELF_CLASS ELFCLASS64
+#    ifdef GC_OPENBSD_THREADS
+#       define UTHREAD_SP_OFFSET 400
+#    else
+#       include <sys/param.h>
+#       include <uvm/uvm_extern.h>
+#       define STACKBOTTOM USRSTACK
+#    endif
+        extern int __data_start[];
+#       define DATASTART ((ptr_t)(__data_start))
+        extern char _end[];
+#       define DATAEND ((ptr_t)(&_end))
+#       define DYNAMIC_LOADING
 #   endif
 # endif
 
@@ -2215,7 +2307,7 @@
 # if defined(GC_IRIX_THREADS) && !defined(IRIX5)
 	--> inconsistent configuration
 # endif
-# if defined(GC_LINUX_THREADS) && !defined(LINUX)
+# if defined(GC_LINUX_THREADS) && !(defined(LINUX) || defined(NACL))
 	--> inconsistent configuration
 # endif
 # if defined(GC_SOLARIS_THREADS) && !defined(SUNOS5)
@@ -2233,7 +2325,7 @@
 
 # if defined(PCR) || defined(SRC_M3) || \
 		defined(GC_SOLARIS_THREADS) || defined(GC_WIN32_THREADS) || \
-		defined(GC_PTHREADS)
+		defined(GC_PTHREADS) || defined(SN_TARGET_PS3)
 #   define THREADS
 # endif
 

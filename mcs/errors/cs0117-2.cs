@@ -1,22 +1,17 @@
-// cs0117-2.cs: `A' does not contain a definition for `Foo'
+// CS0117: `Data' does not contain a definition for `Count'
 // Line: 15
+
+
 using System;
-using System.Runtime.CompilerServices;
 
-class A
+class Data
 {
-	[IndexerName ("Foo")]
-	public int this [int index] {
-		get { return index; }
-	}
+}
 
-	static int Test (A a)
+public class Test
+{
+	static void Main ()
 	{
-		return a.Foo;
-	}
-
-	public static void Main ()
-	{
-		Test (new A ());
+		var c = new Data { Count = 10 };
 	}
 }

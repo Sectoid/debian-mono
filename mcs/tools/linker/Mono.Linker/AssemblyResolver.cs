@@ -28,7 +28,7 @@
 
 using System;
 using System.Collections;
-
+using System.IO;
 using Mono.Cecil;
 
 namespace Mono.Linker {
@@ -51,12 +51,11 @@ namespace Mono.Linker {
 			_assemblies = assembly_cache;
 		}
 
-		public override AssemblyDefinition Resolve (AssemblyNameReference name)
+		public override AssemblyDefinition Resolve (AssemblyNameReference name, ReaderParameters parameters)
 		{
 			AssemblyDefinition asm = (AssemblyDefinition) _assemblies [name.Name];
 			if (asm == null) {
-				asm = base.Resolve (name);
-				asm.Resolver = this;
+				asm = base.Resolve (name, parameters);
 				_assemblies [name.Name] = asm;
 			}
 
@@ -66,7 +65,7 @@ namespace Mono.Linker {
 		public void CacheAssembly (AssemblyDefinition assembly)
 		{
 			_assemblies [assembly.Name.Name] = assembly;
-			assembly.Resolver = this;
+			base.AddSearchDirectory (Path.GetDirectoryName (assembly.MainModule.FullyQualifiedName));
 		}
 	}
 }

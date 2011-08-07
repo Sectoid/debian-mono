@@ -32,6 +32,7 @@
 // 
 using System;
 using System.Collections;
+using System.Diagnostics;
 using System.Drawing;
 using System.Text;
 using System.Globalization;
@@ -51,7 +52,7 @@ namespace System.Windows.Forms {
 		private XIMProperties ximStyle;
 		private EventMask xic_event_mask = EventMask.NoEventMask;
 		private StringBuilder lookup_buffer;
-		private byte [] utf8_buffer;
+		private byte [] lookup_byte_buffer = new byte [100];
 		private int min_keycode, max_keycode, keysyms_per_keycode, syms;
 		private int [] keyc2vkey = new int [256];
 		private int [] keyc2scan = new int [256];
@@ -130,8 +131,6 @@ namespace System.Windows.Forms {
 			xim = XOpenIM (display, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
 			if (xim == IntPtr.Zero) 
 				Console.Error.WriteLine ("Could not get XIM");
-			else 
-				utf8_buffer = new byte [100];
 
 			initialized = true;
 		}
@@ -1027,10 +1026,10 @@ namespace System.Windows.Forms {
 
 			public XIMCallbackContext (IntPtr clientWindow)
 			{
-				startCB = new XIMCallback (IntPtr.Zero, DoPreeditStart);
-				doneCB = new XIMCallback (IntPtr.Zero, DoPreeditDone);
-				drawCB = new XIMCallback (IntPtr.Zero, DoPreeditDraw);
-				caretCB = new XIMCallback (IntPtr.Zero, DoPreeditCaret);
+				startCB = new XIMCallback (clientWindow, DoPreeditStart);
+				doneCB = new XIMCallback (clientWindow, DoPreeditDone);
+				drawCB = new XIMCallback (clientWindow, DoPreeditDraw);
+				caretCB = new XIMCallback (clientWindow, DoPreeditCaret);
 				pStartCB = Marshal.AllocHGlobal (Marshal.SizeOf (typeof (XIMCallback)));
 				pDoneCB = Marshal.AllocHGlobal (Marshal.SizeOf (typeof (XIMCallback)));
 				pDrawCB = Marshal.AllocHGlobal (Marshal.SizeOf (typeof (XIMCallback)));
@@ -1064,27 +1063,29 @@ namespace System.Windows.Forms {
 
 			int DoPreeditStart (IntPtr xic, IntPtr clientData, IntPtr callData)
 			{
-				Console.WriteLine ("DoPreeditStart");
+				Debug.WriteLine ("DoPreeditStart");
+				XplatUI.SendMessage(clientData, Msg.WM_XIM_PREEDITSTART, clientData, callData);
 				return 100;
 			}
 
 			int DoPreeditDone (IntPtr xic, IntPtr clientData, IntPtr callData)
 			{
-				Console.WriteLine ("DoPreeditDone");
+				Debug.WriteLine ("DoPreeditDone");
+				XplatUI.SendMessage(clientData, Msg.WM_XIM_PREEDITDONE, clientData, callData);
 				return 0;
 			}
 
 			int DoPreeditDraw (IntPtr xic, IntPtr clientData, IntPtr callData)
 			{
-				Console.WriteLine ("DoPreeditDraw");
-				//XIMPreeditDrawCallbackStruct cd = (XIMPreeditDrawCallbackStruct) Marshal.PtrToStructure (callData, typeof (XIMPreeditDrawCallbackStruct));
+				Debug.WriteLine ("DoPreeditDraw");
+				XplatUI.SendMessage(clientData, Msg.WM_XIM_PREEDITDRAW, clientData, callData);
 				return 0;
 			}
 
 			int DoPreeditCaret (IntPtr xic, IntPtr clientData, IntPtr callData)
 			{
-				Console.WriteLine ("DoPreeditCaret");
-				//XIMPreeditCaretCallbackStruct cd = (XIMPreeditCaretCallbackStruct) Marshal.PtrToStructure (callData, typeof (XIMPreeditCaretCallbackStruct));
+				Debug.WriteLine ("DoPreeditCaret");
+				XplatUI.SendMessage(clientData, Msg.WM_XIM_PREEDITCARET, clientData, callData);
 				return 0;
 			}
 
@@ -1181,19 +1182,26 @@ namespace System.Windows.Forms {
 			IntPtr xic = GetXic (client_window);
 			if (xic != IntPtr.Zero) {
 				do {
-					res = Xutf8LookupString (xic, ref xevent, utf8_buffer, 100, out keysym_res,  out status);
+					res = Xutf8LookupString (xic, ref xevent, lookup_byte_buffer, 100, out keysym_res,  out status);
 					if ((int) status != -1) // XLookupBufferOverflow
 						break;
-					utf8_buffer = new byte [utf8_buffer.Length << 1];
+					lookup_byte_buffer = new byte [lookup_byte_buffer.Length << 1];
 				} while (true);
 				lookup_buffer.Length = 0;
-				string s = Encoding.UTF8.GetString (utf8_buffer, 0, res);
+				string s = Encoding.UTF8.GetString (lookup_byte_buffer, 0, res);
 				lookup_buffer.Append (s);
 				keysym = (XKeySym) keysym_res.ToInt32 ();
 				return s.Length;
 			} else {
+				do {
+					res = XLookupString (ref xevent, lookup_byte_buffer, 100, out keysym_res, out status);
+					if ((int) status != -1) // XLookupBufferOverflow
+						break;
+					lookup_byte_buffer = new byte [lookup_byte_buffer.Length << 1];
+				} while (true);
 				lookup_buffer.Length = 0;
-				res = XLookupString (ref xevent, lookup_buffer, len, out keysym_res, IntPtr.Zero);
+				string s = Encoding.ASCII.GetString (lookup_byte_buffer, 0, res);
+				lookup_buffer.Append (s);
 				keysym = (XKeySym) keysym_res.ToInt32 ();
 				return res;
 			}
@@ -1259,7 +1267,7 @@ namespace System.Windows.Forms {
 		private static extern bool XSetLocaleModifiers (string mods);
 
 		[DllImport ("libX11")]
-		internal extern static int XLookupString(ref XEvent xevent, StringBuilder buffer, int num_bytes, out IntPtr keysym, IntPtr status);
+		internal extern static int XLookupString(ref XEvent xevent, byte [] buffer, int num_bytes, out IntPtr keysym, out IntPtr status);
 		[DllImport ("libX11")]
 		internal extern static int Xutf8LookupString(IntPtr xic, ref XEvent xevent, byte [] buffer, int num_bytes, out IntPtr keysym, out IntPtr status);
 

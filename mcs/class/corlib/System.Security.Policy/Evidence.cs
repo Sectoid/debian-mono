@@ -39,7 +39,7 @@ using System.Runtime.InteropServices;
 using System.Security.Permissions;
 using System.Security.Cryptography.X509Certificates;
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 using Mono.Security.Authenticode;
 #endif
 
@@ -47,17 +47,13 @@ namespace System.Security.Policy {
 
 	[Serializable]
 	[MonoTODO ("Serialization format not compatible with .NET")]
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public sealed class Evidence : ICollection, IEnumerable {
 	
 		private bool _locked;
 		private ArrayList hostEvidenceList;	
 		private ArrayList assemblyEvidenceList;
-#if NET_2_0		
 		private int _hashCode;
-#endif
 
 		public Evidence () 
 		{
@@ -69,6 +65,9 @@ namespace System.Security.Policy {
 				Merge (evidence);	
 		}
 
+#if NET_4_0
+		[Obsolete]
+#endif
 		public Evidence (object[] hostEvidence, object[] assemblyEvidence)
 		{
 			if (null != hostEvidence)
@@ -81,6 +80,9 @@ namespace System.Security.Policy {
 		// Public Properties
 		//
 	
+#if NET_4_0
+		[Obsolete]
+#endif
 		public int Count {
 			get {
 				int count = 0;
@@ -97,12 +99,7 @@ namespace System.Security.Policy {
 		}
 		
 		public bool IsSynchronized {
-#if NET_2_0
 			get { return false; }
-#else
-			// LAMESPEC: Always TRUE (not FALSE)
-			get { return true; }
-#endif
 		}
 
 		public bool Locked {
@@ -137,26 +134,27 @@ namespace System.Security.Policy {
 		// Public Methods
 		//
 
+#if NET_4_0
+		[Obsolete]
+#endif
 		public void AddAssembly (object id) 
 		{
 			AssemblyEvidenceList.Add (id);
-#if NET_2_0
 			_hashCode = 0;
-#endif			
 		}
 
+#if NET_4_0
+		[Obsolete]
+#endif
 		public void AddHost (object id) 
 		{
 			if (_locked && SecurityManager.SecurityEnabled) {
 				new SecurityPermission (SecurityPermissionFlag.ControlEvidence).Demand ();
 			}
 			HostEvidenceList.Add (id);
-#if NET_2_0
 			_hashCode = 0;
-#endif			
 		}
 
-#if NET_2_0
 		[ComVisible (false)]
 		public void Clear ()
 		{
@@ -166,8 +164,10 @@ namespace System.Security.Policy {
 				assemblyEvidenceList.Clear ();
 			_hashCode = 0;
 		}
-#endif
 
+#if NET_4_0
+		[Obsolete]
+#endif
 		public void CopyTo (Array array, int index) 
 		{
 			int hc = 0;
@@ -180,7 +180,6 @@ namespace System.Security.Policy {
 				assemblyEvidenceList.CopyTo (array, index + hc);
 		}
 
-#if NET_2_0
 		[ComVisible (false)]
 		public override bool Equals (object obj)
 		{
@@ -220,8 +219,10 @@ namespace System.Security.Policy {
 			
 			return true;
 		}
-#endif
 
+#if NET_4_0
+		[Obsolete]
+#endif
 		public IEnumerator GetEnumerator () 
 		{
 			IEnumerator he = null;
@@ -238,7 +239,6 @@ namespace System.Security.Policy {
 			return AssemblyEvidenceList.GetEnumerator ();
 		}
 
-#if NET_2_0
 		[ComVisible (false)]
 		public override int GetHashCode ()
 		{
@@ -255,7 +255,6 @@ namespace System.Security.Policy {
 			}
 			return _hashCode;
 		}
-#endif
 
 		public IEnumerator GetHostEnumerator () 
 		{
@@ -273,13 +272,10 @@ namespace System.Security.Policy {
 					foreach (object o in evidence.assemblyEvidenceList)
 						AddAssembly (o);
 				}
-#if NET_2_0
 				_hashCode = 0;
-#endif			
 			}
 		}
 
-#if NET_2_0
 		[ComVisible (false)]
 		public void RemoveType (Type t)
 		{
@@ -296,7 +292,6 @@ namespace System.Security.Policy {
 				}
 			}
 		}
-#endif
 
 		// Use an icall to avoid multiple file i/o to detect the 
 		// "possible" presence of an Authenticode signature
@@ -347,7 +342,6 @@ namespace System.Security.Policy {
 					}
 				}
 			}
-#if NET_2_0
 			// assemblies loaded from the GAC also get a Gac evidence (new in Fx 2.0)
 			if (a.GlobalAssemblyCache) {
 				e.AddHost (new GacInstalled ());
@@ -361,7 +355,7 @@ namespace System.Security.Policy {
 					e = dommgr.HostSecurityManager.ProvideAssemblyEvidence (a, e);
 				}
 			}
-#endif
+
 			return e;
 		}
 

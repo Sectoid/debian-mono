@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Runtime.Serialization;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
@@ -49,6 +50,20 @@ namespace MonoTests.System.ServiceModel.Description
 		{
 			return new ServiceEndpoint (ContractDescription.GetContract (typeof (IMyService)), new WebHttpBinding (),
 						    new EndpointAddress ("http://localhost:37564"));
+		}
+
+		[Test]
+		public void DefaultValues ()
+		{
+			var b = new WebHttpBehavior ();
+			Assert.AreEqual (WebMessageBodyStyle.Bare, b.DefaultBodyStyle, "#1");
+			Assert.AreEqual (WebMessageFormat.Xml, b.DefaultOutgoingRequestFormat, "#2");
+			Assert.AreEqual (WebMessageFormat.Xml, b.DefaultOutgoingResponseFormat, "#3");
+#if NET_4_0
+			Assert.IsFalse (b.AutomaticFormatSelectionEnabled, "#11");
+			Assert.IsFalse (b.FaultExceptionEnabled, "#12");
+			Assert.IsFalse (b.HelpEnabled, "#13");
+#endif
 		}
 
 		[Test]
@@ -188,5 +203,114 @@ namespace MonoTests.System.ServiceModel.Description
 			OperationDescription od = cd.Operations[0];
 			Assert.IsTrue (od.Behaviors.Contains (typeof (WebGetAttribute)), "Operation is recognized as WebGet");
 		}
+
+		[Test]
+		public void MessageFormatterSupportsRaw ()
+		{
+			// serializing reply
+			var ms = new MemoryStream ();
+			var bytes = new byte [] {0, 1, 2, 0xFF};
+			ms.Write (bytes, 0, bytes.Length);
+			ms.Position = 0;
+			var cd = ContractDescription.GetContract (typeof (ITestService));
+			var od = cd.Operations [0];
+			var se = new ServiceEndpoint (cd, new WebHttpBinding (), new EndpointAddress ("http://localhost:37564/"));
+			var formatter = new WebHttpBehaviorExt ().DoGetReplyDispatchFormatter (od, se);
+
+			var msg = formatter.SerializeReply (MessageVersion.None, null, ms);
+			var wp = msg.Properties ["WebBodyFormatMessageProperty"] as WebBodyFormatMessageProperty;
+			Assert.IsNotNull (wp, "#1");
+			Assert.AreEqual (WebContentFormat.Raw, wp.Format, "#2");
+
+			var wmebe = new WebMessageEncodingBindingElement ();
+			var wme = wmebe.CreateMessageEncoderFactory ().Encoder;
+			var ms2 = new MemoryStream ();
+			wme.WriteMessage (msg, ms2);
+			Assert.AreEqual (bytes, ms2.ToArray (), "#3");
+		}
+
+		[Test]
+		public void MessageFormatterSupportsRaw2 ()
+		{
+			// deserializing request
+			var ms = new MemoryStream ();
+			ms.Write (new byte [] {0, 1, 2, 0xFF}, 0, 4);
+			ms.Position = 0;
+			var cd = ContractDescription.GetContract (typeof (ITestService));
+			var od = cd.Operations [0];
+			var se = new ServiceEndpoint (cd, new WebHttpBinding (), new EndpointAddress ("http://localhost:8080/"));
+			var wmebe = new WebMessageEncodingBindingElement ();
+			var wme = wmebe.CreateMessageEncoderFactory ().Encoder;
+	Console.WriteLine (wme.MediaType);
+			var msg = wme.ReadMessage (ms, 100, null); // "application/xml" causes error.
+			var formatter = new WebHttpBehaviorExt ().DoGetRequestDispatchFormatter (od, se);
+			object [] pars = new object [1];
+			formatter.DeserializeRequest (msg, pars);
+			Assert.IsTrue (pars [0] is Stream, "ret");
+		}
+
+		[ServiceContract]
+		public interface IMultipleParametersGet
+		{
+			[OperationContract]
+			[WebGet (UriTemplate = "get")]
+			void Get (string p1, string p2);
+		}
+
+		[ServiceContract]
+		public interface IMultipleParameters
+		{
+			[OperationContract]
+			[WebInvoke (UriTemplate = "posturi?p1={p1}&p2={p2}")]
+			string PostUri (string p1, string p2);
+
+			[OperationContract]
+			[WebInvoke (UriTemplate = "postone?p1={p1}")]
+			string PostOne (string p1, string p2);
+
+			[OperationContract]
+			[WebInvoke (UriTemplate = "postwrapped", BodyStyle=WebMessageBodyStyle.WrappedRequest)]
+			string PostWrapped (string p1, string p2);
+
+			[OperationContract]
+			[WebInvoke (UriTemplate = "out?p1={p1}&p2={p2}", BodyStyle=WebMessageBodyStyle.WrappedResponse)]
+			void PostOut (string p1, string p2, out string ret);
+		}
+
+		[Test]
+		public void MultipleParameters ()
+		{
+			var behavior = new WebHttpBehaviorExt ();
+			var cd = ContractDescription.GetContract (typeof (IMultipleParameters));
+			var se = new ServiceEndpoint (cd, new WebHttpBinding (), new EndpointAddress ("http://localhost:8080/"));
+			behavior.Validate (se);
+
+			foreach (var od in cd.Operations)
+				behavior.DoGetRequestClientFormatter (od, se);
+		}
+
+		[Test]
+		[Category ("NotWorking")]
+		public void MultipleParameters2 ()
+		{
+			var behavior = new WebHttpBehaviorExt ();
+			var cd = ContractDescription.GetContract (typeof (IMultipleParametersGet));
+			var se = new ServiceEndpoint (cd, new WebHttpBinding (), new EndpointAddress ("http://localhost:8080/"));
+			behavior.Validate (se);
+
+			try {
+				foreach (var od in cd.Operations)
+					behavior.DoGetRequestClientFormatter (od, se);
+				Assert.Fail ("Should result in invalid operation");
+			} catch (InvalidOperationException) {
+			}
+		}
+	}
+
+	[ServiceContract]
+	public interface ITestService
+	{
+		[OperationContract]
+		Stream Receive (Stream input);
 	}
 }

@@ -32,24 +32,14 @@
 
 using System.Runtime.CompilerServices;
 using System.Runtime.Remoting.Contexts;
-
-#if NET_2_0
 using System.Runtime.ConstrainedExecution;
 using System.Runtime.InteropServices;
-#endif
 
 namespace System.Threading
 {
-#if NET_2_0
 	[ComVisible (true)]
 	public static class Monitor
 	{
-#else
-	public sealed class Monitor
-	{
-		private Monitor () {}
-#endif
-
 		// Grabs the mutex on object 'obj', with a maximum
 		// wait time 'ms' but doesn't block - if it can't get
 		// the lock it returns false, true if it can
@@ -63,9 +53,7 @@ namespace System.Threading
 		public extern static void Enter(object obj);
 
 		// Releases the mutex on object 'obj'
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.Success)]
-#endif
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		public extern static void Exit(object obj);
 
@@ -188,5 +176,42 @@ namespace System.Threading
 				if (exitContext) SynchronizationAttribute.EnterContext ();
 			}
 		}
+
+#if NET_4_0 || MOONLIGHT || MOBILE
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		extern static void try_enter_with_atomic_var (object obj, int millisecondsTimeout, ref bool lockTaken);
+
+		public static void Enter (object obj, ref bool lockTaken)
+		{
+			TryEnter (obj, Timeout.Infinite, ref lockTaken);
+		}
+
+		public static void TryEnter (object obj, ref bool lockTaken)
+		{
+			TryEnter (obj, 0, ref lockTaken);
+		}
+
+		public static void TryEnter (object obj, TimeSpan timeout, ref bool lockTaken)
+		{
+			long ms = (long) timeout.TotalMilliseconds;
+			if (ms < Timeout.Infinite || ms > Int32.MaxValue)
+				throw new ArgumentOutOfRangeException ("timeout", "timeout out of range");
+			TryEnter (obj, (int)ms, ref lockTaken);
+		}
+
+		public static void TryEnter (object obj, int millisecondsTimeout, ref bool lockTaken)
+		{
+			if (obj == null)
+				throw new ArgumentNullException ("obj");
+			if (lockTaken)
+				throw new ArgumentException ("lockTaken");
+
+			if (millisecondsTimeout < 0 && millisecondsTimeout != Timeout.Infinite)
+				throw new ArgumentException ("negative value for millisecondsTimeout", "millisecondsTimeout");
+
+			try_enter_with_atomic_var (obj, millisecondsTimeout, ref lockTaken);
+		}		
+
+#endif
 	}
 }

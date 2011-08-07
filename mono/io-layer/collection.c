@@ -58,17 +58,13 @@ void _wapi_collection_init (void)
         ret = pthread_attr_init (&attr);
         g_assert (ret == 0);
 
-#ifdef HAVE_PTHREAD_ATTR_SETSTACKSIZE
+#if defined(HAVE_PTHREAD_ATTR_SETSTACKSIZE)
         if (set_stacksize == 0) {
-#if defined(__FreeBSD__) || defined(__NetBSD__)
-                ret = pthread_attr_setstacksize (&attr, 65536);
-#else
-                ret = pthread_attr_setstacksize (&attr, PTHREAD_STACK_MIN);
-#endif
-                g_assert (ret == 0);
+			ret = pthread_attr_setstacksize (&attr, MAX (65536, PTHREAD_STACK_MIN));
+			g_assert (ret == 0);
         } else if (set_stacksize == 1) {
-                ret = pthread_attr_setstacksize (&attr, 131072);
-                g_assert (ret == 0);
+			ret = pthread_attr_setstacksize (&attr, 131072);
+			g_assert (ret == 0);
         }
 #endif
 
@@ -88,6 +84,9 @@ void _wapi_handle_collect (void)
 {
 	guint32 count = _wapi_shared_layout->collection_count;
 	int i, thr_ret;
+
+	if (!_wapi_shm_enabled ())
+		return;
 	
 	LOGDEBUG ("%s: (%d) Starting a collection", __func__, _wapi_getpid ());
 

@@ -22,9 +22,6 @@
 //    Console needs a way of updating its position after things have been written
 //    behind its back (P/Invoke puts for example).
 //    System.Console needs to get the DELETE character, and report accordingly.
-//    Typing before the program start causes the cursor position to be wrong
-//              This is caused by Console not reading all the available data
-//              before sending the report-position sequence and reading it back.
 //
 #if NET_2_0 || NET_1_1
 #define IN_MCS_BUILD
@@ -191,7 +188,7 @@ namespace Mono.Terminal {
 				Handler.Alt ((char) 8, ConsoleKey.Backspace, CmdDeleteBackword),
 				
 				// DEBUG
-				Handler.Control ('T', CmdDebug),
+				//Handler.Control ('T', CmdDebug),
 
 				// quote
 				Handler.Control ('Q', delegate { HandleChar (Console.ReadKey (true).KeyChar); })
@@ -769,13 +766,22 @@ namespace Mono.Terminal {
 			ConsoleKeyInfo cki;
 
 			while (!done){
+				ConsoleModifiers mod;
+				
 				cki = Console.ReadKey (true);
+				if (cki.Key == ConsoleKey.Escape){
+					cki = Console.ReadKey (true);
 
+					mod = ConsoleModifiers.Alt;
+				} else
+					mod = cki.Modifiers;
+				
 				bool handled = false;
+
 				foreach (Handler handler in handlers){
 					ConsoleKeyInfo t = handler.CKI;
 
-					if (t.Key == cki.Key && t.Modifiers == cki.Modifiers){
+					if (t.Key == cki.Key && t.Modifiers == mod){
 						handled = true;
 						handler.KeyHandler ();
 						last_handler = handler.KeyHandler;
@@ -985,7 +991,7 @@ namespace Mono.Terminal {
 			public bool NextAvailable ()
 			{
 				int next = (cursor + 1) % history.Length;
-				if (count == 0 || next > head)
+				if (count == 0 || next >= head)
 					return false;
 
 				return true;
@@ -1027,7 +1033,7 @@ namespace Mono.Terminal {
 
 			public void Dump ()
 			{
-				Console.WriteLine ("Head={0} Tail={1} Cursor={2}", head, tail, cursor);
+				Console.WriteLine ("Head={0} Tail={1} Cursor={2} count={3}", head, tail, cursor, count);
 				for (int i = 0; i < history.Length;i++){
 					Console.WriteLine (" {0} {1}: {2}", i == cursor ? "==>" : "   ", i, history[i]);
 				}
@@ -1036,21 +1042,16 @@ namespace Mono.Terminal {
 
 			public string SearchBackward (string term)
 			{
-				for (int i = 1; i < count; i++){
-					int slot = cursor-i;
+				for (int i = 0; i < count; i++){
+					int slot = cursor-i-1;
 					if (slot < 0)
-						slot = history.Length-1;
+						slot = history.Length+slot;
+					if (slot >= history.Length)
+						slot = 0;
 					if (history [slot] != null && history [slot].IndexOf (term) != -1){
 						cursor = slot;
 						return history [slot];
 					}
-
-					// Will the next hit tail?
-					slot--;
-					if (slot < 0)
-						slot = history.Length-1;
-					if (slot == tail)
-						break;
 				}
 
 				return null;
@@ -1063,7 +1064,7 @@ namespace Mono.Terminal {
 	class Demo {
 		static void Main ()
 		{
-			LineEditor le = new LineEditor (null);
+			LineEditor le = new LineEditor ("foo");
 			string s;
 			
 			while ((s = le.Edit ("shell> ", "")) != null){

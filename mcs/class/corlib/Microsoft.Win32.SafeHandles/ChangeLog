@@ -1,3 +1,9 @@
+2010-08-07  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* Microsoft.Win32.SafeHandles/SafeRegistryHandle.cs: Implement
+	ReleaseHandle by pinvoking RegCloseKey if we are on windows, and
+	nothing otherwise.
+
 2008-01-15  Zoltan Varga  <vargaz@gmail.com>
 
 	* SafeWaitHandle.cs: Fix some argument names to be consistent with MS.

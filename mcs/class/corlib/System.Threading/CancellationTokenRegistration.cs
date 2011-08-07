@@ -1,4 +1,3 @@
-#if NET_4_0 || BOOTSTRAP_NET_4_0
 // 
 // CancellationTokenRegistration.cs
 //  
@@ -25,6 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+#if NET_4_0 || MOBILE
 using System;
 using System.Threading;
 
@@ -56,14 +56,14 @@ namespace System.Threading
 			return this.id == other.id && this.source == other.source;
 		}
 		
-		public static bool operator== (CancellationTokenRegistration lhs, CancellationTokenRegistration rhs)
+		public static bool operator== (CancellationTokenRegistration left, CancellationTokenRegistration right)
 		{
-			return lhs.Equals (rhs);
+			return left.Equals (right);
 		}
 		
-		public static bool operator!= (CancellationTokenRegistration lhs, CancellationTokenRegistration rhs)
+		public static bool operator!= (CancellationTokenRegistration left, CancellationTokenRegistration right)
 		{
-			return !lhs.Equals (rhs);
+			return !left.Equals (right);
 		}
 		#endregion
 		

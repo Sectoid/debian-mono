@@ -32,6 +32,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.IO;
@@ -91,7 +92,8 @@ namespace Mono.XBuild.CommandLine {
 
 		static string guidExpression = "{[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}}";
 
-		static Regex projectRegex = new Regex ("Project\\(\"(" + guidExpression + ")\"\\) = \"(.*?)\", \"(.*?)\", \"(" + guidExpression + ")\"(\\s*?)((\\s*?)ProjectSection\\((.*?)\\) = (.*?)EndProjectSection(\\s*?))*(\\s*?)EndProject?", RegexOptions.Singleline);
+		static Regex slnVersionRegex = new Regex (@"Microsoft Visual Studio Solution File, Format Version (\d?\d.\d\d)");
+		static Regex projectRegex = new Regex ("Project\\(\"(" + guidExpression + ")\"\\) = \"(.*?)\", \"(.*?)\", \"(" + guidExpression + ")\"(\\s*?)((\\s*?)ProjectSection\\((.*?)\\) = (.*?)EndProjectSection(\\s*?))*(\\s*?)(EndProject)?", RegexOptions.Singleline);
 		static Regex projectDependenciesRegex = new Regex ("ProjectSection\\((.*?)\\) = \\w*(.*?)EndProjectSection", RegexOptions.Singleline);
 		static Regex projectDependencyRegex = new Regex ("\\s*(" + guidExpression + ") = (" + guidExpression + ")");
 		static Regex projectSectionPropertiesRegex = new Regex ("\\s*(?<name>.*) = \"(?<value>.*)\"");
@@ -112,9 +114,19 @@ namespace Mono.XBuild.CommandLine {
 		public void ParseSolution (string file, Project p, RaiseWarningHandler RaiseWarning)
 		{
 			this.RaiseWarning = RaiseWarning;
+			EmitBeforeImports (p, file);
+
 			AddGeneralSettings (file, p);
 
 			StreamReader reader = new StreamReader (file);
+			string slnVersion = GetSlnFileVersion (reader);
+			if (slnVersion == "11.00")
+				p.DefaultToolsVersion = "4.0";
+			else if (slnVersion == "10.00")
+				p.DefaultToolsVersion = "3.5";
+			else
+				p.DefaultToolsVersion = "2.0";
+
 			string line = reader.ReadToEnd ();
 			line = line.Replace ("\r\n", "\n");
 			string solutionDir = Path.GetDirectoryName (file);
@@ -123,10 +135,13 @@ namespace Mono.XBuild.CommandLine {
 			Dictionary<Guid, ProjectInfo> projectInfos = new Dictionary<Guid, ProjectInfo> ();
 			Dictionary<Guid, ProjectInfo> websiteProjectInfos = new Dictionary<Guid, ProjectInfo> ();
 			List<ProjectInfo>[] infosByLevel = null;
+			Dictionary<Guid, ProjectInfo> unsupportedProjectInfos = new Dictionary<Guid, ProjectInfo> ();
 
 			Match m = projectRegex.Match (line);
 			while (m.Success) {
-				ProjectInfo projectInfo = new ProjectInfo (m.Groups[2].Value, m.Groups[3].Value);
+				ProjectInfo projectInfo = new ProjectInfo (m.Groups[2].Value,
+								Path.GetFullPath (Path.Combine (solutionDir,
+									m.Groups [3].Value.Replace ('\\', Path.DirectorySeparatorChar))));
 				if (String.Compare (m.Groups [1].Value, solutionFolderGuid,
 						StringComparison.InvariantCultureIgnoreCase) == 0) {
 					// Ignore solution folders
@@ -134,10 +149,14 @@ namespace Mono.XBuild.CommandLine {
 					continue;
 				}
 
+				projectInfo.Guid = new Guid (m.Groups [4].Value);
+
 				if (String.Compare (m.Groups [1].Value, vcprojGuid,
 						StringComparison.InvariantCultureIgnoreCase) == 0) {
 					// Ignore vcproj 
 					RaiseWarning (0, string.Format("Ignoring vcproj '{0}'.", projectInfo.Name));
+
+					unsupportedProjectInfos [projectInfo.Guid] = projectInfo;
 					m = m.NextMatch ();
 					continue;
 				}
@@ -146,9 +165,7 @@ namespace Mono.XBuild.CommandLine {
 						StringComparison.InvariantCultureIgnoreCase) == 0)
 					websiteProjectInfos.Add (new Guid (m.Groups[4].Value), projectInfo);
 				else
-					projectInfos.Add (new Guid (m.Groups[4].Value), projectInfo);
-
-				projectInfo.Guid = new Guid (m.Groups [4].Value);
+					projectInfos.Add (projectInfo.Guid, projectInfo);
 
 				Match projectSectionMatch = projectDependenciesRegex.Match (m.Groups[6].Value);
 				while (projectSectionMatch.Success) {
@@ -180,8 +197,8 @@ namespace Mono.XBuild.CommandLine {
 			}
 
 			foreach (ProjectInfo projectInfo in projectInfos.Values) {
-				string filename = Path.Combine (solutionDir,
-							projectInfo.FileName.Replace ('\\', Path.DirectorySeparatorChar));
+				string filename = projectInfo.FileName;
+				string projectDir = Path.GetDirectoryName (filename);
 
 				if (!File.Exists (filename)) {
 					RaiseWarning (0, String.Format ("Project file {0} referenced in the solution file, " +
@@ -191,19 +208,53 @@ namespace Mono.XBuild.CommandLine {
 
 				Project currentProject = p.ParentEngine.CreateNewProject ();
 				try {
-					currentProject.Load (filename);
+					currentProject.Load (filename, ProjectLoadSettings.IgnoreMissingImports);
 				} catch (InvalidProjectFileException e) {
 					RaiseWarning (0, e.Message);
 					continue;
 				}
 
 				foreach (BuildItem bi in currentProject.GetEvaluatedItemsByName ("ProjectReference")) {
+					ProjectInfo info = null;
 					string projectReferenceGuid = bi.GetEvaluatedMetadata ("Project");
-					Guid guid = new Guid (projectReferenceGuid);
-					ProjectInfo info;
-					if (projectInfos.TryGetValue (guid, out info))
-						// ignore if not found
-						projectInfo.Dependencies [guid] = info;
+					bool hasGuid = !String.IsNullOrEmpty (projectReferenceGuid);
+
+					// try to resolve the ProjectReference by GUID
+					// and fallback to project filename
+
+					if (hasGuid) {
+						Guid guid = new Guid (projectReferenceGuid);
+						projectInfos.TryGetValue (guid, out info);
+						if (info == null && unsupportedProjectInfos.TryGetValue (guid, out info)) {
+							RaiseWarning (0, String.Format (
+									"{0}: ProjectReference '{1}' is of an unsupported type. Ignoring.",
+									filename, bi.Include));
+							continue;
+						}
+					}
+
+					if (info == null || !hasGuid) {
+						// Project not found by guid or guid not available
+						// Try to find by project file
+
+						string fullpath = Path.GetFullPath (Path.Combine (projectDir, bi.Include.Replace ('\\', Path.DirectorySeparatorChar)));
+						info = projectInfos.Values.FirstOrDefault (pi => pi.FileName == fullpath);
+
+						if (info == null) {
+							if (unsupportedProjectInfos.Values.Any (pi => pi.FileName == fullpath))
+								RaiseWarning (0, String.Format (
+										"{0}: ProjectReference '{1}' is of an unsupported type. Ignoring.",
+										filename, bi.Include));
+							else
+								RaiseWarning (0, String.Format (
+										"{0}: ProjectReference '{1}' not found, neither by guid '{2}' nor by project file name '{3}'.",
+										filename, bi.Include, projectReferenceGuid.Replace ("{", "").Replace ("}", ""), fullpath));
+						}
+
+					}
+
+					if (info != null)
+						projectInfo.Dependencies [info.Guid] = info;
 				}
 			}
 
@@ -241,6 +292,8 @@ namespace Mono.XBuild.CommandLine {
 						break;
 					case "NestedProjects":
 						break;
+					case "MonoDevelopProperties":
+						break;
 					default:
 						RaiseWarning (0, string.Format("Don't know how to handle GlobalSection {0}, Ignoring.", sectionType));
 						break;
@@ -251,13 +304,63 @@ namespace Mono.XBuild.CommandLine {
 			int num_levels = AddBuildLevels (p, solutionTargets, projectInfos, ref infosByLevel);
 
 			AddCurrentSolutionConfigurationContents (p, solutionTargets, projectInfos, websiteProjectInfos);
+			AddProjectReferences (p, projectInfos);
 			AddWebsiteProperties (p, websiteProjectInfos, projectInfos);
 			AddValidateSolutionConfiguration (p);
+
+			EmitAfterImports (p, file);
 
 			AddGetFrameworkPathTarget (p);
 			AddWebsiteTargets (p, websiteProjectInfos, projectInfos, infosByLevel, solutionTargets);
 			AddProjectTargets (p, solutionTargets, projectInfos);
 			AddSolutionTargets (p, num_levels, websiteProjectInfos.Values);
+		}
+
+                string GetSlnFileVersion (StreamReader reader)
+                {
+                        string strInput = null;
+                        Match match;
+
+                        strInput = reader.ReadLine();
+                        if (strInput == null)
+                                return null;
+
+                        match = slnVersionRegex.Match(strInput);
+                        if (!match.Success) {
+                                strInput = reader.ReadLine();
+                                if (strInput == null)
+                                        return null;
+                                match = slnVersionRegex.Match (strInput);
+                        }
+
+                        if (match.Success)
+                                return match.Groups[1].Value;
+
+                        return null;
+                }
+
+		void EmitBeforeImports (Project p, string file)
+		{
+#if NET_4_0
+			p.AddNewImport ("$(MSBuildExtensionsPath)\\$(MSBuildToolsVersion)\\SolutionFile\\ImportBefore\\*",
+					"'$(ImportByWildcardBeforeSolution)' != 'false' and " +
+					"Exists('$(MSBuildExtensionsPath)\\$(MSBuildToolsVersion)\\SolutionFile\\ImportBefore')");
+#endif
+
+			string before_filename = Path.Combine (Path.GetDirectoryName (file), "before." + Path.GetFileName (file) + ".targets");
+			p.AddNewImport (before_filename, String.Format ("Exists ('{0}')", before_filename));
+		}
+
+		void EmitAfterImports (Project p, string file)
+		{
+#if NET_4_0
+			p.AddNewImport ("$(MSBuildExtensionsPath)\\$(MSBuildToolsVersion)\\SolutionFile\\ImportAfter\\*",
+					"'$(ImportByWildcardAfterSolution)' != 'false' and " +
+					"Exists('$(MSBuildExtensionsPath)\\$(MSBuildToolsVersion)\\SolutionFile\\ImportAfter')");
+#endif
+
+			string after_filename = Path.Combine (Path.GetDirectoryName (file), "after." + Path.GetFileName (file) + ".targets");
+			p.AddNewImport (after_filename, String.Format ("Exists ('{0}')", after_filename));
 		}
 
 		void AddGeneralSettings (string solutionFile, Project p)
@@ -383,6 +486,13 @@ namespace Mono.XBuild.CommandLine {
 				platformPropertyGroup.AddNewProperty ("CurrentSolutionConfigurationContents",
 						solutionConfigurationContents.ToString ());
 			}
+		}
+
+		void AddProjectReferences (Project p, Dictionary<Guid, ProjectInfo> projectInfos)
+		{
+			BuildItemGroup big = p.AddNewItemGroup ();
+			foreach (KeyValuePair<Guid, ProjectInfo> pair in projectInfos)
+				big.AddNewItem ("ProjectReference", pair.Value.FileName);
 		}
 
 		void AddProjectConfigurationItems (Guid guid, ProjectInfo projectInfo, TargetInfo solutionTarget,
@@ -647,7 +757,17 @@ namespace Mono.XBuild.CommandLine {
 		void AddValidateSolutionConfiguration (Project p)
 		{
 			Target t = p.Targets.AddNewTarget ("ValidateSolutionConfiguration");
-			BuildTask task = t.AddNewTask ("Error");
+			BuildTask task = t.AddNewTask ("Warning");
+			task.SetParameterValue ("Text", "On windows, an environment variable 'Platform' is set to MCD sometimes, and this overrides the Platform property" +
+						" for xbuild, which could be an invalid Platform for this solution file. And so you are getting the following error." +
+						" You could override it by either setting the environment variable to nothing, as\n" +
+						"   set Platform=\n" +
+						"Or explicity specify its value on the command line, as\n" +
+						"   xbuild Foo.sln /p:Platform=Release");
+			task.Condition = "('$(CurrentSolutionConfigurationContents)' == '') and ('$(SkipInvalidConfigurations)' != 'true')" +
+					" and '$(Platform)' == 'MCD' and '$(OS)' == 'Windows_NT'";
+
+			task = t.AddNewTask ("Error");
 			task.SetParameterValue ("Text", "Invalid solution configuration and platform: \"$(Configuration)|$(Platform)\".");
 			task.Condition = "('$(CurrentSolutionConfigurationContents)' == '') and ('$(SkipInvalidConfigurations)' != 'true')";
 			task = t.AddNewTask ("Warning");
@@ -664,22 +784,16 @@ namespace Mono.XBuild.CommandLine {
 				ProjectInfo project = projectInfo.Value;
 				foreach (string buildTarget in buildTargets) {
 					string target_name = GetTargetNameForProject (project.Name, buildTarget);
+					bool is_build_or_rebuild = buildTarget == "Build" || buildTarget == "Rebuild";
 					Target target = p.Targets.AddNewTarget (target_name);
 					target.Condition = "'$(CurrentSolutionConfigurationContents)' != ''"; 
 
-					if (project.Dependencies.Count > 0) {
-						StringBuilder dependencies = new StringBuilder ();
-						foreach (ProjectInfo dependentInfo in project.Dependencies.Values) {
-							if (dependencies.Length > 0)
-								dependencies.Append (";");
-							if (IsBuildTargetName (dependentInfo.Name))
-								dependencies.Append ("Solution:");
-							dependencies.Append (dependentInfo.Name);
-							if (buildTarget != "Build")
-								dependencies.Append (":" + buildTarget);
-						}
-						target.DependsOnTargets = dependencies.ToString ();
-					}
+					if (is_build_or_rebuild)
+						target.Outputs = "@(CollectedBuildOutput)";
+					if (project.Dependencies.Count > 0)
+						target.DependsOnTargets = String.Join (";",
+								project.Dependencies.Values.Select (
+									di => GetTargetNameForProject (di.Name, buildTarget)).ToArray ());
 
 					foreach (TargetInfo targetInfo in solutionTargets) {
 						BuildTask task = null;
@@ -692,6 +806,9 @@ namespace Mono.XBuild.CommandLine {
 						if (projectTargetInfo.Build) {
 							task = target.AddNewTask ("MSBuild");
 							task.SetParameterValue ("Projects", project.FileName);
+							task.SetParameterValue ("ToolsVersion", "$(ProjectToolsVersion)");
+							if (is_build_or_rebuild)
+								task.AddOutputItem ("TargetOutputs", "CollectedBuildOutput");
 
 							if (buildTarget != "Build")
 								task.SetParameterValue ("Targets", buildTarget);
@@ -774,7 +891,11 @@ namespace Mono.XBuild.CommandLine {
 		{
 			foreach (string buildTarget in buildTargets) {
 				Target t = p.Targets.AddNewTarget (buildTarget);
+				bool is_build_or_rebuild = buildTarget == "Build" || buildTarget == "Rebuild";
+
 				t.Condition = "'$(CurrentSolutionConfigurationContents)' != ''";
+				if (is_build_or_rebuild)
+					t.Outputs = "@(CollectedBuildOutput)";
 
 				BuildTask task = null;
 				for (int i = 0; i < num_levels; i ++) {
@@ -782,6 +903,7 @@ namespace Mono.XBuild.CommandLine {
 					task = t.AddNewTask ("MSBuild");
 					task.SetParameterValue ("Condition", String.Format ("'@({0})' != ''", level_str));
 					task.SetParameterValue ("Projects", String.Format ("@({0})", level_str));
+					task.SetParameterValue ("ToolsVersion", "$(ProjectToolsVersion)");
 					task.SetParameterValue ("Properties",
 						string.Format ("Configuration=%(Configuration); Platform=%(Platform); BuildingSolutionFile=true; CurrentSolutionConfigurationContents=$(CurrentSolutionConfigurationContents); SolutionDir=$(SolutionDir); SolutionExt=$(SolutionExt); SolutionFileName=$(SolutionFileName); SolutionName=$(SolutionName); SolutionPath=$(SolutionPath)"));
 					if (buildTarget != "Build")
@@ -789,6 +911,8 @@ namespace Mono.XBuild.CommandLine {
 					//FIXME: change this to BuildInParallel=true, when parallel
 					//	 build support gets added
 					task.SetParameterValue ("RunEachTargetSeparately", "true");
+					if (is_build_or_rebuild)
+						task.AddOutputItem ("TargetOutputs", "CollectedBuildOutput");
 
 					level_str = String.Format ("SkipLevel{0}", i);
 					task = t.AddNewTask ("Message");

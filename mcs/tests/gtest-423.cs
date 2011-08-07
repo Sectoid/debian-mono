@@ -1,13 +1,32 @@
 using System;
 
-class App
+namespace MonoTest
 {
-	public static void Main ()
+	public class A<TA>
 	{
-		EventHandler h = new EventHandler (Test) ?? Test;
+		class B<TB>
+		{
+			static void foo ()
+			{
+			}
+
+			class C
+			{
+				static void bar ()
+				{
+					foo ();
+					B<C>.foo ();
+					A<C>.B<C>.foo ();
+				}
+			}
+		}
 	}
 
-	public static void Test (object s, EventArgs a)
+	class Program
 	{
+		static void Main ()
+		{
+		}
 	}
 }
+

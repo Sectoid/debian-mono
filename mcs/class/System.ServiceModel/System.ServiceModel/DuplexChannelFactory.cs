@@ -33,6 +33,7 @@ using System.Collections.ObjectModel;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Description;
 using System.ServiceModel.Dispatcher;
+using System.ServiceModel.MonoInternal;
 
 namespace System.ServiceModel
 {
@@ -209,14 +210,18 @@ namespace System.ServiceModel
 				throw new ArgumentNullException ("callbackInstance");
 
 			EnsureOpened ();
+#if DISABLE_REAL_PROXY
 			Type type = ClientProxyGenerator.CreateProxyType (typeof (TChannel), Endpoint.Contract, true);
 			// in .NET and SL2, it seems that the proxy is RealProxy.
 			// But since there is no remoting in SL2 (and we have
 			// no special magic), we have to use different approach
 			// that should work either.
 			object proxy = Activator.CreateInstance (type, new object [] {Endpoint, this, address, via});
+#else
+			object proxy = new ClientRealProxy (typeof (TChannel), new DuplexClientRuntimeChannel (Endpoint, this, address, via), true).GetTransparentProxy ();
+#endif
 
-			((DuplexClientRuntimeChannel) proxy).CallbackInstance = callbackInstance;
+			((IDuplexContextChannel) proxy).CallbackInstance = callbackInstance;
 
 			return (TChannel) proxy;
 		}

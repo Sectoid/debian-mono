@@ -1,3 +1,12 @@
+2011-07-25  Sebastien Pouliot  <sebastien@xamarin.com>
+
+	Fixed decoding of PKCS/CMS message with detached ContentInfo. Pull
+	request from Pablo Ruiz Garcia <pablo.ruiz@gmail.com>
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: rename the net_2_1 profile to moonlight.
+
 2009-06-05  Marek Safar  <marek.safar@gmail.com>
 
 	* Makefile: Fixed NET_2_0 conditional to actually handle Mono.Security

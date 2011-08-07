@@ -58,13 +58,17 @@
  * The first argument in a0 is the pointer to the MonoContext.
  */
 gpointer
-mono_arch_get_restore_context (void)
+mono_arch_get_restore_context (MonoTrampInfo **info, gboolean aot)
 {
 	int i;
 	guint8 *code;
 	static guint8 start [128];
 	static int inited = 0;
 	guint32 iregs_to_restore;
+
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
 
 	if (inited)
 		return start;
@@ -108,13 +112,17 @@ mono_arch_get_restore_context (void)
  *	handler (void)
  */
 gpointer
-mono_arch_get_call_filter (void)
+mono_arch_get_call_filter (MonoTrampInfo **info, gboolean aot)
 {
 	static guint8 start [320];
 	static int inited = 0;
 	guint8 *code;
 	int alloc_size;
 	int offset;
+
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
 
 	if (inited)
 		return start;
@@ -193,7 +201,7 @@ throw_exception (MonoObject *exc, unsigned long eip, unsigned long esp, gboolean
 #endif
 
 	if (!restore_context)
-		restore_context = mono_arch_get_restore_context ();
+		restore_context = mono_get_restore_context ();
 
 	/* adjust eip so that it point into the call instruction */
 	eip -= 8;
@@ -307,10 +315,14 @@ mono_arch_get_throw_exception_generic (guint8 *start, int size, int corlib, gboo
  *
  */
 gpointer
-mono_arch_get_rethrow_exception (void)
+mono_arch_get_rethrow_exception (MonoTrampInfo **info, gboolean aot)
 {
 	static guint8 start [GENERIC_EXCEPTION_SIZE];
 	static int inited = 0;
+
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
 
 	if (inited)
 		return start;
@@ -331,11 +343,15 @@ mono_arch_get_rethrow_exception (void)
  * x86_call_code (code, arch_get_throw_exception ()); 
  *
  */
-gpointer 
-mono_arch_get_throw_exception (void)
+gpointer
+mono_arch_get_throw_exception (MonoTrampInfo **info, gboolean aot)
 {
 	static guint8 start [GENERIC_EXCEPTION_SIZE];
 	static int inited = 0;
+
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
 
 	if (inited)
 		return start;
@@ -365,11 +381,15 @@ mono_arch_get_throw_exception_by_name (void)
  * signature: void (*func) (guint32 ex_token, guint32 offset); 
  * On MIPS, the offset argument is missing.
  */
-gpointer 
-mono_arch_get_throw_corlib_exception (void)
+gpointer
+mono_arch_get_throw_corlib_exception (MonoTrampInfo **info, gboolean aot)
 {
 	static guint8 start [GENERIC_EXCEPTION_SIZE];
 	static int inited = 0;
+
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
 
 	if (inited)
 		return start;
@@ -397,41 +417,40 @@ glist_to_array (GList *list, MonoClass *eclass)
 	return res;
 }
 
-/* mono_arch_find_jit_info:
+/*
+ * mono_arch_find_jit_info:
  *
- * This function is used to gather information from @ctx. It returns the 
- * MonoJitInfo of the corresponding function, unwinds one stack frame and
- * stores the resulting context into @new_ctx. It also stores a string 
- * describing the stack location into @trace (if not NULL), and modifies
- * the @lmf if necessary. @native_offset return the IP offset from the 
- * start of the function or -1 if that info is not available.
+ * This function is used to gather information from @ctx, and store it in @frame_info.
+ * It unwinds one stack frame, and stores the resulting context into @new_ctx. @lmf
+ * is modified if needed.
+ * Returns TRUE on success, FALSE otherwise.
  */
-MonoJitInfo *
-mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls,
-			 MonoJitInfo *res, MonoJitInfo *prev_ji,
-			 MonoContext *ctx, MonoContext *new_ctx,
-			 MonoLMF **lmf, gboolean *managed)
+gboolean
+mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, 
+							 MonoJitInfo *ji, MonoContext *ctx, 
+							 MonoContext *new_ctx, MonoLMF **lmf, 
+							 mgreg_t **save_locations,
+							 StackFrameInfo *frame)
 {
-	MonoJitInfo *ji;
 	gpointer ip = MONO_CONTEXT_GET_IP (ctx);
 	gpointer fp = MONO_CONTEXT_GET_BP (ctx);
 	guint32 sp;
 
-	/* Avoid costly table lookup during stack overflow */
-	if (prev_ji && (ip > prev_ji->code_start && ((guint8*)ip < ((guint8*)prev_ji->code_start) + prev_ji->code_size)))
-		ji = prev_ji;
-	else
-		ji = mini_jit_info_table_find (domain, ip, NULL);
+	memset (frame, 0, sizeof (StackFrameInfo));
+	frame->ji = ji;
+	frame->managed = FALSE;
 
-	if (managed)
-		*managed = FALSE;
-
-	memcpy (new_ctx, ctx, sizeof (MonoContext));
+	*new_ctx = *ctx;
 
 	if (ji != NULL) {
 		int i;
 		gint32 address;
 		int offset = 0;
+
+		frame->type = FRAME_TYPE_MANAGED;
+
+		if (!ji->method->wrapper_type || ji->method->wrapper_type == MONO_WRAPPER_DYNAMIC_METHOD)
+			frame->managed = TRUE;
 
 		if (*lmf && (MONO_CONTEXT_GET_BP (ctx) >= (gpointer)(*lmf)->ebp)) {
 			/* remove any unused lmf */
@@ -439,10 +458,6 @@ mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls,
 		}
 
 		address = (char *)ip - (char *)ji->code_start;
-
-		if (managed)
-			if (!ji->method->wrapper_type)
-				*managed = TRUE;
 
 		/* My stack frame */
 		fp = MONO_CONTEXT_GET_BP (ctx);
@@ -456,7 +471,7 @@ mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls,
 #ifdef DEBUG_EXCEPTIONS
 			g_print ("mono_arch_find_jit_info: bad stack sp=%p\n", (void *) sp);
 #endif
-			return (gpointer)-1;
+			return FALSE;
 		}
 
 		if (ji->method->save_lmf && 0) {
@@ -498,21 +513,25 @@ mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls,
 
 		/* Sanity check -- we should have made progress here */
 		g_assert (new_ctx->sc_pc != ctx->sc_pc);
-		return ji;
+		return TRUE;
 	} else if (*lmf) {
 		if (!(*lmf)->method) {
 #ifdef DEBUG_EXCEPTIONS
 			g_print ("mono_arch_find_jit_info: bad lmf @ %p\n", (void *) *lmf);
 #endif
-			return (gpointer)-1;
+			return FALSE;
 		}
 		g_assert (((*lmf)->magic == MIPS_LMF_MAGIC1) || ((*lmf)->magic == MIPS_LMF_MAGIC2));
 
-		if ((ji = mini_jit_info_table_find (domain, (gpointer)(*lmf)->eip, NULL))) {
-		} else {
-			memset (res, 0, MONO_SIZEOF_JIT_INFO);
-			res->method = (*lmf)->method;
+		ji = mini_jit_info_table_find (domain, (gpointer)(*lmf)->eip, NULL);
+		if (!ji) {
+			// FIXME: This can happen with multiple appdomains (bug #444383)
+			return FALSE;
 		}
+
+		frame->ji = ji;
+		frame->type = FRAME_TYPE_MANAGED_TO_NATIVE;
+
 		memcpy (&new_ctx->sc_regs, (*lmf)->iregs, sizeof (gulong) * MONO_SAVED_GREGS);
 		memcpy (&new_ctx->sc_fpregs, (*lmf)->fregs, sizeof (float) * MONO_SAVED_FREGS);
 		MONO_CONTEXT_SET_IP (new_ctx, (*lmf)->eip);
@@ -520,10 +539,10 @@ mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls,
 		g_assert (new_ctx->sc_pc != ctx->sc_pc);
 		*lmf = (*lmf)->previous_lmf;
 
-		return ji ? ji : res;
+		return TRUE;
 	}
 
-	return NULL;
+	return FALSE;
 }
 
 void

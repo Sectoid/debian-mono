@@ -138,5 +138,32 @@ namespace MonoTests.System.ServiceModel
 			var f = m.BuildChannelFactory<IRequestChannel> (CreateBindingContext ());
 			Assert.AreEqual (f.GetType (), new HttpTransportBindingElement ().BuildChannelFactory<IRequestChannel> (CreateBindingContext ()).GetType (), "#1");
 		}
+
+		[Test]
+		public void GetPropertyMessageVersion ()
+		{
+			var m = new WebMessageEncodingBindingElement ();
+			var bc = new BindingContext (new CustomBinding (), new BindingParameterCollection ());
+			Assert.AreEqual (MessageVersion.None, m.GetProperty<MessageVersion> (bc), "#1");
+		}
+
+		[Test]
+		public void ReadMessageNullContentType ()
+		{
+			var e = CreateEncoder ();
+			e.ReadMessage (new MemoryStream (), 10, null);
+		}
+
+		[Test]
+		public void MessageEncoderIsContentTypeSupported ()
+		{
+			var enc = new WebMessageEncodingBindingElement ().CreateMessageEncoderFactory ().Encoder;
+			Assert.IsTrue (enc.IsContentTypeSupported ("application/xml"), "#1");
+			Assert.IsTrue (enc.IsContentTypeSupported ("text/xml"), "#2");
+			Assert.IsTrue (enc.IsContentTypeSupported ("application/soap+xml"), "#3");
+			Assert.IsTrue (enc.IsContentTypeSupported ("application/foobar+xml"), "#4"); // wow.
+			Assert.IsTrue (enc.IsContentTypeSupported ("application"), "#5"); // wow.
+			Assert.IsTrue (enc.IsContentTypeSupported (String.Empty), "#6"); // wow.
+		}
 	}
 }

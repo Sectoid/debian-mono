@@ -32,6 +32,7 @@ using System.IO;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Tasks.Hosting;
 using Microsoft.Build.Utilities;
+using Mono.XBuild.Utilities;
 
 namespace Microsoft.Build.Tasks {
 	public class Csc : ManagedCompiler {
@@ -65,7 +66,7 @@ namespace Microsoft.Build.Tasks {
 				string [] defines = DefineConstants.Split (new char [] {';', ' '},
 						StringSplitOptions.RemoveEmptyEntries);
 				if (defines.Length > 0)
-					commandLine.AppendSwitchUnquotedIfNotNull ("/define:",
+					commandLine.AppendSwitchIfNotNull ("/define:",
 							String.Join (";", defines));
 			}
 
@@ -88,10 +89,17 @@ namespace Microsoft.Build.Tasks {
 				commandLine.AppendSwitch ("/nostdlib");
 
 			//platform
+			commandLine.AppendSwitchIfNotNull ("/platform:", Platform);
 			//
 			if (References != null)
-				foreach (ITaskItem item in References)
-					commandLine.AppendSwitchIfNotNull ("/reference:", item.ItemSpec);
+				foreach (ITaskItem item in References) {
+					string aliases = item.GetMetadata ("Aliases") ?? String.Empty;
+					aliases = aliases.Trim ();
+					if (aliases.Length > 0)
+						commandLine.AppendSwitchIfNotNull ("/reference:" + aliases + "=", item.ItemSpec);
+					else
+						commandLine.AppendSwitchIfNotNull ("/reference:", item.ItemSpec);
+				}
 
 			if (ResponseFiles != null)
 				foreach (ITaskItem item in ResponseFiles) 
@@ -187,7 +195,11 @@ namespace Microsoft.Build.Tasks {
 
 		protected override string ToolName {
 			get {
-				return Utilities.RunningOnWindows ? "gmcs.bat" : "gmcs";
+#if NET_4_0
+				return MSBuildUtils.RunningOnWindows ? "dmcs.bat" : "dmcs";
+#else
+				return MSBuildUtils.RunningOnWindows ? "gmcs.bat" : "gmcs";
+#endif
 			}
 		}
 

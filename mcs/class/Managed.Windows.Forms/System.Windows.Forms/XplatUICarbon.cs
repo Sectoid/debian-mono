@@ -48,6 +48,7 @@ namespace System.Windows.Forms {
 		// Internal members available to the event handler sub-system
 		internal static IntPtr FocusWindow;
 		internal static IntPtr ActiveWindow;
+		internal static IntPtr UnactiveWindow;
 		internal static IntPtr ReverseWindow;
 		internal static IntPtr CaretWindow;
 
@@ -785,6 +786,7 @@ namespace System.Windows.Forms {
 
 		internal override void Activate(IntPtr handle) {
 			if (ActiveWindow != IntPtr.Zero) {
+				UnactiveWindow = ActiveWindow;
 				ActivateWindow (HIViewGetWindow (ActiveWindow), false);
 			}
 			ActivateWindow (HIViewGetWindow (handle), true);
@@ -793,6 +795,9 @@ namespace System.Windows.Forms {
 
 		internal override void AudibleAlert(AlertType alert) {
 			AlertSoundPlay ();
+		}
+
+		internal override void BeginMoveResize (IntPtr handle) {
 		}
 
 		internal override void CaretVisible (IntPtr hwnd, bool visible) {
@@ -1076,7 +1081,7 @@ namespace System.Windows.Forms {
 			create_params.Width = Width;
 			create_params.Height = Height;
 
-			create_params.ClassName=XplatUI.DefaultClassName;
+			create_params.ClassName=XplatUI.GetDefaultClassName (GetType ());
 			create_params.ClassStyle = 0;
 			create_params.ExStyle=0;
 			create_params.Parent=IntPtr.Zero;
@@ -1356,8 +1361,9 @@ namespace System.Windows.Forms {
 				ReleaseEvent (evtRef);
 			}
 			
+			object queueobj;
+			loop:
 			lock (queuelock) {
-				loop:
 
 				if (MessageQueue.Count <= 0) {
 					if (Idle != null) 
@@ -1379,13 +1385,13 @@ namespace System.Windows.Forms {
 					msg.message = Msg.WM_ENTERIDLE;
 					return GetMessageResult;
 				}
-				object queueobj = MessageQueue.Dequeue ();
-				if (queueobj is GCHandle) {
-					XplatUIDriverSupport.ExecuteClientMessage((GCHandle)queueobj);
-					goto loop;
-				} else {
-					msg = (MSG)queueobj;
-				}
+				queueobj = MessageQueue.Dequeue ();
+			}
+			if (queueobj is GCHandle) {
+				XplatUIDriverSupport.ExecuteClientMessage((GCHandle)queueobj);
+				goto loop;
+			} else {
+				msg = (MSG)queueobj;
 			}
 			return GetMessageResult;
 		}
@@ -1533,7 +1539,11 @@ namespace System.Windows.Forms {
 				clip_region.MakeEmpty();
 
 				foreach (Rectangle r in hwnd.ClipRectangles) {
-					clip_region.Union (r);
+					/* Expand the region slightly.
+					 * See bug 464464.
+					 */
+					Rectangle r2 = Rectangle.FromLTRB (r.Left, r.Top, r.Right, r.Bottom + 1);
+					clip_region.Union (r2);
 				}
 
 				if (hwnd.UserClip != null) {
@@ -2063,13 +2073,11 @@ namespace System.Windows.Forms {
 			throw new NotImplementedException();
 		}
 
-#if NET_2_0
 		[MonoTODO]
 		internal override void SystrayBalloon(IntPtr hwnd, int timeout, string title, string text, ToolTipIcon icon)
 		{
 			throw new NotImplementedException ();
 		}
-#endif
 		
 		internal override bool Text(IntPtr handle, string text) {
 			Hwnd hwnd = Hwnd.ObjectFromHandle (handle);

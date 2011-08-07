@@ -4,7 +4,7 @@
 // Author:
 //	Atsushi Enomoto <atsushi@ximian.com>
 //
-// Copyright (C) 2005-2006 Novell, Inc.  http://www.novell.com
+// Copyright (C) 2005-2010 Novell, Inc.  http://www.novell.com
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -65,7 +65,7 @@ namespace System.ServiceModel.Dispatcher
 			contract_name = contractName;
 			contract_ns = contractNamespace;
 
-			dispatch_runtime = new DispatchRuntime (this);
+			dispatch_runtime = new DispatchRuntime (this, null);
 
 			this.address_filter = new EndpointAddressMessageFilter (address);
 		}
@@ -114,28 +114,37 @@ namespace System.ServiceModel.Dispatcher
 			set { filter_priority = value; }
 		}
 
+#if NET_4_0
+		public bool IsSystemEndpoint { get; private set; }
+#endif
+
 		internal void InitializeServiceEndpoint (bool isCallback, Type serviceType, ServiceEndpoint se)
 		{
-			this.ContractFilter = GetContractFilter (se.Contract);
+#if NET_4_0
+			IsSystemEndpoint = se.IsSystemEndpoint;
+#endif
+
+			this.ContractFilter = GetContractFilter (se.Contract, isCallback);
 
 			this.DispatchRuntime.Type = serviceType;
 			
 			//Build the dispatch operations
 			DispatchRuntime db = this.DispatchRuntime;
 			if (!isCallback && se.Contract.CallbackContractType != null) {
-				var ccd = ContractDescriptionGenerator.GetCallbackContract (db.Type, se.Contract.CallbackContractType);
-				db.CallbackClientRuntime = ccd.CreateClientRuntime ();
-				db.CallbackClientRuntime.CallbackClientType = ccd.ContractType;
+				var ccd = se.Contract;
+				db.CallbackClientRuntime.CallbackClientType = se.Contract.CallbackContractType;
+				db.CallbackClientRuntime.ContractClientType = se.Contract.ContractType;
+				ccd.FillClientOperations (db.CallbackClientRuntime, true);
 			}
 			foreach (OperationDescription od in se.Contract.Operations)
-				if (!db.Operations.Contains (od.Name))
+				if (od.InCallbackContract == isCallback/* && !db.Operations.Contains (od.Name)*/)
 					PopulateDispatchOperation (db, od);
 		}
 
 		void PopulateDispatchOperation (DispatchRuntime db, OperationDescription od) {
 			string reqA = null, resA = null;
 			foreach (MessageDescription m in od.Messages) {
-				if (m.Direction == MessageDirection.Input)
+				if (m.IsRequest)
 					reqA = m.Action;
 				else
 					resA = m.Action;
@@ -144,13 +153,14 @@ namespace System.ServiceModel.Dispatcher
 				od.IsOneWay ?
 				new DispatchOperation (db, od.Name, reqA) :
 				new DispatchOperation (db, od.Name, reqA, resA);
+			o.IsTerminating = od.IsTerminating;
 			bool no_serialized_reply = od.IsOneWay;
 			foreach (MessageDescription md in od.Messages) {
-				if (md.Direction == MessageDirection.Input &&
+				if (md.IsRequest &&
 					md.Body.Parts.Count == 1 &&
 					md.Body.Parts [0].Type == typeof (Message))
 					o.DeserializeRequest = false;
-				if (md.Direction == MessageDirection.Output &&
+				if (!md.IsRequest &&
 					md.Body.ReturnValue != null) {
 					if (md.Body.ReturnValue.Type == typeof (Message))
 						o.SerializeReply = false;
@@ -159,11 +169,17 @@ namespace System.ServiceModel.Dispatcher
 				}
 			}
 
+			foreach (var fd in od.Faults)
+				o.FaultContractInfos.Add (new FaultContractInfo (fd.Action, fd.DetailType));
+
 			// Setup Invoker
 			o.Invoker = new DefaultOperationInvoker (od);
 
 			// Setup Formater
-			o.Formatter = BaseMessagesFormatter.Create (od);
+			// FIXME: this seems to be null at initializing, and should be set after applying all behaviors.
+			// I leave this as is to not regress and it's cosmetic compatibility to fix.
+			// FIXME: pass correct isRpc, isEncoded
+			o.Formatter = new OperationFormatter (od, false, false);
 
 			if (o.Action == "*" && (o.IsOneWay || o.ReplyAction == "*")) {
 				//Signature : Message  (Message)
@@ -176,17 +192,20 @@ namespace System.ServiceModel.Dispatcher
 			db.Operations.Add (o);
 		}
 
-		MessageFilter GetContractFilter (ContractDescription cd)
+		MessageFilter GetContractFilter (ContractDescription cd, bool isCallback)
 		{
 			List<string> actions = new List<string> ();
-			foreach (var od in cd.Operations)
+			foreach (var od in cd.Operations) {
 				foreach (var md in od.Messages)
-					if (md.Direction == MessageDirection.Input)
+					// For callback EndpointDispatcher (i.e. for duplex client), it should get "incoming" request for callback operations and "outgoing" response for non-callback operations.
+					// For non-callback EndpointDispatcher,  it should get "outgoing" request for non-callback operations and "incoming" response for callback operations.
+					if ((od.InCallbackContract == isCallback) == md.IsRequest) {
 						if (md.Action == "*")
 							return new MatchAllMessageFilter ();
 						else
 							actions.Add (md.Action);
-
+					}
+			}
 			return new ActionMessageFilter (actions.ToArray ());
 		}
 	}

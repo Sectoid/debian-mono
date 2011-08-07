@@ -70,7 +70,7 @@ namespace System {
 			if ((format < UriFormat.UriEscaped) || (format > UriFormat.SafeUnescaped))
 				throw new ArgumentOutOfRangeException ("format");
 
-			Match m = uri_regex.Match (uri.OriginalString);
+			Match m = uri_regex.Match (uri.OriginalString.Trim ());
 
 			string scheme = scheme_name;
 			int dp = default_port;
@@ -117,6 +117,7 @@ namespace System {
 			// now we deal with multiple flags...
 
 			StringBuilder sb = new StringBuilder ();
+
 			if ((components & UriComponents.Scheme) != 0) {
 				sb.Append (scheme);
 				sb.Append (Uri.GetSchemeDelimiter (scheme));
@@ -141,16 +142,26 @@ namespace System {
 					sb.Append (am.Groups [4].Value);
 			}
 
-			if ((components & UriComponents.Path) != 0)
+			if ((components & UriComponents.Path) != 0) {
+				if ((components & UriComponents.PathAndQuery) != 0 &&
+					(m.Groups [5].Value == null || !m.Groups [5].Value.StartsWith ("/")))
+					sb.Append ("/");
 				sb.Append (m.Groups [5]);
+			}
 
 			if ((components & UriComponents.Query) != 0)
 				sb.Append (m.Groups [6]);
 
-			if ((components & UriComponents.Fragment) != 0)
-				sb.Append (m.Groups [8]);
-
-			return Format (sb.ToString (), format);
+			string result = Format (sb.ToString (), format);
+			if ((components & UriComponents.Fragment) != 0) {
+				string f = m.Groups [8].Value;
+				if (!String.IsNullOrEmpty (f)) {
+					// make sure the '#' does not get escaped by 'format'
+					f = f.Substring (1);
+					result += "#" + Format (f, format);
+				}
+			}
+			return result;
 		}
 
 		protected internal virtual void InitializeAndValidate (Uri uri, out UriFormatException parsingError)
@@ -233,11 +244,9 @@ namespace System {
 
 			switch (format) {
 			case UriFormat.UriEscaped:
-				return Uri.EscapeString (s, false, true, true);
+				return Uri.EscapeString (s, Uri.EscapeCommonHexBrackets);
 			case UriFormat.SafeUnescaped:
-				// TODO subset of escape rules
-				s = Uri.Unescape (s, false);
-				return s; //Uri.EscapeString (s, false, true, true);
+				return Uri.UnescapeDataString (s, true);
 			case UriFormat.Unescaped:
 				return Uri.Unescape (s, false);
 			default:
@@ -259,11 +268,9 @@ namespace System {
 			InternalRegister (newtable, new DefaultUriParser (), Uri.UriSchemeHttp, 80);
 			InternalRegister (newtable, new DefaultUriParser (), Uri.UriSchemeHttps, 443);
 			InternalRegister (newtable, new DefaultUriParser (), Uri.UriSchemeMailto, 25);
-#if NET_2_0
 			InternalRegister (newtable, new DefaultUriParser (), Uri.UriSchemeNetPipe, -1);
 			InternalRegister (newtable, new DefaultUriParser (), Uri.UriSchemeNetTcp, -1);
-#endif
-			InternalRegister (newtable, new DefaultUriParser (), Uri.UriSchemeNews, 119);
+			InternalRegister (newtable, new DefaultUriParser (), Uri.UriSchemeNews, -1);
 			InternalRegister (newtable, new DefaultUriParser (), Uri.UriSchemeNntp, 119);
 			// not defined in Uri.UriScheme* but a parser class exists
 			InternalRegister (newtable, new DefaultUriParser (), "ldap", 389);

@@ -6,17 +6,66 @@
 #include "mono/metadata/blob.h"
 #include "mono/metadata/mempool.h"
 #include "mono/metadata/domain-internals.h"
-#include "mono/utils/mono-hash.h"
+#include "mono/metadata/mono-hash.h"
 #include "mono/utils/mono-compiler.h"
 #include "mono/utils/mono-dl.h"
 #include "mono/utils/monobitset.h"
 #include "mono/utils/mono-property-hash.h"
 #include "mono/utils/mono-value-hash.h"
-#include "mono/utils/mono-error.h"
+#include <mono/utils/mono-error.h>
+
+struct _MonoType {
+	union {
+		MonoClass *klass; /* for VALUETYPE and CLASS */
+		MonoType *type;   /* for PTR */
+		MonoArrayType *array; /* for ARRAY */
+		MonoMethodSignature *method;
+		MonoGenericParam *generic_param; /* for VAR and MVAR */
+		MonoGenericClass *generic_class; /* for GENERICINST */
+	} data;
+	unsigned int attrs    : 16; /* param attributes or field flags */
+	MonoTypeEnum type     : 8;
+	unsigned int num_mods : 6;  /* max 64 modifiers follow at the end */
+	unsigned int byref    : 1;
+	unsigned int pinned   : 1;  /* valid when included in a local var signature */
+	MonoCustomMod modifiers [MONO_ZERO_LEN_ARRAY]; /* this may grow */
+};
+
+#define MONO_SIZEOF_TYPE (offsetof (struct _MonoType, modifiers))
 
 #define MONO_SECMAN_FLAG_INIT(x)		(x & 0x2)
 #define MONO_SECMAN_FLAG_GET_VALUE(x)		(x & 0x1)
 #define MONO_SECMAN_FLAG_SET_VALUE(x,y)		do { x = ((y) ? 0x3 : 0x2); } while (0)
+
+#define MONO_PUBLIC_KEY_TOKEN_LENGTH	17
+
+#define PROCESSOR_ARCHITECTURE_NONE 0
+#define PROCESSOR_ARCHITECTURE_MSIL 1
+#define PROCESSOR_ARCHITECTURE_X86 2
+#define PROCESSOR_ARCHITECTURE_IA64 3
+#define PROCESSOR_ARCHITECTURE_AMD64 4
+
+struct _MonoAssemblyName {
+	const char *name;
+	const char *culture;
+	const char *hash_value;
+	const mono_byte* public_key;
+	// string of 16 hex chars + 1 NULL
+	mono_byte public_key_token [MONO_PUBLIC_KEY_TOKEN_LENGTH];
+	uint32_t hash_alg;
+	uint32_t hash_len;
+	uint32_t flags;
+	uint16_t major, minor, build, revision, arch;
+};
+
+struct MonoTypeNameParse {
+	char *name_space;
+	char *name;
+	MonoAssemblyName assembly;
+	GList *modifiers; /* 0 -> byref, -1 -> pointer, > 0 -> array rank */
+	GPtrArray *type_arguments;
+	GList *nested;
+};
 
 struct _MonoAssembly {
 	/* 
@@ -37,6 +86,10 @@ struct _MonoAssembly {
 	guint8 dynamic;
 	guint8 corlib_internal;
 	gboolean ref_only;
+	guint8 wrap_non_exception_throws;
+	guint8 wrap_non_exception_throws_inited;
+	guint8 jit_optimizer_disabled;
+	guint8 jit_optimizer_disabled_inited;
 	/* security manager flags (one bit is for lazy initialization) */
 	guint32 ecma:2;		/* Has the ECMA key */
 	guint32 aptc:2;		/* Has the [AllowPartiallyTrustedCallers] attributes */
@@ -86,7 +139,7 @@ struct _MonoImage {
 	guint8 raw_buffer_used    : 1;
 	guint8 raw_data_allocated : 1;
 
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 	/* Module was loaded using LoadLibrary. */
 	guint8 is_module_handle : 1;
 
@@ -208,6 +261,10 @@ struct _MonoImage {
 	GHashTable *delegate_abstract_invoke_cache;
 
 	/*
+	 * indexed by SignatureMethodPair
+	 */
+	GHashTable *delegate_bound_static_invoke_cache;
+	/*
 	 * indexed by MonoMethod pointers 
 	 */
 	GHashTable *runtime_invoke_direct_cache;
@@ -233,11 +290,6 @@ struct _MonoImage {
 	GHashTable *proxy_isinst_cache;
 	GHashTable *rgctx_template_hash; /* LOCKING: templates lock */
 
-	/*
-	 * indexed by token and MonoGenericContext pointer
-	 */
-	GHashTable *generic_class_cache;
-
 	/* Contains rarely used fields of runtime structures belonging to this image */
 	MonoPropertyHash *property_hash;
 
@@ -255,7 +307,18 @@ struct _MonoImage {
 	/* interfaces IDs from this image */
 	MonoBitSet *interface_bitset;
 
+	/* when the image is being closed, this is abused as a list of
+	   malloc'ed regions to be freed. */
 	GSList *reflection_info_unregister_classes;
+
+	/* List of image sets containing this image */
+	GSList *image_sets;
+
+	/* Caches for MonoClass-es representing anon generic params */
+	MonoClass **var_cache_fast;
+	MonoClass **mvar_cache_fast;
+	GHashTable *var_cache_slow;
+	GHashTable *mvar_cache_slow;
 
 	/*
 	 * No other runtime locks must be taken while holding this lock.
@@ -263,6 +326,28 @@ struct _MonoImage {
 	 */
 	CRITICAL_SECTION    lock;
 };
+
+/*
+ * Generic instances depend on many images, and they need to be deleted if one
+ * of the images they depend on is unloaded. For example,
+ * List<Foo> depends on both List's image and Foo's image.
+ * A MonoImageSet is the owner of all generic instances depending on the same set of
+ * images.
+ */
+typedef struct {
+	int nimages;
+	MonoImage **images;
+
+	GHashTable *gclass_cache, *ginst_cache, *gmethod_cache, *gsignature_cache;
+
+	CRITICAL_SECTION    lock;
+
+	/*
+	 * Memory for generic instances owned by this image set should be allocated from
+	 * this mempool, using the mono_image_set_alloc family of functions.
+	 */
+	MonoMemPool         *mempool;
+} MonoImageSet;
 
 enum {
 	MONO_SECTION_TEXT,
@@ -317,6 +402,7 @@ struct _MonoDynamicImage {
 	GHashTable *typespec;
 	GHashTable *typeref;
 	GHashTable *handleref;
+	MonoGHashTable *handleref_managed;
 	MonoGHashTable *tokens;
 	GHashTable *blob_cache;
 	GHashTable *standalonesig_cache;
@@ -326,6 +412,7 @@ struct _MonoDynamicImage {
 	GHashTable *method_to_table_idx;
 	GHashTable *field_to_table_idx;
 	GHashTable *method_aux_hash;
+	GHashTable *vararg_aux_hash;
 	MonoGHashTable *generic_def_objects;
 	MonoGHashTable *methodspec;
 	gboolean run;
@@ -363,12 +450,18 @@ typedef struct _MonoAssemblyBindingInfo {
 	guint has_old_version_top : 1;
 	guint has_new_version : 1;
 	guint is_valid : 1;
+	gint32 domain_id; /*Needed to unload per-domain binding*/
 } MonoAssemblyBindingInfo;
 
 struct _MonoMethodHeader {
-	guint32      code_size;
 	const unsigned char  *code;
-	guint16      max_stack;
+#ifdef MONO_SMALL_CONFIG
+	guint16      code_size;
+#else
+	guint32      code_size;
+#endif
+	guint16      max_stack   : 15;
+	unsigned int is_transient: 1; /* mono_metadata_free_mh () will actually free this header */
 	unsigned int num_clauses : 15;
 	/* if num_locals != 0, then the following apply: */
 	unsigned int init_locals : 1;
@@ -384,6 +477,28 @@ typedef struct {
 
 #define MONO_SIZEOF_METHOD_HEADER (sizeof (struct _MonoMethodHeader) - MONO_ZERO_LEN_ARRAY * SIZEOF_VOID_P)
 
+struct _MonoMethodSignature {
+	MonoType     *ret;
+#ifdef MONO_SMALL_CONFIG
+	guint8        param_count;
+	gint8         sentinelpos;
+	unsigned int  generic_param_count : 5;
+#else
+	guint16       param_count;
+	gint16        sentinelpos;
+	unsigned int  generic_param_count : 16;
+#endif
+	unsigned int  call_convention     : 6;
+	unsigned int  hasthis             : 1;
+	unsigned int  explicit_this       : 1;
+	unsigned int  pinvoke             : 1;
+	unsigned int  is_inflated         : 1;
+	unsigned int  has_type_parameters : 1;
+	MonoType     *params [MONO_ZERO_LEN_ARRAY];
+};
+
+#define MONO_SIZEOF_METHOD_SIGNATURE (sizeof (struct _MonoMethodSignature) - MONO_ZERO_LEN_ARRAY * SIZEOF_VOID_P)
+
 /* for use with allocated memory blocks (assumes alignment is to 8 bytes) */
 guint mono_aligned_addr_hash (gconstpointer ptr) MONO_INTERNAL;
 
@@ -395,6 +510,8 @@ mono_image_alloc  (MonoImage *image, guint size) MONO_INTERNAL;
 
 gpointer
 mono_image_alloc0 (MonoImage *image, guint size) MONO_INTERNAL;
+
+#define mono_image_new0(image,type,size) ((type *) mono_image_alloc0 (image, sizeof (type)* (size)))
 
 char*
 mono_image_strdup (MonoImage *image, const char *s) MONO_INTERNAL;
@@ -420,12 +537,39 @@ mono_image_property_insert (MonoImage *image, gpointer subject, guint32 property
 void
 mono_image_property_remove (MonoImage *image, gpointer subject) MONO_INTERNAL;
 
+gboolean
+mono_image_close_except_pools (MonoImage *image) MONO_INTERNAL;
+
+void
+mono_image_close_finish (MonoImage *image) MONO_INTERNAL;
+
+typedef void  (*MonoImageUnloadFunc) (MonoImage *image, gpointer user_data);
+
+void
+mono_install_image_unload_hook (MonoImageUnloadFunc func, gpointer user_data) MONO_INTERNAL;
+
+void
+mono_remove_image_unload_hook (MonoImageUnloadFunc func, gpointer user_data) MONO_INTERNAL;
+
+gpointer
+mono_image_set_alloc  (MonoImageSet *set, guint size) MONO_INTERNAL;
+
+gpointer
+mono_image_set_alloc0 (MonoImageSet *set, guint size) MONO_INTERNAL;
+
+char*
+mono_image_set_strdup (MonoImageSet *set, const char *s) MONO_INTERNAL;
+
+#define mono_image_set_new0(image,type,size) ((type *) mono_image_set_alloc0 (image, sizeof (type)* (size)))
 
 MonoType*
 mono_metadata_get_shared_type (MonoType *type) MONO_INTERNAL;
 
-void
+GSList*
 mono_metadata_clean_for_image (MonoImage *image) MONO_INTERNAL;
+
+void
+mono_metadata_clean_generic_classes_for_image (MonoImage *image) MONO_INTERNAL;
 
 void
 mono_metadata_cleanup (void);
@@ -508,9 +652,15 @@ void mono_assembly_addref       (MonoAssembly *assembly) MONO_INTERNAL;
 void mono_assembly_load_friends (MonoAssembly* ass) MONO_INTERNAL;
 gboolean mono_assembly_has_skip_verification (MonoAssembly* ass) MONO_INTERNAL;
 
+gboolean mono_assembly_close_except_image_pools (MonoAssembly *assembly) MONO_INTERNAL;
+void mono_assembly_close_finish (MonoAssembly *assembly) MONO_INTERNAL;
+
+
 gboolean mono_public_tokens_are_equal (const unsigned char *pubt1, const unsigned char *pubt2) MONO_INTERNAL;
 
 void mono_config_parse_publisher_policy (const char *filename, MonoAssemblyBindingInfo *binding_info) MONO_INTERNAL;
+void mono_config_parse_assembly_bindings (const char *filename, int major, int minor, void *user_data,
+					  void (*infocb)(MonoAssemblyBindingInfo *info, void *user_data)) MONO_INTERNAL;
 
 gboolean
 mono_assembly_name_parse_full 		     (const char	   *name,
@@ -533,6 +683,8 @@ mono_get_shared_generic_inst (MonoGenericContainer *container) MONO_INTERNAL;
 
 int
 mono_type_stack_size_internal (MonoType *t, int *align, gboolean allow_open) MONO_INTERNAL;
+
+void            mono_type_get_desc (GString *res, MonoType *type, mono_bool include_namespace);
 
 gboolean
 mono_metadata_type_equal_full (MonoType *t1, MonoType *t2, gboolean signature_only) MONO_INTERNAL;
@@ -563,6 +715,8 @@ mono_metadata_get_corresponding_property_from_generic_type_definition (MonoPrope
 guint32
 mono_metadata_signature_size (MonoMethodSignature *sig) MONO_INTERNAL;
 
+guint mono_metadata_str_hash (gconstpointer v1) MONO_INTERNAL;
+
 gboolean mono_image_load_pe_data (MonoImage *image) MONO_INTERNAL;
 
 gboolean mono_image_load_cli_data (MonoImage *image) MONO_INTERNAL;
@@ -570,6 +724,12 @@ gboolean mono_image_load_cli_data (MonoImage *image) MONO_INTERNAL;
 void mono_image_load_names (MonoImage *image) MONO_INTERNAL;
 
 MonoImage *mono_image_open_raw (const char *fname, MonoImageOpenStatus *status) MONO_INTERNAL;
+
+MonoException *mono_get_exception_field_access_msg (const char *msg) MONO_INTERNAL;
+
+MonoException *mono_get_exception_method_access_msg (const char *msg) MONO_INTERNAL;
+
+MonoMethod* method_from_method_def_or_ref (MonoImage *m, guint32 tok, MonoGenericContext *context) MONO_INTERNAL;
 
 #endif /* __MONO_METADATA_INTERNALS_H__ */
 

@@ -1,4 +1,4 @@
-﻿//
+//
 // RuntimeBinderContext.cs
 //
 // Authors:
@@ -27,51 +27,89 @@
 //
 
 using System;
+using System.Collections.Generic;
 using Compiler = Mono.CSharp;
 
 namespace Microsoft.CSharp.RuntimeBinder
 {
 	class RuntimeBinderContext : Compiler.IMemberContext
 	{
-		readonly Compiler.CompilerContext ctx;
+		readonly Compiler.ModuleContainer module;
+		readonly Type callingType;
+		readonly DynamicContext ctx;
+		Compiler.TypeSpec callingTypeImported;
 
-		public RuntimeBinderContext (Compiler.CompilerContext ctx)
+		public RuntimeBinderContext (DynamicContext ctx, Compiler.TypeSpec callingType)
 		{
 			this.ctx = ctx;
+			this.module = ctx.Module;
+			this.callingTypeImported = callingType;
+		}
+
+		public RuntimeBinderContext (DynamicContext ctx, Type callingType)
+		{
+			this.ctx = ctx;
+			this.module = ctx.Module;
+			this.callingType = callingType;
 		}
 
 		#region IMemberContext Members
 
-		public Type CurrentType {
-			// null for operators
-			get { return null; }
+		public Compiler.TypeSpec CurrentType {
+			get {
+				//
+				// Delay importing of calling type to be compatible with .net
+				// Some libraries are setting it to null which is invalid
+				// but the NullReferenceException is thrown only when the context
+				// is used and not during initialization
+				//
+				if (callingTypeImported == null && callingType != null)
+					callingTypeImported = ctx.ImportType (callingType);
+
+				return callingTypeImported;
+			}
 		}
 
-		public Compiler.TypeParameter[] CurrentTypeParameters
-		{
+		public Compiler.TypeParameter[] CurrentTypeParameters {
 			get { throw new NotImplementedException (); }
 		}
 
-		public Compiler.TypeContainer CurrentTypeDefinition {
+		public Compiler.MemberCore CurrentMemberDefinition {
 			get {
-				// TODO: only for operators
-				return new Compiler.ModuleContainer (Compiler, true);
+				return null;
+			}
+		}
+
+		public bool HasUnresolvedConstraints {
+			get {
+				return false;
 			}
 		}
 
 		public bool IsObsolete {
-			get { throw new NotImplementedException (); }
-		}
-
-		public bool IsUnsafe {
 			get {
-				// Always true to pass all unsafe checks
+				// Always true to ignore obsolete attribute checks
 				return true;
 			}
 		}
 
+		public bool IsUnsafe {
+			get {
+				// Dynamic cannot be used with pointers
+				return false;
+			}
+		}
+
 		public bool IsStatic {
-			get { throw new NotImplementedException (); }
+			get {
+				throw new NotImplementedException ();
+			}
+		}
+
+		public Compiler.ModuleContainer Module {
+			get {
+				return module;
+			}
 		}
 
 		public string GetSignatureForError ()
@@ -79,12 +117,13 @@ namespace Microsoft.CSharp.RuntimeBinder
 			throw new NotImplementedException ();
 		}
 
-		public Compiler.ExtensionMethodGroupExpr LookupExtensionMethod (Type extensionType, string name, Mono.CSharp.Location loc)
+		public IList<Compiler.MethodSpec> LookupExtensionMethod (Compiler.TypeSpec extensionType, string name, int arity, ref Compiler.NamespaceEntry scope)
 		{
-			throw new NotImplementedException ();
+			// No extension method lookup in this context
+			return null;
 		}
 
-		public Compiler.FullNamedExpression LookupNamespaceOrType (string name, Mono.CSharp.Location loc, bool ignore_cs0104)
+		public Compiler.FullNamedExpression LookupNamespaceOrType (string name, int arity, Mono.CSharp.Location loc, bool ignore_cs0104)
 		{
 			throw new NotImplementedException ();
 		}
@@ -96,7 +135,7 @@ namespace Microsoft.CSharp.RuntimeBinder
 		}
 
 		public Compiler.CompilerContext Compiler {
-			get { return ctx; }
+			get { return module.Compiler; }
 		}
 
 		#endregion

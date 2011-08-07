@@ -9,7 +9,7 @@
 
 #include "config.h"
 
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 #include <windows.h>
 #include <io.h>
 #else
@@ -62,7 +62,7 @@ malloc_shared_area (int pid)
 	return sarea;
 }
 
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 
 int
 mono_pagesize (void)
@@ -380,8 +380,12 @@ mono_mprotect (void *addr, size_t length, int flags)
 			memset (addr, 0, length);
 #else
 		memset (addr, 0, length);
+#ifdef HAVE_MADVISE
 		madvise (addr, length, MADV_DONTNEED);
 		madvise (addr, length, MADV_FREE);
+#else
+		posix_madvise (addr, length, POSIX_MADV_DONTNEED);
+#endif
 #endif
 	}
 	return mprotect (addr, length, prot);
@@ -419,7 +423,7 @@ mono_mprotect (void *addr, size_t length, int flags)
 }
 #endif // HAVE_MMAP
 
-#if defined(HAVE_SHM_OPEN)
+#if defined(HAVE_SHM_OPEN) && !defined (DISABLE_SHARED_PERFCOUNTERS)
 
 static int
 mono_shared_area_instances_slow (void **array, int count, gboolean cleanup)
@@ -607,4 +611,4 @@ mono_shared_area_instances (void **array, int count)
 
 #endif // HAVE_SHM_OPEN
 
-#endif // PLATFORM_WIN32
+#endif // HOST_WIN32

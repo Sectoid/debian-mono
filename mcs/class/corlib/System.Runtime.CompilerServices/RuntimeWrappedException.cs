@@ -26,8 +26,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 
@@ -43,7 +41,7 @@ namespace System.Runtime.CompilerServices {
 #pragma warning restore 649
 
 		// Called by the runtime
-		private RuntimeWrappedException () 
+		private RuntimeWrappedException () : base ("An object that does not derive from System.Exception has been wrapped in a RuntimeWrappedException.")
 		{
 		}
 
@@ -61,5 +59,3 @@ namespace System.Runtime.CompilerServices {
 		}
 	}
 }
-
-#endif

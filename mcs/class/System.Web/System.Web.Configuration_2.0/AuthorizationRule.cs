@@ -49,7 +49,8 @@ namespace System.Web.Configuration {
 		static ConfigurationPropertyCollection properties;
 
 		AuthorizationRuleAction action;
-
+		ConfigurationSaveMode saveMode = ConfigurationSaveMode.Full;
+			
 		static AuthorizationRule ()
 		{
 			rolesProp = new ConfigurationProperty ("roles", typeof (StringCollection), null,
@@ -128,9 +129,12 @@ namespace System.Web.Configuration {
 		}
 
 		[MonoTODO ("Not implemented")]
-		protected override bool IsModified ()
+		protected internal override bool IsModified ()
 		{
-			throw new NotImplementedException ();
+			if (((CommaDelimitedStringCollection)Roles).IsModified || ((CommaDelimitedStringCollection)Users).IsModified || ((CommaDelimitedStringCollection)Verbs).IsModified)
+				return true;
+
+			return false;
 		}
 
 		void VerifyData ()
@@ -153,7 +157,7 @@ namespace System.Web.Configuration {
 			VerifyData ();
 		}
 
-		protected override void Reset (ConfigurationElement parentElement)
+		protected internal override void Reset (ConfigurationElement parentElement)
 		{
 			AuthorizationRule r = (AuthorizationRule)parentElement;
 			Action = r.Action;
@@ -161,13 +165,16 @@ namespace System.Web.Configuration {
 			base.Reset (parentElement);
 		}
 
-		protected override void ResetModified ()
+		protected internal override void ResetModified ()
 		{
 			base.ResetModified ();
 		}
 
-		protected override bool SerializeElement (XmlWriter writer, bool serializeCollectionKey)
+		protected internal override bool SerializeElement (XmlWriter writer, bool serializeCollectionKey)
 		{
+			if (saveMode != ConfigurationSaveMode.Full && !IsModified ())
+				return true;
+			
 			PreSerialize (writer);
 
 			writer.WriteStartElement (action == AuthorizationRuleAction.Allow ? "allow" : "deny");
@@ -183,14 +190,19 @@ namespace System.Web.Configuration {
 			return true;
 		}
 
-		protected override void SetReadOnly ()
+		protected internal override void SetReadOnly ()
 		{
 			base.SetReadOnly();
 		}
 
-		protected override void Unmerge (ConfigurationElement sourceElement, ConfigurationElement parentElement, ConfigurationSaveMode saveMode)
+		protected internal override void Unmerge (ConfigurationElement sourceElement, ConfigurationElement parentElement, ConfigurationSaveMode saveMode)
 		{
 			base.Unmerge (sourceElement, parentElement, saveMode);
+			this.saveMode = saveMode;
+
+			AuthorizationRule source = sourceElement as AuthorizationRule;
+			if (source != null)
+				this.action = source.Action;
 		}
 
 		public AuthorizationRuleAction Action {
@@ -216,7 +228,7 @@ namespace System.Web.Configuration {
 			get { return (StringCollection) base [verbsProp];}
 		}
 
-		protected override ConfigurationPropertyCollection Properties {
+		protected internal override ConfigurationPropertyCollection Properties {
 			get { return properties; }
 		}
 

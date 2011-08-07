@@ -40,7 +40,6 @@ internal class Latin1Encoding : Encoding
 		// Nothing to do here.
 	}
 
-#if NET_2_0
 	public override bool IsSingleByte {
 		get { return true; }
 	}
@@ -49,7 +48,6 @@ internal class Latin1Encoding : Encoding
 	{
 		return form == NormalizationForm.FormC;
 	}
-#endif
 
 	// Get the number of bytes needed to encode a character buffer.
 	public override int GetByteCount (char[] chars, int index, int count)
@@ -79,8 +77,6 @@ internal class Latin1Encoding : Encoding
 	public override int GetBytes (char[] chars, int charIndex, int charCount,
 								 byte[] bytes, int byteIndex)
 	{
-#if NET_2_0
-// well, yes, I know this #if is ugly, but I think it is the simplest switch.
 		EncoderFallbackBuffer buffer = null;
 		char [] fallback_chars = null;
 		return GetBytes (chars, charIndex, charCount, bytes,
@@ -92,25 +88,57 @@ internal class Latin1Encoding : Encoding
 		      ref EncoderFallbackBuffer buffer,
 		      ref char [] fallback_chars)
 	{
-#endif
-		if (chars == null) {
+		if (chars == null)
 			throw new ArgumentNullException ("chars");
+
+		unsafe {
+			fixed (char *cptr = chars) {
+				return InternalGetBytes (cptr, chars.Length, charIndex, charCount, bytes, byteIndex, ref buffer, ref fallback_chars);
+			}
 		}
-		if (bytes == null) {
+	}
+
+	// Convenience wrappers for "GetBytes".
+	public override int GetBytes (String s, int charIndex, int charCount,
+								 byte[] bytes, int byteIndex)
+	{
+		EncoderFallbackBuffer buffer = null;
+		char [] fallback_chars = null;
+		return GetBytes (s, charIndex, charCount, bytes, byteIndex,
+			ref buffer, ref fallback_chars);
+	}
+
+	int GetBytes (String s, int charIndex, int charCount,
+		      byte[] bytes, int byteIndex,
+		      ref EncoderFallbackBuffer buffer,
+		      ref char [] fallback_chars)
+	{
+		if (s == null)
+			throw new ArgumentNullException ("s");
+
+		unsafe {
+			fixed (char *chars = s) {
+				return InternalGetBytes (chars, s.Length, charIndex, charCount, bytes, byteIndex, ref buffer, ref fallback_chars);
+			}
+		}
+	}
+
+	unsafe int InternalGetBytes (char *chars, int charLength, int charIndex, int charCount,
+		      byte[] bytes, int byteIndex,
+		      ref EncoderFallbackBuffer buffer,
+		      ref char [] fallback_chars)
+	{
+		if (bytes == null)
 			throw new ArgumentNullException ("bytes");
-		}
-		if (charIndex < 0 || charIndex > chars.Length) {
+		if (charIndex < 0 || charIndex > charLength)
 			throw new ArgumentOutOfRangeException ("charIndex", _("ArgRange_Array"));
-		}
-		if (charCount < 0 || charCount > (chars.Length - charIndex)) {
+		if (charCount < 0 || charCount > (charLength - charIndex))
 			throw new ArgumentOutOfRangeException ("charCount", _("ArgRange_Array"));
-		}
-		if (byteIndex < 0 || byteIndex > bytes.Length) {
+		if (byteIndex < 0 || byteIndex > bytes.Length)
 			throw new ArgumentOutOfRangeException ("byteIndex", _("ArgRange_Array"));
-		}
-		if ((bytes.Length - byteIndex) < charCount) {
+		if ((bytes.Length - byteIndex) < charCount)
 			throw new ArgumentException (_("Arg_InsufficientSpace"));
-		}
+
 		int count = charCount;
 		char ch;
 		while (count-- > 0) {
@@ -120,7 +148,6 @@ internal class Latin1Encoding : Encoding
 			} else if (ch >= '\uFF01' && ch <= '\uFF5E') {
 				bytes [byteIndex++] = (byte)(ch - 0xFEE0);
 			} else {
-#if NET_2_0
 				if (buffer == null)
 					buffer = EncoderFallback.CreateFallbackBuffer ();
 				if (Char.IsSurrogate (ch) && count > 1 &&
@@ -135,78 +162,6 @@ internal class Latin1Encoding : Encoding
 				byteIndex += GetBytes (fallback_chars, 0, 
 					fallback_chars.Length, bytes, byteIndex,
 					ref buffer, ref fallback_chars);
-#else
-				bytes [byteIndex++] = (byte)'?';
-#endif
-			}
-		}
-		return charCount;
-	}
-
-	// Convenience wrappers for "GetBytes".
-	public override int GetBytes (String s, int charIndex, int charCount,
-								 byte[] bytes, int byteIndex)
-	{
-#if NET_2_0
-// I know this #if is ugly, but I think it is the simplest switch.
-		EncoderFallbackBuffer buffer = null;
-		char [] fallback_chars = null;
-		return GetBytes (s, charIndex, charCount, bytes, byteIndex,
-			ref buffer, ref fallback_chars);
-	}
-
-	int GetBytes (String s, int charIndex, int charCount,
-		      byte[] bytes, int byteIndex,
-		      ref EncoderFallbackBuffer buffer,
-		      ref char [] fallback_chars)
-	{
-#endif
-		if (s == null) {
-			throw new ArgumentNullException ("s");
-		}
-		if (bytes == null) {
-			throw new ArgumentNullException ("bytes");
-		}
-		if (charIndex < 0 || charIndex > s.Length) {
-			throw new ArgumentOutOfRangeException ("charIndex", _("ArgRange_StringIndex"));
-		}
-		if (charCount < 0 || charCount > (s.Length - charIndex)) {
-			throw new ArgumentOutOfRangeException ("charCount", _("ArgRange_StringRange"));
-		}
-		if (byteIndex < 0 || byteIndex > bytes.Length) {
-			throw new ArgumentOutOfRangeException ("byteIndex", _("ArgRange_Array"));
-		}
-		if ((bytes.Length - byteIndex) < charCount) {
-			throw new ArgumentException (_("Arg_InsufficientSpace"));
-		}
-		int count = charCount;
-		char ch;
-		while (count-- > 0) {
-			ch = s [charIndex++];
-			if (ch < (char)0x0100) {
-				bytes [byteIndex++] = (byte)ch;
-			} else if (ch >= '\uFF01' && ch <= '\uFF5E') {
-				bytes [byteIndex++] = (byte)(ch - 0xFEE0);
-			} else {
-
-#if NET_2_0
-				if (buffer == null)
-					buffer = EncoderFallback.CreateFallbackBuffer ();
-				if (Char.IsSurrogate (ch) && count > 1 &&
-				    Char.IsSurrogate (s [charIndex]))
-					buffer.Fallback (ch, s [charIndex], charIndex++ - 1);
-				else
-					buffer.Fallback (ch, charIndex - 1);
-				if (fallback_chars == null || fallback_chars.Length < buffer.Remaining)
-					fallback_chars = new char [buffer.Remaining];
-				for (int i = 0; i < fallback_chars.Length; i++)
-					fallback_chars [i] = buffer.GetNextChar ();
-				byteIndex += GetBytes (fallback_chars, 0, 
-					fallback_chars.Length, bytes, byteIndex,
-					ref buffer, ref fallback_chars);
-#else
-				bytes [byteIndex++] = (byte)'?';
-#endif
 			}
 		}
 		return charCount;

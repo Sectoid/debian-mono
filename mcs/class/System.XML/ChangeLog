@@ -1,3 +1,36 @@
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Switch to single mcs compiler for all managed code build
+
+2010-12-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[System.Xml] Enable existing API under 4.0 profile too
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Factorize the System.Xml monotouch and monodroid sources into a
+	mobile.sources
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System.Xml build for monodroid
+
+2010-06-30  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* System.Xml.dll.sources,
+	  moonlight_raw_System.Xml.dll.sources,
+	  monotouch_System.Xml.dll.sources : add DefaultXmlWriter.cs.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: rename the net_2_1 profile to moonlight.
+	* net_2_1_*.dll.sources: rename to moonlight_*.dll.sources.
+
+2009-11-30  Jonathan Pryor  <jpryor@novell.com>
+
+	* monotouch_System.Xml.dll.sources: Add System.Xml/NamespaceHandling.cs 
+	  to the MonoTouch build (fixed build break).
+
 2009-11-27  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* System.Xml.dll.sources : added NamespaceHandling which is kept

@@ -353,6 +353,7 @@ public class Node : IComparable {
 			nodes.Sort ();
 	}
 
+	[Obsolete("Use PublicUrl")]
 	public string URL {
 		get {
 			if (position < 0)
@@ -870,6 +871,7 @@ public class RootTree : Tree {
 				d.Load (cfgFile);
 				basedir = d.SelectSingleNode ("config/path").Attributes ["docsPath"].Value;
 			}
+			//basedir = "/Library/Frameworks/Mono.framework/Versions/Current/lib/monodoc/";
 		}
 
 		//
@@ -879,21 +881,24 @@ public class RootTree : Tree {
 		string layout = Path.Combine (basedir, "monodoc.xml");
 		doc.Load (layout);
 
+		string osxExternalDir = "/Library/Frameworks/Mono.framework/External/monodoc";
+		string[] osxExternalSources = Directory.Exists (osxExternalDir)
+			? Directory.GetFiles (osxExternalDir, "*.source")
+			: new string[0];
+
 		return LoadTree (basedir, doc, 
-				Where (Directory.GetFiles (Path.Combine (basedir, "sources")),
-					delegate (object file) {return file.ToString ().EndsWith (".source");}));
+				Directory.GetFiles (Path.Combine (basedir, "sources"), "*.source")
+				.Concat (osxExternalSources));
 	}
 
-	delegate bool WherePredicate (object o);
 
-	static IEnumerable Where (IEnumerable source, WherePredicate predicate)
+	// Compatibility shim w/ Mono 2.6
+	public static RootTree LoadTree (string indexDir, XmlDocument docTree, IEnumerable sourceFiles)
 	{
-		foreach (var e in source)
-			if (predicate (e))
-				yield return e;
+		return LoadTree (indexDir, docTree, sourceFiles.Cast<string>());
 	}
 
-	public static RootTree LoadTree (string indexDir, XmlDocument docTree, IEnumerable/*<string>*/ sourceFiles)
+	public static RootTree LoadTree (string indexDir, XmlDocument docTree, IEnumerable<string> sourceFiles)
 	{
 		if (docTree == null) {
 			docTree = new XmlDocument ();
@@ -925,7 +930,7 @@ public class RootTree : Tree {
 		//
 		// Load the sources
 		//
-		foreach (string sourceFile in sourceFiles)
+		foreach (var sourceFile in sourceFiles)
 			root.AddSourceFile (sourceFile);
 		
 		foreach (string path in UncompiledHelpSources) {
@@ -1350,6 +1355,43 @@ public class RootTree : Tree {
 		return (HelpSource) help_sources [id];
 	}
 	
+	//
+	// Fetches the node title
+	//
+	public string GetTitle (string url)
+	{
+		Node match_node;
+
+		if (url == null || url.StartsWith ("root:"))
+			return "Mono Documentation";
+		
+		if (url.Length > 2 && url [1] == ':'){
+			switch (url [0]){
+			case 'N':
+				return url.Substring (2) + " Namespace";
+
+			case 'T':
+				string s = TypeLookup (url, out match_node);
+				if (match_node != null)
+					return match_node.Caption;
+				return url.Substring (2) + " type";
+
+		case 'M':
+		case 'F':
+		case 'P':
+		case 'E':
+		case 'C':
+		case 'O':
+			MemberLookup (url.Substring (0,2), url, out match_node);
+			if (match_node != null)
+				return match_node.Caption;
+			break;
+			}
+		}
+		
+		return "Mono Documentation";
+	}
+	
 	string home_cache;
 	/// <summary>
 	///    Allows every HelpSource to try to provide the content for this
@@ -1418,12 +1460,16 @@ public class RootTree : Tree {
 				sb.Replace ("@@FONT_FAMILY@@", SettingsHandler.Settings.preferred_font_family);
 				sb.Replace ("@@FONT_SIZE@@", SettingsHandler.Settings.preferred_font_size.ToString());
 				//contributions
+				var visible = SettingsHandler.Settings.EnableEditing ? "block;" : "none;";
 				if ((oldContrib + contribs) == 0) {
 					sb.Replace ("@@CONTRIB_DISP@@", "display: none;");
+                                        sb.Replace ("@@NO_CONTRIB_DISP@@", "display: " + visible);
 				} else {
+					sb.Replace ("@@CONTRIB_DISP@@", "display: " + visible);
 					sb.Replace ("@@NO_CONTRIB_DISP@@", "display: none;");
 					sb.Replace ("@@CONTRIBS@@", con.ToString ());
 				}
+				sb.Replace ("@@EDITING_ENABLED@@", "display: " + visible);
 					
 				// load the url of nodes
 				String add_str;

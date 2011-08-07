@@ -11,10 +11,7 @@
 
 using System;
 using System.Text;
-using System.Collections;
-using System.Reflection;
-using System.Reflection.Emit;
-using System.Diagnostics;
+using System.Collections.Generic;
 
 namespace Mono.CSharp
 {
@@ -471,6 +468,7 @@ namespace Mono.CSharp
 			CurrentUsageVector.SetFieldAssigned (vi, name);
 		}
 
+#if DEBUG
 		public override string ToString ()
 		{
 			StringBuilder sb = new StringBuilder ();
@@ -493,6 +491,7 @@ namespace Mono.CSharp
 			sb.Append (")");
 			return sb.ToString ();
 		}
+#endif
 
 		public string Name {
 			get { return String.Format ("{0} ({1}:{2}:{3})", GetType (), id, Type, Location); }
@@ -639,7 +638,7 @@ namespace Mono.CSharp
 	{
 		Iterator iterator;
 		public FlowBranchingIterator (FlowBranching parent, Iterator iterator)
-			: base (parent, BranchingType.Iterator, SiblingType.Block, null, iterator.Location)
+			: base (parent, BranchingType.Iterator, SiblingType.Block, iterator.Block, iterator.Location)
 		{
 			this.iterator = iterator;
 		}
@@ -655,7 +654,7 @@ namespace Mono.CSharp
 	{
 		UsageVector return_origins;
 
-		public FlowBranchingToplevel (FlowBranching parent, ToplevelBlock stmt)
+		public FlowBranchingToplevel (FlowBranching parent, ParametersBlock stmt)
 			: base (parent, BranchingType.Toplevel, SiblingType.Conditional, stmt, stmt.loc)
 		{
 		}
@@ -714,10 +713,10 @@ namespace Mono.CSharp
 		protected override UsageVector Merge ()
 		{
 			for (UsageVector origin = return_origins; origin != null; origin = origin.Next)
-				Block.Toplevel.CheckOutParameters (origin, origin.Location);
+				Block.ParametersBlock.CheckOutParameters (origin, origin.Location);
 
 			UsageVector vector = base.Merge ();
-			Block.Toplevel.CheckOutParameters (vector, Block.loc);
+			Block.ParametersBlock.CheckOutParameters (vector, Block.loc);
 			// Note: we _do_not_ merge in the return origins
 			return vector;
 		}
@@ -1014,7 +1013,7 @@ namespace Mono.CSharp
 	// </summary>
 	public class TypeInfo
 	{
-		public readonly Type Type;
+		public readonly TypeSpec Type;
 
 		// <summary>
 		//   Total number of bits a variable of this type consumes in the flow vector.
@@ -1043,7 +1042,7 @@ namespace Mono.CSharp
 		public TypeInfo[] SubStructInfo;
 
 		readonly StructInfo struct_info;
-		private static Hashtable type_hash;
+		private static Dictionary<TypeSpec, TypeInfo> type_hash;
 		
 		static TypeInfo ()
 		{
@@ -1052,14 +1051,14 @@ namespace Mono.CSharp
 		
 		public static void Reset ()
 		{
-			type_hash = new Hashtable ();
-			StructInfo.field_type_hash = new Hashtable ();
+			type_hash = new Dictionary<TypeSpec, TypeInfo> ();
+			StructInfo.field_type_hash = new Dictionary<TypeSpec, StructInfo> ();
 		}
 
-		public static TypeInfo GetTypeInfo (Type type)
+		public static TypeInfo GetTypeInfo (TypeSpec type)
 		{
-			TypeInfo info = (TypeInfo) type_hash [type];
-			if (info != null)
+			TypeInfo info;
+			if (type_hash.TryGetValue (type, out info))
 				return info;
 
 			info = new TypeInfo (type);
@@ -1067,39 +1066,11 @@ namespace Mono.CSharp
 			return info;
 		}
 
-		public static TypeInfo GetTypeInfo (TypeContainer tc)
-		{
-			TypeInfo info = (TypeInfo) type_hash [tc.TypeBuilder];
-			if (info != null)
-				return info;
-
-			info = new TypeInfo (tc);
-			type_hash.Add (tc.TypeBuilder, info);
-			return info;
-		}
-
-		private TypeInfo (Type type)
+		private TypeInfo (TypeSpec type)
 		{
 			this.Type = type;
 
 			struct_info = StructInfo.GetStructInfo (type);
-			if (struct_info != null) {
-				Length = struct_info.Length;
-				TotalLength = struct_info.TotalLength;
-				SubStructInfo = struct_info.StructFields;
-				IsStruct = true;
-			} else {
-				Length = 0;
-				TotalLength = 1;
-				IsStruct = false;
-			}
-		}
-
-		private TypeInfo (TypeContainer tc)
-		{
-			this.Type = tc.TypeBuilder;
-
-			struct_info = StructInfo.GetStructInfo (tc);
 			if (struct_info != null) {
 				Length = struct_info.Length;
 				TotalLength = struct_info.TotalLength;
@@ -1151,18 +1122,17 @@ namespace Mono.CSharp
 			bool ok = true;
 			FlowBranching branching = ec.CurrentBranching;
 			for (int i = 0; i < struct_info.Count; i++) {
-				FieldInfo field = struct_info.Fields [i];
+				var field = struct_info.Fields [i];
 
 				if (!branching.IsFieldAssigned (vi, field.Name)) {
-					FieldBase fb = TypeManager.GetField (field);
-					if (fb is Property.BackingField) {
+					if (field.MemberDefinition is Property.BackingField) {
 						ec.Report.Error (843, loc,
-							"An automatically implemented property `{0}' must be fully assigned before control leaves the constructor. Consider calling default contructor",
-							fb.GetSignatureForError ());
+							"An automatically implemented property `{0}' must be fully assigned before control leaves the constructor. Consider calling the default struct contructor from a constructor initializer",
+							field.GetSignatureForError ());
 					} else {
 						ec.Report.Error (171, loc,
 							"Field `{0}' must be fully assigned before control leaves the constructor",
-							TypeManager.GetFullNameSignature (field));
+							field.GetSignatureForError ());
 					}
 					ok = false;
 				}
@@ -1178,8 +1148,8 @@ namespace Mono.CSharp
 		}
 
 		class StructInfo {
-			public readonly Type Type;
-			public readonly FieldInfo[] Fields;
+			public readonly TypeSpec Type;
+			public readonly FieldSpec[] Fields;
 			public readonly TypeInfo[] StructFields;
 			public readonly int Count;
 			public readonly int CountPublic;
@@ -1188,72 +1158,50 @@ namespace Mono.CSharp
 			public readonly int TotalLength;
 			public readonly bool HasStructFields;
 
-			public static Hashtable field_type_hash;
-			private Hashtable struct_field_hash;
-			private Hashtable field_hash;
+			public static Dictionary<TypeSpec, StructInfo> field_type_hash;
+			private Dictionary<string, TypeInfo> struct_field_hash;
+			private Dictionary<string, int> field_hash;
 
 			protected bool InTransit = false;
 
 			// Private constructor.  To save memory usage, we only need to create one instance
 			// of this class per struct type.
-			private StructInfo (Type type)
+			private StructInfo (TypeSpec type)
 			{
 				this.Type = type;
 
 				field_type_hash.Add (type, this);
 
-				if (type.Module == RootContext.ToplevelTypes.Builder) {
-					TypeContainer tc = TypeManager.LookupTypeContainer (TypeManager.DropGenericTypeArguments (type));
+				TypeContainer tc = type.MemberDefinition as TypeContainer;
 
-					ArrayList public_fields = new ArrayList ();
-					ArrayList non_public_fields = new ArrayList ();
+				var public_fields = new List<FieldSpec> ();
+				var non_public_fields = new List<FieldSpec> ();
 
-					//
-					// TODO: tc != null is needed because FixedBuffers are not cached
-					//
-					if (tc != null) {					
-					ArrayList fields = tc.Fields;
+				if (tc != null) {
+					var fields = tc.Fields;
 
 					if (fields != null) {
 						foreach (FieldBase field in fields) {
 							if ((field.ModFlags & Modifiers.STATIC) != 0)
 								continue;
 							if ((field.ModFlags & Modifiers.PUBLIC) != 0)
-								public_fields.Add (field.FieldBuilder);
+								public_fields.Add (field.Spec);
 							else
-								non_public_fields.Add (field.FieldBuilder);
+								non_public_fields.Add (field.Spec);
 						}
 					}
-					}
-
-					CountPublic = public_fields.Count;
-					CountNonPublic = non_public_fields.Count;
-					Count = CountPublic + CountNonPublic;
-
-					Fields = new FieldInfo [Count];
-					public_fields.CopyTo (Fields, 0);
-					non_public_fields.CopyTo (Fields, CountPublic);
-				} else if (type is GenericTypeParameterBuilder) {
-					CountPublic = CountNonPublic = Count = 0;
-
-					Fields = new FieldInfo [0];
-				} else {
-					FieldInfo[] public_fields = type.GetFields (
-						BindingFlags.Instance|BindingFlags.Public);
-					FieldInfo[] non_public_fields = type.GetFields (
-						BindingFlags.Instance|BindingFlags.NonPublic);
-
-					CountPublic = public_fields.Length;
-					CountNonPublic = non_public_fields.Length;
-					Count = CountPublic + CountNonPublic;
-
-					Fields = new FieldInfo [Count];
-					public_fields.CopyTo (Fields, 0);
-					non_public_fields.CopyTo (Fields, CountPublic);
 				}
 
-				struct_field_hash = new Hashtable ();
-				field_hash = new Hashtable ();
+				CountPublic = public_fields.Count;
+				CountNonPublic = non_public_fields.Count;
+				Count = CountPublic + CountNonPublic;
+
+				Fields = new FieldSpec[Count];
+				public_fields.CopyTo (Fields, 0);
+				non_public_fields.CopyTo (Fields, CountPublic);
+
+				struct_field_hash = new Dictionary<string, TypeInfo> ();
+				field_hash = new Dictionary<string, int> ();
 
 				Length = 0;
 				StructFields = new TypeInfo [Count];
@@ -1262,16 +1210,12 @@ namespace Mono.CSharp
 				InTransit = true;
 
 				for (int i = 0; i < Count; i++) {
-					FieldInfo field = (FieldInfo) Fields [i];
+					var field = Fields [i];
 
-					sinfo [i] = GetStructInfo (field.FieldType);
+					sinfo [i] = GetStructInfo (field.MemberType);
 					if (sinfo [i] == null)
 						field_hash.Add (field.Name, ++Length);
 					else if (sinfo [i].InTransit) {
-						RootContext.ToplevelTypes.Compiler.Report.Error (523, String.Format (
-								      "Struct member `{0}.{1}' of type `{2}' causes " +
-								      "a cycle in the structure layout",
-								      type, field.Name, sinfo [i].Type));
 						sinfo [i] = null;
 						return;
 					}
@@ -1281,7 +1225,7 @@ namespace Mono.CSharp
 
 				TotalLength = Length + 1;
 				for (int i = 0; i < Count; i++) {
-					FieldInfo field = (FieldInfo) Fields [i];
+					var field = Fields [i];
 
 					if (sinfo [i] == null)
 						continue;
@@ -1297,41 +1241,33 @@ namespace Mono.CSharp
 
 			public int this [string name] {
 				get {
-					if (field_hash.Contains (name))
-						return (int) field_hash [name];
-					else
+					int val;
+					if (!field_hash.TryGetValue (name, out val))
 						return 0;
+
+					return val;
 				}
 			}
 
 			public TypeInfo GetStructField (string name)
 			{
-				return (TypeInfo) struct_field_hash [name];
+				TypeInfo ti;
+				if (struct_field_hash.TryGetValue (name, out ti))
+					return ti;
+
+				return null;
 			}
 
-			public static StructInfo GetStructInfo (Type type)
+			public static StructInfo GetStructInfo (TypeSpec type)
 			{
-				if (!TypeManager.IsValueType (type) || TypeManager.IsEnumType (type) ||
-				    TypeManager.IsBuiltinType (type))
+				if (!type.IsStruct || TypeManager.IsBuiltinType (type))
 					return null;
 
-				if (TypeManager.IsGenericParameter (type))
-					return null;
-
-				StructInfo info = (StructInfo) field_type_hash [type];
-				if (info != null)
+				StructInfo info;
+				if (field_type_hash.TryGetValue (type, out info))
 					return info;
 
 				return new StructInfo (type);
-			}
-
-			public static StructInfo GetStructInfo (TypeContainer tc)
-			{
-				StructInfo info = (StructInfo) field_type_hash [tc.TypeBuilder];
-				if (info != null)
-					return info;
-
-				return new StructInfo (tc.TypeBuilder);
 			}
 		}
 	}
@@ -1363,7 +1299,7 @@ namespace Mono.CSharp
 		// </summary>
 		public readonly bool IsParameter;
 
-		public readonly LocalInfo LocalInfo;
+		public readonly LocalVariable LocalInfo;
 
 		readonly VariableInfo Parent;
 		VariableInfo[] sub_info;
@@ -1373,7 +1309,7 @@ namespace Mono.CSharp
 			get { return is_ever_assigned; }
 		}
 
-		protected VariableInfo (string name, Type type, int offset)
+		protected VariableInfo (string name, TypeSpec type, int offset)
 		{
 			this.Name = name;
 			this.Offset = offset;
@@ -1411,8 +1347,8 @@ namespace Mono.CSharp
 				sub_info = new VariableInfo [0];
 		}
 
-		public VariableInfo (LocalInfo local_info, int offset)
-			: this (local_info.Name, local_info.VariableType, offset)
+		public VariableInfo (LocalVariable local_info, int offset)
+			: this (local_info.Name, local_info.Type, offset)
 		{
 			this.LocalInfo = local_info;
 			this.IsParameter = false;
@@ -1427,7 +1363,7 @@ namespace Mono.CSharp
 		public bool IsAssigned (ResolveContext ec)
 		{
 			return !ec.DoFlowAnalysis ||
-				ec.OmitStructFlowAnalysis && TypeInfo.IsStruct ||
+				(ec.OmitStructFlowAnalysis && TypeInfo.Type.IsStruct) ||
 				ec.CurrentBranching.IsAssigned (this);
 		}
 
@@ -1569,11 +1505,11 @@ namespace Mono.CSharp
 		// Invariant: vector == null || shared == null
 		//            i.e., at most one of 'vector' and 'shared' can be non-null.  They can both be null -- that means all-ones
 		// The object in 'shared' cannot be modified, while 'vector' can be freely modified
-		BitArray vector, shared;
+		System.Collections.BitArray vector, shared;
 
 		MyBitVector ()
 		{
-			shared = new BitArray (0, false);
+			shared = new System.Collections.BitArray (0, false);
 		}
 
 		public MyBitVector (MyBitVector InheritsFrom, int Count)
@@ -1584,7 +1520,7 @@ namespace Mono.CSharp
 			this.Count = Count;
 		}
 
-		BitArray MakeShared (int new_count)
+		System.Collections.BitArray MakeShared (int new_count)
 		{
 			// Post-condition: vector == null
 
@@ -1640,7 +1576,7 @@ namespace Mono.CSharp
 			if (Count == 0 || new_vector.Count == 0)
 				return this;
 
-			BitArray o = new_vector.vector != null ? new_vector.vector : new_vector.shared;
+			var o = new_vector.vector != null ? new_vector.vector : new_vector.shared;
 
 			if (o == null) {
 				int n = new_vector.Count;
@@ -1684,7 +1620,7 @@ namespace Mono.CSharp
 			if (Count == 0)
 				return this;
 
-			BitArray o = new_vector.vector != null ? new_vector.vector : new_vector.shared;
+			var o = new_vector.vector != null ? new_vector.vector : new_vector.shared;
 
 			if (o == null) {
 				for (int i = new_vector.Count; i < Count; ++i)
@@ -1760,7 +1696,7 @@ namespace Mono.CSharp
 		public void SetRange (int offset, int length)
 		{
 			if (offset > Count || offset + length > Count)
-				throw new ArgumentOutOfRangeException ();
+				throw new ArgumentOutOfRangeException ("flow-analysis");
 
 			if (shared == null && vector == null)
 				return;
@@ -1794,11 +1730,11 @@ namespace Mono.CSharp
 		{
 			// Post-condition: vector != null
 			if (shared == null) {
-				vector = new BitArray (Count, true);
+				vector = new System.Collections.BitArray (Count, true);
 				return;
 			}
 
-			vector = new BitArray (shared);
+			vector = new System.Collections.BitArray (shared);
 			if (Count != vector.Count)
 				vector.Length = Count;
 			shared = null;
@@ -1806,7 +1742,7 @@ namespace Mono.CSharp
 
 		StringBuilder Dump (StringBuilder sb)
 		{
-			BitArray dump = vector == null ? shared : vector;
+			var dump = vector == null ? shared : vector;
 			if (dump == null)
 				return sb.Append ("/");
 			if (dump == shared)

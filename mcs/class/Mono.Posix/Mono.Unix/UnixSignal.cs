@@ -94,9 +94,18 @@ namespace Mono.Unix {
 				EntryPoint="Mono_Unix_UnixSignal_uninstall")]
 		private static extern int uninstall (IntPtr info);
 
+		[UnmanagedFunctionPointer (CallingConvention.Cdecl)]
+		delegate int Mono_Posix_RuntimeIsShuttingDown ();
+		static Mono_Posix_RuntimeIsShuttingDown ShuttingDown = RuntimeShuttingDownCallback;
+		
+		static int RuntimeShuttingDownCallback ()
+		{
+			return Environment.HasShutdownStarted ? 1 : 0;
+		}
+
 		[DllImport (Stdlib.MPH, CallingConvention=CallingConvention.Cdecl,
 				EntryPoint="Mono_Unix_UnixSignal_WaitAny")]
-		private static extern int WaitAny (IntPtr[] infos, int count, int timeout);
+		private static extern int WaitAny (IntPtr[] infos, int count, int timeout, Mono_Posix_RuntimeIsShuttingDown shutting_down);
 
 		[DllImport (Stdlib.MPH, CallingConvention=CallingConvention.Cdecl,
                                 EntryPoint="Mono_Posix_SIGRTMIN")]
@@ -187,6 +196,7 @@ namespace Mono.Unix {
 			return WaitAny (signals, (int) ms);
 		}
 
+			
 		public static unsafe int WaitAny (UnixSignal[] signals, int millisecondsTimeout)
 		{
 			if (signals == null)
@@ -199,7 +209,7 @@ namespace Mono.Unix {
 				if (infos [i] == IntPtr.Zero)
 					throw new InvalidOperationException ("Disposed UnixSignal");
 			}
-			return WaitAny (infos, infos.Length, millisecondsTimeout);
+			return WaitAny (infos, infos.Length, millisecondsTimeout, ShuttingDown);
 		}
 	}
 }

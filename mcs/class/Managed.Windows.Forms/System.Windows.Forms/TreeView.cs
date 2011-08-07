@@ -44,7 +44,7 @@ namespace System.Windows.Forms {
 		#region Fields
 		private string path_separator = "\\";
 		private int item_height = -1;
-		private bool sorted;
+		internal bool sorted;
 		internal TreeNode root_node;
 		internal bool nodes_added;
 		private TreeNodeCollection nodes;
@@ -751,7 +751,7 @@ namespace System.Windows.Forms {
 #if NET_2_0
 		public	void Sort ()
 		{
-			Sort (Nodes.Count >= 2 ? tree_view_node_sorter : null);
+			Sort (tree_view_node_sorter);
 		}
 #endif
 
@@ -764,6 +764,16 @@ namespace System.Windows.Forms {
 			Invalidate ();
 		}
 
+		void SetVScrollValue (int value)
+		{
+			if (value > vbar.Maximum)
+				value = vbar.Maximum;
+			else if (value < vbar.Minimum)
+				value = vbar.Minimum;
+
+			vbar.Value = value;
+		}
+		
 		public void ExpandAll ()
 		{
 			BeginUpdate ();
@@ -790,7 +800,7 @@ namespace System.Windows.Forms {
 				return;
 
 			if (IsHandleCreated && vbar.VisibleInternal) {
-				vbar.Value = vbar.Maximum - VisibleCount + 1;
+				SetVScrollValue (vbar.Maximum - VisibleCount + 1);
 			} else {
 				RecalculateVisibleOrder (root_node);
 				UpdateScrollBars (true);
@@ -811,7 +821,7 @@ namespace System.Windows.Forms {
 			EndUpdate ();
 
 			if (vbar.VisibleInternal)
-				vbar.Value = vbar.Maximum - VisibleCount + 1;
+				SetVScrollValue (vbar.Maximum - VisibleCount + 1);
 		}
 
 		public TreeNode GetNodeAt (Point pt) {
@@ -1392,7 +1402,7 @@ namespace System.Windows.Forms {
 				return;
 			}
 
-			vbar.Value = Math.Min (order, vbar.Maximum - VisibleCount + 1);
+			SetVScrollValue (Math.Min (order, vbar.Maximum - VisibleCount + 1));
 		}
 
 		internal void SetBottom (TreeNode node)
@@ -1412,7 +1422,7 @@ namespace System.Windows.Forms {
 
 			int nv = vbar.Value + offset;
 			if (vbar.Value + offset < vbar.Maximum) {
-				vbar.Value = nv;
+				SetVScrollValue (nv);
 			} else {
 #if DEBUG
 				Console.Error.WriteLine ("setting bottom to value greater then maximum ({0}, {1})",
@@ -1896,7 +1906,7 @@ namespace System.Windows.Forms {
 				skipped_nodes = 0;
 				RecalculateVisibleOrder (root_node);
 				vbar.Visible = false;
-				vbar.Value = 0;
+				SetVScrollValue (0);
 				vbar_bounds_set = false;
 			}
 
@@ -2037,9 +2047,9 @@ namespace System.Windows.Forms {
 			}
 
 			if (e.Delta < 0) {
-				vbar.Value = Math.Min(vbar.Value + SystemInformation.MouseWheelScrollLines, vbar.Maximum - VisibleCount + 1);
+				SetVScrollValue (Math.Min (vbar.Value + SystemInformation.MouseWheelScrollLines, vbar.Maximum - VisibleCount + 1));
 			} else {
-				vbar.Value = Math.Max(0, vbar.Value - SystemInformation.MouseWheelScrollLines);
+				SetVScrollValue (Math.Max (0, vbar.Value - SystemInformation.MouseWheelScrollLines));
 			}
 		}
 
@@ -2126,6 +2136,9 @@ namespace System.Windows.Forms {
 				Invalidate (highlighted_node.Bounds);
 				if (old_highlighted != null)
 					Invalidate (Bloat (old_highlighted.Bounds));
+
+				drag_begin_x = e.X;
+				drag_begin_y = e.Y;
 			} 
 		}
 
@@ -2210,10 +2223,7 @@ namespace System.Windows.Forms {
 #endif
 			
 			if (e.Button == MouseButtons.Left || e.Button == MouseButtons.Right) {
-				if (drag_begin_x == -1 && drag_begin_y == -1) {
-					drag_begin_x = e.X;
-					drag_begin_y = e.Y;
-				} else {
+				if (drag_begin_x != -1 && drag_begin_y != -1) {
 					double rise = Math.Pow (drag_begin_x - e.X, 2);
 					double run = Math.Pow (drag_begin_y - e.Y, 2);
 					double move = Math.Sqrt (rise + run);
@@ -2249,7 +2259,7 @@ namespace System.Windows.Forms {
 
 		private void DoubleClickHandler (object sender, MouseEventArgs e) {
 			TreeNode node = GetNodeAtUseX (e.X,e.Y);
-			if(node != null) {
+			if(node != null && node.Nodes.Count > 0) {
 				node.Toggle();
 			}
 		}

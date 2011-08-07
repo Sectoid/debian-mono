@@ -87,7 +87,7 @@ namespace System.ServiceModel.Security.Tokens
 		}
 
 		[MonoTODO]
-		protected override void InitializeSecurityTokenRequirement (SecurityTokenRequirement requirement)
+		protected internal override void InitializeSecurityTokenRequirement (SecurityTokenRequirement requirement)
 		{
 			if (requirement == null)
 				throw new ArgumentNullException ();
@@ -98,7 +98,6 @@ namespace System.ServiceModel.Security.Tokens
 			requirement.KeyType = SecurityKeyType.SymmetricKey;
 		}
 
-		[MonoTODO]
 		public override string ToString ()
 		{
 			return base.ToString ();

@@ -1,4 +1,3 @@
-#if NET_4_0
 // TaskCanceledException.cs
 //
 // Copyright (c) 2008 Jérémie "Garuma" Laval
@@ -23,6 +22,7 @@
 //
 //
 
+#if NET_4_0 || MOBILE
 using System;
 using System.Runtime.Serialization;
 
@@ -41,7 +41,7 @@ namespace System.Threading.Tasks
 		{
 		}
 		
-		public TaskCanceledException (string message, Exception inner): base (message, inner)
+		public TaskCanceledException (string message, Exception innerException): base (message, innerException)
 		{
 		}
 		

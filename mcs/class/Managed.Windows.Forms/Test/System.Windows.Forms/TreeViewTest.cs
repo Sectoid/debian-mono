@@ -330,6 +330,22 @@ namespace MonoTests.System.Windows.Forms
 			
 			Assert.AreEqual ("aaa", tv.Nodes[0].Text, "A1");
 		}
+
+		[Test]
+		public void SortBeginUpdate ()
+		{
+			TreeView tv = new TreeView ();
+			tv.Sorted = true;
+			tv.BeginUpdate ();
+			tv.Nodes.Add ("x");
+			tv.Nodes.Add ("f");
+			tv.Nodes.Add ("a");
+
+			// Even if BeginUpdate was called, Sort is called.
+			Assert.AreEqual ("a", tv.Nodes [0].Text, "#A1");
+			Assert.AreEqual ("f", tv.Nodes [1].Text, "#A2");
+			Assert.AreEqual ("x", tv.Nodes [2].Text, "#A3");
+		}
 #endif
 
 		[Test]
@@ -684,6 +700,124 @@ namespace MonoTests.System.Windows.Forms
 				if (x == y)
 					return 0;
 				return ((TreeNode)x).Text == "2" ? -1 : 1;
+			}
+		}
+
+		[Test]
+		public void SortedRecursive ()
+		{
+			TreeView tv = new TreeView ();
+			tv.TreeViewNodeSorter = new InverseNodeSorter ();
+			tv.BeginUpdate ();
+			TreeNode root_node = tv.Nodes.Add ("Root");
+			for (char c = 'a'; c <= 'f'; c++) {
+				TreeNode node = new TreeNode (c.ToString ());
+				for (int i = 0; i < 3; i++)
+					node.Nodes.Add (i.ToString ());
+
+				root_node.Nodes.Add (node);
+			}
+			tv.EndUpdate ();
+
+			// Make sure we are sorted
+			tv.Sort ();
+
+			Assert.AreEqual ("f", root_node.Nodes [0].Text, "#A1");
+			Assert.AreEqual ("e", root_node.Nodes [1].Text, "#A2");
+			Assert.AreEqual ("d", root_node.Nodes [2].Text, "#A3");
+			Assert.AreEqual ("c", root_node.Nodes [3].Text, "#A4");
+			Assert.AreEqual ("b", root_node.Nodes [4].Text, "#A5");
+			Assert.AreEqual ("a", root_node.Nodes [5].Text, "#A5");
+
+			foreach (TreeNode n in root_node.Nodes) {
+				Assert.AreEqual ("2", n.Nodes [0].Text, "#B1");
+				Assert.AreEqual ("1", n.Nodes [1].Text, "#B2");
+				Assert.AreEqual ("0", n.Nodes [2].Text, "#B3");
+			}
+		}
+
+		[Test]
+		public void SortedAutomatically ()
+		{
+			TreeView tv = new TreeView ();
+			tv.Nodes.Add ("z");
+			tv.Nodes.Add ("a");
+			tv.Nodes.Add ("c");
+
+			// One way to sort them automatically is to set Sorted to true
+			// and let the TreeView use the default comparer
+			tv.Sorted = true;
+			Assert.AreEqual ("a", tv.Nodes [0].Text, "#A1");
+			Assert.AreEqual ("c", tv.Nodes [1].Text, "#A2");
+			Assert.AreEqual ("z", tv.Nodes [2].Text, "#A3");
+			Assert.AreEqual (true, tv.Sorted, "#A4");
+
+			tv.Nodes.Add ("d");
+			Assert.AreEqual ("a", tv.Nodes [0].Text, "#B1");
+			Assert.AreEqual ("c", tv.Nodes [1].Text, "#B2");
+			Assert.AreEqual ("d", tv.Nodes [2].Text, "#B3");
+			Assert.AreEqual ("z", tv.Nodes [3].Text, "#B4");
+
+			// Another way is to set TreeViewNodeSorter,
+			// which will set Sorted to true automatically
+			tv.Sorted = false;
+			Assert.AreEqual (false, tv.Sorted, "#C0");
+
+			tv.TreeViewNodeSorter = new InverseNodeSorter ();
+			Assert.AreEqual ("z", tv.Nodes [0].Text, "#C1");
+			Assert.AreEqual ("d", tv.Nodes [1].Text, "#C2");
+			Assert.AreEqual ("c", tv.Nodes [2].Text, "#C3");
+			Assert.AreEqual ("a", tv.Nodes [3].Text, "#C4");
+			Assert.AreEqual (true, tv.Sorted, "#C5");
+
+			tv.Nodes.Add ("i");
+			Assert.AreEqual ("z", tv.Nodes [0].Text, "#D1");
+			Assert.AreEqual ("i", tv.Nodes [1].Text, "#D2");
+			Assert.AreEqual ("d", tv.Nodes [2].Text, "#D3");
+			Assert.AreEqual ("c", tv.Nodes [3].Text, "#D4");
+			Assert.AreEqual ("a", tv.Nodes [4].Text, "#D5");
+
+			tv.Sorted = false;
+			Assert.AreEqual (false, tv.Sorted, "#E0");
+
+			// If we have set a TreeViewNodeSorter, 
+			// it will sort the nodes automatically when adding/inserting a new one,
+			// setting Sorted to true.
+			tv.Nodes.Add ("f");
+			Assert.AreEqual ("z", tv.Nodes [0].Text, "#E1");
+			Assert.AreEqual ("i", tv.Nodes [1].Text, "#E2");
+			Assert.AreEqual ("f", tv.Nodes [2].Text, "#E3");
+			Assert.AreEqual ("d", tv.Nodes [3].Text, "#E4");
+			Assert.AreEqual ("c", tv.Nodes [4].Text, "#E5");
+			Assert.AreEqual ("a", tv.Nodes [5].Text, "#E6");
+			Assert.AreEqual (true, tv.Sorted, "#E7");
+
+			// After setting the node sorter to null and testing,
+			// I'm curious about the interaction between Sort and Sorted.
+			tv.TreeViewNodeSorter = null;
+			Assert.AreEqual (null, tv.TreeViewNodeSorter, "#F1");
+			Assert.AreEqual (true, tv.Sorted, "#F2");
+
+			// Finally, no NodeSorter to automatically set Sorted to true
+			tv.Sorted = false;
+			Assert.AreEqual (false, tv.Sorted, "#F0");
+			tv.Nodes.Add ("k");
+			Assert.AreEqual ("z", tv.Nodes [0].Text, "#G1");
+			Assert.AreEqual ("i", tv.Nodes [1].Text, "#G2");
+			Assert.AreEqual ("f", tv.Nodes [2].Text, "#G3");
+			Assert.AreEqual ("d", tv.Nodes [3].Text, "#G4");
+			Assert.AreEqual ("c", tv.Nodes [4].Text, "#G5");
+			Assert.AreEqual ("a", tv.Nodes [5].Text, "#G6");
+			Assert.AreEqual ("k", tv.Nodes [6].Text, "#G7");
+		}
+
+		class InverseNodeSorter : IComparer
+		{
+			public int Compare (object a, object b)
+			{
+				TreeNode node_a = (TreeNode)a;
+				TreeNode node_b = (TreeNode)b;
+				return String.Compare (node_b.Text, node_a.Text);
 			}
 		}
 	}

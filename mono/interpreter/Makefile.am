@@ -3,7 +3,7 @@ INCLUDES = 				\
 	$(LIBGC_CFLAGS)			\
 	$(GLIB_CFLAGS)
 
-if PLATFORM_WIN32
+if HOST_WIN32
 export HOST_CC
 # The mingw math.h has "extern inline" functions that dont appear in libs, so
 # optimisation is required to actually inline them
@@ -14,6 +14,8 @@ if INTERP_SUPPORTED
 bin_PROGRAMS = mint
 
 lib_LTLIBRARIES = libmint.la
+
+man_MANS = mint.1
 endif
 
 mint_SOURCES =		\
@@ -52,7 +54,5 @@ libmint_la_LIBADD =				\
 	$(GLIB_LIBS)			\
 	$(ICU_LIBS)			\
 	-lm
-
-man_MANS = mint.1
 
 EXTRA_DIST = $(man_MANS)

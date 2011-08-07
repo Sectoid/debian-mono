@@ -11,6 +11,7 @@
  * allowing more efficient function ordering in the AOT files.
  */
 
+#include <config.h>
 #include <mono/metadata/profiler.h>
 #include <mono/metadata/tokentype.h>
 #include <mono/metadata/tabledefs.h>
@@ -19,6 +20,7 @@
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <glib.h>
 #include <sys/stat.h>
 
 struct _MonoProfiler {
@@ -65,7 +67,7 @@ output_image (gpointer key, gpointer value, gpointer user_data)
 	tmp = g_strdup_printf ("%s/.mono/aot-profile-data", g_get_home_dir ());
 
 	if (!g_file_test (tmp, G_FILE_TEST_IS_DIR)) {
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 		err = mkdir (tmp);
 #else
 		err = mkdir (tmp, 0777);

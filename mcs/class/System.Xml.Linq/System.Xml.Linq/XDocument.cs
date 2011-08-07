@@ -95,6 +95,9 @@ namespace System.Xml.Linq
 		public static XDocument Load (string uri, LoadOptions options)
 		{
 			XmlReaderSettings s = new XmlReaderSettings ();
+#if !MOONLIGHT
+			s.ProhibitDtd = false; // see XNodeNavigatorTest.MoveToId().
+#endif
 			s.IgnoreWhitespace = (options & LoadOptions.PreserveWhitespace) == 0;
 			using (XmlReader r = XmlReader.Create (uri, s)) {
 				return LoadCore (r, options);
@@ -119,6 +122,9 @@ namespace System.Xml.Linq
 		public static XDocument Load (TextReader reader, LoadOptions options)
 		{
 			XmlReaderSettings s = new XmlReaderSettings ();
+#if !MOONLIGHT
+			s.ProhibitDtd = false; // see XNodeNavigatorTest.MoveToId().
+#endif
 			s.IgnoreWhitespace = (options & LoadOptions.PreserveWhitespace) == 0;
 			using (XmlReader r = XmlReader.Create (reader, s)) {
 				return LoadCore (r, options);
@@ -193,6 +199,11 @@ namespace System.Xml.Linq
 			XmlWriterSettings s = new XmlWriterSettings ();
 			if ((options & SaveOptions.DisableFormatting) == SaveOptions.None)
 				s.Indent = true;
+#if NET_4_0
+			if ((options & SaveOptions.OmitDuplicateNamespaces) == SaveOptions.OmitDuplicateNamespaces)
+				s.NamespaceHandling |= NamespaceHandling.OmitDuplicates;
+#endif
+			
 			using (XmlWriter w = XmlWriter.Create (filename, s)) {
 				Save (w);
 			}
@@ -208,6 +219,10 @@ namespace System.Xml.Linq
 			XmlWriterSettings s = new XmlWriterSettings ();
 			if ((options & SaveOptions.DisableFormatting) == SaveOptions.None)
 				s.Indent = true;
+#if NET_4_0
+			if ((options & SaveOptions.OmitDuplicateNamespaces) == SaveOptions.OmitDuplicateNamespaces)
+				s.NamespaceHandling |= NamespaceHandling.OmitDuplicates;
+#endif
 			using (XmlWriter w = XmlWriter.Create (tw, s)) {
 				Save (w);
 			}
@@ -258,5 +273,25 @@ namespace System.Xml.Linq
 					throw new InvalidOperationException ("An element cannot be added before the document type declaration");
 			}
 		}
+#if NET_4_0
+		public void Save (Stream stream)
+		{
+			Save (stream, SaveOptions.None);
+		}
+
+		public void Save (Stream stream, SaveOptions options)
+		{
+			XmlWriterSettings s = new XmlWriterSettings ();
+			if ((options & SaveOptions.DisableFormatting) == SaveOptions.None)
+				s.Indent = true;
+			if ((options & SaveOptions.OmitDuplicateNamespaces) == SaveOptions.OmitDuplicateNamespaces)
+				s.NamespaceHandling |= NamespaceHandling.OmitDuplicates;
+	
+			using (var writer = XmlWriter.Create (stream, s)){
+				Save (writer);
+			}
+		}
+
+#endif
 	}
 }

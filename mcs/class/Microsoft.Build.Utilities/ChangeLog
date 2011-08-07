@@ -1,3 +1,23 @@
+2011-02-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Add Mono.XBuild.Utilities/MSBuildUtils.cs to the build.
+
+2010-09-15  Marek Safar  <marek.safar@gmail.com>
+
+	[637935] Fixed 3.5 version of msbuild dlls to reference 3.5
+	version of the engine
+
+	MONO_PATH does not work for subsequent dlls, so have to workaround
+	it by using full path for dlls in 3.5 profile which does not have
+	it's own mscorlib
+
+2010-04-03  Ankit Jain  <jankit@novell.com>
+
+	* Makefile: Import tools/xbuild/xbuild_targets.make, which copies
+	the target and tasks file in the correct place, to allow running
+	tests with different toolsversion.
+	Use the correct target assembly name for 4.0 profile.
+
 2010-02-10  Ankit Jain  <jankit@novell.com>
 
 	* Microsoft.Build.Utilities.dll.sources: Add ProcessStringDictionary.cs

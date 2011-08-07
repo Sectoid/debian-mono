@@ -34,6 +34,7 @@
 //
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -97,7 +98,7 @@ namespace MonoTests.System.Runtime.Serialization.Json
 		[Test]
 		public void ConstructorMisc ()
 		{
-			new DataContractJsonSerializer (typeof (GlobalSample1));
+			new DataContractJsonSerializer (typeof (GlobalSample1)).WriteObject (new MemoryStream (), new GlobalSample1 ());
 		}
 
 		[Test]
@@ -1287,12 +1288,13 @@ namespace MonoTests.System.Runtime.Serialization.Json
 		[Category ("NotWorking")]
 		public void TypeIsNotPartsOfKnownTypes ()
 		{
-			DataContractJsonSerializer dcjs = new DataContractJsonSerializer (typeof (string));
-			Assert.AreEqual (0, dcjs.KnownTypes.Count, "KnownTypes");
+			var dcs = new DataContractSerializer (typeof (string));
+			Assert.AreEqual (0, dcs.KnownTypes.Count, "KnownTypes #1");
+			var dcjs = new DataContractJsonSerializer (typeof (string));
+			Assert.AreEqual (0, dcjs.KnownTypes.Count, "KnownTypes #2");
 		}
 
 		[Test]
-		[Category ("NotWorking")]
 		public void ReadWriteNullObject ()
 		{
 			DataContractJsonSerializer dcjs = new DataContractJsonSerializer (typeof (string));
@@ -1325,7 +1327,7 @@ namespace MonoTests.System.Runtime.Serialization.Json
 		}
 
 		[Test]
-		[Category ("NotWorking")]
+		[Ignore ("Wrong test case. See bug #573691")]
 		public void ReadWriteObject_Single_SpecialCases ()
 		{
 			Assert.IsTrue (Single.IsNaN ((float) ReadWriteObject (typeof (float), Single.NaN, "NaN")));
@@ -1334,13 +1336,93 @@ namespace MonoTests.System.Runtime.Serialization.Json
 		}
 
 		[Test]
-		[Category ("NotWorking")]
+		[Ignore ("Wrong test case. See bug #573691")]
 		public void ReadWriteObject_Double_SpecialCases ()
 		{
 			Assert.IsTrue (Double.IsNaN ((double) ReadWriteObject (typeof (double), Double.NaN, "NaN")));
 			Assert.IsTrue (Double.IsNegativeInfinity ((double) ReadWriteObject (typeof (double), Double.NegativeInfinity, "-INF")));
 			Assert.IsTrue (Double.IsPositiveInfinity ((double) ReadWriteObject (typeof (double), Double.PositiveInfinity, "INF")));
 		}
+
+		[Test]
+		public void ReadWriteDateTime ()
+		{
+			var ms = new MemoryStream ();
+			DataContractJsonSerializer serializer = new DataContractJsonSerializer (typeof (Query));
+			Query query = new Query () {
+				StartDate = new DateTime (2010, 3, 4, 5, 6, 7),
+				EndDate = new DateTime (2010, 4, 5, 6, 7, 8)
+				};
+			serializer.WriteObject (ms, query);
+			Assert.AreEqual ("{\"StartDate\":\"\\/Date(1267679167000)\\/\",\"EndDate\":\"\\/Date(1270447628000)\\/\"}", Encoding.UTF8.GetString (ms.ToArray ()), "#1");
+			ms.Position = 0;
+			Console.WriteLine (new StreamReader (ms).ReadToEnd ());
+			ms.Position = 0;
+			var q = (Query) serializer.ReadObject(ms);
+			Assert.AreEqual (query.StartDate, q.StartDate, "#2");
+			Assert.AreEqual (query.EndDate, q.EndDate, "#3");
+		}
+		
+		[Test]
+		public void DeserializeNullMember ()
+		{
+			var ds = new DataContractJsonSerializer (typeof (ClassA));
+			var stream = new MemoryStream ();
+			var a = new ClassA ();
+			ds.WriteObject (stream, a);
+			stream.Position = 0;
+			a = (ClassA) ds.ReadObject (stream);
+			Assert.IsNull (a.B, "#1");
+		}
+
+		[Test]
+		public void OnDeserializationMethods ()
+		{
+			var ds = new DataContractJsonSerializer (typeof (GSPlayerListErg));
+			var obj = new GSPlayerListErg ();
+			var ms = new MemoryStream ();
+			ds.WriteObject (ms, obj);
+			ms.Position = 0;
+			ds.ReadObject (ms);
+			Assert.IsTrue (GSPlayerListErg.A, "A");
+			Assert.IsTrue (GSPlayerListErg.B, "B");
+			Assert.IsTrue (GSPlayerListErg.C, "C");
+		}
+		
+		[Test]
+		public void WriteChar ()
+		{
+			DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof (CharTest));
+			using (MemoryStream ms = new MemoryStream()) {
+				serializer.WriteObject(ms, new CharTest ());
+				ms.Position = 0L;
+				using (StreamReader reader = new StreamReader(ms)) {
+					reader.ReadToEnd();
+				}
+			}
+		}
+
+		[Test]
+		public void DictionarySerialization ()
+		{
+			var dict = new MyDictionary<string,string> ();
+			dict.Add ("key", "value");
+			var serializer = new DataContractJsonSerializer (dict.GetType ());
+			var stream = new MemoryStream ();
+			serializer.WriteObject (stream, dict);
+			stream.Position = 0;
+
+			Assert.AreEqual ("[{\"Key\":\"key\",\"Value\":\"value\"}]", new StreamReader (stream).ReadToEnd (), "#1");
+			stream.Position = 0;
+			dict = (MyDictionary<string,string>) serializer.ReadObject (stream);
+			Assert.AreEqual (1, dict.Count, "#2");
+			Assert.AreEqual ("value", dict ["key"], "#3");
+		}
+	}
+	
+	public class CharTest
+	{
+		public char Foo;
 	}
 
 	public class TestData
@@ -1422,16 +1504,22 @@ namespace MonoTests.System.Runtime.Serialization.Json
 	[DataContract (Name = "")]
 	public class DCWithEmptyName
 	{
+		[DataMember]
+		public string Foo;
 	}
 
 	[DataContract (Name = null)]
 	public class DCWithNullName
 	{
+		[DataMember]
+		public string Foo;
 	}
 
 	[DataContract (Namespace = "")]
 	public class DCWithEmptyNamespace
 	{
+		[DataMember]
+		public string Foo;
 	}
 
 	[Serializable]
@@ -1499,9 +1587,144 @@ namespace MonoTests.System.Runtime.Serialization.Json
 		public List<KeyValuePair<string,string>> TestData = new List<KeyValuePair<string,string>>();
 	}
 
+	[DataContract] // bug #586169
+	public class Query
+	{
+		[DataMember (Order=1)]
+		public DateTime StartDate { get; set; }
+		[DataMember (Order=2)]
+		public DateTime EndDate { get; set; }
+	}
+
+	public class ClassA {
+		public ClassB B { get; set; }
+	}
+
+	public class ClassB
+	{
+	}
+
+	public class GSPlayerListErg
+	{
+		public GSPlayerListErg ()
+		{
+			Init ();
+		}
+
+		void Init ()
+		{
+			C = true;
+		}
+
+		[OnDeserializing]
+		public void OnDeserializing (StreamingContext c)
+		{
+			A = true;
+			Init ();
+		}
+
+		[OnDeserialized]
+		void OnDeserialized (StreamingContext c)
+		{
+			B = true;
+		}
+
+		public static bool A, B, C;
+
+		[DataMember (Name = "T")]
+		public long CodedServerTimeUTC { get; set; }
+		public DateTime ServerTimeUTC { get; set; }
+	}
 }
 
 [DataContract]
 class GlobalSample1
 {
 }
+
+
+public class MyDictionary<K, V> : System.Collections.Generic.IDictionary<K, V>
+{
+	Dictionary<K,V> dic = new Dictionary<K,V> ();
+
+	public void Add (K key, V value)
+	{
+		dic.Add (key,  value);
+	}
+
+	public bool ContainsKey (K key)
+	{
+		return dic.ContainsKey (key);
+	}
+
+	public ICollection<K> Keys {
+		get { return dic.Keys; }
+	}
+
+	public bool Remove (K key)
+	{
+		return dic.Remove (key);
+	}
+
+	public bool TryGetValue (K key, out V value)
+	{
+		return dic.TryGetValue (key, out value);
+	}
+
+	public ICollection<V> Values {
+		get { return dic.Values; }
+	}
+
+	public V this [K key] {
+		get { return dic [key]; }
+		set { dic [key] = value; }
+	}
+
+	IEnumerator IEnumerable.GetEnumerator ()
+	{
+		return dic.GetEnumerator ();
+	}
+
+	ICollection<KeyValuePair<K,V>> Coll {
+		get { return (ICollection<KeyValuePair<K,V>>) dic; }
+	}
+
+	public void Add (KeyValuePair<K, V> item)
+	{
+		Coll.Add (item);
+	}
+
+	public void Clear ()
+	{
+		dic.Clear ();
+	}
+
+	public bool Contains (KeyValuePair<K, V> item)
+	{
+		return Coll.Contains (item);
+	}
+
+	public void CopyTo (KeyValuePair<K, V> [] array, int arrayIndex)
+	{
+		Coll.CopyTo (array, arrayIndex);
+	}
+
+	public int Count {
+		get { return dic.Count; }
+	}
+
+	public bool IsReadOnly {
+		get { return Coll.IsReadOnly; }
+	}
+
+	public bool Remove (KeyValuePair<K, V> item)
+	{
+		return Coll.Remove (item);
+	}
+
+	public IEnumerator<KeyValuePair<K, V>> GetEnumerator ()
+	{
+		return Coll.GetEnumerator ();
+	}
+}
+

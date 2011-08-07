@@ -4,7 +4,7 @@
 // Authors:
 //   Chris Toshok (toshok@ximian.com)
 //
-// (C) 2005 Novell, Inc.
+// (C) 2005-2010 Novell, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -30,10 +30,10 @@ using System;
 using System.Globalization;
 using System.ComponentModel;
 
-#if NET_2_0
-namespace System.Web.UI {
-	internal class MinimizableAttributeTypeConverter : TypeConverter {
-
+namespace System.Web.UI 
+{
+	internal class MinimizableAttributeTypeConverter : TypeConverter 
+	{
 		public MinimizableAttributeTypeConverter ()
 		{
 		}
@@ -59,19 +59,23 @@ namespace System.Web.UI {
 		
 		public override object ConvertFrom (ITypeDescriptorContext context, CultureInfo culture, object value)
 		{
-			// culture?
-			if (value != null) {					
-				Type t = value.GetType ();
-				if (t == typeof (string))
-					return ((string)value) != String.Empty;
-
-				if (t == typeof (bool))
-					return value;
-			}
+			string typeName;
 			
-			return base.ConvertFrom (context, culture, value);
+			if (value != null) {
+				Type t = value.GetType ();
+				if (t == typeof (string)) {
+					string s = value as string;
+					if (String.IsNullOrEmpty (s) || String.Compare (s, "false", StringComparison.OrdinalIgnoreCase) == 0)
+						return false;
+					else
+						return true;
+				}
+				typeName = t.FullName;
+			} else
+				typeName = "null";
+
+			throw new NotSupportedException (String.Format ("MinimizableAttributeTypeConverter cannot convert from {0}", typeName));
 		}
 
 	}
 }
-#endif

@@ -1,4 +1,3 @@
-#if NET_2_0
 // Author.cs
 using System;
 using System.Collections;
@@ -103,4 +102,3 @@ namespace Samples.AspNet.CS.Controls
         }
     }
 }
-#endif

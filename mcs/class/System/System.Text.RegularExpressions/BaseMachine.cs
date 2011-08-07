@@ -31,6 +31,7 @@
 using System;
 using System.Collections;
 using System.Collections.Specialized;
+using System.Collections.Generic;
 
 namespace System.Text.RegularExpressions
 {
@@ -49,7 +50,7 @@ namespace System.Text.RegularExpressions
 
 		virtual public string [] Split (Regex regex, string input, int count, int startat)
 		{
-			ArrayList splits = new ArrayList ();
+			var splits = new List<string> ();
 			if (count == 0)
 				count = Int32.MaxValue;
 
@@ -72,7 +73,8 @@ namespace System.Text.RegularExpressions
 				int gcount = m.Groups.Count;
 				for (int gindex = 1; gindex < gcount; gindex++) {
 					Group grp = m.Groups [gindex];
-					splits.Add (input.Substring (grp.Index, grp.Length));
+					if (grp.Length > 0)
+						splits.Add (input.Substring (grp.Index, grp.Length));
 				}
 
 				if (regex.RightToLeft)
@@ -87,7 +89,7 @@ namespace System.Text.RegularExpressions
 			if (!regex.RightToLeft && ptr <= input.Length)
 				splits.Add (input.Substring (ptr));
 
-			return (string []) splits.ToArray (typeof (string));
+			return splits.ToArray ();
 		}
 
 		virtual public Match Scan (Regex regex, string text, int start, int end)

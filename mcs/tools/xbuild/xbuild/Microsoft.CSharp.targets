@@ -12,6 +12,9 @@
 
 	<PropertyGroup>
 		<CreateManifestResourceNamesDependsOn></CreateManifestResourceNamesDependsOn>
+		<CoreCompileDependsOn></CoreCompileDependsOn>
+
+		<MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildToolsPath)\Microsoft.CSharp.targets</MSBuildAllProjects>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -20,8 +23,10 @@
 
 	<Target
 		Name="CoreCompile"
-		Inputs="@(Compile)"
+		Inputs="$(MSBuildAllProjects);@(Compile);@(ManifestResourceWithNoCulture);@(ManifestNonResxWithNoCultureOnDisk);@(CompiledLicenseFile);@(DocFileItem);
+			$(KeyOriginatorFile);@(ReferencePath);$(Win32Icon);$(Win32Resource)"
 		Outputs="@(IntermediateAssembly)"
+		DependsOnTargets="$(CoreCompileDependsOn)"
 	>
 		<Csc
 			AdditionalLibPaths="$(AdditionalLibPaths)"
@@ -60,6 +65,7 @@
 			Utf8Output="$(Utf8Output)"
 			WarningLevel="$(WarningLevel)"
 			WarningsAsErrors="$(WarningsAsErrors)"
+			WarningsNotAsErrors="$(WarningsNotAsErrors)"
 			Win32Icon="$(Win32Icon)"
 			Win32Resource="$(Win32Resource)"
 			Resources="@(ManifestResourceWithNoCulture);@(ManifestNonResxWithNoCultureOnDisk);@(CompiledLicenseFile)"
@@ -91,4 +97,13 @@
 	</Target>
 
 	<Import Project="Microsoft.Common.targets" />
+
+	<PropertyGroup>
+		<CscToolExe Condition="'$(CscToolExe)' == '' and '$(TargetFrameworkVersion)' != 'v4.0' and '$(OS)' != 'Windows_NT'">gmcs</CscToolExe>
+		<CscToolExe Condition="'$(CscToolExe)' == '' and '$(TargetFrameworkVersion)' != 'v4.0' and '$(OS)' == 'Windows_NT'">gmcs.bat</CscToolExe>
+
+		<CscToolExe Condition="'$(CscToolExe)' == '' and '$(TargetFrameworkVersion)' == 'v4.0' and '$(OS)' != 'Windows_NT'">dmcs</CscToolExe>
+		<CscToolExe Condition="'$(CscToolExe)' == '' and '$(TargetFrameworkVersion)' == 'v4.0' and '$(OS)' == 'Windows_NT'">dmcs.bat</CscToolExe>
+	</PropertyGroup>
+
 </Project>

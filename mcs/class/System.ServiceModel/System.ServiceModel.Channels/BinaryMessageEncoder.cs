@@ -48,6 +48,10 @@ namespace System.ServiceModel.Channels
 		BinaryMessageEncoderFactory owner;
 		bool session;
 
+		internal bool UseSession {
+			get { return session; }
+		}
+
 		public override string ContentType {
 			get { return MediaType; }
 		}
@@ -64,7 +68,7 @@ namespace System.ServiceModel.Channels
 		public override Message ReadMessage (ArraySegment<byte> buffer,
 			BufferManager bufferManager, string contentType)
 		{
-			if (contentType != ContentType)
+			if (contentType != null && contentType != ContentType)
 				throw new ProtocolException ("Only content type 'application/soap+msbin1' is allowed.");
 
 			// FIXME: retrieve reader session and message body.
@@ -89,7 +93,7 @@ namespace System.ServiceModel.Channels
 		public override Message ReadMessage (Stream stream,
 			int maxSizeOfHeaders, string contentType)
 		{
-			if (contentType != ContentType)
+			if (contentType != null && contentType != ContentType)
 				throw new ProtocolException ("Only content type 'application/soap+msbin1' is allowed.");
 
 			// FIXME: remove this extraneous buffering. It is somehow required for HTTP + binary encoding binding. The culprit is probably in binary xml reader or writer, but not sure.
@@ -105,9 +109,11 @@ namespace System.ServiceModel.Channels
 				stream = tmpms;
 			}
 
-			return Message.CreateMessage (
+			var ret = Message.CreateMessage (
 				XmlDictionaryReader.CreateBinaryReader (stream, Constants.SoapDictionary, owner != null ? owner.Owner.ReaderQuotas : new XmlDictionaryReaderQuotas (), session ? CurrentReaderSession : null),
 				maxSizeOfHeaders, MessageVersion);
+			ret.Properties.Encoder = this;
+			return ret;
 		}
 
 		public override void WriteMessage (Message message, Stream stream)

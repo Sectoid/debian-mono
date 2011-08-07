@@ -17,13 +17,19 @@ namespace System.ServiceModel.Dispatcher
 		Exception processingException;
 		DispatchOperation operation;
 		UserEventsHandler user_events_handler;		
+		IChannel reply_or_input;
 
-		public MessageProcessingContext (OperationContext opCtx)
+		public MessageProcessingContext (OperationContext opCtx, IChannel replyOrInput)
 		{
 			operation_context = opCtx;
 			request_context = opCtx.RequestContext;
 			incoming_message = opCtx.IncomingMessage;
 			user_events_handler = new UserEventsHandler (this);
+			reply_or_input = replyOrInput;
+		}
+
+		public IChannel Channel {
+			get { return reply_or_input; }
 		}
 
 		public DispatchOperation Operation
@@ -77,7 +83,7 @@ namespace System.ServiceModel.Dispatcher
 		public void Reply (IDuplexChannel channel, bool useTimeout)
 		{
 			EventsHandler.BeforeSendReply ();
-			if (useTimeout)
+			if (useTimeout && Operation.Parent.ChannelDispatcher != null) // FIXME: this condition is a workaround for NRE, there might be better way to get timeout value.
 				channel.Send (ReplyMessage, Operation.Parent.ChannelDispatcher.timeouts.SendTimeout);
 			else
 				channel.Send (ReplyMessage);
@@ -86,7 +92,7 @@ namespace System.ServiceModel.Dispatcher
 		public void Reply (bool useTimeout)
 		{
 			EventsHandler.BeforeSendReply ();
-			if (useTimeout)
+			if (useTimeout && Operation.Parent.ChannelDispatcher != null) // FIXME: this condition is a workaround for NRE, there might be better way to get timeout value.
 				RequestContext.Reply (ReplyMessage, Operation.Parent.ChannelDispatcher.timeouts.SendTimeout);
 			else
 				RequestContext.Reply (ReplyMessage);
@@ -127,6 +133,7 @@ namespace System.ServiceModel.Dispatcher
 			Message toBeChanged = request_context.ReplyMessage;
 			for (int i = 0; i < dispatch_runtime.MessageInspectors.Count; ++i)
 				dispatch_runtime.MessageInspectors [i].BeforeSendReply (ref toBeChanged, msg_inspectors_states [i]);
+			request_context.ReplyMessage = toBeChanged;
 		}
 
 		public void BeforeInvoke (DispatchOperation operation)

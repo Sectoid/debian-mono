@@ -1,16 +1,35 @@
-// Compiler options: -unsafe
+// Compiler options: -r:gtest-417-lib.dll
 
-public unsafe struct B {
-	private fixed int a[5];
+using System;
+using System.Collections;
+
+class Indirect : Base
+{
 }
 
-public unsafe class C {
-	private B x;
+abstract class Base : IEnumerable
+{
+	IEnumerator IEnumerable.GetEnumerator ()
+	{
+		return new int [0].GetEnumerator ();
+	}
+}
 
-	public void Goo() {
-		fixed(B* y=&x) {
+public class TestCase
+{
+	public static GlobalMonitoredCharacterCollection MonitoredCharacters;
+	
+	static int Main ()
+	{
+		MonitoredCharacters = new GlobalMonitoredCharacterCollection();
+		foreach (var character in MonitoredCharacters)
+		{
 		}
-	} 
-
-	public static void Main () {}
+		
+		foreach (var n in new Indirect ())
+		{
+		}
+		
+		return 0;
+	}
 }

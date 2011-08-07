@@ -1,27 +1,20 @@
-// Compiler options: -unsafe
+using System;
 
-unsafe struct S
+class Foo
 {
-	public short nData;
-	public fixed int Data [1];
-}
-
-unsafe struct S2
-{
-	public uint Header;
-	public fixed byte Data [5];
-
-	public void Test ()
+	static int Main ()
 	{
-		fixed (byte* bP = Data) {
-			S* p = (S*) bP;
-			p = (S*) (p->Data + p->nData);
-		}
+		if (Bar (1))
+			return 1;
+
+		if (!Bar (IntPtr.Zero))
+			return 2;
+
+		return 0;
 	}
 
-	public static void Main ()
+	static bool Bar<T> (T val) where T : struct
 	{
-		new S2 ().Test ();
+		return val is IntPtr;
 	}
 }
-

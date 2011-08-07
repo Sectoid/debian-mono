@@ -39,40 +39,29 @@ using System.IO;
 using System.Collections;
 using System.Reflection;
 using System.Security;
-
-#if NET_2_0
 using System.Runtime.ConstrainedExecution;
-#endif
 
 namespace System.Threading {
 
-	[ClassInterface (ClassInterfaceType.None)]
-#if NET_2_0
-	[ComVisible (true)]
-	[ComDefaultInterface (typeof (_Thread))]
-	public sealed class Thread : CriticalFinalizerObject, _Thread {
-#else
-	public sealed class Thread : _Thread {
-#endif
-
+	internal class InternalThread : CriticalFinalizerObject {
 #pragma warning disable 169, 414, 649
 		#region Sync with metadata/object-internals.h
 		int lock_thread_id;
 		// stores a thread handle
-		private IntPtr system_thread_handle;
+		internal IntPtr system_thread_handle;
 
 		/* Note this is an opaque object (an array), not a CultureInfo */
-		private object cached_culture_info;
+		private object cached_culture_info; /*FIXME remove this on the next corlib version bump*/
 		private IntPtr unused0;
-		private bool threadpool_thread;
+		internal bool threadpool_thread;
 		/* accessed only from unmanaged code */
 		private IntPtr name;
 		private int name_len; 
-		private ThreadState state = ThreadState.Unstarted;
+		private ThreadState state;
 		private object abort_exc;
 		private int abort_state_handle;
 		/* thread_id is only accessed from unmanaged code */
-		private Int64 thread_id;
+		internal Int64 thread_id;
 		
 		/* start_notify is used by the runtime to signal that Start()
 		 * is ok to return
@@ -85,27 +74,18 @@ namespace System.Threading {
 		/* current System.Runtime.Remoting.Contexts.Context instance
 		   keep as an object to avoid triggering its class constructor when not needed */
 		private object current_appcontext;
-		int stack_size;
-		object start_obj;
+		internal int stack_size;
 		private IntPtr appdomain_refs;
 		private int interruption_requested;
 		private IntPtr suspend_event;
 		private IntPtr suspended_event;
 		private IntPtr resume_event;
 		private IntPtr synch_cs;
-		private IntPtr serialized_culture_info;
-		private int serialized_culture_info_len;
-		private IntPtr serialized_ui_culture_info;
-		private int serialized_ui_culture_info_len;
 		private bool thread_dump_requested;
 		private IntPtr end_stack;
 		private bool thread_interrupt_requested;
-#if NET_2_1
-		private byte apartment_state;
-#else
-		private byte apartment_state = (byte)ApartmentState.Unknown;
-#endif
-		volatile int critical_region_level;
+		internal byte apartment_state;
+		internal volatile int critical_region_level;
 		private int small_id;
 		private IntPtr manage_callback;
 		private object pending_exception;
@@ -122,13 +102,47 @@ namespace System.Threading {
 		private IntPtr unused3;
 		private IntPtr unused4;
 		private IntPtr unused5;
-		private IntPtr unused6;
+		internal int managed_id;
 		#endregion
 #pragma warning restore 169, 414, 649
 
-		// the name of local_slots is important as it's used by the runtime.
-		[ThreadStatic] 
+		internal byte[] _serialized_principal;
+		internal int _serialized_principal_version;
+
+		// Closes the system thread handle
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		private extern void Thread_free_internal(IntPtr handle);
+
+		[ReliabilityContract (Consistency.WillNotCorruptState, Cer.Success)]
+		~InternalThread() {
+			Thread_free_internal(system_thread_handle);
+		}
+	}
+
+	[ClassInterface (ClassInterfaceType.None)]
+	[ComVisible (true)]
+	[ComDefaultInterface (typeof (_Thread))]
+	public sealed class Thread : CriticalFinalizerObject, _Thread {
+#pragma warning disable 414		
+		#region Sync with metadata/object-internals.h
+		private InternalThread internal_thread;
+		object start_obj;
+		private ExecutionContext ec_to_set;
+		#endregion
+#pragma warning restore 414
+
+		IPrincipal principal;
+		int principal_version;
+		CultureInfo current_culture;
+		CultureInfo current_ui_culture;
+
+		// the name of local_slots, current_thread and _ec is
+		// important because they are used by the runtime.
+		[ThreadStatic]
 		static object[] local_slots;
+
+		[ThreadStatic]
+		static Thread current_thread;
 
 		/* The actual ExecutionContext of the thread.  It's
 		   ThreadStatic so that it's not shared between
@@ -140,12 +154,16 @@ namespace System.Threading {
 		private MulticastDelegate threadstart;
 		//private string thread_name=null;
 
-#if NET_2_0		
-		private static int _managed_id_counter;
-		private int managed_id;
-#endif		
-		
-		private IPrincipal _principal;
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		private extern void ConstructInternalThread ();
+
+		private InternalThread Internal {
+			get {
+				if (internal_thread == null)
+					ConstructInternalThread ();
+				return internal_thread;
+			}
+		}
 
 		public static Context CurrentContext {
 			[SecurityPermission (SecurityAction.LinkDemand, Infrastructure=true)]
@@ -154,47 +172,84 @@ namespace System.Threading {
 			}
 		}
 
-#if !NET_2_1 || MONOTOUCH
+		/*
+		 * These two methods return an array in the target
+		 * domain with the same content as the argument.  If
+		 * the argument is already in the target domain, then
+		 * the argument is returned, otherwise a copy.
+		 */
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		private extern static byte[] ByteArrayToRootDomain (byte[] arr);
+
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		private extern static byte[] ByteArrayToCurrentDomain (byte[] arr);
+
+#if !MOONLIGHT
 		public static IPrincipal CurrentPrincipal {
 			get {
-				IPrincipal p = null;
 				Thread th = CurrentThread;
-				lock (th) {
-					p = th._principal;
-					if (p == null) {
-						p = GetDomain ().DefaultPrincipal;
-						th._principal = p;
+
+				if (th.principal_version != th.Internal._serialized_principal_version)
+					th.principal = null;
+
+				if (th.principal != null)
+					return th.principal;
+
+				if (th.Internal._serialized_principal != null) {
+					try {
+						BinaryFormatter bf = new BinaryFormatter ();
+						MemoryStream ms = new MemoryStream (ByteArrayToCurrentDomain (th.Internal._serialized_principal));
+						th.principal = (IPrincipal) bf.Deserialize (ms);
+						th.principal_version = th.Internal._serialized_principal_version;
+						return th.principal;
+					} catch (Exception) {
 					}
 				}
-				return p;
+
+				th.principal = GetDomain ().DefaultPrincipal;
+				th.principal_version = th.Internal._serialized_principal_version;
+				return th.principal;
 			}
 			[SecurityPermission (SecurityAction.Demand, ControlPrincipal = true)]
 			set {
-				CurrentThread._principal = value;
+				Thread th = CurrentThread;
+
+				++th.Internal._serialized_principal_version;
+				try {
+					BinaryFormatter bf = new BinaryFormatter ();
+					MemoryStream ms = new MemoryStream ();
+					bf.Serialize (ms, value);
+					th.Internal._serialized_principal = ByteArrayToRootDomain (ms.ToArray ());
+				} catch (Exception) {
+					th.Internal._serialized_principal = null;
+				}
+
+				th.principal = value;
+				th.principal_version = th.Internal._serialized_principal_version;
 			}
 		}
 #endif
 
 		// Looks up the object associated with the current thread
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		private extern static Thread CurrentThread_internal();
-		
+		private extern static InternalThread CurrentInternalThread_internal();
+
 		public static Thread CurrentThread {
-#if NET_2_0
 			[ReliabilityContract (Consistency.WillNotCorruptState, Cer.MayFail)]
-#endif
 			get {
-				return(CurrentThread_internal());
+				if (current_thread == null)
+					current_thread = new Thread (CurrentInternalThread_internal ());
+				return current_thread;
 			}
 		}
 
 		internal static int CurrentThreadId {
 			get {
-				return (int)(CurrentThread.thread_id);
+				return (int)(CurrentThread.internal_thread.thread_id);
 			}
 		}
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		// Stores a hash keyed by strings of LocalDataStoreSlot objects
 		static Hashtable datastorehash;
 		private static object datastore_lock = new object ();
@@ -284,13 +339,14 @@ namespace System.Threading {
 			}
 		}
 #endif
+		
 		public static AppDomain GetDomain() {
 			return AppDomain.CurrentDomain;
 		}
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		public extern static int GetDomainID();
-		
+
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private extern static void ResetAbort_internal();
 
@@ -299,6 +355,13 @@ namespace System.Threading {
 		{
 			ResetAbort_internal ();
 		}
+
+#if NET_4_0 || MOBILE
+		[HostProtectionAttribute (SecurityAction.LinkDemand, Synchronization = true, ExternalThreading = true)]
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		public extern static bool Yield ();
+#endif
+
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private extern static void Sleep_internal(int ms);
@@ -324,48 +387,29 @@ namespace System.Threading {
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private extern IntPtr Thread_internal (MulticastDelegate start);
 
-		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		private extern void Thread_init ();
-
 		public Thread(ThreadStart start) {
 			if(start==null) {
 				throw new ArgumentNullException("Null ThreadStart");
 			}
 			threadstart=start;
-
-			Thread_init ();
 		}
 
-#if !NET_2_1 || MONOTOUCH
-#if NET_2_0
+		private Thread (InternalThread it) {
+			internal_thread = it;
+		}
+
+#if !MOONLIGHT
 		[Obsolete ("Deprecated in favor of GetApartmentState, SetApartmentState and TrySetApartmentState.")]
-#endif
 		public ApartmentState ApartmentState {
 			get {
 				if ((ThreadState & ThreadState.Stopped) != 0)
 					throw new ThreadStateException ("Thread is dead; state can not be accessed.");
 
-				return (ApartmentState)apartment_state;
+				return (ApartmentState)Internal.apartment_state;
 			}
 
-			set	{
-#if NET_2_0
+			set {
 				TrySetApartmentState (value);
-#else
-				/* Only throw this exception when
-				 * changing the state of another
-				 * thread.  See bug 324338
-				 */
-				if ((this != CurrentThread) &&
-				    (ThreadState & ThreadState.Unstarted) == 0)
-					throw new ThreadStateException ("Thread was in an invalid state for the operation being executed.");
-
-				if (value != ApartmentState.STA && value != ApartmentState.MTA)
-					throw new ArgumentOutOfRangeException ("value is not a valid apartment state.");
-
-				if ((ApartmentState)apartment_state == ApartmentState.Unknown)
-					apartment_state = (byte)value;
-#endif
 			}
 		}
 #endif // !NET_2_1
@@ -373,90 +417,13 @@ namespace System.Threading {
 		//[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		//private static extern int current_lcid ();
 
-		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		private extern CultureInfo GetCachedCurrentCulture ();
-
-		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		private extern byte[] GetSerializedCurrentCulture ();
-
-		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		private extern void SetCachedCurrentCulture (CultureInfo culture);
-
-		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		private extern void SetSerializedCurrentCulture (byte[] culture);
-
-		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		private extern CultureInfo GetCachedCurrentUICulture ();
-
-		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		private extern byte[] GetSerializedCurrentUICulture ();
-
-		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		private extern void SetCachedCurrentUICulture (CultureInfo culture);
-
-		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		private extern void SetSerializedCurrentUICulture (byte[] culture);
-
-		/* If the current_lcid() isn't known by CultureInfo,
-		 * it will throw an exception which may cause
-		 * String.Concat to try and recursively look up the
-		 * CurrentCulture, which will throw an exception, etc.
-		 * Use a boolean to short-circuit this scenario.
-		 */
-		private bool in_currentculture=false;
-
-		static object culture_lock = new object ();
-		
-		/*
-		 * Thread objects are shared between appdomains, and CurrentCulture
-		 * should always return an object in the calling appdomain. See bug
-		 * http://bugzilla.ximian.com/show_bug.cgi?id=50049 for more info.
-		 * This is hard to implement correctly and efficiently, so the current
-		 * implementation is not perfect: changes made in one appdomain to the 
-		 * state of the current cultureinfo object are not visible to other 
-		 * appdomains.
-		 */		
 		public CultureInfo CurrentCulture {
 			get {
-				if (in_currentculture)
-					/* Bail out */
-					return CultureInfo.InvariantCulture;
-
-				CultureInfo culture = GetCachedCurrentCulture ();
+				CultureInfo culture = current_culture;
 				if (culture != null)
 					return culture;
 
-				byte[] arr = GetSerializedCurrentCulture ();
-				if (arr == null) {
-					lock (culture_lock) {
-						in_currentculture=true;
-						culture = CultureInfo.ConstructCurrentCulture ();
-						//
-						// Don't serialize the culture in this case to avoid
-						// initializing the serialization infrastructure in the
-						// common case when the culture is not set explicitly.
-						//
-						SetCachedCurrentCulture (culture);
-						in_currentculture = false;
-						NumberFormatter.SetThreadCurrentCulture (culture);
-						return culture;
-					}
-				}
-
-				/*
-				 * No cultureinfo object exists for this domain, so create one
-				 * by deserializing the serialized form.
-				 */
-				in_currentculture = true;
-				try {
-					BinaryFormatter bf = new BinaryFormatter ();
-					MemoryStream ms = new MemoryStream (arr);
-					culture = (CultureInfo)bf.Deserialize (ms);
-					SetCachedCurrentCulture (culture);
-				} finally {
-					in_currentculture = false;
-				}
-
+				current_culture = culture = CultureInfo.ConstructCurrentCulture ();
 				NumberFormatter.SetThreadCurrentCulture (culture);
 				return culture;
 			}
@@ -466,117 +433,26 @@ namespace System.Threading {
 				if (value == null)
 					throw new ArgumentNullException ("value");
 
-				CultureInfo culture = GetCachedCurrentCulture ();
-				if (culture == value)
-					return;
-
 				value.CheckNeutral ();
-				in_currentculture = true;
-				try {
-					SetCachedCurrentCulture (value);
-
-					byte[] serialized_form = null;
-
-					if (value.IsReadOnly && value.cached_serialized_form != null) {
-						serialized_form = value.cached_serialized_form;
-					} else {
-						BinaryFormatter bf = new BinaryFormatter();
-						MemoryStream ms = new MemoryStream ();
-						bf.Serialize (ms, value);
-
-						serialized_form = ms.GetBuffer ();
-						if (value.IsReadOnly)
-							value.cached_serialized_form = serialized_form;
-					}
-						
-					SetSerializedCurrentCulture (serialized_form);
-				} finally {
-					in_currentculture = false;
-				}
+				current_culture = value;
 				NumberFormatter.SetThreadCurrentCulture (value);
 			}
 		}
 
 		public CultureInfo CurrentUICulture {
 			get {
-				if (in_currentculture)
-					/* Bail out */
-					return CultureInfo.InvariantCulture;
-
-				CultureInfo culture = GetCachedCurrentUICulture ();
+				CultureInfo culture = current_ui_culture;
 				if (culture != null)
 					return culture;
 
-				byte[] arr = GetSerializedCurrentUICulture ();
-				if (arr == null) {
-					lock (culture_lock) {
-						in_currentculture=true;
-						/* We don't
-						 * distinguish
-						 * between
-						 * System and
-						 * UI cultures
-						 */
-						culture = CultureInfo.ConstructCurrentUICulture ();
-						//
-						// Don't serialize the culture in this case to avoid
-						// initializing the serialization infrastructure in the
-						// common case when the culture is not set explicitly.
-						//
-						SetCachedCurrentUICulture (culture);
-						in_currentculture = false;
-						return culture;
-					}
-				}
-
-				/*
-				 * No cultureinfo object exists for this domain, so create one
-				 * by deserializing the serialized form.
-				 */
-				in_currentculture = true;
-				try {
-					BinaryFormatter bf = new BinaryFormatter ();
-					MemoryStream ms = new MemoryStream (arr);
-					culture = (CultureInfo)bf.Deserialize (ms);
-					SetCachedCurrentUICulture (culture);
-				}
-				finally {
-					in_currentculture = false;
-				}
-
+				current_ui_culture = culture = CultureInfo.ConstructCurrentUICulture ();
 				return culture;
 			}
 			
 			set {
 				if (value == null)
 					throw new ArgumentNullException ("value");
-
-				CultureInfo culture = GetCachedCurrentUICulture ();
-				if (culture == value)
-					return;
-
-				in_currentculture = true;
-				try {
-					SetCachedCurrentUICulture (value);
-
-					byte[] serialized_form = null;
-
-					if (value.IsReadOnly && value.cached_serialized_form != null) {
-						serialized_form = value.cached_serialized_form;
-					} else {
-						BinaryFormatter bf = new BinaryFormatter();
-						MemoryStream ms = new MemoryStream ();
-						bf.Serialize (ms, value);
-
-						serialized_form = ms.GetBuffer ();
-						if (value.IsReadOnly)
-							value.cached_serialized_form = serialized_form;
-					}
-						
-					SetSerializedCurrentUICulture (serialized_form);
-				} finally {
-					in_currentculture = false;
-				}
+				current_ui_culture = value;
 			}
 		}
 
@@ -588,16 +464,16 @@ namespace System.Threading {
 
 		internal bool IsThreadPoolThreadInternal {
 			get {
-				return threadpool_thread;
+				return Internal.threadpool_thread;
 			}
 			set {
-				threadpool_thread = value;
+				Internal.threadpool_thread = value;
 			}
 		}
 
 		public bool IsAlive {
 			get {
-				ThreadState curstate = GetState ();
+				ThreadState curstate = GetState (Internal);
 				
 				if((curstate & ThreadState.Aborted) != 0 ||
 				   (curstate & ThreadState.Stopped) != 0 ||
@@ -611,7 +487,7 @@ namespace System.Threading {
 
 		public bool IsBackground {
 			get {
-				ThreadState thread_state = GetState ();
+				ThreadState thread_state = GetState (Internal);
 				if ((thread_state & ThreadState.Stopped) != 0)
 					throw new ThreadStateException ("Thread is dead; state can not be accessed.");
 
@@ -620,18 +496,18 @@ namespace System.Threading {
 			
 			set {
 				if (value) {
-					SetState (ThreadState.Background);
+					SetState (Internal, ThreadState.Background);
 				} else {
-					ClrState (ThreadState.Background);
+					ClrState (Internal, ThreadState.Background);
 				}
 			}
 		}
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		private extern string GetName_internal ();
+		private extern static string GetName_internal (InternalThread thread);
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		private extern void SetName_internal (String name);
+		private extern static void SetName_internal (InternalThread thread, String name);
 
 		/* 
 		 * The thread name must be shared by appdomains, so it is stored in
@@ -640,15 +516,15 @@ namespace System.Threading {
 
 		public string Name {
 			get {
-				return GetName_internal ();
+				return GetName_internal (Internal);
 			}
 			
 			set {
-				SetName_internal (value);
+				SetName_internal (Internal, value);
 			}
 		}
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		public ThreadPriority Priority {
 			get {
 				return(ThreadPriority.Lowest);
@@ -662,47 +538,47 @@ namespace System.Threading {
 
 		public ThreadState ThreadState {
 			get {
-				return GetState ();
+				return GetState (Internal);
 			}
 		}
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		private extern void Abort_internal (object stateInfo);
+		private extern static void Abort_internal (InternalThread thread, object stateInfo);
 
 		[SecurityPermission (SecurityAction.Demand, ControlThread=true)]
 		public void Abort () 
 		{
-			Abort_internal (null);
+			Abort_internal (Internal, null);
 		}
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		[SecurityPermission (SecurityAction.Demand, ControlThread=true)]
 		public void Abort (object stateInfo) 
 		{
-			Abort_internal (stateInfo);
+			Abort_internal (Internal, stateInfo);
 		}
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		internal extern object GetAbortExceptionState ();
 
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		private extern void Interrupt_internal ();
+		private extern static void Interrupt_internal (InternalThread thread);
 		
 		[SecurityPermission (SecurityAction.Demand, ControlThread=true)]
 		public void Interrupt ()
 		{
-			Interrupt_internal ();
+			Interrupt_internal (Internal);
 		}
 #endif
 
 		// The current thread joins with 'this'. Set ms to 0 to block
 		// until this actually exits.
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		private extern bool Join_internal(int ms, IntPtr handle);
+		private extern static bool Join_internal(InternalThread thread, int ms, IntPtr handle);
 		
 		public void Join()
 		{
-			Join_internal(Timeout.Infinite, system_thread_handle);
+			Join_internal(Internal, Timeout.Infinite, Internal.system_thread_handle);
 		}
 
 		public bool Join(int millisecondsTimeout)
@@ -710,17 +586,17 @@ namespace System.Threading {
 			if (millisecondsTimeout < Timeout.Infinite)
 				throw new ArgumentOutOfRangeException ("millisecondsTimeout", "Timeout less than zero");
 
-			return Join_internal (millisecondsTimeout, system_thread_handle);
+			return Join_internal (Internal, millisecondsTimeout, Internal.system_thread_handle);
 		}
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		public bool Join(TimeSpan timeout)
 		{
 			long ms = (long) timeout.TotalMilliseconds;
 			if (ms < Timeout.Infinite || ms > Int32.MaxValue)
 				throw new ArgumentOutOfRangeException ("timeout", "timeout out of range");
 
-			return Join_internal ((int) ms, system_thread_handle);
+			return Join_internal (Internal, (int) ms, Internal.system_thread_handle);
 		}
 #endif
 
@@ -729,13 +605,11 @@ namespace System.Threading {
 		public extern static void MemoryBarrier ();
 #endif
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private extern void Resume_internal();
 
-#if NET_2_0
 		[Obsolete ("")]
-#endif
 		[SecurityPermission (SecurityAction.Demand, ControlThread=true)]
 		public void Resume () 
 		{
@@ -747,9 +621,7 @@ namespace System.Threading {
 		private extern static void SpinWait_nop ();
 
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.Success)]
-#endif
 		public static void SpinWait (int iterations) 
 		{
 			if (iterations < 0)
@@ -760,9 +632,11 @@ namespace System.Threading {
 			}
 		}
 
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 		private void StartSafe ()
 		{
+			current_thread = this;
+
 			try {
 				if (threadstart is ThreadStart) {
 					((ThreadStart) threadstart) ();
@@ -798,62 +672,52 @@ namespace System.Threading {
 		}
 #endif
 
+		private void StartUnsafe ()
+		{
+			current_thread = this;
+
+			if (threadstart is ThreadStart) {
+				((ThreadStart) threadstart) ();
+			} else {
+				((ParameterizedThreadStart) threadstart) (start_obj);
+			}
+		}
+
 		public void Start() {
 			// propagate informations from the original thread to the new thread
-#if NET_2_0
 			if (!ExecutionContext.IsFlowSuppressed ())
 				ec_to_set = ExecutionContext.Capture ();
-#else
-			// before 2.0 this was only used for security (mostly CAS) so we
-			// do this only if the security manager is active
-			if (SecurityManager.SecurityEnabled)
-				ec_to_set = ExecutionContext.Capture ();
-#endif
-			if (CurrentThread._principal != null)
-				_principal = CurrentThread._principal;
+			Internal._serialized_principal = CurrentThread.Internal._serialized_principal;
 
 			// Thread_internal creates and starts the new thread, 
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 			if (Thread_internal((ThreadStart) StartSafe) == (IntPtr) 0)
 #else
-			if (Thread_internal(threadstart) == (IntPtr) 0)
+			if (Thread_internal((ThreadStart) StartUnsafe) == (IntPtr) 0)
 #endif
 				throw new SystemException ("Thread creation failed.");
 		}
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		private extern void Suspend_internal();
+		private extern static void Suspend_internal(InternalThread thread);
 
-#if NET_2_0
 		[Obsolete ("")]
-#endif
 		[SecurityPermission (SecurityAction.Demand, ControlThread=true)]
 		public void Suspend ()
 		{
-			Suspend_internal ();
+			Suspend_internal (Internal);
 		}
 #endif // !NET_2_1
 
-		// Closes the system thread handle
-		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		private extern void Thread_free_internal(IntPtr handle);
-
-#if NET_2_0
-		[ReliabilityContract (Consistency.WillNotCorruptState, Cer.Success)]
-#endif
-		~Thread() {
-				Thread_free_internal(system_thread_handle);
-		}
+		[MethodImplAttribute (MethodImplOptions.InternalCall)]
+		extern private static void SetState (InternalThread thread, ThreadState set);
 
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		extern private void SetState (ThreadState set);
-		
+		extern private static void ClrState (InternalThread thread, ThreadState clr);
+
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		extern private void ClrState (ThreadState clr);
-		
-		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		extern private ThreadState GetState ();
+		extern private static ThreadState GetState (InternalThread thread);
 
 #if NET_1_1
 		
@@ -947,21 +811,34 @@ namespace System.Threading {
 		
 #endif
 
-#if NET_2_0
-		private static int GetNewManagedId() {
-			return Interlocked.Increment(ref _managed_id_counter);
+		static int CheckStackSize (int maxStackSize)
+		{
+			if (maxStackSize < 0)
+				throw new ArgumentOutOfRangeException ("less than zero", "maxStackSize");
+
+			if (maxStackSize < 131072) // make sure stack is at least 128k big
+				return 131072;
+
+			int page_size = Environment.GetPageSize ();
+
+			if ((maxStackSize % page_size) != 0) // round up to a divisible of page size
+				maxStackSize = (maxStackSize / (page_size - 1)) * page_size;
+
+			int default_stack_size = (IntPtr.Size / 4) * 1024 * 1024; // from wthreads.c
+
+			if (maxStackSize > default_stack_size)
+				return default_stack_size;
+
+			return maxStackSize; 
 		}
 
 		public Thread (ThreadStart start, int maxStackSize)
 		{
 			if (start == null)
 				throw new ArgumentNullException ("start");
-			if (maxStackSize < 131072)
-				throw new ArgumentException ("< 128 kb", "maxStackSize");
 
 			threadstart = start;
-			stack_size = maxStackSize;
-			Thread_init ();
+			Internal.stack_size = CheckStackSize (maxStackSize);;
 		}
 
 		public Thread (ParameterizedThreadStart start)
@@ -970,19 +847,15 @@ namespace System.Threading {
 				throw new ArgumentNullException ("start");
 
 			threadstart = start;
-			Thread_init ();
 		}
 
 		public Thread (ParameterizedThreadStart start, int maxStackSize)
 		{
 			if (start == null)
 				throw new ArgumentNullException ("start");
-			if (maxStackSize < 131072)
-				throw new ArgumentException ("< 128 kb", "maxStackSize");
 
 			threadstart = start;
-			stack_size = maxStackSize;
-			Thread_init ();
+			Internal.stack_size = CheckStackSize (maxStackSize);
 		}
 
 		[MonoTODO ("limited to CompressedStack support")]
@@ -998,26 +871,20 @@ namespace System.Threading {
 		public int ManagedThreadId {
 			[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.Success)]
 			get {
-				if (managed_id == 0) {
-					int new_managed_id = GetNewManagedId ();
-					
-					Interlocked.CompareExchange (ref managed_id, new_managed_id, 0);
-				}
-				
-				return managed_id;
+				return Internal.managed_id;
 			}
 		}
 
 		[ReliabilityContract (Consistency.WillNotCorruptState, Cer.MayFail)]
 		public static void BeginCriticalRegion ()
 		{
-			CurrentThread.critical_region_level++;
+			CurrentThread.Internal.critical_region_level++;
 		}
 
 		[ReliabilityContract (Consistency.WillNotCorruptState, Cer.Success)]
 		public static void EndCriticalRegion ()
 		{
-			CurrentThread.critical_region_level--;
+			CurrentThread.Internal.critical_region_level--;
 		}
 
 		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.MayFail)]
@@ -1032,10 +899,10 @@ namespace System.Threading {
 			// Managed and native threads are currently bound together.
 		}
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		public ApartmentState GetApartmentState ()
 		{
-			return (ApartmentState)apartment_state;
+			return (ApartmentState)Internal.apartment_state;
 		}
 
 		public void SetApartmentState (ApartmentState state)
@@ -1053,10 +920,10 @@ namespace System.Threading {
 			    (ThreadState & ThreadState.Unstarted) == 0)
 				throw new ThreadStateException ("Thread was in an invalid state for the operation being executed.");
 
-			if ((ApartmentState)apartment_state != ApartmentState.Unknown)
+			if ((ApartmentState)Internal.apartment_state != ApartmentState.Unknown)
 				return false;
 
-			apartment_state = (byte)state;
+			Internal.apartment_state = (byte)state;
 
 			return true;
 		}
@@ -1073,25 +940,14 @@ namespace System.Threading {
 			start_obj = parameter;
 			Start ();
 		}
-#else
-		internal ExecutionContext ExecutionContext {
-			get {
-				if (_ec == null)
-					_ec = new ExecutionContext ();
-				return _ec;
-			}
-		}
-#endif
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		// NOTE: This method doesn't show in the class library status page because
 		// it cannot be "found" with the StrongNameIdentityPermission for ECMA key.
 		// But it's there!
 		[SecurityPermission (SecurityAction.LinkDemand, UnmanagedCode = true)]
 		[StrongNameIdentityPermission (SecurityAction.LinkDemand, PublicKey="00000000000000000400000000000000")]
-#if NET_2_0
 		[Obsolete ("see CompressedStack class")]
-#endif
 #if NET_1_1
 		public
 #else
@@ -1111,9 +967,7 @@ namespace System.Threading {
 		// But it's there!
 		[SecurityPermission (SecurityAction.LinkDemand, UnmanagedCode = true)]
 		[StrongNameIdentityPermission (SecurityAction.LinkDemand, PublicKey="00000000000000000400000000000000")]
-#if NET_2_0
 		[Obsolete ("see CompressedStack class")]
-#endif
 #if NET_1_1
 		public
 #else

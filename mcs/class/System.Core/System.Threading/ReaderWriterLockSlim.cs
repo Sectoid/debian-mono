@@ -1,21 +1,11 @@
 //
 // System.Threading.ReaderWriterLockSlim.cs
 //
-// Authors:
-//   Miguel de Icaza (miguel@novell.com) 
-//   Dick Porter (dick@ximian.com)
-//   Jackson Harper (jackson@ximian.com)
-//   Lluis Sanchez Gual (lluis@ximian.com)
-//   Marek Safar (marek.safar@gmail.com)
+// Author:
+//       Jérémie "Garuma" Laval <jeremie.laval@gmail.com>
 //
-// Copyright 2004-2008 Novell, Inc (http://www.novell.com)
-// Copyright 2003, Ximian, Inc.
+// Copyright (c) 2010 Jérémie "Garuma" Laval
 //
-// NoRecursion code based on the blog post from Vance Morrison:
-//   http://blogs.msdn.com/vancem/archive/2006/03/28/563180.aspx
-//
-// Recursion code based on Mono's implementation of ReaderWriterLock.
-// 
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
 // "Software"), to deal in the Software without restriction, including
@@ -42,76 +32,89 @@ using System.Collections.Generic;
 using System.Security.Permissions;
 using System.Diagnostics;
 using System.Threading;
+using System.Runtime.CompilerServices;
 
 namespace System.Threading {
 
-	//
-	// This implementation is based on the light-weight
-	// Reader/Writer lock sample from Vance Morrison's blog:
-	//
-	// http://blogs.msdn.com/vancem/archive/2006/03/28/563180.aspx
-	//
-	// And in Mono's ReaderWriterLock
-	//
 	[HostProtectionAttribute(SecurityAction.LinkDemand, MayLeakOnAbort = true)]
 	[HostProtectionAttribute(SecurityAction.LinkDemand, Synchronization = true, ExternalThreading = true)]
-	public class ReaderWriterLockSlim : IDisposable {
-		sealed class LockDetails
-		{
-			public int ThreadId;
-			public int ReadLocks;
-		}
+	public class ReaderWriterLockSlim : IDisposable
+	{
+		/* Position of each bit isn't really important 
+		 * but their relative order is
+		 */
+		const int RwReadBit = 3;
 
-		// Are we on a multiprocessor?
-		static readonly bool smp;
+		/* These values are used to manipulate the corresponding flags in rwlock field
+		 */
+		const int RwWait = 1;
+		const int RwWaitUpgrade = 2;
+		const int RwWrite = 4;
+		const int RwRead = 8;
+
+		/* Some explanations: this field is the central point of the lock and keep track of all the requests
+		 * that are being made. The 3 lowest bits are used as flag to track "destructive" lock entries
+		 * (i.e attempting to take the write lock with or without having acquired an upgradeable lock beforehand).
+		 * All the remaining bits are intepreted as the actual number of reader currently using the lock
+		 * (which mean the lock is limited to 4294967288 concurrent readers but since it's a high number there
+		 * is no overflow safe guard to remain simple).
+		 */
+		int rwlock;
 		
-		// Lock specifiation for myLock:  This lock protects exactly the local fields associted
-		// instance of MyReaderWriterLock.  It does NOT protect the memory associted with the
-		// the events that hang off this lock (eg writeEvent, readEvent upgradeEvent).
-		int myLock;
-
-		// Who owns the lock owners > 0 => readers
-		// owners = -1 means there is one writer, Owners must be >= -1.  
-		int owners;
-		Thread upgradable_thread;
-		Thread write_thread;
-		
-		// These variables allow use to avoid Setting events (which is expensive) if we don't have to. 
-		uint numWriteWaiters;        // maximum number of threads that can be doing a WaitOne on the writeEvent 
-		uint numReadWaiters;         // maximum number of threads that can be doing a WaitOne on the readEvent
-		uint numUpgradeWaiters;      // maximum number of threads that can be doing a WaitOne on the upgradeEvent (at most 1). 
-		
-		// conditions we wait on. 
-		EventWaitHandle writeEvent;    // threads waiting to aquire a write lock go here.
-		EventWaitHandle readEvent;     // threads waiting to aquire a read lock go here (will be released in bulk)
-		EventWaitHandle upgradeEvent;  // thread waiting to upgrade a read lock to a write lock go here (at most one)
-
-		//int lock_owner;
-
-		// Only set if we are a recursive lock
-		//Dictionary<int,int> reader_locks;
-
 		readonly LockRecursionPolicy recursionPolicy;
-		LockDetails[] read_locks = new LockDetails [8];
-		
-		static ReaderWriterLockSlim ()
+		readonly bool noRecursion;
+
+		AtomicBoolean upgradableTaken = new AtomicBoolean ();
+
+		/* These events are just here for the sake of having a CPU-efficient sleep
+		 * when the wait for acquiring the lock is too long
+		 */
+#if NET_4_0
+		ManualResetEventSlim upgradableEvent = new ManualResetEventSlim (true);
+		ManualResetEventSlim writerDoneEvent = new ManualResetEventSlim (true);
+		ManualResetEventSlim readerDoneEvent = new ManualResetEventSlim (true);
+#else
+		ManualResetEvent upgradableEvent = new ManualResetEvent (true);
+		ManualResetEvent writerDoneEvent = new ManualResetEvent (true);
+		ManualResetEvent readerDoneEvent = new ManualResetEvent (true);
+#endif
+
+		// This Stopwatch instance is used for all threads since .Elapsed is thread-safe
+		readonly static Stopwatch sw = Stopwatch.StartNew ();
+
+		/* For performance sake, these numbers are manipulated via classic increment and
+		 * decrement operations and thus are (as hinted by MSDN) not meant to be precise
+		 */
+		int numReadWaiters, numUpgradeWaiters, numWriteWaiters;
+		bool disposed;
+
+		static int idPool = int.MinValue;
+		readonly int id = Interlocked.Increment (ref idPool);
+
+		/* This dictionary is instanciated per thread for all existing ReaderWriterLockSlim instance.
+		 * Each instance is defined by an internal integer id value used as a key in the dictionary.
+		 * to avoid keeping unneeded reference to the instance and getting in the way of the GC.
+		 * Since there is no LockCookie type here, all the useful per-thread infos concerning each
+		 * instance are kept here.
+		 */
+		[ThreadStatic]
+		static IDictionary<int, ThreadLockState> currentThreadState;
+
+		/* Rwls tries to use this array as much as possible to quickly retrieve the thread-local
+		 * informations so that it ends up being only an array lookup. When the number of thread
+		 * using the instance goes past the length of the array, the code fallback to the normal
+		 * dictionary
+		 */
+		ThreadLockState[] fastStateCache = new ThreadLockState[64];
+
+		public ReaderWriterLockSlim () : this (LockRecursionPolicy.NoRecursion)
 		{
-			smp = Environment.ProcessorCount > 1;
-		}
-		
-		public ReaderWriterLockSlim ()
-		{
-			// NoRecursion (0) is the default value
 		}
 
 		public ReaderWriterLockSlim (LockRecursionPolicy recursionPolicy)
 		{
 			this.recursionPolicy = recursionPolicy;
-			
-			if (recursionPolicy != LockRecursionPolicy.NoRecursion){
-				//reader_locks = new Dictionary<int,int> ();
-				throw new NotImplementedException ("recursionPolicy != NoRecursion not currently implemented");
-			}
+			this.noRecursion = recursionPolicy == LockRecursionPolicy.NoRecursion;
 		}
 
 		public void EnterReadLock ()
@@ -121,51 +124,80 @@ namespace System.Threading {
 
 		public bool TryEnterReadLock (int millisecondsTimeout)
 		{
-			if (millisecondsTimeout < Timeout.Infinite)
-				throw new ArgumentOutOfRangeException ("millisecondsTimeout");
-			
-			if (read_locks == null)
-				throw new ObjectDisposedException (null);
+			bool dummy = false;
+			return TryEnterReadLock (millisecondsTimeout, ref dummy);
+		}
 
-			if (Thread.CurrentThread == write_thread)
-				throw new LockRecursionException ("Read lock cannot be acquired while write lock is held");
+		public bool TryEnterReadLock (int millisecondsTimeout, ref bool success)
+		{
+			ThreadLockState ctstate = CurrentThreadState;
 
-			EnterMyLock ();
-
-			LockDetails ld = GetReadLockDetails (Thread.CurrentThread.ManagedThreadId, true);
-			if (ld.ReadLocks != 0) {
-				ExitMyLock ();
-				throw new LockRecursionException ("Recursive read lock can only be aquired in SupportsRecursion mode");
+			if (CheckState (ctstate, millisecondsTimeout, LockState.Read)) {
+				++ctstate.ReaderRecursiveCount;
+				return true;
 			}
-			++ld.ReadLocks;
-			
-			while (true){
-				// Easy case, no contention
-				// owners >= 0 means there might be readers (but no writer)
-				if (owners >= 0 && numWriteWaiters == 0){
-					owners++;
-					break;
-				}
-				
-				// If the request is to probe.
-				if (millisecondsTimeout == 0){
-					ExitMyLock ();
-					return false;
+
+			// This is downgrading from upgradable, no need for check since
+			// we already have a sort-of read lock that's going to disappear
+			// after user calls ExitUpgradeableReadLock.
+			// Same idea when recursion is allowed and a write thread wants to
+			// go for a Read too.
+			if (ctstate.LockState.Has (LockState.Upgradable)
+			    || (!noRecursion && ctstate.LockState.Has (LockState.Write))) {
+				RuntimeHelpers.PrepareConstrainedRegions ();
+				try {}
+				finally {
+					Interlocked.Add (ref rwlock, RwRead);
+					ctstate.LockState ^= LockState.Read;
+					++ctstate.ReaderRecursiveCount;
 				}
 
-				// We need to wait.  Mark that we have waiters and wait.  
-				if (readEvent == null) {
-					LazyCreateEvent (ref readEvent, false);
-					// since we left the lock, start over. 
+				return true;
+			}
+			
+			++numReadWaiters;
+			int val = 0;
+			long start = millisecondsTimeout == -1 ? 0 : sw.ElapsedMilliseconds;
+
+			do {
+				/* Check if a writer is present (RwWrite) or if there is someone waiting to
+				 * acquire a writer lock in the queue (RwWait | RwWaitUpgrade).
+				 */
+				if ((rwlock & (RwWrite | RwWait | RwWaitUpgrade)) > 0) {
+					writerDoneEvent.Wait (ComputeTimeout (millisecondsTimeout, start));
 					continue;
 				}
 
-				if (!WaitOnEvent (readEvent, ref numReadWaiters, millisecondsTimeout))
-					return false;
-			}
-			ExitMyLock ();
-			
-			return true;
+				/* Optimistically try to add ourselves to the reader value
+				 * if the adding was too late and another writer came in between
+				 * we revert the operation.
+				 */
+				RuntimeHelpers.PrepareConstrainedRegions ();
+				try {}
+				finally {
+					if (((val = Interlocked.Add (ref rwlock, RwRead)) & (RwWrite | RwWait | RwWaitUpgrade)) == 0) {
+						/* If we are the first reader, reset the event to let other threads
+						 * sleep correctly if they try to acquire write lock
+						 */
+						if (val >> RwReadBit == 1)
+							readerDoneEvent.Reset ();
+
+						ctstate.LockState ^= LockState.Read;
+						++ctstate.ReaderRecursiveCount;
+						--numReadWaiters;
+						success = true;
+					} else {
+						Interlocked.Add (ref rwlock, -RwRead);
+					}
+				}
+				if (success)
+					return true;
+
+				writerDoneEvent.Wait (ComputeTimeout (millisecondsTimeout, start));
+			} while (millisecondsTimeout == -1 || (sw.ElapsedMilliseconds - start) < millisecondsTimeout);
+
+			--numReadWaiters;
+			return false;
 		}
 
 		public bool TryEnterReadLock (TimeSpan timeout)
@@ -173,22 +205,22 @@ namespace System.Threading {
 			return TryEnterReadLock (CheckTimeout (timeout));
 		}
 
-		//
-		// TODO: What to do if we are releasing a ReadLock and we do not own it?
-		//
 		public void ExitReadLock ()
 		{
-			EnterMyLock ();
+			RuntimeHelpers.PrepareConstrainedRegions ();
+			try {}
+			finally {
+				ThreadLockState ctstate = CurrentThreadState;
 
-			if (owners < 1) {
-				ExitMyLock ();
-				throw new SynchronizationLockException ("Releasing lock and no read lock taken");
+				if (!ctstate.LockState.Has (LockState.Read))
+					throw new SynchronizationLockException ("The current thread has not entered the lock in read mode");
+
+				if (--ctstate.ReaderRecursiveCount == 0) {
+					ctstate.LockState ^= LockState.Read;
+					if (Interlocked.Add (ref rwlock, -RwRead) >> RwReadBit == 0)
+						readerDoneEvent.Set ();
+				}
 			}
-
-			--owners;
-			--GetReadLockDetails (Thread.CurrentThread.ManagedThreadId, false).ReadLocks;
-
-			ExitAndWakeUpAppropriateWaiters ();
 		}
 
 		public void EnterWriteLock ()
@@ -198,79 +230,90 @@ namespace System.Threading {
 		
 		public bool TryEnterWriteLock (int millisecondsTimeout)
 		{
-			if (millisecondsTimeout < Timeout.Infinite)
-				throw new ArgumentOutOfRangeException ("millisecondsTimeout");
+			ThreadLockState ctstate = CurrentThreadState;
 
-			if (read_locks == null)
-				throw new ObjectDisposedException (null);
-
-			if (IsWriteLockHeld)
-				throw new LockRecursionException ();
-
-			EnterMyLock ();
-
-			LockDetails ld = GetReadLockDetails (Thread.CurrentThread.ManagedThreadId, false);
-			if (ld != null && ld.ReadLocks > 0) {
-				ExitMyLock ();
-				throw new LockRecursionException ("Write lock cannot be acquired while read lock is held");
+			if (CheckState (ctstate, millisecondsTimeout, LockState.Write)) {
+				++ctstate.WriterRecursiveCount;
+				return true;
 			}
 
-			while (true){
-				// There is no contention, we are done
-				if (owners == 0){
-					// Indicate that we have a writer
-					owners = -1;
-					write_thread = Thread.CurrentThread;
-					break;
+			++numWriteWaiters;
+			bool isUpgradable = ctstate.LockState.Has (LockState.Upgradable);
+			bool registered = false;
+			bool success = false;
+
+			RuntimeHelpers.PrepareConstrainedRegions ();
+			try {
+				/* If the code goes there that means we had a read lock beforehand
+				 * that need to be suppressed, we also take the opportunity to register
+				 * our interest in the write lock to avoid other write wannabe process
+				 * coming in the middle
+				 */
+				if (isUpgradable && rwlock >= RwRead) {
+					try {}
+					finally {
+						if (Interlocked.Add (ref rwlock, RwWaitUpgrade - RwRead) >> RwReadBit == 0)
+							readerDoneEvent.Set ();
+						registered = true;
+					}
 				}
 
-				// If we are the thread that took the Upgradable read lock
-				if (owners == 1 && upgradable_thread == Thread.CurrentThread){
-					owners = -1;
-					write_thread = Thread.CurrentThread;
-					break;
-				}
+				int stateCheck = isUpgradable ? RwWaitUpgrade : RwWait;
+				long start = millisecondsTimeout == -1 ? 0 : sw.ElapsedMilliseconds;
 
-				// If the request is to probe.
-				if (millisecondsTimeout == 0){
-					ExitMyLock ();
-					return false;
-				}
+				do {
+					int state = rwlock;
 
-				// We need to wait, figure out what kind of waiting.
-				
-				if (upgradable_thread == Thread.CurrentThread){
-					// We are the upgradable thread, register our interest.
-					
-					if (upgradeEvent == null){
-						LazyCreateEvent (ref upgradeEvent, false);
-
-						// since we left the lock, start over.
-						continue;
+					if (state <= stateCheck) {
+						try {}
+						finally {
+							if (Interlocked.CompareExchange (ref rwlock, RwWrite, state) == state) {
+								writerDoneEvent.Reset ();
+								ctstate.LockState ^= LockState.Write;
+								++ctstate.WriterRecursiveCount;
+								--numWriteWaiters;
+								registered = false;
+								success = true;
+							}
+						}
+						if (success)
+							return true;
 					}
 
-					if (numUpgradeWaiters > 0){
-						ExitMyLock ();
-						throw new ApplicationException ("Upgrading lock to writer lock already in process, deadlock");
-					}
-					
-					if (!WaitOnEvent (upgradeEvent, ref numUpgradeWaiters, millisecondsTimeout))
-						return false;
-				} else {
-					if (writeEvent == null){
-						LazyCreateEvent (ref writeEvent, true);
+					state = rwlock;
 
-						// since we left the lock, retry
-						continue;
+					// We register our interest in taking the Write lock (if upgradeable it's already done)
+					if (!isUpgradable) {
+						while ((state & RwWait) == 0) {
+							try {}
+							finally {
+								if (Interlocked.CompareExchange (ref rwlock, state | RwWait, state) == state)
+									registered = true;
+							}
+							if (registered)
+								break;
+							state = rwlock;
+						}
 					}
-					if (!WaitOnEvent (writeEvent, ref numWriteWaiters, millisecondsTimeout))
-						return false;
-				}
+
+					// Before falling to sleep
+					do {
+						if (rwlock <= stateCheck)
+							break;
+						if ((rwlock & RwWrite) != 0)
+							writerDoneEvent.Wait (ComputeTimeout (millisecondsTimeout, start));
+						else if ((rwlock >> RwReadBit) > 0)
+							readerDoneEvent.Wait (ComputeTimeout (millisecondsTimeout, start));
+					} while (millisecondsTimeout < 0 || (sw.ElapsedMilliseconds - start) < millisecondsTimeout);
+				} while (millisecondsTimeout < 0 || (sw.ElapsedMilliseconds - start) < millisecondsTimeout);
+
+				--numWriteWaiters;
+			} finally {
+				if (registered)
+					Interlocked.Add (ref rwlock, isUpgradable ? -RwWaitUpgrade : -RwWait);
 			}
 
-			Debug.Assert (owners == -1, "Owners is not -1");
-			ExitMyLock ();
-			return true;
+			return false;
 		}
 
 		public bool TryEnterWriteLock (TimeSpan timeout)
@@ -280,20 +323,24 @@ namespace System.Threading {
 
 		public void ExitWriteLock ()
 		{
-			EnterMyLock ();
+			RuntimeHelpers.PrepareConstrainedRegions ();
+			try {}
+			finally {
+				ThreadLockState ctstate = CurrentThreadState;
 
-			if (owners != -1) {
-				ExitMyLock ();
-				throw new SynchronizationLockException ("Calling ExitWriterLock when no write lock is held");
+				if (!ctstate.LockState.Has (LockState.Write))
+					throw new SynchronizationLockException ("The current thread has not entered the lock in write mode");
+			
+				if (--ctstate.WriterRecursiveCount == 0) {
+					bool isUpgradable = ctstate.LockState.Has (LockState.Upgradable);
+					ctstate.LockState ^= LockState.Write;
+
+					int value = Interlocked.Add (ref rwlock, isUpgradable ? RwRead - RwWrite : -RwWrite);
+					writerDoneEvent.Set ();
+					if (isUpgradable && value >> RwReadBit == 1)
+						readerDoneEvent.Reset ();
+				}
 			}
-
-			//Debug.Assert (numUpgradeWaiters > 0);
-			if (upgradable_thread == Thread.CurrentThread)
-				owners = 1;
-			else
-				owners = 0;
-			write_thread = null;
-			ExitAndWakeUpAppropriateWaiters ();
 		}
 
 		public void EnterUpgradeableReadLock ()
@@ -307,44 +354,63 @@ namespace System.Threading {
 		//
 		public bool TryEnterUpgradeableReadLock (int millisecondsTimeout)
 		{
-			if (millisecondsTimeout < Timeout.Infinite)
-				throw new ArgumentOutOfRangeException ("millisecondsTimeout");
+			ThreadLockState ctstate = CurrentThreadState;
 
-			if (read_locks == null)
-				throw new ObjectDisposedException (null);
-
-			if (IsUpgradeableReadLockHeld)
-				throw new LockRecursionException ();
-
-			if (IsWriteLockHeld)
-				throw new LockRecursionException ();
-
-			EnterMyLock ();
-			while (true){
-				if (owners == 0 && numWriteWaiters == 0 && upgradable_thread == null){
-					owners++;
-					upgradable_thread = Thread.CurrentThread;
-					break;
-				}
-
-				// If the request is to probe
-				if (millisecondsTimeout == 0){
-					ExitMyLock ();
-					return false;
-				}
-
-				if (readEvent == null){
-					LazyCreateEvent (ref readEvent, false);
-					// since we left the lock, start over.
-					continue;
-				}
-
-				if (!WaitOnEvent (readEvent, ref numReadWaiters, millisecondsTimeout))
-					return false;
+			if (CheckState (ctstate, millisecondsTimeout, LockState.Upgradable)) {
+				++ctstate.UpgradeableRecursiveCount;
+				return true;
 			}
 
-			ExitMyLock ();
-			return true;
+			if (ctstate.LockState.Has (LockState.Read))
+				throw new LockRecursionException ("The current thread has already entered read mode");
+
+			++numUpgradeWaiters;
+			long start = millisecondsTimeout == -1 ? 0 : sw.ElapsedMilliseconds;
+			bool taken = false;
+			bool success = false;
+
+			// We first try to obtain the upgradeable right
+			try {
+				while (!upgradableEvent.IsSet () || !taken) {
+					try {}
+					finally {
+						taken = upgradableTaken.TryRelaxedSet ();
+					}
+					if (taken)
+						break;
+					if (millisecondsTimeout != -1 && (sw.ElapsedMilliseconds - start) > millisecondsTimeout) {
+						--numUpgradeWaiters;
+						return false;
+					}
+
+					upgradableEvent.Wait (ComputeTimeout (millisecondsTimeout, start));
+				}
+
+				upgradableEvent.Reset ();
+
+				RuntimeHelpers.PrepareConstrainedRegions ();
+				try {
+					// Then it's a simple reader lock acquiring
+					TryEnterReadLock (ComputeTimeout (millisecondsTimeout, start), ref success);
+				} finally {
+					if (success) {
+						ctstate.LockState = LockState.Upgradable;
+						--ctstate.ReaderRecursiveCount;
+						++ctstate.UpgradeableRecursiveCount;
+					} else {
+						upgradableTaken.Value = false;
+						upgradableEvent.Set ();
+					}
+				}
+
+				--numUpgradeWaiters;
+			} catch {
+				// An async exception occured, if we had taken the upgradable mode, release it
+				if (taken && !success)
+					upgradableTaken.Value = false;
+			}
+
+			return success;
 		}
 
 		public bool TryEnterUpgradeableReadLock (TimeSpan timeout)
@@ -354,211 +420,159 @@ namespace System.Threading {
 	       
 		public void ExitUpgradeableReadLock ()
 		{
-			EnterMyLock ();
-			Debug.Assert (owners > 0, "Releasing an upgradable lock, but there was no reader!");
-			--owners;
-			upgradable_thread = null;
-			ExitAndWakeUpAppropriateWaiters ();
+			RuntimeHelpers.PrepareConstrainedRegions ();
+			try {}
+			finally {
+				ThreadLockState ctstate = CurrentThreadState;
+
+				if (!ctstate.LockState.Has (LockState.Upgradable | LockState.Read))
+					throw new SynchronizationLockException ("The current thread has not entered the lock in upgradable mode");
+
+				if (--ctstate.UpgradeableRecursiveCount == 0) {
+					upgradableTaken.Value = false;
+					upgradableEvent.Set ();
+
+					ctstate.LockState ^= LockState.Upgradable;
+					if (Interlocked.Add (ref rwlock, -RwRead) >> RwReadBit == 0)
+						readerDoneEvent.Set ();
+				}
+			}
 		}
 
 		public void Dispose ()
 		{
-			read_locks = null;
+			disposed = true;
 		}
 
 		public bool IsReadLockHeld {
-			get { return RecursiveReadCount != 0; }
+			get {
+				return rwlock >= RwRead && CurrentThreadState.LockState.Has (LockState.Read);
+			}
 		}
 		
 		public bool IsWriteLockHeld {
-			get { return RecursiveWriteCount != 0; }
+			get {
+				return (rwlock & RwWrite) > 0 && CurrentThreadState.LockState.Has (LockState.Write);
+			}
 		}
 		
 		public bool IsUpgradeableReadLockHeld {
-			get { return RecursiveUpgradeCount != 0; }
+			get {
+				return upgradableTaken.Value && CurrentThreadState.LockState.Has (LockState.Upgradable);
+			}
 		}
 
 		public int CurrentReadCount {
-			get { return owners & 0xFFFFFFF; }
+			get {
+				return (rwlock >> RwReadBit) - (upgradableTaken.Value ? 1 : 0);
+			}
 		}
 		
 		public int RecursiveReadCount {
 			get {
-				EnterMyLock ();
-				LockDetails ld = GetReadLockDetails (Thread.CurrentThread.ManagedThreadId, false);
-				int count = ld == null ? 0 : ld.ReadLocks;
-				ExitMyLock ();
-				return count;
+				return CurrentThreadState.ReaderRecursiveCount;
 			}
 		}
 
 		public int RecursiveUpgradeCount {
-			get { return upgradable_thread == Thread.CurrentThread ? 1 : 0; }
+			get {
+				return CurrentThreadState.UpgradeableRecursiveCount;
+			}
 		}
 
 		public int RecursiveWriteCount {
-			get { return write_thread == Thread.CurrentThread ? 1 : 0; }
+			get {
+				return CurrentThreadState.WriterRecursiveCount;
+			}
 		}
 
 		public int WaitingReadCount {
-			get { return (int) numReadWaiters; }
+			get {
+				return numReadWaiters;
+			}
 		}
 
 		public int WaitingUpgradeCount {
-			get { return (int) numUpgradeWaiters; }
+			get {
+				return numUpgradeWaiters;
+			}
 		}
 
 		public int WaitingWriteCount {
-			get { return (int) numWriteWaiters; }
+			get {
+				return numWriteWaiters;
+			}
 		}
 
 		public LockRecursionPolicy RecursionPolicy {
-			get { return recursionPolicy; }
-		}
-		
-#region Private methods
-		void EnterMyLock ()
-		{
-			if (Interlocked.CompareExchange(ref myLock, 1, 0) != 0)
-				EnterMyLockSpin ();
-		}
-
-		void EnterMyLockSpin ()
-		{
-
-			for (int i = 0; ;i++) {
-				if (i < 3 && smp)
-					Thread.SpinWait (20);    // Wait a few dozen instructions to let another processor release lock. 
-				else 
-					Thread.Sleep (0);        // Give up my quantum.  
-
-				if (Interlocked.CompareExchange(ref myLock, 1, 0) == 0)
-					return;
+			get {
+				return recursionPolicy;
 			}
 		}
 
-		void ExitMyLock()
-		{
-			Debug.Assert (myLock != 0, "Exiting spin lock that is not held");
-			myLock = 0;
-		}
+		ThreadLockState CurrentThreadState {
+			get {
+				int tid = Thread.CurrentThread.ManagedThreadId;
 
-		bool MyLockHeld { get { return myLock != 0; } }
+				if (tid < fastStateCache.Length)
+					return fastStateCache[tid] == null ? (fastStateCache[tid] = new ThreadLockState ()) : fastStateCache[tid];
 
-		/// <summary>
-		/// Determines the appropriate events to set, leaves the locks, and sets the events. 
-		/// </summary>
-		private void ExitAndWakeUpAppropriateWaiters()
-		{
-			Debug.Assert (MyLockHeld);
+				if (currentThreadState == null)
+					currentThreadState = new Dictionary<int, ThreadLockState> ();
 
-			// First a writing thread waiting on being upgraded
-			if (owners == 1 && numUpgradeWaiters != 0){
-				// Exit before signaling to improve efficiency (wakee will need the lock)
-				ExitMyLock ();
-				// release all upgraders (however there can be at most one). 
-				upgradeEvent.Set ();
-				//
-				// TODO: What does the following comment mean?
-				// two threads upgrading is a guarenteed deadlock, so we throw in that case. 
-			} else if (owners == 0 && numWriteWaiters > 0) {
-				// Exit before signaling to improve efficiency (wakee will need the lock)
-				ExitMyLock ();
-				// release one writer. 
-				writeEvent.Set ();
+				ThreadLockState state;
+				if (!currentThreadState.TryGetValue (id, out state))
+					currentThreadState[id] = state = new ThreadLockState ();
+
+				return state;
 			}
-			else if (owners >= 0 && numReadWaiters != 0) {
-				// Exit before signaling to improve efficiency (wakee will need the lock)
-				ExitMyLock ();
-				// release all readers.
-				readEvent.Set();
-			} else
-				ExitMyLock();
 		}
 
-		/// <summary>
-		/// A routine for lazily creating a event outside the lock (so if errors
-		/// happen they are outside the lock and that we don't do much work
-		/// while holding a spin lock).  If all goes well, reenter the lock and
-		/// set 'waitEvent' 
-		/// </summary>
-		void LazyCreateEvent(ref EventWaitHandle waitEvent, bool makeAutoResetEvent)
+		bool CheckState (ThreadLockState state, int millisecondsTimeout, LockState validState)
 		{
-			Debug.Assert (MyLockHeld);
-			Debug.Assert (waitEvent == null);
-			
-			ExitMyLock ();
-			EventWaitHandle newEvent;
-			if (makeAutoResetEvent) 
-				newEvent = new AutoResetEvent (false);
-			else 
-				newEvent = new ManualResetEvent (false);
+			if (disposed)
+				throw new ObjectDisposedException ("ReaderWriterLockSlim");
 
-			EnterMyLock ();
+			if (millisecondsTimeout < -1)
+				throw new ArgumentOutOfRangeException ("millisecondsTimeout");
 
-			// maybe someone snuck in. 
-			if (waitEvent == null)
-				waitEvent = newEvent;
+			// Detect and prevent recursion
+			LockState ctstate = state.LockState;
+
+			if (ctstate != LockState.None && noRecursion && (ctstate != LockState.Upgradable || validState == LockState.Upgradable))
+				throw new LockRecursionException ("The current thread has already a lock and recursion isn't supported");
+
+			if (noRecursion)
+				return false;
+
+			// If we already had right lock state, just return
+			if (ctstate.Has (validState))
+				return true;
+
+			CheckRecursionAuthorization (ctstate, validState);
+
+			return false;
 		}
 
-		/// <summary>
-		/// Waits on 'waitEvent' with a timeout of 'millisceondsTimeout.  
-		/// Before the wait 'numWaiters' is incremented and is restored before leaving this routine.
-		/// </summary>
-		bool WaitOnEvent (EventWaitHandle waitEvent, ref uint numWaiters, int millisecondsTimeout)
+		static void CheckRecursionAuthorization (LockState ctstate, LockState desiredState)
 		{
-			Debug.Assert (MyLockHeld);
-
-			waitEvent.Reset ();
-			numWaiters++;
-
-			bool waitSuccessful = false;
-
-			// Do the wait outside of any lock 
-			ExitMyLock();      
-			try {
-				waitSuccessful = waitEvent.WaitOne (millisecondsTimeout, false);
-			} finally {
-				EnterMyLock ();
-				--numWaiters;
-				if (!waitSuccessful)
-					ExitMyLock ();
-			}
-			return waitSuccessful;
+			// In read mode you can just enter Read recursively
+			if (ctstate == LockState.Read)
+				throw new LockRecursionException ();				
 		}
-		
+
 		static int CheckTimeout (TimeSpan timeout)
 		{
 			try {
-				return checked((int) timeout.TotalMilliseconds);
+				return checked ((int)timeout.TotalMilliseconds);
 			} catch (System.OverflowException) {
-				throw new ArgumentOutOfRangeException ("timeout");				
+				throw new ArgumentOutOfRangeException ("timeout");
 			}
 		}
 
-		LockDetails GetReadLockDetails (int threadId, bool create)
+		static int ComputeTimeout (int millisecondsTimeout, long start)
 		{
-			int i;
-			LockDetails ld;
-			for (i = 0; i < read_locks.Length; ++i) {
-				ld = read_locks [i];
-				if (ld == null)
-					break;
-
-				if (ld.ThreadId == threadId)
-					return ld;
-			}
-
-			if (!create)
-				return null;
-
-			if (i == read_locks.Length)
-				Array.Resize (ref read_locks, read_locks.Length * 2);
-				
-			ld = read_locks [i] = new LockDetails ();
-			ld.ThreadId = threadId;
-			return ld;
+			return millisecondsTimeout == -1 ? -1 : (int)Math.Max (sw.ElapsedMilliseconds - start - millisecondsTimeout, 1);
 		}
-#endregion
 	}
 }

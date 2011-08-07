@@ -74,7 +74,7 @@ namespace MonoTests.System.Reflection
 	}
 
 	[TestFixture]
-	public class FieldInfoTest
+	public unsafe class FieldInfoTest
 	{
 		[NonSerialized]
 		public int i;
@@ -434,9 +434,6 @@ namespace MonoTests.System.Reflection
 			// get it for real
 			fi = t.GetField ("protectedField", BindingFlags.NonPublic | BindingFlags.Instance);
 			Assert.IsNotNull (fi);
-			// get via typebuilder
-			FieldInfo f = TypeBuilder.GetField (t, fi);
-			Assert.IsNotNull (f);
 		}
 #endif // TARGET_JVM
 
@@ -460,7 +457,6 @@ namespace MonoTests.System.Reflection
 			typeof (FieldInfoTest).GetField ("non_const_field").GetRawConstantValue ();
 		}
 
-#if NET_2_0
 		[Test]
 		[ExpectedException (typeof (InvalidOperationException))]
 		public void GetValueOpenGeneric ()
@@ -479,14 +475,37 @@ namespace MonoTests.System.Reflection
 		public void GetValueOnConstantOfOpenGeneric ()
 		{
 			Assert.AreEqual (10, typeof(Foo<>).GetField ("constant").GetValue (null), "#1");
+			Assert.AreEqual ("waa", typeof(Foo<>).GetField ("sconstant").GetValue (null), "#2");
+			Assert.AreEqual (IntEnum.Third, typeof(Foo<>).GetField ("econstant").GetValue (null), "#3");
+		}
+
+		public static unsafe void* ip;
+
+		[Test]
+		public unsafe void GetSetValuePointers ()
+		{
+			int i = 5;
+			void *p = &i;
+			typeof (FieldInfoTest).GetField ("ip").SetValue (null, (IntPtr)p);
+			Pointer p2 = (Pointer)typeof (FieldInfoTest).GetField ("ip").GetValue (null);
+
+			int *pi = (int*)Pointer.Unbox (p2);
+			Assert.AreEqual (5, *pi);
 		}
 
 		public class Foo<T>
 		{
+			 /*
+			The whole point of this field is to make sure we don't create the vtable layout
+			when loading the value of constants for Foo<>. See bug #594942.
+
+			*/
+			public T dummy;
 			public static int field;
 			public const int constant = 10;
+			public const string sconstant = "waa";
+			public const IntEnum econstant = IntEnum.Third;
 		}
-#endif
 
 		public enum IntEnum {
 			First = 1,

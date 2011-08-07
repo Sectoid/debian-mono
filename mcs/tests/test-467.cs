@@ -1,32 +1,28 @@
 using System;
 
-public class ExceptionWithAnonMethod
+class A
 {
-	public delegate void EmptyCallback();
-    	static string res;
-	
-	public static int Main()
+	public delegate int D ();
+}
+
+class B : A
+{
+	new delegate void D ();
+}
+
+class C
+{
+	static int Foo ()
 	{
-		try {
-			throw new Exception("e is afraid to enter anonymous land");
-		} catch(Exception e) {
-			AnonHandler(delegate {
-				Console.WriteLine(e.Message); 
-				res = e.Message;
-			});
-		}
-		if (res == "e is afraid to enter anonymous land"){
-		    Console.WriteLine ("Test passed");
-		    return 0;
-		}
-		Console.WriteLine ("Test failed");
 		return 1;
 	}
-
-	public static void AnonHandler(EmptyCallback handler)
+	
+	public static int Main ()
 	{
-		if(handler != null) {
-			handler();
-		}
+		A.D d = new B.D (Foo);
+		if (d () != 1)
+			return 1;
+		
+		return 0;
 	}
 }

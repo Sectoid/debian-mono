@@ -1,3 +1,380 @@
+2011-04-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Revert "Add checks to ParameterBuilder.SetConstant () to avoid an
+	assert in the runtime. Fixes #684438."
+
+	This reverts commit c5c488ec9d93d7003f28ac246813a469c4b7b088.
+
+	This seems to break IronRuby.
+
+2011-04-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Add checks to ParameterBuilder.SetConstant () to avoid an assert
+	in the runtime. Fixes #684438.
+
+2011-02-03  Marek Habersack  <grendel@twistedcode.net>
+
+	[reflection] Default binder's AdjustArguments method treats
+	ParamArray parameters which are already arrays properly
+
+	Such parameters are not adjusted as it would lead to an
+	InvalidCastException whenever an attempt to set an array index's
+	value would be made.
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
+2011-01-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Add NET 4.0 Assembly.UnsafeLoadFrom () method.
+
+2011-01-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Change some usages of ArrayList to List<T> to avoid calls to the
+	slow ArrayList.ToArray(Type) method.
+
+2011-01-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix operator != handling of LHS null
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Some .net 4.0 api compatibility fixes
+
+2010-11-08  Marek Safar  <marek.safar@gmail.com>
+
+	API compatibility work
+
+2010-10-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* MonoMethod.cs: Add new icall for ::Attributes.
+
+2010-10-15  Zoltan Varga  <vargaz@gmail.com>
+
+	Add support for assembly names with embedded and starting spaces.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Warnings cleanup
+
+2010-10-04  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* MonoGenericClass.cs (.ctor): Only register with the runtime when
+	the underlying TB is not finished.
+
+2010-09-20  Jb Evain  <jbevain@gmail.com>
+
+	Revert "[Fix] Fix the default binder when selecting params
+	methods."
+
+	This reverts commit 6a7443d8089c92f722d87c81f6c7d22c2c0deafb.
+
+2010-09-10  Jb Evain  <jbevain@gmail.com>
+
+	[Fix] Fix the default binder when selecting params methods.
+
+	Use full assignability check instead of type equality when
+	selecting methods with a params array parameter. Fixes #636939.
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the corlib build for monodroid
+
+2010-08-25  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* MonoProperty.cs: Don't share the same field with DeclaringType
+	and ReflectedType.
+
+	in mcs/class/corlib/System:
+
+2010-08-16  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* MonoField.cs: Don't access ::type directly since it might be
+	lazily loaded.
+
+2010-08-16  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* MonoField.cs (FieldType): Lazy load the field type if null.
+
+2010-08-11  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* CustomAttributeData.cs: This now receives only the information
+	required to later load argument data. This information is stored
+	in a new field that is later discarded.
+
+	in mono/mono/metadata:
+
+2010-07-28  Jb Evain  <jbevain@novell.com>
+
+	* Assembly.cs: add IsFullyTrusted stub.
+
+Thu Jul 22 11:05:04 CEST 2010 Paolo Molaro <lupus@ximian.com>
+
+	* Module.cs: added == and != operators for 4.0.
+
+2010-06-21  Jb Evain  <jbevain@novell.com>
+
+	* MonoModule.cs
+	* Assembly.cs
+	* MonoAssembly.cs
+	* Module.cs:
+		Make Assembly and Module abstract on Moonlight too.
+
+2010-06-03  Jb Evain  <jbevain@novell.com>
+
+	* Assembly.cs: add net_4_0's PermissionSet property.
+
+2010-05-27  Jb Evain  <jbevain@novell.com>
+
+	* Assembly.cs (Load*): add net_4_0 overloads.
+
+2010-05-13 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoAssembly.cs: Fix a 2.0 corlib test failure.
+
+2010-04-20 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Binder.cs (SelectMethod): Exact matching must check
+	all entries because if two of them match, we must use
+	the slow path.
+
+	* Binder.cs (GetBetterMethod): Don't give generic method
+	definition special treatment.
+
+	Fixes #325306.
+
+2010-04-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoGenericClass.cs: Implement ResolveInternal.
+
+2010-04-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoField.cs (Get|Set)Value: Check if obj is compatible
+	with field's class.
+
+2010-04-02  Marek Safar  <marek.safar@gmail.com>
+
+	* MethodBase.cs: Made GetParameterCount abstract and implement
+	where missing to avoid redundant allocations.
+
+2010-04-01 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Module.cs (GetMethod): Check for null 'types' argument.
+
+	* MonoModule.cs (GetMethodImpl): Special case when 'types'
+	is null and call Type::GetMethod(string) directly.
+	This is ok since proper checking of the 'types' overload
+	is done by callers.
+
+2010-04-01  Jb Evain  <jbevain@novell.com>
+
+	* Module.cs: make Module abstract on net_4_0.
+
+2010-03-31 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Module.cs:
+	* MonoModule.cs: Implement MetadataToken, FullyQualifiedName,
+	ModuleVersionId, MDStreamVersion, ScopeName,
+	Name, Assembly.
+
+2010-03-31 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Module.cs:
+	* MonoModule.cs: Implement GetSignerCertificate and
+	GetTypes.
+
+2010-03-31 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Module.cs:
+	* MonoModule.cs: Implement ResolveMember, ResolveMethod,
+	ResolveString, ResolveType, ResolveSignature and
+	GetMethods.
+
+2010-03-31 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Module.cs:
+	* MonoModule.cs: Implement GetField, GetFields,
+	GetMethodImpl, GetPEKind, GetType, IsDefined and
+	ResolveField.
+
+2010-03-31 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Module.cs:
+	* MonoModule.cs: Implement GetCustomAttributesData.
+
+2010-03-31 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Module.cs:
+	* MonoModule.cs: Implement GetCustomAttributes.
+
+2010-03-31 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Module.cs:
+	* MonoModule.cs: Implement FindTypes.
+
+2010-03-31 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Assembly.cs: Raise the right exception.
+
+2010-03-31 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Module.cs: Make .ctor protected under v4.
+	* MonoModule.cs: Implement IsResource.
+
+2010-03-31 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Module.cs: Make it a partial class under !v4.
+
+	* MonoModule.cs: New type that exists only under
+	v4. Under v2 it is a part of Module.
+
+	This is the initial setup to make v4 Module an
+	abstract type where all methods raise exceptions.
+
+2010-03-30  Jb Evain  <jbevain@novell.com>
+
+	* MonoAssembly.cs: make MonoAssembly non public.
+
+2010-03-30  Jb Evain  <jbevain@novell.com>
+
+	* Binder.cs (BindToMethod): fix the case where we bind to a method
+	with only one params parameter and that no args are given.
+
+2010-03-30  Jb Evain  <jbevain@novell.com>
+
+	* Binder.cs: when invoking a params method, pack the params
+	arguments before doing the actual invocation.
+
+	Fixes #591877
+
+2010-03-26 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Assembly.cs: Add IsDynamic.
+
+2010-03-26 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoAssembly.cs:
+	* Assembly.cs: Add missing MonoTODO.
+
+2010-03-26 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Assembly.cs: Add v4 ==, != and GetHashCode ()
+
+2010-03-25 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Assembly.cs: Add v4 obsolete attribute.
+
+2010-03-25 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Assembly.cs:
+	* MonoAssembly.cs: Move a dozen methods from Assembly.cs
+	to MonoAssembly.cs, so they can either be the concrete impl
+	on v4 of the only impl on v2.
+	Add to Assembly.cs versions that throws NotImplementedException.
+	Mask Assembly.cs as abstract.
+
+2010-03-24 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Assembly.cs: Make it a partial class under !v4.
+
+	* MonoAssembly.cs: New type that exists only under
+	v4. Under v2 it is a part of Assembly.
+
+	This is the initial setup to make v4 Assembly an
+	abstract type where all methods raise exceptions.
+
+2010-03-24  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* MethodInfo.cs: Exclude IsGenericMethod* and ContainsGenericParameters
+	from moonlight too.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* Assembly.cs: use MOONLIGHT symbol to
+	disambiguate MonoTouch and Moonlight code.
+
+2010-03-07 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* EventInfo.cs: Some v4 adjustments.
+
+2010-03-07 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodInfo.cs: New v4 stuff.
+
+2010-03-07 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ManifestResourceInfo.cs: New v4 .ctor.
+
+2010-02-28 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* CustomAttributeData.cs:
+	* ExceptionHandlingClause.cs:
+	* LocalVariableInfo.cs: Add some v4 bits.
+
+2010-02-26 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* PropertyInfo.cs: Small hack to avoid having cor-compare
+	flagging Get(Raw)ConstantValue as not implemented.
+
+2010-02-24 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodBody.cs: Add v4 bits.
+
+2010-02-11 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodBody.cs: Add v4 bits.
+
+2010-02-11 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodBase.cs: Add some v4 bits.
+
+2010-02-11 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MemberInfo.cs: Add GetCustomAttributesData.
+
+	* Assembly.cs:
+	* MemberInfo.cs:
+	* Module.cs:
+	* MonoEvent.cs:
+	* MonoField.cs:
+	* MonoMethod.cs:
+	* MonoProperty.cs:
+	* ParameterInfo.cs: Implement GetCustomAttributesData.
+
+2010-02-11 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MemberInfo.cs: Add some v4 bits.
+
+2010-02-11 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodImplAttributes.cs: Add NoOptimization flag.
+
+2010-02-11  Marek Habersack  <mhabersack@novell.com>
+
+	* ConstructorInfo.cs, EventInfo.cs, FieldInfo.cs: fix 4.0 equality
+	and inequality operators by casting the passed parameters to
+	object. Failing to do so leads to infinite recursion calling the
+	operator.
+
+2010-02-10 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* FieldInfo.cs: Add some v4 bits.
+
+2010-02-10 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* EventInfo.cs: Add some v4 bits.
+
+2010-02-10 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ConstructorInfo.cs: Add some v4 bits.
+
+2010-02-10 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* PropertyInfo.cs: Remove a pair of MonoTODO.
+
+	* MonoProperty.cs: Implement GetConstantValue and GetRawConstantValue.
+
 2010-02-05 Rodrigo Kumpera  <rkumpera@novell.com>
 
 	* MonoMethod.cs (GetParameters): Must return a copy instead of the interned array.
@@ -11,6 +388,10 @@
 
 	* ParameterInfo.cs (MetadataToken): Properly handle tokens of non-method members.
 
+2010-01-31  Zoltan Varga  <vargaz@gmail.com>
+
+	* MonoGenericClass.cs: Fix a warning.
+
 2010-01-28  Rolf Bjarne Kvinge  <RKvinge@novell.com>
 
 	* Assembly.cs: GetSatelliteAssembly: Ask LoadSatellite to not throw
@@ -22,10 +403,92 @@
 
 2010-01-05 Rodrigo Kumpera  <rkumpera@novell.com>
 
-	* ParameterInfoTest.cs: Add a test for default values from custom
-	attributes.
+	* ParameterInfo.cs (DefaultProperty): Add support for DateTime defaults.
 
-	Backport of r149083.
+	* ParameterInfo.cs: Implements RawDefaultProperty.
+
+2009-12-17 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoGenericClass.cs (GetMethods): When the GTD is not a typebuilder,
+	calling GetMethods on it will return everything we need so no need to
+	do the crazy loop.
+	The returned methods might contains some that are not from a generic type
+	so we need to guard against this as well.
+
+	* MonoGenericClass.cs (GetMethodsInternal): Guard against methods that don't
+	belong to a GTD as well.
+
+2009-12-14 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoGenericClass.cs: Remove IsByRef hack.
+
+2009-12-14 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoGenericClass.cs (format_name): Avoid calling AssemblyQualifiedName as mcs DynamicObject
+	doesn't implement it.
+
+2009-12-12 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoGenericClass.cs: Remove useless field.
+
+2009-12-12 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoGenericClass.cs: Change it to support a non-sre generic type
+	definition.
+
+2009-12-10 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoGenericClass.cs: Add new register_with_runtime icall to make
+	sure that a managed code instantiated MGC will be returned when
+	the generic instantiation happens in unmanaged code.
+	
+	This is a temporary workaround while Type::MakeGenericType doesn't
+	handle user types properly.
+
+2009-12-10 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoGenericClass.cs: Make this class inherit from Type instead of
+	MonoType. Implement some missing methods and make sure we can still
+	be used as a byref type.
+
+2009-12-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoMethod.cs (MakeGenericMethod): If any of the arguments is
+	a non system type, inflate to a MethodOnTypeBuilderInst.
+
+2009-12-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ParameterInfo.cs: Add constructor that takes an array of ParameterInfo
+	objects.
+
+2009-12-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoGenericClass.cs: Implement IsCompilerContext property and replace
+	all checks to use it.
+
+2009-12-04 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoGenericClass.cs (InflateType): Add a type argument parameter and
+	make this function static. Now it can inflate types using the context
+	of any type.
+
+2009-12-02  Jb Evain  <jbevain@novell.com>
+
+	* Assembly.cs: disable warning about Assembly overriding
+	Equals but not GetHashCode. That's sadly how it's in .net.
+
+2009-12-02  Jb Evain  <jbevain@novell.com>
+
+	* MethodInfo.cs: add an internal virtual GetBaseMethod
+	returning the immediate predecessor in the inheritance chain.
+	* MonoMethod.cs: modify the get_base_definition icall to take
+	a boolean indicating that we want the immediate	base method
+	or the original method definition and rename it to
+	get_base_method. Implement GetBaseMethod with it.
+
+2009-11-21  Miguel de Icaza  <miguel@novell.com>
+
+	* Assembly.cs: Implement missing method.
 
 2009-11-03  Marek Habersack  <mhabersack@novell.com>
 
@@ -38,7 +501,6 @@
 
 	* MonoMethod.cs: Remove CAS check in MonoCMethod.Invoke (just 
 	like it was done for MonoMethod.Invoke sister method)
-	[Backport r145101]
 
 2009-10-26  Sebastien Pouliot  <sebastien@ximian.com>
 
@@ -46,40 +508,30 @@
 	GetSatelliteAssemblyNoThrow. For Moonlight ensure both 
 	GetManifestResourceStream and GetSatelliteAssembly don't load
 	anything "below" the assembly path.
-	[Backport r144845]
 
 2009-10-20  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* MonoProperty.cs: Reduce code duplication and the number of direct
 	calls to icalls (affecting the number of SecuritySafeCritical in
 	Moonlight)
-	[Backport 144448]
 
 2009-10-19  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* MonoEvent.cs: Reduce code duplication and the number of direct
 	calls to icalls (affecting the number of SecuritySafeCritical in
 	Moonlight)
-	[Backport r144363]
 
 2009-10-18  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* MethodBase.cs: Reduce code duplication and the number of direct
 	calls to icalls (affecting the number of SecuritySafeCritical in
 	Moonlight)
-	[Backport r144335]
-
-2009-10-18  Sebastien Pouliot  <sebastien@ximian.com>
-
-	* Assembly.cs: Use UnmanagedMemoryStream (instead of IntPtrStream)
-	in every profile
 
 2009-10-17  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* MonoMethod.cs: Reduce code duplication and the number of direct
 	calls to icalls (affecting the number of SecuritySafeCritical in
 	Moonlight)
-	[Backport r144306]
 
 2009-09-22  Sebastien Pouliot  <sebastien@ximian.com>
 

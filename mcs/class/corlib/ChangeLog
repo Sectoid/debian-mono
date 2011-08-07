@@ -1,24 +1,267 @@
+2011-02-05  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[threadpool] Added dynamic concurrent queue implementation
+
+	Replace the big lock around the list+array used to queue work
+	items with a dynamic concurrent queue to reduce contention.
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Kill old IScheduler interface.
+
+	We still use the ParticipateUntil facility of IScheduler
+	internally and provide a default implementation for pure
+	TaskScheduler
+
+2011-02-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Threadpool Task scheduler
+
+2011-02-16  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Implement properly TaskScheduler's
+	FromCurrentSynchronizationContext
+
+2010-09-24  Kyle Ambroff  <kyle@ambroff.com>
+
+	version tolerant serialization fails with missing primitive
+	members
+
+	Modifies ObjectReader so that when it encounters a primitive typed
+	member in an object stream which has no corresponding member in
+	the app domain, it will read the value anyway and throw it away.
+	That way it can read the next block from the stream.
+
+	Added a unit test which passes with the changes to ObjectReader.
+
+	Fixes bug #641821.
+
+2010-12-04  Kenneth Bell  <ken.git@chezbell.org.uk>
+
+	Implement RawSecurityDescriptor.
+
+	* Marshals to/from SDDL and binary form.
+
+	* Supports 'Common' ACEs and 'Object' ACEs
+
+2010-12-04  Kenneth Bell  <ken.git@chezbell.org.uk>
+
+	Implement SecurityIdentifier and improve NTAccount.
+
+	* Only translates between SecurityIdentifier and NTAccount for
+	well-known accounts.
+
+	* NTAccount changed to not upper-case values to match behaviour
+	observed in Microsoft's .NET (see also unit tests)
+
+	* Add unit tests for both classes
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
+2011-01-07  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Remove now unused internal classes
+
+2011-01-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Protect SpinLock's Enter method against asynchronous exception
+
+2011-01-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Add missing files to dist.
+
+2011-01-03  Miguel de Icaza  <miguel@gnome.org>
+
+	[mscorlib/getfolderpath] Special-case MacOS X.
+
+	The following changes were done to specially support OSX: *
+	MyMusic on OSX is ~/Music * MyPictures on OSX is ~/Pictures *
+	Fonts on OSX is ~/Library/Fonts * Favorites on OSX is
+	~/Library/Favorites * ProgramFiles on OSX is /Applications *
+	InternetCache on OSX is ~/Library/Caches
+
+	The documentation has been updated accordingly.
+
+2010-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	Remove no longer used bootstrap profiles
+
+2010-12-23  Marek Safar  <marek.safar@gmail.com>
+
+	Implement missing v4 attribute types
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Switch to single mcs compiler for all managed code build
+
+2010-11-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Implement Partitioner.Create int and long overloads. Add
+	corresponding unit tests.
+
+2010-09-21  Andrés G. Aragoneses  <knocte@gmail.com>
+
+	[corlib] Prevent BinaryFormatter to throw on missing fields
+
+	This commit includes unit tests that were run in MS.NET > 2.0. The
+	old behaviour of MS.NET 1.1 is still included in the patch as an
+	ONLY_1_1 define, to be backport-friendly to other branches (but
+	can be removed from now on in next commits, as mono master doesn't
+	include this profile anymore). Fixes BNC#324144.
+
+2010-09-09  Jb Evain  <jbevain@gmail.com>
+
+	Fix corlib usage of bootstrap .sources from the normal .sources
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the corlib build for monodroid
+
+2010-08-31  Zoltan Varga  <vargaz@gmail.com>
+
+	AOT mscorlib along with gmcs.
+
+2010-08-23  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Implement System.Runtime.InteropServices.TypeIdentifierAttribute.
+
+2010-08-17  Jb Evain  <jbevain@gmail.com>
+
+	update ignore files
+
+2010-08-16  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* corlib_test.dll.sources: Add SerializationBinderTest.cs.
+
+2010-08-16  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* corlib_test.dll.sources: Add SerializationInfoTest.cs.
+
+2010-08-10  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add SplitOrderedList to the build system
+
+2010-08-11  Jb Evain  <jbevain@gmail.com>
+
+	revert 21dd2b0200d091c43fce as it breaks the monotouch build
+
+2010-08-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Rename ThreadLocal unit tests to reflect API name change (was
+	ThreadLazy).
+
+2010-06-22  Chris Bacon <chrisbacon76@gmail.com>
+
+	* System.Diagnostics.Contract.Internal: New file.
+
+2010-05-23  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* corlib.dll.sources: Add System.IO.IsolatedStorageSecurityState.cs
+	and System.IO.IsolatedStorageSecurityOptions.cs.
+
+2010-05-07  Alan McGovern  <amcgovern@novell.com>
+
+	* Mono.Math/BigInteger.cs: If the BigInteger is instantiated with a
+	zero length array, replace it with an array of length 1 so we don't
+	hit inexplicable IndexOutOfRange exceptions later on. Fixes #556533. 
+
+2010-04-23  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* moonlight_raw_corlib.dll.sources: Don't include Lazy.cs here. It's in
+	System.Core.dll.
+
+2010-04-06  Jb Evain  <jbevain@novell.com>
+
+	* corlib.dll.sources: add System.Threading.SemaphoreFullException
+	from System in net_4_0.
+
+2010-03-30  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* moonlight_raw_corlib.dll.sources: Fix Moonlight since these 
+	types now reside in mscorlib (not System.Coe) for NET_4_0 and
+	also for SL4
+
+2010-03-26  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* moonlight_raw_corlib.dll.sources: Add MonoAssembly to ML build
+	since it contains parts of the Assembly features (partial class)
+
+2010-03-18  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* corlib.dll.sources: Add Aes (for NET_4_0)
+	* moonlight_raw_corlib.dll.sources: Add Aes and System.Runtime.
+	CompilerServices/ReferenceAssemblyAttribute.cs
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: rename the net_2_1 profile to moonlight.
+	* net_2_1_*.dll.sources: rename to moonlight_*.dll.sources.
+
+2010-03-11  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* net_2_1_raw_corlib.dll.sources: Add System.Diagnostics.Contracts
+	for Moonlight 4
+
+2010-03-08  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* corlib_test.dll.sources: Add System.Threading/SpinLockTests.cs
+
+2010-03-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* corlib_test.dll.sources: Add System.Threading.Tasks/TaskFactoryTest.cs
+
+2010-03-01  Miguel de Icaza  <miguel@novell.com>
+
+	* More dropping of old NET_1_1 code.
+
 2010-02-09  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* net_2_1_raw_corlib.dll.sources: Add Mono.CompilerServices.
 	SymbolWriter source files directly into mscorlib 2.1
-	[Backport r151176]
 
+2010-02-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* corlib.dll.sources: Add System.Threading.Tasks/SimpleConcurrentBag.cs
+	and System.Threading.Tasks/UnobservedTaskExceptionEventArgs.cs
+
+2010-01-26  Marek Habersack  <mhabersack@novell.com>
+
+	* net_2_1_raw_corlib.dll.sources: added System.IO/SearchOption.cs
+	to fix the build.
+
+2009-12-03  Marek Habersack  <mhabersack@novell.com>
+
+	* corlib.dll.sources: added
+	System.Runtime.Versioning/FrameworkName.cs and
+	System.Runtime.Versioning/TargetFrameworkAttribute.cs
+
+	* corlib_test.dll.sources: added
+	System.Runtime.Versioning/FrameworkNameTest.cs and
+	System.Runtime.Versioning/TargetFrameworkAttributeTest.cs
+
+2009-12-02  Marek Safar  <marek.safar@gmail.com>
+
+	* Makefile: Add LIBC define.
+	
 2009-11-30  Andrés G. Aragoneses  <aaragoneses@novell.com>
 
         * Makefile: Remove the MOON_A11Y_INTERNAL_HACK define
-       for MoonAtkBridge after audit finished r147098.
+       for MoonAtkBridge after audit finished in r147098.
+
+2009-11-08  Juraj Skripsky  <js@hotfeet.ch>
+
+	* corlib_test.dll.sources: Add System/ArraySortArgChecks.cs
 
 2009-10-22  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* corlib_test.dll.sources: Add System/WeakReferenceTest and
 	System.Threading/EventWaitHandleTest.cs
-	[Backport r144681]
 
 2009-10-21  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* corlib_test.dll.sources: Add System.Threading/WaitHandleTest.cs
-	[Backport r144529]
 
 2009-10-18  Sebastien Pouliot  <sebastien@ximian.com>
 
@@ -26,26 +269,27 @@
 	be replaced by (public in 2.0+) UnmanagedMemoryStream
 	* net_2_1_raw_corlib.dll.sources: Remove System.IO.IntPtrStream 
 	since it can be replaced by UnmanagedMemoryStream
-	[Backport r144322]
+
+2009-10-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile (AOT_IN_PROFILES): Enable this in the net 2.0/4.0 profile.
 
 2009-10-07  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* net_2_1_raw_corlib.dll.sources: Remove System/LocalDataStoreSlot.cs
 	from Moonlight build
-	[Backport r143633]
 
 2009-10-06  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* net_2_1_raw_corlib.dll.sources: Remove normalization files from
 	Moonlight build
-	[Backport r143539]
 
 2009-09-23  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* net_2_1_raw_corlib.dll.sources: Add back UTF32 so smcs can compile
 	more source files.
 
-2009-09-23  Sebastien Pouliot  <sebastien@ximian.com> 
+2009-09-23  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* net_2_1_bootstrap_corlib.dll.sources: Simply include net_2_1_raw*
 
@@ -227,7 +471,7 @@
 
 	* corlib.dll.sources: Remove System.IO/Check[Argument|Permission].cs
 
-2008-04-30  Gert Driesen  <drieseng@users.sourceforge.net>>
+2008-04-30  Gert Driesen  <drieseng@users.sourceforge.net>
 
 	* corlib_test.dll.sources: Added ConstructorOnTypeBuilderInstTest.cs.
 

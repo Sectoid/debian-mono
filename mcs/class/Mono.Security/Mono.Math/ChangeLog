@@ -1,3 +1,7 @@
+2010-10-18  Sebastien Pouliot  <sebastien@ximian.com>
+
+	Remove dead code from BigInteger since it confuse some people
+
 2007-07-30  Sebastien Pouliot  <sebastien@ximian.com> 
 
 	* BigInteger.cs: Applied Miguel's r82915 patch for Equals.

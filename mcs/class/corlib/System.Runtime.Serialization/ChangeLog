@@ -1,3 +1,54 @@
+2010-09-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	The Hashtable is back
+
+	But this time it is using a hash code provider and a comparer that
+	don't invoke the object's methods. Thanks to Paolo for pointing
+	this out.
+
+2010-09-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Don't store objects in a Hashtable.
+
+	Storing the objects in Hashtable causes the GetHashCode() and may
+	be Equals() methods to be called on the object, which MS does not
+	do. I'm using a list holding WeakReferences. Not sure if hard
+	references would be ok.
+
+	Fixes bug #640688.
+
+2010-08-25  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* SerializationInfo.cs: Set/reset the new 4.0 members in SetType
+	based on the new type.
+
+2010-08-20  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* FormatterServices.cs: Add 4.0 GetSurrogateForCyclicalReference
+	method.
+
+2010-08-20  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* FormatterServices.cs: Remove NET_1_1 directive, since it's
+	useless for us now.
+
+2010-08-16  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* SerializationBinder.cs: Add 4.0 BindToName.
+
+2010-08-16  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* SerializationInfo.cs: Add 4.0 ObjectType,
+	IsAssemblyNameSetExplicit and IsFullTypeNameSetExplicit.
+
+2010-06-03  Jb Evain  <jbevain@novell.com>
+
+	* SafeSerializationEventArgs.cs: add new type in net_4_0.
+
+2010-06-03  Jb Evain  <jbevain@novell.com>
+
+	* ISafeSerializationData.cs: add new interface in net_4_0.
+
 2008-05-22  Miguel de Icaza  <miguel@novell.com>
 
 	* SerializationCallbacks.cs: This lock has a high contention rate

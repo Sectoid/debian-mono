@@ -27,8 +27,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System.Collections;
 using System.Globalization;
 using System.Runtime.InteropServices;
@@ -217,5 +215,3 @@ namespace System
 		}
 	}
 }
-
-#endif

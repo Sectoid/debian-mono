@@ -1,3 +1,30 @@
+2011-04-14  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fixed a thinko in one of the previous commits
+
+2011-04-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] A more effective way of looking for web.config
+
+2011-01-31  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Ignore directories that don't exist instead of throwing.
+
+2011-01-27  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] A bunch of fixes related to the default
+	VirtualPathProvider (needed for Orchard)
+
+	* DefaultVirtualDirectory is now more careful when snipping off
+	parts of the path passed to its constructor. Before removing the
+	file part it checks whether the file indeed exists. Also sealed
+	the class and made it use generic List instead of ArrayList *
+	HttpRequest does not normalize mapped paths when converting them
+	to absolute ones. This is to avoid errors when path like
+	"~/bin/../../file.txt" is passed to MapPath. *
+	VirtualPathUtility.ToAbsolute overload with normalize parameter
+	really doesn't normalize the resulting path now.
+
 2010-02-18  Marek Habersack  <mhabersack@novell.com>
 
 	* HostingEnvironment.cs: removed SetHostingId and added internal
@@ -14,6 +41,11 @@
 	instead of the original one.
 
 	All of the above fix bug #578880
+
+2010-01-14  Marek Habersack  <mhabersack@novell.com>
+
+	* ApplicationManager.cs: implemented a missing CreateObject
+	overload
 
 2009-11-18  Marek Habersack  <mhabersack@novell.com>
 

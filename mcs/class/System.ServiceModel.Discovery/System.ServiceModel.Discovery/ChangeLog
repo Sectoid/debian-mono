@@ -1,0 +1,230 @@
+2011-02-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not write empty items in Probe message.
+
+2011-02-24  Atsushi Eno  <atsushi@ximian.com>
+
+	To header rewrite only happens in Adhoc mode.
+
+	Update contracts to comply with that and make it consistent
+	between versions.
+
+2011-02-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix infinite loop in DiscoveryMessageSequence equality comparison.
+
+2011-02-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix wrong element name (AppSequenceType->AppSequence).
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	support UdpTranspoerSettings.MulticastInterfaceId. This should fix
+	bug #669328.
+
+2011-02-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix a couple of addressing namespace fixes (found in April2005
+	version).
+
+2011-02-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Recent ContractDescription fix uncovered wrong contracts in
+	discovery.
+
+2011-01-08  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed missing protected internal modifier
+
+2010-09-29  Atsushi Eno  <atsushi@ximian.com>
+
+	[wcf discovery] Use appropriate MessageVersion defined in
+	DiscoveryVersion.
+
+2010-09-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix (isolate) internal namespace for Udp transport.
+
+2010-09-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Cosmetic warning cleanups.
+
+2010-09-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Ongoing Discovery duplex (UDP) implementation (not working yet).
+
+2010-09-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Fill Duration value. Got managed mode use case working.
+
+2010-09-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Couple of fixes in FindCriteria and relevant contract types for
+	Find operation.
+
+2010-09-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Add a bunch of missing configuration members etc. based on
+	corcompare results.
+
+2010-09-01  Atsushi Eno  <atsushi@ximian.com>
+
+	implement Find operation in request-reply contract in Discovery
+	Service, using FindRequestContext.
+
+2010-08-31  Atsushi Eno  <atsushi@ximian.com>
+
+	Avoid NRE when converting contract-based instances to
+	contract-neutral objects. Add Windows async workaround all around
+	to not block further hacking.
+
+2010-08-30  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix a couple of Hello/Probe serialization issues.
+
+2010-08-27  Atsushi Eno  <atsushi@ximian.com>
+
+	They are system endpoints.
+
+2010-08-26  Atsushi Eno  <atsushi@ximian.com>
+
+	Add timeout in duplex (UDP) client. Set Via URI to not raise
+	scheme mismatch.
+
+2010-08-26  Atsushi Eno  <atsushi@ximian.com>
+
+	Prepare duplex client types for Adhoc mode for DiscoveryClient.
+
+2010-08-25  Atsushi Eno  <atsushi@ximian.com>
+
+	flush pending DiscoveryClientBindingElement work.
+
+2010-08-25  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing DiscoveryClientBindingElement implementation.
+
+2010-08-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Ongoing discovery client and service implementation.
+
+2010-08-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Fire AnnouncementService events when messages are arrived.
+
+2010-08-23  Atsushi Eno  <atsushi@ximian.com>
+
+	Hello message does not have ProbeMatchType, so it is optional.
+
+2010-08-23  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing Announcement fixes. Now it accepts messages from .NET
+	AnnouncementClient (does not process them yet).
+
+2010-08-20  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing DiscoveryClient work. May need further contract fixes.
+
+2010-08-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Several fixes to get client Via URI used correctly.
+
+2010-08-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Implemented basic UDP transport.
+
+2010-08-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Add ServiceDiscoveryBehavior hosting test case.
+
+2010-08-17  Atsushi Eno  <atsushi@ximian.com>
+
+	implement ServiceDiscoveryBehavior and EndpointDiscoveryBehavior.
+
+2010-08-17  Atsushi Eno  <atsushi@ximian.com>
+
+	Flush DiscoveryProxy work.
+
+2010-08-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement discovery contract interfaces in DiscoveryService.
+
+2010-08-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Add simplex Discovery contract interfaces.
+
+2010-08-14  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing DiscoveryEndpoint work.
+
+2010-08-13  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing announcement and discovery work as well as several
+	bugfixes.
+
+2010-08-12  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not try to create InnerChannel when not necessary. Add more
+	AnnouncementClient tests.
+
+2010-08-12  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing AnnouncementClient implementation.
+
+2010-08-12  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing UdpAnnouncementEndpoint work.
+
+2010-08-12  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing AnnouncementService work.
+
+2010-08-11  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix infinite loop in .ctor. Use simpler way to check IPv4
+	availability.
+
+2010-08-11  Atsushi Eno  <atsushi@ximian.com>
+
+	flush ongoing hack. add UDP transport. Headers on configuration
+	sources.
+
+2010-08-11  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing endpoint implementation.
+
+2010-08-09  Atsushi Eno  <atsushi@ximian.com>
+
+	oops, they should not write wrapper element twice.
+
+2010-08-09  atsushieno  <atsushi@ximian.com>
+
+	finished Discovery serialization stuff.
+
+2010-08-09  atsushieno  <atsushi@ximian.com>
+
+	ongoing Sys.SM.Discovery serialization implementation.
+
+2010-08-07  Atsushi Eno  <atsushi@ximian.com>
+
+	implement FindCriteria serialization (deserialization is not yet).
+
+2010-08-06  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement DiscoveryMessageSequence* types serialization.
+
+2010-08-06  Atsushi Eno  <atsushi@ximian.com>
+
+	fix exception type and make nunit tests pass.
+
+2010-08-06  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing sys.sm.discovery work.
+
+2010-08-04  atsushieno  <atsushi@ximian.com>
+
+	implemented some Sys.SM.Discovery types.
+
+2010-03-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* : initial checkin (mostly stubs).
+

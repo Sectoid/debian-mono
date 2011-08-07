@@ -1,4 +1,3 @@
-#if NET_2_0
 // AuthorConverter.cs
 using System;
 using System.ComponentModel;
@@ -113,4 +112,3 @@ namespace Samples.AspNet.CS.Controls
         }
     }
 }
-#endif

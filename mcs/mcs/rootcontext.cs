@@ -11,11 +11,9 @@
 // Copyright 2001 Ximian, Inc (http://www.ximian.com)
 // Copyright 2004-2008 Novell, Inc
 
-using System;
-using System.Collections;
-using System.Reflection;
-using System.Reflection.Emit;
-using System.Diagnostics;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
 
 namespace Mono.CSharp {
 
@@ -23,18 +21,34 @@ namespace Mono.CSharp {
 	{
 		ISO_1		= 1,
 		ISO_2		= 2,
-		V_3			= 3,
-		V_4			= 4,
+		V_3		= 3,
+		V_4		= 4,
 		Future		= 100,
 
 		Default		= LanguageVersion.V_4,
 	}
 
-	public enum MetadataVersion
+	public enum RuntimeVersion
 	{
 		v1,
 		v2,
 		v4
+	}
+
+	public enum SdkVersion
+	{
+		v2,
+		v4
+	}
+
+	public enum Target
+	{
+		Library, Exe, Module, WinExe
+	}
+
+	public enum Platform
+	{
+		AnyCPU, X86, X64, IA64
 	}
 
 	public class RootContext {
@@ -43,16 +57,14 @@ namespace Mono.CSharp {
 		// COMPILER OPTIONS CLASS
 		//
 		public static Target Target;
-#if GMCS_SOURCE
 		public static Platform Platform;
-#endif
 		public static string TargetExt;
-		public static bool VerifyClsCompliance = true;
-		public static bool Optimize = true;
+		public static bool VerifyClsCompliance;
+		public static bool Optimize;
 		public static LanguageVersion Version;
 		public static bool EnhancedWarnings;
-
-		public static MetadataVersion MetadataCompatibilityVersion;
+		public static bool LoadDefaultReferences;
+		public static SdkVersion SdkVersion;
 
 		//
 		// We keep strongname related info here because
@@ -63,11 +75,50 @@ namespace Mono.CSharp {
 		public static bool StrongNameDelaySign;
 
 		//
+		// Assemblies references to be loaded
+		//
+		public static List<string> AssemblyReferences;
+
+		// 
+		// External aliases for assemblies
+		//
+		public static List<Tuple<string, string>> AssemblyReferencesAliases;
+
+		//
+		// Modules to be embedded
+		//
+		public static List<string> Modules;
+
+		//
+		// Lookup paths for referenced assemblies
+		//
+		public static List<string> ReferencesLookupPaths;
+
+		//
+		// Encoding.
+		//
+		public static Encoding Encoding;
+
+		//
 		// If set, enable XML documentation generation
 		//
 		public static Documentation Documentation;
 
 		static public string MainClass;
+
+		//
+		// Output file
+		//
+		static string output_file;
+		public static string OutputFile {
+			set {
+				output_file = value;
+			}
+			get {
+				return output_file;
+			}
+		}
+
 
 		// 
 		// The default compiler checked state
@@ -93,12 +144,27 @@ namespace Mono.CSharp {
 		//
 		static public bool Unsafe;
 
+		static public string Win32ResourceFile;
+		static public string Win32IconFile;
+
+		//
+		// A list of resource files for embedding
+		//
+		static public  List<AssemblyResource> Resources;
+
+		static public bool GenerateDebugInfo;
+
+		// Compiler debug flags only
+		public static bool ParseOnly, TokenizeOnly;
+
 		//
 		// Whether we are being linked against the standard libraries.
 		// This is only used to tell whether `System.Object' should
 		// have a base class or not.
 		//
 		public static bool StdLib;
+
+		public static RuntimeVersion StdLibRuntimeVersion;
 
 		public static bool NeedsEntryPoint {
 			get { return Target == Target.Exe || Target == Target.WinExe; }
@@ -117,26 +183,7 @@ namespace Mono.CSharp {
 		// This hashtable contains all of the #definitions across the source code
 		// it is used by the ConditionalAttribute handler.
 		//
-		static ArrayList AllDefines;
-		
-		//
-		// This keeps track of the order in which classes were defined
-		// so that we can poulate them in that order.
-		//
-		// Order is important, because we need to be able to tell, by
-		// examining the list of methods of the base class, which ones are virtual
-		// or abstract as well as the parent names (to implement new, 
-		// override).
-		//
-		static ArrayList type_container_resolve_order;
-
-		//
-		// Holds a reference to the Private Implementation Details
-		// class.
-		//
-		static ArrayList helper_classes;
-		
-		static TypeBuilder impl_details_class;
+		static List<string> AllDefines;
 
 		//
 		// Constructor
@@ -153,11 +200,9 @@ namespace Mono.CSharp {
 		
 		public static void Reset (bool full)
 		{
-			if (full)
-				root = null;
+			if (!full)
+				return;
 			
-			type_container_resolve_order = new ArrayList ();
-			EntryPoint = null;
 			Checked = false;
 			Unsafe = false;
 			StdLib = true;
@@ -165,26 +210,33 @@ namespace Mono.CSharp {
 			StrongNameKeyContainer = null;
 			StrongNameDelaySign = false;
 			MainClass = null;
+			OutputFile = null;
 			Target = Target.Exe;
+			SdkVersion = SdkVersion.v2;
 			TargetExt = ".exe";
-#if GMCS_SOURCE
 			Platform = Platform.AnyCPU;
-#endif
 			Version = LanguageVersion.Default;
+			VerifyClsCompliance = true;
+			Optimize = true;
+			Encoding = Encoding.Default;
 			Documentation = null;
-			impl_details_class = null;
-			helper_classes = null;
-
-#if GMCS_SOURCE
-			MetadataCompatibilityVersion = MetadataVersion.v2;
-#else
-			MetadataCompatibilityVersion = MetadataVersion.v1;
-#endif
+			GenerateDebugInfo = false;
+			ParseOnly = false;
+			TokenizeOnly = false;
+			Win32IconFile = null;
+			Win32ResourceFile = null;
+			Resources = null;
+			LoadDefaultReferences = true;
+			AssemblyReferences = new List<string> ();
+			AssemblyReferencesAliases = new List<Tuple<string, string>> ();
+			Modules = new List<string> ();
+			ReferencesLookupPaths = new List<string> ();
+			StdLibRuntimeVersion = RuntimeVersion.v2;
 
 			//
 			// Setup default defines
 			//
-			AllDefines = new ArrayList ();
+			AllDefines = new List<string> ();
 			AddConditional ("__MonoCS__");
 		}
 
@@ -203,231 +255,6 @@ namespace Mono.CSharp {
 		static public ModuleContainer ToplevelTypes {
 			get { return root; }
 			set { root = value; }
-		}
-
-		public static void RegisterOrder (TypeContainer tc)
-		{
-			type_container_resolve_order.Add (tc);
-		}
-		
-		// <remarks>
-		//   This function is used to resolve the hierarchy tree.
-		//   It processes interfaces, structs and classes in that order.
-		//
-		//   It creates the TypeBuilder's as it processes the user defined
-		//   types.  
-		// </remarks>
-		static public void ResolveTree ()
-		{
-			root.Resolve ();
-
-			//
-			// Interfaces are processed next, as classes and
-			// structs might inherit from an object or implement
-			// a set of interfaces, we need to be able to tell
-			// them appart by just using the TypeManager.
-			//
-			foreach (TypeContainer tc in root.Types)
-				tc.CreateType ();
-
-			foreach (TypeContainer tc in root.Types)
-				tc.DefineType ();
-
-			if (root.Delegates != null)
-				foreach (Delegate d in root.Delegates) 
-					d.DefineType ();
-		}
-
-		// <summary>
-		//   Closes all open types
-		// </summary>
-		//
-		// <remarks>
-		//   We usually use TypeBuilder types.  When we are done
-		//   creating the type (which will happen after we have added
-		//   methods, fields, etc) we need to "Define" them before we
-		//   can save the Assembly
-		// </remarks>
-		static public void CloseTypes ()
-		{
-			//
-			// We do this in two passes, first we close the structs,
-			// then the classes, because it seems the code needs it this
-			// way.  If this is really what is going on, we should probably
-			// make sure that we define the structs in order as well.
-			//
-			foreach (TypeContainer tc in type_container_resolve_order){
-				if (tc.Kind == Kind.Struct && tc.Parent == root){
-					tc.CloseType ();
-				}
-			}
-
-			foreach (TypeContainer tc in type_container_resolve_order){
-				if (!(tc.Kind == Kind.Struct && tc.Parent == root))
-					tc.CloseType ();					
-			}
-			
-			if (root.Delegates != null)
-				foreach (Delegate d in root.Delegates)
-					d.CloseType ();
-
-
-			//
-			// If we have a <PrivateImplementationDetails> class, close it
-			//
-			if (helper_classes != null){
-				foreach (TypeBuilder type_builder in helper_classes) {
-					PredefinedAttributes.Get.CompilerGenerated.EmitAttribute (type_builder);
-					type_builder.CreateType ();
-				}
-			}
-			
-			type_container_resolve_order = null;
-			helper_classes = null;
-			//root = null;
-			TypeManager.CleanUp ();
-		}
-
-		/// <summary>
-		///   Used to register classes that need to be closed after all the
-		///   user defined classes
-		/// </summary>
-		public static void RegisterCompilerGeneratedType (TypeBuilder helper_class)
-		{
-			if (helper_classes == null)
-				helper_classes = new ArrayList ();
-
-			helper_classes.Add (helper_class);
-		}
-		
-		static public void PopulateCoreType (TypeContainer root, string name)
-		{
-			DeclSpace ds = (DeclSpace) root.GetDefinition (name);
-			// Core type was imported
-			if (ds == null)
-				return;
-
-			ds.Define ();
-		}
-		
-		static public void BootCorlib_PopulateCoreTypes ()
-		{
-			PopulateCoreType (root, "System.Object");
-			PopulateCoreType (root, "System.ValueType");
-			PopulateCoreType (root, "System.Attribute");
-			PopulateCoreType (root, "System.Runtime.CompilerServices.IndexerNameAttribute");
-		}
-		
-		// <summary>
-		//   Populates the structs and classes with fields and methods
-		// </summary>
-		//
-		// This is invoked after all interfaces, structs and classes
-		// have been defined through `ResolveTree' 
-		static public void PopulateTypes ()
-		{
-
-			if (type_container_resolve_order != null){
-				foreach (TypeContainer tc in type_container_resolve_order)
-					tc.ResolveType ();
-				foreach (TypeContainer tc in type_container_resolve_order) {
-					try {
-						tc.Define ();
-					} catch (Exception e) {
-						throw new InternalErrorException (tc, e);
-					}
-				}
-			}
-
-			ArrayList delegates = root.Delegates;
-			if (delegates != null){
-				foreach (Delegate d in delegates)
-					d.Define ();
-			}
-
-			//
-			// Check for cycles in the struct layout
-			//
-			if (type_container_resolve_order != null){
-				Hashtable seen = new Hashtable ();
-				foreach (TypeContainer tc in type_container_resolve_order)
-					TypeManager.CheckStructCycles (tc, seen);
-			}
-		}
-
-		static public void EmitCode ()
-		{
-			if (type_container_resolve_order != null) {
-				foreach (TypeContainer tc in type_container_resolve_order)
-					tc.EmitType ();
-
-				if (RootContext.ToplevelTypes.Compiler.Report.Errors > 0)
-					return;
-
-				foreach (TypeContainer tc in type_container_resolve_order)
-					tc.VerifyMembers ();
-			}
-			
-			if (root.Delegates != null) {
-				foreach (Delegate d in root.Delegates)
-					d.Emit ();
-			}			
-
-			CodeGen.Assembly.Emit (root);
-			root.Emit ();
-		}
-		
-		//
-		// Public Field, used to track which method is the public entry
-		// point.
-		//
-		static public Method EntryPoint;
-
-		//
-		// These are used to generate unique names on the structs and fields.
-		//
-		static int field_count;
-		
-		//
-		// Makes an initialized struct, returns the field builder that
-		// references the data.  Thanks go to Sergey Chaban for researching
-		// how to do this.  And coming up with a shorter mechanism than I
-		// was able to figure out.
-		//
-		// This works but makes an implicit public struct $ArrayType$SIZE and
-		// makes the fields point to it.  We could get more control if we did
-		// use instead:
-		//
-		// 1. DefineNestedType on the impl_details_class with our struct.
-		//
-		// 2. Define the field on the impl_details_class
-		//
-		static public FieldBuilder MakeStaticData (byte [] data)
-		{
-			FieldBuilder fb;
-			
-			if (impl_details_class == null){
-				impl_details_class = ToplevelTypes.Builder.DefineType (
-					"<PrivateImplementationDetails>",
-                                        TypeAttributes.NotPublic,
-                                        TypeManager.object_type);
-                                
-				RegisterCompilerGeneratedType (impl_details_class);
-			}
-
-			fb = impl_details_class.DefineInitializedData (
-				"$$field-" + (field_count++), data,
-				FieldAttributes.Static | FieldAttributes.Assembly);
-			
-			return fb;
-		}
-
-		public static void CheckUnsafeOption (Location loc, Report Report)
-		{
-			if (!Unsafe) {
-				Report.Error (227, loc, 
-					"Unsafe code requires the `unsafe' command line option to be specified");
-			}
 		}
 	}
 }

@@ -66,6 +66,7 @@ namespace MonoTests.System.ServiceModel.Dispatcher
 			Assert.AreEqual (0, r.InstanceContextInitializers.Count, "#8");
 			//Assert.AreEqual (0, r.InstanceContextLifetimes.Count, "#9");
 			Assert.IsNull (r.InstanceProvider, "#10");
+			Assert.IsNull (r.InstanceContextProvider, "#10-2");
 			Assert.AreEqual (AuditLevel.None,
 					 r.MessageAuthenticationAuditLevel, "#11");
 			Assert.AreEqual (0, r.MessageInspectors.Count, "#12");
@@ -92,8 +93,7 @@ namespace MonoTests.System.ServiceModel.Dispatcher
 		}
 
 		[Test]
-		[Category ("NotWorking")] // It somehow stopped working properly recently in Nov. 2009, not sure where the source of the problem lies.
-		public void TestInstanceBehavior1()
+		public void TestInstanceBehavior1 ()
 		{
 			
 			Result res = new Result ();
@@ -108,7 +108,6 @@ namespace MonoTests.System.ServiceModel.Dispatcher
 		}
 
 		[Test]
-		[Category ("NotWorking")] // It somehow stopped working properly recently in Nov. 2009, not sure where the source of the problem lies.
 		public void TestInstanceBehavior2 ()
 		{
 			Result res = new Result ();
@@ -123,7 +122,6 @@ namespace MonoTests.System.ServiceModel.Dispatcher
 		}
 
 		[Test]
-		[Category ("NotWorking")] // It somehow stopped working properly recently in Nov. 2009, not sure where the source of the problem lies.
 		public void TestInstanceBehavior3 ()
 		{
 			Result res = new Result ();
@@ -140,7 +138,6 @@ namespace MonoTests.System.ServiceModel.Dispatcher
 		}
 
 		[Test]
-		[Category ("NotWorking")]
 		public void TestInstanceBehavior4 ()
 		{
 			Result res = new Result ();
@@ -163,6 +160,13 @@ namespace MonoTests.System.ServiceModel.Dispatcher
 				ServiceDebugBehavior db = h.Description.Behaviors.Find<ServiceDebugBehavior> ();
 				db.IncludeExceptionDetailInFaults = true;
 				h.Open ();
+				foreach (ChannelDispatcher cd in h.ChannelDispatchers) {
+					foreach (var ed in cd.Endpoints) {
+						if (ed.ContractName == "IHttpGetHelpPageAndMetadataContract")
+							continue;
+						Assert.AreEqual (typeof (AllActions), ed.DispatchRuntime.Type, "Type property: " + ed.ContractName);
+					}
+				}
 				AllActionsProxy p = new AllActionsProxy (new BasicHttpBinding () { SendTimeout = TimeSpan.FromSeconds (5), ReceiveTimeout = TimeSpan.FromSeconds (5) }, new EndpointAddress ("http://localhost:8080/AllActions"));
 
 				for (int i = 0; i < invocations; ++i)

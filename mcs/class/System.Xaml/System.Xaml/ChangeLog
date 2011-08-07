@@ -1,0 +1,965 @@
+2011-03-18  Atsushi Eno  <atsushi@ximian.com>
+
+	XamlType lookup from xml name failed when [XmlnsDefinition] is
+	involved.
+
+2010-12-28  Atsushi Eno  <atsushi@ximian.com>
+
+	Actually we have almost what we need on mobile profiles.
+
+2010-12-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Implemented support for attached properties in xamlreaders and
+	xamlwriters.
+
+2010-12-17  Atsushi Eno  <atsushi@ximian.com>
+
+	Add attachable event support in XamlType (not yet in readers and
+	writers).
+
+2010-12-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement XamlType.GetAllAttachableProperties() and family, except
+	for events.
+
+2010-12-16  Atsushi Eno  <atsushi@ximian.com>
+
+	For IXmlSerializable/XData, Instance property returns null (!)
+
+2010-12-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Add experimental "#if NET_2_1" mode (it builds w/o
+	s.x.permissions).
+
+2010-12-14  Atsushi Eno  <atsushi@ximian.com>
+
+	add missing method in IAmbientProvider.
+
+2010-12-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Implemented XData support in XamlObjectWriter.
+
+2010-12-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement XData support in XamlXmlReader.
+
+2010-12-07  Atsushi Eno  <atsushi@ximian.com>
+
+	XData support in XamlXmlWriter.
+
+2010-12-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Implemented XData object reader support. Add missing test files.
+
+2010-12-06  Atsushi Eno  <atsushi@ximian.com>
+
+	Finally got XData tests that make sense. Implemented IsXData.
+
+2010-12-06  Atsushi Eno  <atsushi@ximian.com>
+
+	Add missing files.
+
+2010-12-06  Atsushi Eno  <atsushi@ximian.com>
+
+	Implemented Reference resolution in XamlObjectWriter.
+
+2010-12-03  Atsushi Eno  <atsushi@ximian.com>
+
+	name resolver could also be name provider.
+
+2010-12-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Split internal base class into new file.
+
+2010-12-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Rename source.
+
+2010-12-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Now object reader returns PositionalParameters for non-root
+	Reference objects.
+
+2010-12-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Implemented reference support (almost working, except for
+	Reference contents).
+
+	There are several refactorings as well as some hacky workarounds
+	to avoid wrong saving of names. References should return
+	PositionalParameters, but in the standalone tests they don't
+	return it, so I have to sort both out. Enabled xml writer tests as
+	they are working.
+
+2010-12-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Members are not ordered by collection kind.
+
+2010-12-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Make room for XamlNameResolver in XamlObjectReader, and some
+	related changes.
+
+2010-11-30  Atsushi Eno  <atsushi@ximian.com>
+
+	empty namespace should be successfully parsed.
+
+2010-11-30  Atsushi Eno  <atsushi@ximian.com>
+
+	Call GetObject only once per current member.
+
+	Previous code was errorneous if there is an array inside a
+	collection.
+
+2010-11-30  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not retrive properties with get parameters (indexers).
+
+2010-11-29  Atsushi Eno  <atsushi@ximian.com>
+
+	TypeExtension and StaticExtension should now be correctly written
+	and read.
+
+2010-11-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Refactoring Instance handling for consistent MarkupExtension
+	reading.
+
+	Removed tricky GetWrappedValue() while attempting to reduce its
+	use (could totally remove it out) to identify which parts these
+	readers and writers need it. Now It is in TypeExtensionMethods.
+	Still needs fix for StaticExtension.
+
+	Add another tricky test case: List of Array (not working) which
+	also involves MarkupExtension.
+
+2010-11-26  Atsushi Eno  <atsushi@ximian.com>
+
+	Add List of Type test case, and some FIXMEs.
+
+2010-11-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove extra CWL.
+
+2010-11-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Add refresh XamlObjectWriter implementation.
+
+	This writer can process a lot more xaml inputs. It is now unified
+	to XamlXmlWriter, sharing some internals (already existed in
+	XamlXmlWriter.cs).
+
+	Had to disable a few minor tests that used to pass for invalid
+	inputs.
+
+2010-11-25  Atsushi Eno  <atsushi@ximian.com>
+
+	More changes for XamlObjectWriter unification.
+
+2010-11-19  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement XamlType.CanAssignTo(). Remove extra writer state
+	members.
+
+2010-11-19  Atsushi Eno  <atsushi@ximian.com>
+
+	Call OnWriteStratObject() after pushing current state.
+
+2010-11-19  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix TypeValueSerializer and ValueSerializerContext to work fine
+	with XamlObjectWriter.
+
+2010-11-19  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove unnecessary code. String type check is only for
+	XamlXmlWriter.
+
+2010-11-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Support x:Arguments in XamlObjectWriter.
+
+2010-11-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Avoid examining converted type after using TypeConverter. Add
+	ArgumentAttributed test for object writer.
+
+2010-11-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Gave up finding "correct" way to deserialize XamlType and made it
+	special case :(
+
+2010-11-17  Atsushi Eno  <atsushi@ximian.com>
+
+	Get object instantiation correctly invoked when non-constructive
+	StartMember is invoked.
+
+2010-11-17  Atsushi Eno  <atsushi@ximian.com>
+
+	Consider PositionalParametesr in XamlObjectWriter.
+
+2010-11-17  Atsushi Eno  <atsushi@ximian.com>
+
+	Made a couple of PositionalParameter related fixes, disabling
+	test, etc.
+
+2010-11-16  Atsushi Eno  <atsushi@ximian.com>
+
+	ContentProperty will just show up as an ordinal property, so no
+	need to worry here.
+
+2010-11-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove for-object-writer-only code from common non-object writer
+	base.
+
+2010-11-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Removed unused code / commented out unused test lines.
+
+2010-11-16  Atsushi Eno  <atsushi@ximian.com>
+
+	cleaning up some FIXMEs.
+
+2010-11-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Make string convertibility check more strictly.
+
+2010-11-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Use CanConvertTo(typeof(string)) before converting to string. Add
+	Object writer tests.
+
+2010-11-12  Atsushi Eno  <atsushi@ximian.com>
+
+	Return XamlLanguage.Items for dictionary and ContentProperty as
+	implicit member.
+
+2010-11-12  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix wrong attribute value string indexing.
+
+2010-11-12  Atsushi Eno  <atsushi@ximian.com>
+
+	XamlSchemaContext.GetXamlType(XamlTypeName) now resolves
+	assemblies then types.
+
+	And use it in appropriate place. Fixed part of
+	XamlXmlReaderTest.PositionalParameters2().
+
+2010-11-12  Atsushi Eno  <atsushi@ximian.com>
+
+	Extension types may have omitted "Extension" from XML name.
+
+2010-11-12  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix XamlMember comparison and get relevant tests working.
+
+2010-11-12  Atsushi Eno  <atsushi@ximian.com>
+
+	Add support for MarkupExtension attribute in XamlXmlReader.
+
+2010-11-12  Atsushi Eno  <atsushi@ximian.com>
+
+	Add new ValueSerializerContext and use it everywhere appropriate.
+
+	This change was basically for string serialization of
+	XamlTypeName, namely PropertyDefinition serialization. Turned out
+	it should be used in a lot of places where IServiceProvider and
+	ITypeDescriptorContext is expected. IServiceProvider
+	implementations in XamlWriters are replaced.
+
+2010-11-11  Atsushi Eno  <atsushi@ximian.com>
+
+	XamlMember.TypeConverter should return correct converter now.
+
+	Also adding usage of that member, but not perfectly working yet.
+
+	Disabled broken tests that depends on not-implemented
+	XamlObjectWriter part.
+
+2010-11-11  Atsushi Eno  <atsushi@ximian.com>
+
+	When collection instance returned null, do not try to GetItems().
+
+2010-11-11  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove old code (overwrite).
+
+2010-11-11  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove extra copy lines.
+
+2010-11-11  Atsushi Eno  <atsushi@ximian.com>
+
+	Split XamlNode.cs to object-reader specific code and else.
+
+2010-11-11  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix readonly collection check (should use IsWritePublic).
+
+2010-11-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix generic XamlTypeName output and GetType() to get some xml
+	reader case working.
+
+2010-11-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix positional parameter argument output location check.
+
+	MarkupExtension with multiple arguments are prohibited at top
+	level.
+
+2010-11-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix attribute state management to handle x:Key inside
+	MarkupExtension correctly.
+
+	Namely TypeExtension (it got working).
+
+2010-11-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix PositionalParameter serialization in collections.
+
+	Dictionary still needs another fix.
+
+2010-11-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Forgot to remove old internal stuff.
+
+2010-11-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Fixed member order in Dictionary key and item in XamlObjectReader.
+
+	This requires messy and complicated change and sort of illogical
+	member ordering!
+
+2010-11-06  Atsushi Eno  <atsushi@ximian.com>
+
+	Dictionary key might be inappropriately serialized into an
+	attribute.
+
+2010-11-06  Atsushi Eno  <atsushi@ximian.com>
+
+	Add support for ContentPropertyAttribute (e.g. Reference) in
+	XamlXmlWriter.
+
+2010-11-06  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement member pending at StartMember when it should be
+	indeterminant. Lots of code cleanup.
+
+2010-11-06  Atsushi Eno  <atsushi@ximian.com>
+
+	Add new XamlXmlWriter implementation. Marked some as NotWorking
+	while removed a lot.
+
+2010-11-06  Atsushi Eno  <atsushi@ximian.com>
+
+	MarkupExtension type xml names are omitted their "Extension"
+	parts.
+
+2010-11-06  Atsushi Eno  <atsushi@ximian.com>
+
+	indent text xml.
+
+2010-11-06  U-monkeytimeline2\atsushi  <atsushi@monkeytimeline2.(none)>
+
+	A few refactoring for new XamlXmlWriter. Add tests for
+	[ContentProperty].
+
+2010-11-04  Atsushi Eno  <atsushi@ximian.com>
+
+	Move XamlType-generic PositionalParameter stuff from
+	XamlObjectReader-specific source for writer support.
+
+2010-11-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Extracted PrefixLookup to another file. Add more
+	XamlTypeName.ToString() tests.
+
+2010-11-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Move around some members (to correct/appropriate places) for
+	isolated xaml writer implementation.
+
+2010-10-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove old code.
+
+2010-10-29  Atsushi Eno  <atsushi@ximian.com>
+
+	(Finally) replace old XamlObjectReader implementation with new
+	one.
+
+2010-10-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Added some notes on how we can use and/or test this XamlReader
+	under .NET.
+
+2010-10-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Make it strict to apply PositionalParameters to limit to only
+	simple arguments.
+
+	Simple arguments can be written as "{foobar}" markup string within
+	an attribute.
+
+2010-10-29  Atsushi Eno  <atsushi@ximian.com>
+
+	More compliant ordering of GetAllMembers() results.
+	ConstructorArguments and PositionalParameters go first.
+
+2010-10-29  Atsushi Eno  <atsushi@ximian.com>
+
+	GetAllMSeveral fixes regarding property readability and
+	writability.
+
+	XamlMember.IsReadOnly returns false if there is private get
+	accessor. This is used to filter nonpublic accessors out, so
+	replaced its usage with !IsWritePublic to check truly read-only
+	members.
+
+	This fix also required some changes in markup types (as IsReadOnly
+	value now differs).
+
+2010-10-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Introduce new XamlObjectReader implementation.
+
+	Nodes are iterated in XamlNodeIterator which is used by
+	XamlObjectReader. It collects namespace declarations as it does in
+	the reading the objects. The new code is somewhat better, with
+	less "special" hardcoded rules.
+
+	It can be even compiled with .NET (with TypeExtensionMethods).
+
+2010-10-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix XamlType.Name to take TypeArguments into consideration.
+
+2010-10-28  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove extra DateTime handling and add some rules for
+	PositionalParameters.
+
+2010-10-27  Atsushi Eno  <atsushi@ximian.com>
+
+	Some internal refactoring for new XamlObjectReader implementation.
+
+2010-10-27  Atsushi Eno  <atsushi@ximian.com>
+
+	Move member ordering code to LookupAllMembers().
+
+2010-10-27  Atsushi Eno  <atsushi@ximian.com>
+
+	Uncommend code that prohibits XamlMemberInvoker.GetValue() on
+	XamlDirective.
+
+2010-10-27  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix wrong lookup base call.
+
+2010-10-27  Atsushi Eno  <atsushi@ximian.com>
+
+	XamlLanguage.Items is not correctly supported in XamlObjectReader.
+
+2010-10-27  Atsushi Eno  <atsushi@ximian.com>
+
+	ItemType returns Value item for Dictionary type.
+
+2010-10-26  Atsushi Eno  <atsushi@ximian.com>
+
+	Improve namespace collector implementation to prepare for
+	positional parameters.
+
+2010-10-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Refactoring namespace declaration output for getting .NET-like
+	attribute output.
+
+2010-10-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Write some special names back when writing xaml to XmlWriter.
+
+2010-10-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Add a couple of writer tests (NotWorking) and fixed XamlServices
+	to not omit xmldecl.
+
+2010-10-19  Atsushi Eno  <atsushi@ximian.com>
+
+	Add complicated dictionary state and support dictionary in
+	XamlObjectReader.
+
+2010-10-19  Atsushi Eno  <atsushi@ximian.com>
+
+	Make XamlType.GetMember() and XamlType.GetAllMembers() consistent.
+	Return Items for Dictionary.
+
+2010-10-19  Atsushi Eno  <atsushi@ximian.com>
+
+	Add Dictionary reader test and made some fixes towards it.
+
+2010-10-19  Atsushi Eno  <atsushi@ximian.com>
+
+	Array takes ArrayExtension shape and thus won't reach here, so
+	remove NIE.
+
+2010-10-19  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement FactoryMethod and Arguments support in XamlObjectWriter.
+
+2010-10-19  Atsushi Eno  <atsushi@ximian.com>
+
+	Handle x:* attributes and look for standard directives in
+	XamlXmlReader. Factory method got working.
+
+2010-10-19  Atsushi Eno  <atsushi@ximian.com>
+
+	StaticExtension also puts PositionalParameters (not sure why, but
+	it's like TypeExtension).
+
+2010-10-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Several fixes for types that include static members.
+
+2010-10-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Take TypeConverter into consideration in XamlObjectReader.
+
+2010-10-18  Atsushi Eno  <atsushi@ximian.com>
+
+	XamlXmlWriter.WriteValue() accepts only string.
+
+2010-10-16  Atsushi Eno  <atsushi@ximian.com>
+
+	For empty collection, do not put meaningless Items member and
+	GetObject.
+
+2010-10-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Write null value as NullExtension regardless of its member type.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
+2010-10-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove wrong stack push of members.
+
+2010-10-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Differentiate Instance property and internal object stack to
+	retrieve properties.
+
+2010-10-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Support ArrayExtension Items and GetObject node in
+	XamlObjectReader.
+
+2010-10-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Add couple of (not-working) object reader testcases. Add some
+	comments and commented code on XamlObjectReader.
+
+2010-10-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Significant XamlObjectWriter rewrite for solid state transition.
+	And now it supports Array(Extension) and other MarkupExtension
+	types.
+
+2010-10-06  Atsushi Eno  <atsushi@ximian.com>
+
+	Add more complicated state transition to XamlXmlReader and now it
+	can handle GetObject.
+
+2010-10-06  Atsushi Eno  <atsushi@ximian.com>
+
+	Use MarkupExtension.ProvideValue() so that XamlObjectReader can
+	return expected Result. Implement internal IXamlNameResolver for
+	Reference resolution.
+
+2010-10-06  Atsushi Eno  <atsushi@ximian.com>
+
+	Add ContentProperty support in XamlXmlReader. Add some testcases.
+
+2010-10-05  Atsushi Eno  <atsushi@ximian.com>
+
+	Get List<int> working with XamlXmlReader and XamlObjectWriter.
+
+	XamlObjectWriter needs stack of content object list so that List
+	can store items correctly with nested state. XamlXmlReader now
+	outputs Items, and to handle it I needed special reader states.
+
+2010-10-04  Atsushi Eno  <atsushi@ximian.com>
+
+	Handle Initialization correctly.
+
+2010-10-04  Atsushi Eno  <atsushi@ximian.com>
+
+	Get constructor arguments (x:Arguments) working on XamlXmlWriter
+	and XamlObjectReader.
+
+2010-10-04  Atsushi Eno  <atsushi@ximian.com>
+
+	A couple of fixes around
+	XamlSchemaContext.GetXamlType(XamlTypeName) and get XamlXmlReader
+	pass with unknown type names.
+
+2010-05-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlWriterStateManager.cs : on object writer, reject more write
+	  namespace order. (I should really unuse it for object writer.)
+	* XamlObjectWriter.cs : result is set at end object. Do not reject
+	  non-collection in this writer. I'm totally no idea why it should
+	  not do so though.
+
+2010-04-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlMember.cs : hack GetHashCode().
+
+2010-04-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlObjectReader.cs : now it can look into values and pick up
+	  more required namespace prefixes.
+
+2010-04-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlObjectReader.cs, TypeExtensionMethods.cs : handle System.Type
+	  as predefined type that returns Value instead of StartObject.
+	  Rename some member getter methods to explicitly limit the scope to
+	  object readers so far.
+
+2010-04-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlObjectReader.cs
+	  XamlMember.cs
+	  TypeExtensionMethods.cs
+	  XamlType.cs : handle PositionalParameters, for Type type support.
+
+2010-04-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* TypeExtensionMethods.cs : add IsContentValue() for member and
+	  return true for "_Initialization".
+	* XamlObjectReader.cs : use above.
+
+2010-04-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlType.cs : implement LookupPositionalParameters().
+
+2010-04-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlObjectReader.cs : use Type, not TargetType.
+
+2010-04-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlType.cs : do not return index property.
+	* TypeExtensionMethods.cs : return Initialization only for value nodes.
+	* XamlObjectReader.cs : member content can be either a value or a new
+	  object. Fix certain EndObject transition to become EndMember, not
+	  EndObject twice.
+
+2010-04-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlObjectReader.cs, XamlSchemaContext.cs, XamlLanguage.cs:
+	  collect namespace declarations first. Remove extra [XmlnsPrefix]
+	  on the assembly, and handle it specially in GetPreferredPrefix(),
+
+2010-04-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlObjectReader.cs : check constructible type. Remove extra ns node.
+
+2010-04-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlType.cs : ignore ReferenceConverter which is used for IList<T>.
+
+2010-04-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlType.cs : cache member lookup.
+
+2010-04-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlMember.cs : cosmetic equivalence change.
+
+2010-04-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlXmlReader.cs : Resolve generic type names. Process attribute
+	  members.
+	* XamlLanguage.cs : add XamlTypeName-to-ClrType method.
+	* XmlSchemaContext.cs : extracted special type name handling to above.
+
+2010-04-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlType.cs : sort of reverted AllowedContentTypes.
+	  msdn explanation is so wrong.
+
+2010-04-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlSchemaContext.cs : implement GetXamlDirective().
+
+2010-04-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlType.cs : implement AllowedContentTypes and ContentWrappers.
+
+2010-04-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlXmlReader.cs : handle types in clr-namespace.
+	* XamlType.cs : replaced Type-to-typename hack with better-working one.
+	* XamlLanguage,cs : add internal clr type name resolver method.
+	* XamlXmlWriter.cs : for Initialization, value is passed as a string,
+	  so don't try to verify it with the object type.
+
+2010-04-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlXmlReader.cs : ongoing bugfixes to pass start object.
+
+2010-04-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlObjectReader.cs, TypeExtensionMethods.cs :
+	  Value serialization improvements. Improved namespace handling.
+	  Remove unused code.
+
+2010-04-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlXmlReader.cs : Return Member. Remove NIE.
+
+2010-04-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlXmlWriter.cs : use TypeConverter to get string value to write.
+	  (TimeSpan shows the difference; the type's ValueSerializer is null,
+	  while TypeConverter is not, and gives the expected non-xsd output.)
+
+2010-04-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlSchemaContext.cs, TypeExtensionMethods.cs : reimplement some
+	  GetXamlType() overloads. Protected one should be the actual
+	  implementation.
+
+2010-04-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlType.cs : fixed ToString() to ignore UnderlyingType.
+
+2010-04-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlMember.cs : implemented ToString().
+
+2010-04-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlXmlReader.cs :
+	  Skip irrelevant nodes. Remove extra member (Dispose).
+
+2010-04-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlXmlReader.cs : basic implementation.
+
+2010-04-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlObjectReader.cs : Type is consumed as TypeExtension.
+
+2010-04-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlServices.cs : fix Transform implementation.
+
+2010-04-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlServices.cs : added a couple of missing methods.
+
+2010-04-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlObjectReader.cs
+	  XamlSchemaContext.cs
+	  XamlObjectReaderException.cs
+	  XamlXmlWriterException.cs
+	  XamlXmlWriterSettings.cs
+	  XamlObjectWriterException.cs
+	  XamlParseException.cs
+	  XamlInternalException.cs
+	  XamlException.cs
+	  XamlSchemaException.cs
+	  XamlDuplicateMemberException.cs : a handful of corcompare fixes.
+
+
+2010-04-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlMember.cs
+	  XamlDirective.cs
+	  XamlType.cs
+	  XamlLanguage.cs : implement (Lookup)ValueSerializer.
+
+2010-04-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlXmlWriter.cs :
+	  Do not write element or attribute for Initialization.
+
+2010-04-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlXmlWriter.cs
+	  XamlObjectWriter.cs
+	  XamlWriterStateManager.cs : basic object writer implementation.
+	  Needed non-trivial changes to state manager, as it turned out that
+	  the state transition does not seem to be well designed to be common.
+
+2010-04-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlType.cs : IsArray, IsCollection and IsGeneric are based on
+	  LookupCollectionKind(). Removed buggy documented behavior from the
+	  lookup method too.
+
+2010-04-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlXmlWriter.cs : check null args.
+
+2010-04-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlWriterStateManager.cs, XamlXmlWriter.cs : extracted former
+	  from latter, to reuse it in XamlObjectWriter too.
+
+2010-04-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlSchemaContext.cs
+	  TypeExtensionMethods.cs
+	  XamlType.cs : implement type lookup by name in schema context.
+
+2010-04-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlObjectReader.cs
+	  XamlSchemaContext.cs
+	  XamlMember.cs
+	  XamlType.cs
+	  XamlLanguage.cs : more type system implementation. Now it creates
+	  XamlType indirectly all around.
+
+2010-04-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlType.cs : make implementation a bit cleaner.
+
+2010-04-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlLanguage.cs : implement namespaces properties.
+	* XamlType.cs : implement member lookup methods and IsConstructible.
+	* XamlMember.cs : do not use PropertyInfo's CanRead and CanWrite
+	  which both return True for private getter and setter.
+	* TypeExtensionMethods.cs : add member retriever method that convers
+	  Initialization (for XamlXmlWriter).
+	* XamlObjectReader.cs : use above.
+
+2010-04-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlSchemaContext.cs : implement some methods.
+	* XamlLanguage.cs : add assembly attributes.
+
+2010-04-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlXmlReader.cs : implemented cosmetic members.
+	* XamlSchemaContext.cs : looks like I missed all methods here.
+
+2010-04-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlObjectReader.cs : basic implementation.
+	* XamlReader.cs : implemented Skip().
+	* XamlType.cs : hacked GetAllMembers() for XamlObjectReader work.
+	* TypeExtensionMethods.cs : added an extension to get member value.
+
+2010-04-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlXmlWriter.cs : Process closing only once (disposing).
+	  Close output only when required.
+
+2010-04-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* TypeExtensionMethods.cs, XamlType.cs :
+	  implement LookupCustomAttributeProvider() and use it.
+	* XamlLanguage.cs : add internal const for xmlns ns.
+	* XamlServices.cs : implement some.
+
+2010-04-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlMember.cs
+	  XamlDirective.cs
+	  XamlType.cs : implement TypeConverter support.
+
+2010-04-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* TypeExtension.cs, TypeExtensionMethods.cs : renamed to avoid
+	  confusion between Sys.Win.Markup.TypeExtension.
+
+2010-04-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* TypeExtension.cs
+	  XamlMember.cs
+	  XamlDirective.cs
+	  XamlType.cs
+	  XamlLanguage.cs : ongoing implementation.
+
+2010-04-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlType.cs : implemented lots of members.
+	* TypeExtension.cs : split out from above.
+
+2010-04-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlMember.cs, XamlDirective.cs :
+	  Implemented lots of directive members.
+
+2010-04-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XamlDirective.cs
+	  XamlLanguage.cs
+	  XamlMember.cs
+	  XamlType.cs : add more members and implement some.
+
+2010-04-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* AmbientPropertyValue.cs
+	  AttachableMemberIdentifier.cs
+	  AttachablePropertyServices.cs
+	  ChangeLog
+	  IAmbientProvider.cs
+	  IAttachedPropertyStore.cs
+	  IDestinationTypeProvider.cs
+	  INamespacePrefixLookup.cs
+	  IRootObjectProvider.cs
+	  IXamlIndexingReader.cs
+	  IXamlLineInfo.cs
+	  IXamlLineInfoConsumer.cs
+	  IXamlNameProvider.cs
+	  IXamlNameResolver.cs
+	  IXamlNamespaceResolver.cs
+	  IXamlObjectWriterFactory.cs
+	  IXamlSchemaContextProvider.cs
+	  NamespaceDeclaration.cs
+	  XamlBackgroundReader.cs
+	  XamlDeferringLoader.cs
+	  XamlDirective.cs
+	  XamlDuplicateMemberException.cs
+	  XamlException.cs
+	  XamlInternalException.cs
+	  XamlLanguage.cs
+	  XamlMember.cs
+	  XamlNodeList.cs
+	  XamlNodeQueue.cs
+	  XamlNodeType.cs
+	  XamlObjectEventArgs.cs
+	  XamlObjectReader.cs
+	  XamlObjectReaderException.cs
+	  XamlObjectReaderSettings.cs
+	  XamlObjectWriter.cs
+	  XamlObjectWriterException.cs
+	  XamlObjectWriterSettings.cs
+	  XamlParseException.cs
+	  XamlReader.cs
+	  XamlReaderSettings.cs
+	  XamlSchemaContext.cs
+	  XamlSchemaContextSettings.cs
+	  XamlSchemaException.cs
+	  XamlServices.cs
+	  XamlType.cs
+	  XamlWriter.cs
+	  XamlWriterSettings.cs
+	  XamlXmlReader.cs
+	  XamlXmlReaderSettings.cs
+	  XamlXmlWriter.cs
+	  XamlXmlWriterException.cs
+	  XamlXmlWriterSettings.cs : initial checkin.

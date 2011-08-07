@@ -1,3 +1,12 @@
+2010-10-31  Nikolaos Georgiou  <Nikolaos.Georgiou@gmail.com>
+
+	Changed new method back to private, it was accidentally public.
+
+2010-10-31  Nikolaos Georgiou  <Nikolaos.Georgiou@gmail.com>
+
+	Modified ResXResourceWriter so that the comment of ResXNode is not
+	lost. Added unit test.
+
 2010-02-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* ResXResourceReader.cs: handle resource file comments.

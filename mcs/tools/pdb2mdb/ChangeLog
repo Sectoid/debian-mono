@@ -1,3 +1,13 @@
+2011-01-17  Jb Evain  <jbevain@gmail.com>
+
+	Fix pdb2mdb when a pdb has a method with no seq points.
+
+	Patch by Thad Thompson <TThompson@nucsafe.com>
+
+2010-10-05  Jb Evain  <jbevain@gmail.com>
+
+	Port pdb2mdb to cecil-light
+
 2009-04-27  Jb Evain  <jbevain@novell.com>
 
 	* sync with CodePlex r10923.

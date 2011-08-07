@@ -1,3 +1,12 @@
+2011-01-05  Marek Safar  <marek.safar@gmail.com>
+
+	Add missing Accessibility reference
+
+2010-12-10  Miguel de Icaza  <miguel@gnome.org>
+
+	[winforms] Use conditional attributes, not ifdefs to insert
+	conditional code
+
 2009-08-19  Carlos Alberto Cortez <calberto.cortez@gmail.com>
 
 	* System.Windows.Forms_test.dll.sources: Add a new test file.
@@ -13,11 +22,6 @@
 2008-11-27  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* Makefile: here is another nunit24 option breakage.
-
-2008-11-11  Andrés G. Aragoneses  <aaragoneses@novell.com>
-
-	* Application.cs: After UIA assembly is successfully loaded,
-	dump any exception that happens on initialization to stderr.
 
 2008-11-08  Andreia Gaita <shana@jitted.com> 
 

@@ -25,6 +25,9 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
+
+#if !BOOTSTRAP_BASIC
+
 using System;
 using System.ComponentModel;
 using System.IO;
@@ -159,7 +162,6 @@ namespace System.IO.Pipes
 		
 		protected FileAccess RightsToFileAccess (PipeAccessRights rights)
 		{
-			string access = null;
 			if ((rights & PipeAccessRights.ReadData) != 0) {
 				if ((rights & PipeAccessRights.WriteData) != 0)
 					return FileAccess.ReadWrite;
@@ -194,7 +196,7 @@ namespace System.IO.Pipes
 			var name = Path.Combine ("/var/tmp/", pipeName);
 			EnsureTargetFile (name);
 			
-			string access = RightsToAccess (desiredAccessRights);
+			RightsToAccess (desiredAccessRights);
 			
 			ValidateOptions (options, owner.TransmissionMode);
 			
@@ -208,7 +210,6 @@ namespace System.IO.Pipes
 		}
 
 		NamedPipeClientStream owner;
-		bool is_async;
 		SafePipeHandle handle;
 		Action opener;
 
@@ -236,7 +237,7 @@ namespace System.IO.Pipes
 		}
 
 		public bool IsAsync {
-			get { return is_async; }
+			get { return false; }
 		}
 
 		public int NumberOfServerInstances {
@@ -263,7 +264,7 @@ namespace System.IO.Pipes
 			string name = Path.Combine ("/var/tmp/", pipeName);
 			EnsureTargetFile (name);
 
-			string access = RightsToAccess (rights);
+			RightsToAccess (rights);
 
 			ValidateOptions (options, owner.TransmissionMode);
 
@@ -294,3 +295,5 @@ namespace System.IO.Pipes
 		}
 	}
 }
+
+#endif

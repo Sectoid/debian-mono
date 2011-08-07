@@ -1,15 +1,273 @@
+2011-04-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	In *AllLines use WriteLine instead of Write.
+
+	This fixes bug #689670.
+
+2011-04-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[runtime,IO] Filesystem entries can only be sought for in
+	directories, not files.
+
+2011-03-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Revert "Fix a typo in Directory.GetFiles ()"
+
+	This reverts commit 5bbd6c23f8c5931788ff11722283384639ffbcf0.
+
+2011-03-28  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix a typo in Directory.GetFiles ()
+
+	The mask never matched the attributes and all files were
+	discarded. This fixes bug #683203.
+
+2011-03-23  Miguel de Icaza  <miguel@gnome.org>
+
+	OSX, Win32: Implements support for DriveInfo
+
+	This implements support for DriveInfo for OSX and Windows.
+
+	On OSX we use statfs system call that provides the filesystem type
+	information that we need. On Linux, we continue to fallback to
+	mtab parsing
+
+2011-03-08  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Avoid null refs when capacity set to 0
+
+	This fixes bug #676060.
+
+2011-03-07  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add 2 missing 4.0 APIs to the MOBILE profile
+
+2011-02-24  Steve Bjorg  <steve.bjorg@gmail.com>
+
+	TextReader.Null should return "" on ReadToEnd()
+
+2011-02-24  Miguel de Icaza  <miguel@gnome.org>
+
+	Add default implementations to ReadLine() and ReadToEnd() to
+	TextReader, fixes 655934
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
+2011-01-06  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[windows] Improve drive search
+
+	Windows allows "A", "A:", @"a:\"... as synonyms for the same
+	drive. Patch by Vincent Povirk that fixes bug #660911.
+
+2011-01-06  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Windows] Implement GetDrives.
+
+	Drive names are ok, but the type is always 'Fixed'. Fixes bug
+	#660907.
+
+2011-01-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Change some usages of ArrayList to List<T> to avoid calls to the
+	slow ArrayList.ToArray(Type) method.
+
+2011-01-03  Miguel de Icaza  <miguel@gnome.org>
+
+	[mscorlib] New Path.Combine methods are exposed internally on pre
+	4.0 profiles
+
+	This allows our mscorlib code to be cleaner
+
+2010-11-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[File.ReadLines] Dispose the StreamReader in the right place.
+
+	The StreamReader was being disposed immediately after the call to
+	ReadLines() causing the enumerator to fails.
+
+	Fixes bug #649464.
+
+2010-11-04  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* FileStream.cs: Move anonymous assignation earlier so the value
+	is available when validation are made (and calls other methods)
+
+2010-10-29  Alex Fort  <imphasing@gmail.com>
+
+	Don't use a buffer size of 1 for zero-length buffers
+
+	Using a size of 1 for zero length buffers causes (on linux) the
+	last character to be eaten by the buffer until the next flush.
+
+2010-10-27  Alex Fort  <imphasing@gmail.com>
+
+	[Fix] Don't enforce a minimum size for zero-length buffers, fixing
+	#645193
+
+	InitBuffer was forcing the length of any buffer smaller than 8 to
+	be 8, but for zero-size buffers, this isn't correct.
+
+2010-10-24  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	BinaryWriter.BaseStream calls Flush()
+
+	Before returning the base stream, BinaryWriter.BaseStream calls
+	Flush on it. Added test for this.
+
+	Fixes bug #647948.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Warnings cleanup
+
+2010-10-07  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix CryptoStream.Dispose
+
+	-Dispose will call TransformFinalBlock() for Read streams. Fixes
+	bug #644648. -Dispose () will call Dispose (bool). Fixes bug
+	#644654. -Stream.Close calls GC.SuppressFinalize(). Fixes bug
+	#644660.
+
+2010-09-10  Jb Evain  <jbevain@gmail.com>
+
+	Add FileStream.Flush(bool) to the moonlight profile
+
+2010-09-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Use UTF8 instead of ASCII when reading mount info
+
+	This allows for mount points with UTF8 characters in them.
+
+2010-09-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Linux /proc/mounts might have escaped characters
+
+	Translate escaped characters in mount paths.
+
+	Fixes bug #637078.
+
+2010-05-27  William Holmes  <billholmes54@gmail.com>
+
+	* Directory.cs (ValidateDirectoryListing): Removing an unnecessary
+	Path.Combine call. Part of the fix for bug #580090.
+
+	Code is contributed under MIT/X11 license.
+
+2010-06-18  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* FileStream.cs: Include a required ctor in NET_2_1 so that it compiles.
+
+2010-05-20  Marek Habersack  <mhabersack@novell.com>
+
+	* FileStream.cs: when running on Windows and a path with Unix
+	directory separator chars is passed (including an UNC share), get
+	the canonical form of the path before attempting to retrieve its
+	directory name. Fixes bug #607502
+
+	* Path.cs: typo fix
+
+2010-05-08  Marek Habersack  <mhabersack@novell.com>
+
+	* Path.cs: vararg overload of Combine now correctly concatenates
+	segments.
+	The 3 and 4 argument overloads of Combine check whether the passed
+	segments are null or not.
+
+2010-05-05 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Path.cs: prevent infinite loop when TMPDIR (or equivalent)
+	points to a non-existent directory.
+
+2010-04-21  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* FileInfo.cs: Ensure elevated trust when calling Delete on 
+	Moonlight.
+	* FileSystemInfo.cs: Ensure elevated trust when calling [Creation
+	|LastAccess|LastWrite]Time setters
+
+2010-04-16  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* Directory.cs: Ensure elevated trust when calling on 
+	Moonlight.
+	* DirectoryInfo.cs: Ensure elevated trust when calling a .ctor 
+	on Moonlight.
+	* File.cs: Ensure elevated trust when calling a .ctor on 
+	Moonlight.
+	* FileInfo.cs: Ensure elevated trust when calling a .ctor on 
+	Moonlight.
+	* FileStream.cs: Ensure elevated trust when calling a .ctor on 
+	Moonlight. Name property returns "[Unknown]" unless a Moonlight
+	application is executed with elevated trust.
+	* Path.cs: Ensure elevated trust when calling a GetTempPath,
+	GetTempFileName or GetFullPath on Moonlight. Add a shared 
+	internal method to validate paths to reduce code duplication.
+
+2010-04-15  Jb Evain  <jbevain@novell.com>
+
+	* Directory.cs: don't fully qualify name when not it's necessary.
+
+2010-03-29  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* DirectoryInfo.cs, FileInfo.cs: Moonlight needs the default ctor
+	to decorate them with [SecuritySafeCritical] for corclr 
+	inheritance rules
+
+2010-03-25 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Directory.cs: a directory named ":" is legal in unix.
+	This gets rid of the annoying ":" folder when running
+	corlib tests.
+
+2010-03-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Directory.cs, DirectoryInfo.cs: Disble new NET_4_0 API used in
+	SL4 until we have elevated trust working correctly (since they 
+	are *not* decorated as [SecurityCritical])
+
+2010-03-17 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* StreamReader.cs: if the detected encoding is different from the
+	provided to the constructor, adjust the decoded buffer size if
+	needed. Fixes bug #589236.
+
+2010-03-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Stream.cs: CopyTo methods are part of SL4 too
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* FileStream.cs, File.cs, DirectoryInfo.cs, Directory.cs: use
+	MOONLIGHT symbol to disambiguate MonoTouch and Moonlight code.
+
+2010-03-16  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* Path.cs:
+	* Directory.cs:
+	* DirectoryInfo.cs: Add some of the 4.0 methods to Moonlight.
+
+2010-03-15  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* SearchOption.cs: Make public for Moonlight, this type is in SL4.
+
+2010-03-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* File.cs: Enable some NET_4_0 features in NET_2_1 since they are
+	part of SL4. Throw a SecurityException in Moonlight in non-debug
+	builds until we're ready for elevated trust.
+
 2010-03-11  Zoltan Varga  <vargaz@gmail.com>
 
 	* Path.cs (GetTempFileName): Fix infinite loop if the process doesn't have
 	write access to /tmp. Fixes #585017.
 
-2010-02-21  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+2010-02-22  Carlos Alberto Cortez <calberto.cortez@gmail.com>
 
-	* MemoryStream.cs: Don't clear the bytes beyond Length when shrinking
-	it. Instead just save the related information for it and do it when
-	Length grows and touchs that dirty region. Refactor the code where
-	needed to avoid duplication as well.
-	Fixes #327053.
+	* MemoryStream.cs: When setting Capacity, don't create a new buffer if
+	the new expected value is the same as the current one.
 
 2010-02-15 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -21,22 +279,121 @@
 
 	* Directory.cs (Exists): Never throw an exception. Fixes #565152.
 
+2010-01-28 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* UnmanagedMemoryStream.cs: fix a regression from my previous patch.
+
+2010-01-26  Marek Habersack  <mhabersack@novell.com>
+
+	* SearchOption.cs: included in 2.1 build as internal to fix
+	the build.
+
+2010-01-25 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* DirectoryInfo.cs: new overload for GetFileSystemInfos().
+
+2010-01-25 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* UnmanagedMemoryStream.cs: add the SafeBuffer overloads.
+
+2010-01-23  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* StreamReader.cs: When detecting the encoding we usually check the
+	four first bytes looking for either UTF32 or UTF8 BOM, since they share
+	the first two bytes, but if we happen to have less than 4 bytes at
+	detection time, just check for Unicode and use it as the current
+	encoding - this is exactly what .Net does, and it is specially visible
+	with NetworkStream.
+	Fixes #534137.
+
+2010-01-19  Alan McGovern  <amcgovern@novell.com>
+	* BufferedStream.cs: Patch by Tom Philpot to optimise ReadByte and
+	WriteByte significantly by making them fulfill their request by
+	directly reading from the buffer.
+
 2010-01-14  Rolf Bjarne Kvinge  <RKvinge@novell.com>
 
 	* UnmanagedMemoryStream.cs: Read: don't read bytes one-by-one, read all
 	at once.
 
+2010-01-03  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* MemoryStream.cs: Don't clear the bytes beyond Length when shrinking
+	it. Instead just save the related information for it and do it when
+	Length grows and touchs that dirty region. Refactor the code where
+	needed to avoid duplication as well.
+	Fixes #327053.
+
 2009-12-21  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* File.cs (ReadAllBytes): We cannot assume that a single call to
 	Read will return all the data we require.
-	[Backport r148822]
+
+2009-11-24  Marek Safar <marek.safar@gmail.com>
+
+	* StreamReader.cs, FileStream.cs: Use recycle buffer to avoid
+	repeated underlying buffer initialization (saves hefty 10MB
+	during corlib compilation).
+	
+	* Path.cs (InsecureGetFullPath): Avoid CanonicalizePath in common
+	path.
+
+2009-11-23  Miguel de Icaza  <miguel@novell.com>
+
+	* DirectoryInfo.cs: Added the new overloads.
+
+	* Directory.cs: Add EnumerateFiles and EnumerateFileSystemEntries
+	overloads.    Share code.
+	
+	Add new GetFileSystemEntries overload
+
+2009-11-22  Miguel de Icaza  <miguel@novell.com>
+
+	* Directory.cs: Added new IEnumerable methods to Directory.
+
+	* MonoIO.cs: Surface a high level FindFirst/FindNext API to
+	implement the various enumerable APIs.
+
+2009-11-13  Marek Safar <marek.safar@gmail.com>
+
+	* UnmanagedMemoryAccessor.cs: Finished.
+
+2009-11-13  Marek Safar <marek.safar@gmail.com>
+
+	* UnmanagedMemoryAccessor.cs: Finished.
+
+2009-11-08  Miguel de Icaza  <miguel@novell.com>
+
+	* FileInfo.cs: Partially implement.
+
+	* Stream.cs: Implement synchornized.
+
+2009-11-07  Miguel de Icaza  <miguel@novell.com>
+
+	* UnmanagedMemoryStream.cs: Move the CLS attribute to the methods
+	that are unsafe.
+
+	* Path.cs (Combine):e Fix implementation to follow docs (we need
+	to reset the path if any of the combined paths is rooted), and add a
+	couple of overloads;
+
+	* FileStream.cs (Flush/flushToDisk): Implement.
+
+	* Stream.cs (CopyTo): Implement.
+
+2009-11-03  Miguel de Icaza  <miguel@novell.com>
+
+	* FileStream.cs: Check the return value of MonoIO.Write and handle
+	short-writes as those can happen when a FileStream is used on top
+	of a pipe on Unix.
+
+	Fixes bug: #531613, this should be backported to 2-4 and 2-6 after
+	some testing.
 
 2009-10-29  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* FileStream.cs: Reduce code duplication by merging FillBuffer 
 	with FillBufferToStream
-	[Backport r145008]
 
 2009-10-28  Sebastien Pouliot  <sebastien@ximian.com>
 
@@ -44,17 +401,19 @@
 	into two methods (returning the path, fullpath or only the 
 	filename). Default Moonlight to anonymous (not only for isolated
 	storage) unless the coreclr is disable (e.g. smcs)
-	[Backport r144945]
 
-2009-10-18  Sebastien Pouliot  <sebastien@ximian.com>
+2009-10-21  Miguel de Icaza  <miguel@novell.com>
 
-	* UnmanagedMemoryStream.cs: Allow the use under NET_1_1 so we can
-	remove the internal IntPtrStream from every profile.
+	* BinaryWriter.cs, BinaryReader.cs: 4.0 signature update.
+
+	* File.cs (ReadLines, AppendAllLines, WriteAllLines): Add
+	IEnumerable methods.
+
+	* Path.cs (Combine): add the params overload. 
 
 2009-10-15  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* UnmanagedMemoryStream.cs: Fix some and add missing validations
-	[Backport r144226]
 
 2009-09-23  Sebastien Pouliot  <sebastien@ximian.com> 
 

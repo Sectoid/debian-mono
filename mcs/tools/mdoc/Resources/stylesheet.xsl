@@ -7,13 +7,14 @@
 <xsl:stylesheet
 	version="1.0"
 	xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+	xmlns:msxsl="urn:schemas-microsoft-com:xslt"
+	exclude-result-prefixes="msxsl"
 	>
 	<xsl:include href="mdoc-html-utils.xsl" />
 	<xsl:include href="mdoc-sections-css.xsl" />
 	
 	<!-- TEMPLATE PARAMETERS -->
 
-	<xsl:param name="language" select="'C#'"/>
 	<xsl:param name="ext" select="'xml'"/>
 	<xsl:param name="basepath" select="'./'"/>
 	
@@ -202,21 +203,40 @@
 	<xsl:template name="GetLinkTarget">
 		<xsl:param name="type" />
 		<xsl:param name="cref" />
+		<xsl:param name="xmltarget" select="false()"/>
 		<!-- Search for type in the index.xml file. -->
-		<xsl:variable name="typeentry">
+		<xsl:variable name="typeentry-rtf">
 			<xsl:call-template name="FindTypeInIndex">
 				<xsl:with-param name="type" select="$type" />
 			</xsl:call-template>
 		</xsl:variable>
+		<xsl:variable name="typeentry" select="msxsl:node-set($typeentry-rtf)" />
 
 		<xsl:choose>
-			<xsl:when test="count($typeentry)">
-				<xsl:if test="string-length ($typeentry/@Namespace)">
+			<xsl:when test="$xmltarget and count($typeentry/Type)">
+				<xsl:value-of select="concat($typeentry/Type/@Namespace, '/', $typeentry/Type/@Name, '.xml')" />
+			</xsl:when>
+			<xsl:when test="$xmltarget" />
+			<xsl:when test="starts-with ($cref, 'N:')">
+				<xsl:variable name="namespace">
+					<xsl:call-template name="FindNamespaceInIndex">
+						<xsl:with-param name="namespace" select="substring-after ($cref, 'N:')" />
+					</xsl:call-template>
+				</xsl:variable>
+				<xsl:if test="string($namespace) != ''">
+					<xsl:if test="$TypeNamespace != ''">
+						<xsl:value-of select="$basepath" />
+					</xsl:if>
+					<xsl:value-of select="concat ($namespace, '/index.', $ext)" />
+				</xsl:if>
+			</xsl:when>
+			<xsl:when test="count($typeentry/Type)">
+				<xsl:if test="string-length ($typeentry/Type/@Namespace)">
 					<xsl:value-of select="$basepath" />
-					<xsl:value-of select="$typeentry/@Namespace" />
+					<xsl:value-of select="$typeentry/Type/@Namespace" />
 					<xsl:text>/</xsl:text>
 				</xsl:if>
-				<xsl:value-of select="$typeentry/@Name"/>
+				<xsl:value-of select="$typeentry/Type/@Name"/>
 				<xsl:text>.</xsl:text>
 				<xsl:value-of select="$ext" />
 				<xsl:if test="string-length ($cref) > 0 and substring ($cref, 1, 2) != 'T:'">
@@ -236,7 +256,6 @@
 				<xsl:value-of select="$mono-docs" />
 				<xsl:value-of select="$cref" />
 			</xsl:when>
-			<xsl:otherwise>javascript:alert("Documentation not found.")</xsl:otherwise>
 			<!--<xsl:otherwise>javascript:alert("Documentation not found for <xsl:value-of select="$type"/>.")</xsl:otherwise>-->
 		</xsl:choose>
 	</xsl:template>
@@ -244,7 +263,7 @@
 	<xsl:template name="FindTypeInIndex">
 		<xsl:param name="type" />
 
-		<xsl:for-each select="$Index/Types/Namespace/Type">
+		<xsl:for-each select="$Index//Type">
 			<xsl:variable name="nsp">
 				<xsl:choose>
 					<xsl:when test="string-length (parent::Namespace/@Name) = 0" />
@@ -256,6 +275,16 @@
 			</xsl:variable>
 			<xsl:if test="concat($nsp, translate(@Name, '+', '.')) = $type">
 				<Type Name="{@Name}" Namespace="{parent::Namespace/@Name}" />
+			</xsl:if>
+		</xsl:for-each>
+	</xsl:template>
+
+	<xsl:template name="FindNamespaceInIndex">
+		<xsl:param name="namespace" />
+
+		<xsl:for-each select="$Index//Namespace">
+			<xsl:if test="@Name = $namespace">
+				<xsl:value-of select="@Name" />
 			</xsl:if>
 		</xsl:for-each>
 	</xsl:template>

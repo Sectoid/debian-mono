@@ -25,7 +25,18 @@
 MonoFileMap *
 mono_file_map_open (const char* name)
 {
+#ifdef WIN32
+	gunichar2 *wname = g_utf8_to_utf16 (name, -1, 0, 0, 0);
+	MonoFileMap *result;
+
+	if (wname == NULL)
+		return NULL;
+	result = (MonoFileMap *) _wfopen ((wchar_t *) wname, L"rb");
+	g_free (wname);
+	return result;
+#else
 	return (MonoFileMap *)fopen (name, "rb");
+#endif
 }
 
 guint64 
@@ -49,7 +60,7 @@ mono_file_map_close (MonoFileMap *fmap)
 	return fclose ((FILE*)fmap);
 }
 
-#if !defined(HAVE_MMAP) && !defined (PLATFORM_WIN32)
+#if !defined(HAVE_MMAP) && !defined (HOST_WIN32)
 
 static mono_file_map_alloc_fn alloc_fn = (mono_file_map_alloc_fn) malloc;
 static mono_file_map_release_fn release_fn = (mono_file_map_release_fn) free;

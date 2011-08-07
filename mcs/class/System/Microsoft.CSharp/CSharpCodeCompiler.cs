@@ -82,7 +82,10 @@ namespace Mono.CSharp
 						"mono\\mono\\mini\\mono.exe");
 				if (!File.Exists (windowsMonoPath))
 					throw new FileNotFoundException ("Windows mono path not found: " + windowsMonoPath);
-#if NET_2_0
+#if NET_4_0
+				windowsMcsPath =
+					Path.Combine (p, "4.0\\dmcs.exe");
+#elif NET_2_0
 				windowsMcsPath =
 					Path.Combine (p, "2.0\\gmcs.exe");
 #else
@@ -90,7 +93,12 @@ namespace Mono.CSharp
 					Path.Combine (p, "1.0\\mcs.exe");
 #endif
 				if (!File.Exists (windowsMcsPath))
-#if NET_2_0
+#if NET_4_0
+					windowsMcsPath =
+						Path.Combine(
+							Path.GetDirectoryName (p),
+							"lib\\net_4_0\\dmcs.exe");
+#elif NET_2_0
 					windowsMcsPath = 
 						Path.Combine(
 							Path.GetDirectoryName (p),
@@ -204,8 +212,12 @@ namespace Mono.CSharp
 #endif
 			} else {
 #if NET_2_0
-				// FIXME: This is a temporary hack to make code genaration work in 2.0
+				// FIXME: This is a temporary hack to make code genaration work in 2.0+
+#if NET_4_0
+				mcs.StartInfo.FileName="dmcs";
+#else
 				mcs.StartInfo.FileName="gmcs";
+#endif
 				mcs.StartInfo.Arguments=BuildArgs(options, fileNames, ProviderOptions);
 #else
 				mcs.StartInfo.FileName="mcs";
@@ -398,7 +410,11 @@ namespace Mono.CSharp
 				string langver;
 
 				if (!providerOptions.TryGetValue ("CompilerVersion", out langver))
+#if NET_4_0
+					langver = "3.5";
+#else
 					langver = "2.0";
+#endif
 
 				if (langver.Length >= 1 && langver [0] == 'v')
 					langver = langver.Substring (1);

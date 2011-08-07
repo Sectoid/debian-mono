@@ -84,7 +84,6 @@ namespace System.ServiceModel.Security.Tokens
 		Collection<XmlElement> additional_reqs =
 			new Collection<XmlElement> ();
 
-		[MonoTODO]
 		public override string ToString ()
 		{
 			return base.ToString ();
@@ -188,7 +187,7 @@ namespace System.ServiceModel.Security.Tokens
 			return ret;
 		}
 
-		protected override void InitializeSecurityTokenRequirement (SecurityTokenRequirement requirement)
+		protected internal override void InitializeSecurityTokenRequirement (SecurityTokenRequirement requirement)
 		{
 			if (requirement == null)
 				throw new ArgumentNullException ("requirement");

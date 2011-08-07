@@ -62,7 +62,7 @@ namespace System.ServiceModel.Channels
 		[MonoTODO]
 		public override T GetProperty<T> (BindingContext context)
 		{
-			throw new NotImplementedException ();
+			return context.GetInnerProperty<T> ();
 		}
 
 		public override bool CanBuildChannelFactory<TChannel> (BindingContext context)
@@ -159,6 +159,11 @@ namespace System.ServiceModel.Channels
 		{
 			this.inner_listener = innerListener;
 			this.protocol = protocol;
+		}
+
+		public override T GetProperty<T> ()
+		{
+			return inner_listener.GetProperty<T> () ?? base.GetProperty<T> ();
 		}
 
 		public override Uri Uri {

@@ -540,10 +540,13 @@ namespace System.Xml
 
 			if (newChild.NodeType == XmlNodeType.DocumentFragment) {
 				// This recursively invokes events. (It is compatible with MS implementation.)
-				while (newChild.FirstChild != null)
-					this.InsertBefore (newChild.FirstChild, refChild);
-			}
-			else {
+				XmlNode ret = null;
+				while (newChild.FirstChild != null) {
+					var c = this.InsertBefore (newChild.FirstChild, refChild);
+					ret = ret ?? c;
+				}
+				return ret;
+			} else {
 				XmlLinkedNode newLinkedChild = (XmlLinkedNode) newChild;
 				newLinkedChild.parentNode = this;
 
@@ -585,8 +588,8 @@ namespace System.Xml
 
 				if (raiseEvent)
 					ownerDoc.onNodeInserted (newChild, newChild.ParentNode);
+				return newChild;
 			}
-			return newChild;
 		}
 
 		private void CheckNodeInsertion (XmlNode newChild, XmlNode refChild)
@@ -864,7 +867,7 @@ namespace System.Xml
 			XPathNodeIterator iter = nav.Select (expr);
 			if (!iter.MoveNext ())
 				return null;
-			return ((IHasXmlNode) iter.Current).GetNode ();
+			return (iter.Current as IHasXmlNode).GetNode ();
 		}
 
 		public virtual bool Supports (string feature, string version)

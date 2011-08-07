@@ -29,9 +29,10 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 
 using System.Collections;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
@@ -52,16 +53,8 @@ namespace System.Security {
 		public RuntimeDeclSecurityEntry choice;
 	}
 
-#if NET_2_0
 	[ComVisible (true)]
 	public static class SecurityManager {
-#else
-	public sealed class SecurityManager {
-
-		private SecurityManager ()
-		{
-		}
-#endif
 		private static object _lockObject;
 		private static ArrayList _hierarchy;
 		private static IPermission _unmanagedCode;
@@ -77,6 +70,9 @@ namespace System.Security {
 
 		// properties
 
+#if NET_4_0
+		[Obsolete]
+#endif
 		extern public static bool CheckExecutionRights {
 			[MethodImplAttribute (MethodImplOptions.InternalCall)]
 			get;
@@ -86,9 +82,7 @@ namespace System.Security {
 			set;
 		}
 
-#if NET_2_0
 		[Obsolete ("The security manager cannot be turned off on MS runtime")]
-#endif
 		extern public static bool SecurityEnabled {
 			[MethodImplAttribute (MethodImplOptions.InternalCall)]
 			get;
@@ -98,9 +92,19 @@ namespace System.Security {
 			set;
 		}
 
+		internal static bool CheckElevatedPermissions ()
+		{
+			return true; // always true outside Moonlight
+		}
+
+		[Conditional ("MOONLIGHT")]
+		internal static void EnsureElevatedPermissions ()
+		{
+			// do nothing outside of Moonlight
+		}
+
 		// methods
 
-#if NET_1_1
 		// NOTE: This method doesn't show in the class library status page because
 		// it cannot be "found" with the StrongNameIdentityPermission for ECMA key.
 		// But it's there!
@@ -112,8 +116,10 @@ namespace System.Security {
 			zone = new ArrayList ();
 			origin = new ArrayList ();
 		}
-#endif
 
+#if NET_4_0
+		[Obsolete]
+#endif
 		public static bool IsGranted (IPermission perm)
 		{
 			if (perm == null)
@@ -126,38 +132,10 @@ namespace System.Security {
 			// - Not affected by overrides (like Assert, Deny and PermitOnly)
 			// - calls IsSubsetOf even for non CAS permissions
 			//   (i.e. it does call Demand so any code there won't be executed)
-#if NET_2_0
 			// with 2.0 identity permission are unrestrictable
 			return IsGranted (Assembly.GetCallingAssembly (), perm);
-#else
-			if (perm is IUnrestrictedPermission)
-				return IsGranted (Assembly.GetCallingAssembly (), perm);
-			else
-				return IsGrantedRestricted (Assembly.GetCallingAssembly (), perm);
-#endif
 		}
 
-#if !NET_2_0
-		// only for permissions that do not implement IUnrestrictedPermission
-		internal static bool IsGrantedRestricted (Assembly a, IPermission perm)
-		{
-			PermissionSet granted = a.GrantedPermissionSet;
-			if (granted != null) {
-				CodeAccessPermission grant = (CodeAccessPermission) granted.GetPermission (perm.GetType ());
-				if (!perm.IsSubsetOf (grant)) {
-					return false;
-				}
-			}
-
-			PermissionSet denied = a.DeniedPermissionSet;
-			if (denied != null) {
-				CodeAccessPermission refuse = (CodeAccessPermission) a.DeniedPermissionSet.GetPermission (perm.GetType ());
-				if ((refuse != null) && perm.IsSubsetOf (refuse))
-					return false;
-			}
-			return true;
-		}
-#endif
 		// note: in 2.0 *all* permissions (including identity permissions) support unrestricted
 		internal static bool IsGranted (Assembly a, IPermission perm)
 		{
@@ -188,18 +166,8 @@ namespace System.Security {
 			foreach (IPermission p in ps) {
 				// note: this may contains non CAS permissions
 				if ((!noncas) && (p is CodeAccessPermission)) {
-#if NET_2_0
 					if (!IsGranted (a, p))
 						return p;
-#else
-					if (p is IUnrestrictedPermission) {
-						if (!IsGranted (a, p))
-							return p;
-					} else {
-						if (!IsGrantedRestricted (a, p))
-							return p;
-					}
-#endif
 				} else {
 					// but non-CAS will throw on failure...
 					try {
@@ -222,13 +190,8 @@ namespace System.Security {
 			PermissionSet granted = ad.GrantedPermissionSet;
 			if (granted == null)
 				return null;
-#if NET_2_0
 			if (granted.IsUnrestricted ())
 				return null;
-#else
-			if ((granted.Count == 0) && granted.IsUnrestricted ())
-				return null;
-#endif
 			if (ps.IsUnrestricted ())
 				return new SecurityPermission (SecurityPermissionFlag.NoFlags);
 
@@ -257,6 +220,9 @@ namespace System.Security {
 			return null;
 		}
 
+#if NET_4_0
+		[Obsolete]
+#endif
 		[SecurityPermission (SecurityAction.Demand, ControlPolicy = true)]
 		public static PolicyLevel LoadPolicyLevelFromFile (string path, PolicyLevelType type)
 		{
@@ -274,6 +240,9 @@ namespace System.Security {
 			return pl;
 		}
 
+#if NET_4_0
+		[Obsolete]
+#endif
 		[SecurityPermission (SecurityAction.Demand, ControlPolicy = true)]
 		public static PolicyLevel LoadPolicyLevelFromString (string str, PolicyLevelType type)
 		{
@@ -291,12 +260,18 @@ namespace System.Security {
 			return pl;
 		}
 
+#if NET_4_0
+		[Obsolete]
+#endif
 		[SecurityPermission (SecurityAction.Demand, ControlPolicy = true)]
 		public static IEnumerator PolicyHierarchy ()
 		{
 			return Hierarchy;
 		}
 
+#if NET_4_0
+		[Obsolete]
+#endif
 		public static PermissionSet ResolvePolicy (Evidence evidence)
 		{
 			// no evidence, no permission
@@ -318,7 +293,9 @@ namespace System.Security {
 			return ps;
 		}
 
-#if NET_2_0
+#if NET_4_0
+		[Obsolete]
+#endif
 		[MonoTODO ("(2.0) more tests are needed")]
 		public static PermissionSet ResolvePolicy (Evidence[] evidences)
 		{
@@ -335,6 +312,9 @@ namespace System.Security {
 			return ps;
 		}
 
+#if NET_4_0
+		[Obsolete]
+#endif
 		public static PermissionSet ResolveSystemPolicy (Evidence evidence)
 		{
 			// no evidence, no permission
@@ -355,10 +335,12 @@ namespace System.Security {
 			ResolveIdentityPermissions (ps, evidence);
 			return ps;
 		}
-#endif
 
 		static private SecurityPermission _execution = new SecurityPermission (SecurityPermissionFlag.Execution);
 
+#if NET_4_0
+		[Obsolete]
+#endif
 		public static PermissionSet ResolvePolicy (Evidence evidence, PermissionSet reqdPset, PermissionSet optPset, PermissionSet denyPset, out PermissionSet denied)
 		{
 			PermissionSet resolved = ResolvePolicy (evidence);
@@ -393,6 +375,9 @@ namespace System.Security {
 			return resolved;
 		}
 
+#if NET_4_0
+		[Obsolete]
+#endif
 		public static IEnumerator ResolvePolicyGroups (Evidence evidence)
 		{
 			if (evidence == null)
@@ -409,6 +394,9 @@ namespace System.Security {
 			return al.GetEnumerator ();
 		}
 
+#if NET_4_0
+		[Obsolete]
+#endif
 		[SecurityPermission (SecurityAction.Demand, ControlPolicy = true)]
 		public static void SavePolicy () 
 		{
@@ -419,6 +407,9 @@ namespace System.Security {
 			}
 		}
 
+#if NET_4_0
+		[Obsolete]
+#endif
 		[SecurityPermission (SecurityAction.Demand, ControlPolicy = true)]
 		public static void SavePolicyLevel (PolicyLevel level) 
 		{
@@ -442,7 +433,7 @@ namespace System.Security {
 		{
 			string machinePolicyPath = Path.GetDirectoryName (Environment.GetMachineConfigPath ());
 			// note: use InternalGetFolderPath to avoid recursive policy initialization
-			string userPolicyPath = Path.Combine (Environment.InternalGetFolderPath (Environment.SpecialFolder.ApplicationData), "mono");
+			string userPolicyPath = Path.Combine (Environment.UnixGetFolderPath (Environment.SpecialFolder.ApplicationData, Environment.SpecialFolderOption.Create), "mono");
 
 			PolicyLevel enterprise = new PolicyLevel ("Enterprise", PolicyLevelType.Enterprise);
 			_level = enterprise;
@@ -488,11 +479,10 @@ namespace System.Security {
 
 		internal static void ResolveIdentityPermissions (PermissionSet ps, Evidence evidence)
 		{
-#if NET_2_0
 			// in 2.0 identity permissions can now be unrestricted
 			if (ps.IsUnrestricted ())
 				return;
-#endif
+
 			// Only host evidence are used for policy resolution
 			IEnumerator ee = evidence.GetHostEnumerator ();
 			while (ee.MoveNext ()) {
@@ -795,7 +785,22 @@ namespace System.Security {
 		{
 			throw new SecurityException ("SecurityAction.DemandChoice was removed from 2.0");
 		}
-#pragma warning restore 169		
+#pragma warning restore 169
+
+#if NET_4_0
+		public static PermissionSet GetStandardSandbox (Evidence evidence)
+		{
+			if (evidence == null)
+				throw new ArgumentNullException ("evidence");
+
+			throw new NotImplementedException ();
+		}
+
+		public static bool CurrentThreadRequiresSecurityContextCapture ()
+		{
+			throw new NotImplementedException ();
+		}
+#endif
 	}
 }
 

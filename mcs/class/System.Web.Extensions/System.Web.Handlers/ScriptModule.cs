@@ -65,16 +65,22 @@ namespace System.Web.Handlers
 			// instead of having to create a web service to call a method.
 			HttpApplication app = (HttpApplication) sender;
 			HttpContext context = app.Context;
+			if (context == null)
+				return;
+			
 			HttpRequest request = context.Request;
 			string contentType = request.ContentType;
-			Type pageType = context.CurrentHandler.GetType ();
+			IHttpHandler currentHandler = context.CurrentHandler;
+			if (currentHandler == null)
+				return;
 #if TARGET_J2EE
-			if (!(context.CurrentHandler is Page) && context.CurrentHandler is IServiceProvider) {
-				pageType = (Type) ((IServiceProvider) context.CurrentHandler).GetService (typeof (Type));
+			if (!(currentHandler is Page) && currentHandler is IServiceProvider) {
+				pageType = (Type) ((IServiceProvider) currentHandler).GetService (typeof (Type));
 				if (pageType == null)
 					return;
 			}
 #endif
+			Type pageType = currentHandler.GetType ();
 			if (typeof (Page).IsAssignableFrom (pageType) && !String.IsNullOrEmpty (contentType) && contentType.StartsWith ("application/json", StringComparison.OrdinalIgnoreCase)) {
 				IHttpHandler h = RestHandler.GetHandler (context, pageType, request.FilePath);
 				h.ProcessRequest (context);
@@ -82,7 +88,8 @@ namespace System.Web.Handlers
 			}
 		}
 
-		void PreSendRequestHeaders (object sender, EventArgs e) {
+		void PreSendRequestHeaders (object sender, EventArgs e)
+		{
 			HttpApplication app = (HttpApplication) sender;
 			HttpContext context = app.Context;
 			if (context.Request.Headers ["X-MicrosoftAjax"] == "Delta=true") {
@@ -91,23 +98,18 @@ namespace System.Web.Handlers
 				if (p == null && context.CurrentHandler is IServiceProvider)
 					p = (Page) ((IServiceProvider) context.CurrentHandler).GetService (typeof (Page));
 #endif
-				if (p == null)
-					return;
-				ScriptManager sm = ScriptManager.GetCurrent (p);
-				if (sm == null)
-					return;
+				ScriptManager sm = ScriptManager.GetCurrentInternal (p);
 				if (context.Response.StatusCode == 302) {
 					context.Response.StatusCode = 200;
 					context.Response.ClearContent ();
-					if (context.Error == null || sm.AllowCustomErrorsRedirect)
+					if (context.Error == null || (sm != null && sm.AllowCustomErrorsRedirect))
 						ScriptManager.WriteCallbackRedirect (context.Response.Output, context.Response.RedirectLocation);
 					else
-						sm.WriteCallbackException (context.Response.Output, context.Error, false);
-				}
-				else if (context.Error != null) {
+						ScriptManager.WriteCallbackException (sm, context.Response.Output, context.Error, false);
+				} else if (context.Error != null) {
 					context.Response.StatusCode = 200;
 					context.Response.ClearContent ();
-					sm.WriteCallbackException (context.Response.Output, context.Error, true);
+					ScriptManager.WriteCallbackException (sm, context.Response.Output, context.Error, true);
 				}
 			}
 		}

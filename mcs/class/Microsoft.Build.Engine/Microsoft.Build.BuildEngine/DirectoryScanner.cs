@@ -57,7 +57,6 @@ namespace Microsoft.Build.BuildEngine {
 		{
 			Dictionary <string, bool> excludedItems;
 			List <ITaskItem> includedItems;
-			string[] splitExclude;
 			
 			if (includes == null)
 				throw new ArgumentNullException ("Includes");
@@ -84,7 +83,7 @@ namespace Microsoft.Build.BuildEngine {
 			FileInfo[] fileInfo;
 
 			string name = include_item.ItemSpec;
-			if (name.IndexOf ('?') == -1 && name.IndexOf ('*') == -1) {
+			if (!HasWildcard (name)) {
 				if (!excludedItems.ContainsKey (Path.GetFullPath(name)))
 					includedItems.Add (include_item);
 			} else {
@@ -114,10 +113,12 @@ namespace Microsoft.Build.BuildEngine {
 					if (!excludedItems.ContainsKey (fi.FullName)) {
 						TaskItem item = new TaskItem (include_item);
 						item.ItemSpec = fi.FullName;
-						string rec_dir = Path.GetDirectoryName (fi.FullName.Substring (wildcard_offset));
-						if (rec_dir.Length > 0)
-							rec_dir += Path.DirectorySeparatorChar;
-						item.SetMetadata ("RecursiveDir", rec_dir);
+						if (wildcard_offset >= 0) {
+							string rec_dir = Path.GetDirectoryName (fi.FullName.Substring (wildcard_offset));
+							if (rec_dir.Length > 0)
+								rec_dir += Path.DirectorySeparatorChar;
+							item.SetMetadata ("RecursiveDir", rec_dir);
+						}
 						includedItems.Add (item);
 					}
 				}
@@ -208,6 +209,11 @@ namespace Microsoft.Build.BuildEngine {
 					fi [i++] = file;
 				return fi;
 			}
+		}
+
+		public static bool HasWildcard (string expression)
+		{
+			return expression.IndexOf ('?') >= 0 || expression.IndexOf ('*') >= 0;
 		}
 		
 		public DirectoryInfo BaseDirectory {

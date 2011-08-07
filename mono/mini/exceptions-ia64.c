@@ -90,8 +90,12 @@ restore_context (MonoContext *ctx)
  * Returns a pointer to a method which restores a previously saved sigcontext.
  */
 gpointer
-mono_arch_get_restore_context (void)
+mono_arch_get_restore_context (MonoTrampInfo **info, gboolean aot)
 {
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
+
 	return restore_context;
 }
 
@@ -216,8 +220,12 @@ call_filter (MonoContext *ctx, gpointer ip)
  * @exc object in this case).
  */
 gpointer
-mono_arch_get_call_filter (void)
+mono_arch_get_call_filter (MonoTrampInfo **info, gboolean aot)
 {
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
+
 	/* Initialize the real filter non-lazily */
 	get_real_call_filter ();
 
@@ -354,56 +362,24 @@ get_throw_trampoline (gboolean rethrow)
  * signature: void (*func) (MonoException *exc); 
  *
  */
-gpointer 
-mono_arch_get_throw_exception (void)
+gpointer
+mono_arch_get_throw_exception (MonoTrampInfo **info, gboolean aot)
 {
-	static guint8* start;
-	static gboolean inited = FALSE;
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
 
-	if (inited)
-		return start;
-
-	start = get_throw_trampoline (FALSE);
-
-	inited = TRUE;
-
-	return start;
+	return get_throw_trampoline (FALSE);
 }
 
-gpointer 
-mono_arch_get_rethrow_exception (void)
+gpointer
+mono_arch_get_rethrow_exception (MonoTrampInfo **info, gboolean aot)
 {
-	static guint8* start;
-	static gboolean inited = FALSE;
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
 
-	if (inited)
-		return start;
-
-	start = get_throw_trampoline (TRUE);
-
-	inited = TRUE;
-
-	return start;
-}
-
-gpointer 
-mono_arch_get_throw_exception_by_name (void)
-{	
-	guint8* start;
-	Ia64CodegenState code;
-
-	start = mono_global_codeman_reserve (64);
-
-	/* Not used on ia64 */
-	ia64_codegen_init (code, start);
-	ia64_break_i (code, 1001);
-	ia64_codegen_close (code);
-
-	g_assert ((code.buf - start) <= 256);
-
-	mono_arch_flush_icache (start, code.buf - start);
-
-	return start;
+	return get_throw_trampoline (TRUE);
 }
 
 /**
@@ -416,8 +392,8 @@ mono_arch_get_throw_exception_by_name (void)
  * to get the IP of the throw. Passing the offset has the advantage that it 
  * needs no relocations in the caller.
  */
-gpointer 
-mono_arch_get_throw_corlib_exception (void)
+gpointer
+mono_arch_get_throw_corlib_exception (MonoTrampInfo **info, gboolean aot)
 {
 	static guint8* res;
 	static gboolean inited = FALSE;
@@ -427,6 +403,10 @@ mono_arch_get_throw_corlib_exception (void)
 	Ia64CodegenState code;
 	unw_dyn_info_t *di;
 	unw_dyn_region_info_t *r_pro;
+
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
 
 	if (inited)
 		return res;
@@ -507,68 +487,69 @@ mono_arch_get_throw_corlib_exception (void)
 	return res;
 }
 
-/* mono_arch_find_jit_info:
+/*
+ * mono_arch_find_jit_info:
  *
- * This function is used to gather information from @ctx. It return the 
- * MonoJitInfo of the corresponding function, unwinds one stack frame and
- * stores the resulting context into @new_ctx. It also stores a string 
- * describing the stack location into @trace (if not NULL), and modifies
- * the @lmf if necessary. @native_offset return the IP offset from the 
- * start of the function or -1 if that info is not available.
+ * This function is used to gather information from @ctx, and store it in @frame_info.
+ * It unwinds one stack frame, and stores the resulting context into @new_ctx. @lmf
+ * is modified if needed.
+ * Returns TRUE on success, FALSE otherwise.
  */
-MonoJitInfo *
-mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInfo *res, MonoJitInfo *prev_ji, MonoContext *ctx, 
-			 MonoContext *new_ctx, MonoLMF **lmf, gboolean *managed)
+gboolean
+mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, 
+							 MonoJitInfo *ji, MonoContext *ctx, 
+							 MonoContext *new_ctx, MonoLMF **lmf,
+							 mgreg_t **save_locations,
+							 StackFrameInfo *frame)
 {
-	MonoJitInfo *ji;
 	int err;
 	unw_word_t ip;
+
+	memset (frame, 0, sizeof (StackFrameInfo));
+	frame->ji = ji;
+	frame->managed = FALSE;
 
 	*new_ctx = *ctx;
 	new_ctx->precise_ip = FALSE;
 
-	while (TRUE) {
-		err = unw_get_reg (&new_ctx->cursor, UNW_IA64_IP, &ip);
-		g_assert (err == 0);
+	if (!ji) {
+		while (TRUE) {
+			err = unw_get_reg (&new_ctx->cursor, UNW_IA64_IP, &ip);
+			g_assert (err == 0);
 
-		/* Avoid costly table lookup during stack overflow */
-		if (prev_ji && ((guint8*)ip > (guint8*)prev_ji->code_start && ((guint8*)ip < ((guint8*)prev_ji->code_start) + prev_ji->code_size)))
-			ji = prev_ji;
-		else
 			ji = mini_jit_info_table_find (domain, (gpointer)ip, NULL);
 
-		if (managed)
-			*managed = FALSE;
+			/*
+			  {
+			  char name[256];
+			  unw_word_t off;
 
-		/*
-		{
-			char name[256];
-			unw_word_t off;
+			  unw_get_proc_name (&new_ctx->cursor, name, 256, &off);
+			  printf ("F: %s\n", name);
+			  }
+			*/
 
-			unw_get_proc_name (&new_ctx->cursor, name, 256, &off);
-			printf ("F: %s\n", name);
+			if (ji)
+				break;
+
+			/* This is an unmanaged frame, so just unwind through it */
+			/* FIXME: This returns -3 for the __clone2 frame in libc */
+			err = unw_step (&new_ctx->cursor);
+			if (err < 0)
+				break;
+
+			if (err == 0)
+				break;
 		}
-		*/
-
-		if (ji != NULL) {
-			if (managed)
-				if (!ji->method->wrapper_type)
-					*managed = TRUE;
-
-			break;
-		}
-
-		/* This is an unmanaged frame, so just unwind through it */
-		/* FIXME: This returns -3 for the __clone2 frame in libc */
-		err = unw_step (&new_ctx->cursor);
-		if (err < 0)
-			break;
-
-		if (err == 0)
-			break;
 	}
 
 	if (ji) {
+		frame->type = FRAME_TYPE_MANAGED;
+		frame->ji = ji;
+
+		if (!ji->method->wrapper_type || ji->method->wrapper_type == MONO_WRAPPER_DYNAMIC_METHOD)
+			frame->managed = TRUE;
+
 		//print_ctx (new_ctx);
 
 		err = unw_step (&new_ctx->cursor);
@@ -576,10 +557,10 @@ mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInf
 
 		//print_ctx (new_ctx);
 
-		return ji;
+		return TRUE;
 	}
 	else
-		return (gpointer)(gssize)-1;
+		return FALSE;
 }
 
 /**

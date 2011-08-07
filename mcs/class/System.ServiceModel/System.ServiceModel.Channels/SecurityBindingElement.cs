@@ -31,10 +31,12 @@ using System.ServiceModel.Description;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Security;
 #if !NET_2_1
+using System.ServiceModel.Channels.Security;
 using System.IdentityModel.Selectors;
 using System.IdentityModel.Tokens;
 using System.ServiceModel.Security.Tokens;
 #endif
+using System.Text;
 
 namespace System.ServiceModel.Channels
 {
@@ -133,10 +135,43 @@ namespace System.ServiceModel.Channels
 		}
 #endif
 
-		[MonoTODO ("It supports only IRequestSessionChannel")]
+		[MonoTODO ("Implement for TransportSecurityBindingElement")]
 		public override bool CanBuildChannelFactory<TChannel> (BindingContext context)
 		{
+#if NET_2_1
+			// not sure this should be like this, but there isn't Symmetric/Asymmetric elements in 2.1 anyways.
 			return context.CanBuildInnerChannelFactory<TChannel> ();
+#else
+			if (this is TransportSecurityBindingElement)
+				throw new NotImplementedException ();
+
+			var symm = this as SymmetricSecurityBindingElement;
+			var asymm = this as AsymmetricSecurityBindingElement;
+			var pt = symm != null ? symm.ProtectionTokenParameters : asymm != null ? asymm.InitiatorTokenParameters : null;
+			if (pt == null)
+				return false;
+
+			var t = typeof (TChannel);
+			var req = new InitiatorServiceModelSecurityTokenRequirement ();
+			pt.InitializeSecurityTokenRequirement (req);
+			object dummy;
+			if (req.Properties.TryGetValue (ServiceModelSecurityTokenRequirement.IssuedSecurityTokenParametersProperty, out dummy) && dummy != null) {
+				if (t == typeof (IRequestSessionChannel))
+					return context.CanBuildInnerChannelFactory<IRequestChannel> () ||
+						context.CanBuildInnerChannelFactory<IRequestSessionChannel> ();
+				else if (t == typeof (IDuplexSessionChannel))
+					return context.CanBuildInnerChannelFactory<IDuplexChannel> () ||
+						context.CanBuildInnerChannelFactory<IDuplexSessionChannel> ();
+			} else {
+				if (t == typeof (IRequestChannel))
+					return context.CanBuildInnerChannelFactory<IRequestChannel> () ||
+						context.CanBuildInnerChannelFactory<IRequestSessionChannel> ();
+				else if (t == typeof (IDuplexChannel))
+					return context.CanBuildInnerChannelFactory<IDuplexChannel> () ||
+						context.CanBuildInnerChannelFactory<IDuplexSessionChannel> ();
+			}
+			return false;
+#endif
 		}
 
 		public override IChannelFactory<TChannel> BuildChannelFactory<TChannel> (
@@ -149,10 +184,38 @@ namespace System.ServiceModel.Channels
 			BuildChannelFactoryCore<TChannel> (BindingContext context);
 
 #if !NET_2_1
-		[MonoTODO ("It probably supports only IReplySessionChannel")]
+		[MonoTODO ("Implement for TransportSecurityBindingElement")]
 		public override bool CanBuildChannelListener<TChannel> (BindingContext context)
 		{
-			return context.CanBuildInnerChannelListener<TChannel> ();
+			if (this is TransportSecurityBindingElement)
+				throw new NotImplementedException ();
+
+			var symm = this as SymmetricSecurityBindingElement;
+			var asymm = this as AsymmetricSecurityBindingElement;
+			var pt = symm != null ? symm.ProtectionTokenParameters : asymm != null ? asymm.RecipientTokenParameters : null;
+			if (pt == null)
+				return false;
+
+			var t = typeof (TChannel);
+			var req = new InitiatorServiceModelSecurityTokenRequirement ();
+			pt.InitializeSecurityTokenRequirement (req);
+			object dummy;
+			if (req.Properties.TryGetValue (ServiceModelSecurityTokenRequirement.IssuedSecurityTokenParametersProperty, out dummy) && dummy != null) {
+				if (t == typeof (IReplySessionChannel))
+					return context.CanBuildInnerChannelListener<IReplyChannel> () ||
+						context.CanBuildInnerChannelListener<IReplySessionChannel> ();
+				else if (t == typeof (IDuplexSessionChannel))
+					return context.CanBuildInnerChannelListener<IDuplexChannel> () ||
+						context.CanBuildInnerChannelListener<IDuplexSessionChannel> ();
+			} else {
+				if (t == typeof (IReplyChannel))
+					return context.CanBuildInnerChannelListener<IReplyChannel> () ||
+						context.CanBuildInnerChannelListener<IReplySessionChannel> ();
+				else if (t == typeof (IDuplexChannel))
+					return context.CanBuildInnerChannelListener<IDuplexChannel> () ||
+						context.CanBuildInnerChannelListener<IDuplexSessionChannel> ();
+			}
+			return false;
 		}
 
 		public override IChannelListener<TChannel> BuildChannelListener<TChannel> (
@@ -165,6 +228,14 @@ namespace System.ServiceModel.Channels
 			BuildChannelListenerCore<TChannel> (BindingContext context)
 			where TChannel : class, IChannel;
 
+		public override T GetProperty<T> (BindingContext context)
+		{
+			// It is documented that ISecurityCapabilities and IdentityVerifier can be returned.
+			// Though, this class is not inheritable, and they are returned by the derived types.
+			// So I don't care about them here.
+			return context.GetInnerProperty<T> ();
+		}
+
 		public virtual void SetKeyDerivation (bool requireDerivedKeys)
 		{
 			endpoint.SetKeyDerivation (requireDerivedKeys);
@@ -175,10 +246,20 @@ namespace System.ServiceModel.Channels
 				p.SetKeyDerivation (requireDerivedKeys);
 		}
 
-		[MonoTODO]
 		public override string ToString ()
 		{
-			return base.ToString ();
+			var sb = new StringBuilder ();
+			sb.Append (GetType ().FullName).Append (":\n");
+			foreach (var pi in GetType ().GetProperties ()) {
+				var simple = Type.GetTypeCode (pi.PropertyType) != TypeCode.Object;
+				var val = pi.GetValue (this, null);
+				sb.Append (pi.Name).Append (':');
+				if (val != null)
+					sb.AppendFormat ("{0}{1}{2}", simple ? " " : "\n", simple ? "" : "  ", String.Join ("\n  ", val.ToString ().Split ('\n')));
+				sb.Append ('\n');
+			}
+			sb.Length--; // chop trailing EOL.
+			return sb.ToString ();
 		}
 #else
 		[MonoTODO]
@@ -205,7 +286,6 @@ namespace System.ServiceModel.Channels
 			return CreateCertificateOverTransportBindingElement (MessageSecurityVersion.Default);
 		}
 
-		[MonoTODO]
 		public static TransportSecurityBindingElement 
 			CreateCertificateOverTransportBindingElement (MessageSecurityVersion version)
 		{
@@ -343,7 +423,6 @@ namespace System.ServiceModel.Channels
 			return CreateSecureConversationBindingElement (binding, requireCancellation, null);
 		}
 
-		[MonoTODO]
 		public static SecurityBindingElement 
 			CreateSecureConversationBindingElement (
 			SecurityBindingElement binding, bool requireCancellation,
@@ -357,7 +436,6 @@ namespace System.ServiceModel.Channels
 			return be;
 		}
 
-		[MonoTODO]
 		public static SymmetricSecurityBindingElement 
 			CreateSslNegotiationBindingElement (bool requireClientCertificate)
 		{
@@ -365,7 +443,6 @@ namespace System.ServiceModel.Channels
 				requireClientCertificate, false);
 		}
 
-		[MonoTODO]
 		public static SymmetricSecurityBindingElement 
 			CreateSslNegotiationBindingElement (
 			bool requireClientCertificate,
@@ -376,14 +453,12 @@ namespace System.ServiceModel.Channels
 			return be;
 		}
 
-		[MonoTODO]
 		public static SymmetricSecurityBindingElement 
 			CreateSspiNegotiationBindingElement ()
 		{
 			return CreateSspiNegotiationBindingElement (true);
 		}
 
-		[MonoTODO]
 		public static SymmetricSecurityBindingElement 
 			CreateSspiNegotiationBindingElement (bool requireCancellation)
 		{
@@ -415,7 +490,6 @@ namespace System.ServiceModel.Channels
 			return p;
 		}
 
-		[MonoTODO]
 		public static SymmetricSecurityBindingElement 
 			CreateUserNameForCertificateBindingElement ()
 		{
@@ -427,14 +501,12 @@ namespace System.ServiceModel.Channels
 			return be;
 		}
 
-		[MonoTODO]
 		public static SymmetricSecurityBindingElement 
 			CreateUserNameForSslBindingElement ()
 		{
 			return CreateUserNameForSslBindingElement (false);
 		}
 
-		[MonoTODO]
 		public static SymmetricSecurityBindingElement 
 			CreateUserNameForSslBindingElement (bool requireCancellation)
 		{

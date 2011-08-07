@@ -9,7 +9,7 @@ using Mono.Cecil.Metadata;
 
 namespace Mono.Debugger.Soft
 {
-	class VersionInfo {
+	public class VersionInfo {
 		public string VMVersion {
 			get; set;
 		}
@@ -20,6 +20,16 @@ namespace Mono.Debugger.Soft
 
 		public int MinorVersion {
 			get; set;
+		}
+
+		/*
+		 * Check that this version is at least major:minor
+		 */
+		public bool AtLeast (int major, int minor) {
+			if ((MajorVersion > major) || ((MajorVersion == major && MinorVersion >= minor)))
+				return true;
+			else
+				return false;
 		}
 	}
 
@@ -101,6 +111,48 @@ namespace Mono.Debugger.Soft
 		NONE = 0x0,
 		DISABLE_BREAKPOINTS = 0x1,
 		SINGLE_THREADED = 0x2
+	}
+
+	enum ElementType {
+		End		 = 0x00,
+		Void		= 0x01,
+		Boolean	 = 0x02,
+		Char		= 0x03,
+		I1		  = 0x04,
+		U1		  = 0x05,
+		I2		  = 0x06,
+		U2		  = 0x07,
+		I4		  = 0x08,
+		U4		  = 0x09,
+		I8		  = 0x0a,
+		U8		  = 0x0b,
+		R4		  = 0x0c,
+		R8		  = 0x0d,
+		String	  = 0x0e,
+		Ptr		 = 0x0f,
+		ByRef	   = 0x10,
+		ValueType   = 0x11,
+		Class	   = 0x12,
+		Var        = 0x13,
+		Array	   = 0x14,
+		GenericInst = 0x15,
+		TypedByRef  = 0x16,
+		I		   = 0x18,
+		U		   = 0x19,
+		FnPtr	   = 0x1b,
+		Object	  = 0x1c,
+		SzArray	 = 0x1d,
+		MVar       = 0x1e,
+		CModReqD	= 0x1f,
+		CModOpt	 = 0x20,
+		Internal	= 0x21,
+		Modifier	= 0x40,
+		Sentinel	= 0x41,
+		Pinned	  = 0x45,
+
+		Type		= 0x50,
+		Boxed	   = 0x51,
+		Enum		= 0x55
 	}
 
 	class ValueImpl {
@@ -193,6 +245,37 @@ namespace Mono.Debugger.Soft
 		}
 	}
 
+	class EventInfo {
+		public EventType EventType {
+			get; set;
+		}
+
+		public int ReqId {
+			get; set;
+		}
+
+		public SuspendPolicy SuspendPolicy {
+			get; set;
+		}
+
+		public long ThreadId {
+			get; set;
+		}
+
+		public long Id {
+			get; set;
+		}
+
+		public long Location {
+			get; set;
+		}
+
+		public EventInfo (EventType type, int req_id) {
+			EventType = type;
+			ReqId = req_id;
+		}
+	}
+
 	public enum ErrorCode {
 		NONE = 0,
 		INVALID_OBJECT = 20,
@@ -200,7 +283,11 @@ namespace Mono.Debugger.Soft
 		INVALID_FRAMEID = 30,
 		NOT_IMPLEMENTED = 100,
 		NOT_SUSPENDED = 101,
-		INVALID_ARGUMENT = 102
+		INVALID_ARGUMENT = 102,
+		ERR_UNLOADED = 103,
+		ERR_NO_INVOCATION = 104,
+		ABSENT_INFORMATION = 105,
+		NO_SEQ_POINT_AT_IL_OFFSET = 106
 	}
 
 	public class ErrorHandlerEventArgs : EventArgs {
@@ -231,7 +318,7 @@ namespace Mono.Debugger.Soft
 		 * with newer runtimes, and vice versa.
 		 */
 		public const int MAJOR_VERSION = 2;
-		public const int MINOR_VERSION = 1;
+		public const int MINOR_VERSION = 3;
 
 		enum WPSuspendPolicy {
 			NONE = 0,
@@ -269,7 +356,8 @@ namespace Mono.Debugger.Soft
 			BREAKPOINT = 10,
 			STEP = 11,
 			TYPE_LOAD = 12,
-			EXCEPTION = 13
+			EXCEPTION = 13,
+			KEEPALIVE = 14
 		}
 
 		enum ModifierKind {
@@ -289,7 +377,9 @@ namespace Mono.Debugger.Soft
 			EXIT = 5,
 			DISPOSE = 6,
 			INVOKE_METHOD = 7,
-			SET_PROTOCOL_VERSION = 8
+			SET_PROTOCOL_VERSION = 8,
+			ABORT_INVOKE = 9,
+			SET_KEEPALIVE = 10
 		}
 
 		enum CmdEvent {
@@ -300,7 +390,11 @@ namespace Mono.Debugger.Soft
 			GET_FRAME_INFO = 1,
 			GET_NAME = 2,
 			GET_STATE = 3,
-			GET_INFO = 4
+			GET_INFO = 4,
+			/* FIXME: Merge into GET_INFO when the major protocol version is increased */
+			GET_ID = 5,
+			/* Ditto */
+			GET_TID = 6
 		}
 
 		enum CmdEventRequest {
@@ -355,7 +449,11 @@ namespace Mono.Debugger.Soft
 			GET_PROPERTIES = 9,
 			GET_CATTRS = 10,
 			GET_FIELD_CATTRS = 11,
-			GET_PROPERTY_CATTRS = 12
+			GET_PROPERTY_CATTRS = 12,
+			/* FIXME: Merge into GET_SOURCE_FILES when the major protocol version is increased */
+			GET_SOURCE_FILES_2 = 13,
+			/* FIXME: Merge into GET_VALUES when the major protocol version is increased */
+			GET_VALUES_2 = 14
 		}
 
 		enum CmdStackFrame {
@@ -639,32 +737,48 @@ namespace Mono.Debugger.Soft
 			int offset;
 
 			public PacketWriter () {
-				// FIXME:
 				data = new byte [1024];
 				offset = 0;
 			}
 
+			void MakeRoom (int size) {
+				if (offset + size >= data.Length) {
+					int new_len = data.Length * 2;
+					while (new_len < offset + size) {
+						new_len *= 2;
+					}
+					byte[] new_data = new byte [new_len];
+					Array.Copy (data, new_data, data.Length);
+					data = new_data;
+				}
+			}
+
 			public PacketWriter WriteByte (byte val) {
+				MakeRoom (1);
 				encode_byte (data, val, ref offset);
 				return this;
 			}
 
 			public PacketWriter WriteInt (int val) {
+				MakeRoom (4);
 				encode_int (data, val, ref offset);
 				return this;
 			}
 
 			public PacketWriter WriteId (long id) {
+				MakeRoom (8);
 				encode_id (data, id, ref offset);
 				return this;
 			}
 
 			public PacketWriter WriteLong (long val) {
+				MakeRoom (8);
 				encode_long (data, val, ref offset);
 				return this;
 			}
 
 			public PacketWriter WriteFloat (float f) {
+				MakeRoom (8);
 				byte[] b = DataConverter.GetBytesBE (f);
 				for (int i = 0; i < 4; ++i)
 					data [offset + i] = b [i];
@@ -673,6 +787,7 @@ namespace Mono.Debugger.Soft
 			}
 
 			public PacketWriter WriteDouble (double d) {
+				MakeRoom (8);
 				byte[] b = DataConverter.GetBytesBE (d);
 				for (int i = 0; i < 8; ++i)
 					data [offset + i] = b [i];
@@ -695,6 +810,7 @@ namespace Mono.Debugger.Soft
 			public PacketWriter WriteString (string s) {
 				encode_int (data, s.Length, ref offset);
 				byte[] b = Encoding.UTF8.GetBytes (s);
+				MakeRoom (b.Length);
 				Buffer.BlockCopy (b, 0, data, offset, b.Length);
 				offset += b.Length;
 				return this;
@@ -971,71 +1087,95 @@ namespace Mono.Debugger.Soft
 					PacketReader r = new PacketReader (packet);
 
 					if (r.CommandSet == CommandSet.EVENT && r.Command == (int)CmdEvent.COMPOSITE) {
-						r.ReadByte (); // suspend_policy
+						int spolicy = r.ReadByte ();
 						int nevents = r.ReadInt ();
+
+						SuspendPolicy suspend_policy = decode_suspend_policy (spolicy);
+
+						EventInfo[] events = new EventInfo [nevents];
 
 						for (int i = 0; i < nevents; ++i) {
 							EventKind kind = (EventKind)r.ReadByte ();
 							int req_id = r.ReadInt ();
 
+							EventType etype = (EventType)kind;
+
 							if (kind == EventKind.VM_START) {
 								long thread_id = r.ReadId ();
-								EventHandler.VMStart (req_id, thread_id, null);
+								events [i] = new EventInfo (etype, req_id) { ThreadId = thread_id };
+								//EventHandler.VMStart (req_id, thread_id, null);
 							} else if (kind == EventKind.VM_DEATH) {
-								EventHandler.VMDeath (req_id, 0, null);
+								//EventHandler.VMDeath (req_id, 0, null);
+								events [i] = new EventInfo (etype, req_id) { };
 							} else if (kind == EventKind.THREAD_START) {
 								long thread_id = r.ReadId ();
-								EventHandler.ThreadStart (req_id, thread_id, thread_id);
+								events [i] = new EventInfo (etype, req_id) { ThreadId = thread_id, Id = thread_id };
+								//EventHandler.ThreadStart (req_id, thread_id, thread_id);
 							} else if (kind == EventKind.THREAD_DEATH) {
 								long thread_id = r.ReadId ();
-								EventHandler.ThreadDeath (req_id, thread_id, thread_id);
+								events [i] = new EventInfo (etype, req_id) { ThreadId = thread_id, Id = thread_id };
+								//EventHandler.ThreadDeath (req_id, thread_id, thread_id);
 							} else if (kind == EventKind.ASSEMBLY_LOAD) {
 								long thread_id = r.ReadId ();
 								long id = r.ReadId ();
-								EventHandler.AssemblyLoad (req_id, thread_id, id);
+								events [i] = new EventInfo (etype, req_id) { ThreadId = thread_id, Id = id };
+								//EventHandler.AssemblyLoad (req_id, thread_id, id);
 							} else if (kind == EventKind.ASSEMBLY_UNLOAD) {
 								long thread_id = r.ReadId ();
 								long id = r.ReadId ();
-								EventHandler.AssemblyUnload (req_id, thread_id, id);
+								events [i] = new EventInfo (etype, req_id) { ThreadId = thread_id, Id = id };
+								//EventHandler.AssemblyUnload (req_id, thread_id, id);
 							} else if (kind == EventKind.TYPE_LOAD) {
 								long thread_id = r.ReadId ();
 								long id = r.ReadId ();
-								EventHandler.TypeLoad (req_id, thread_id, id);
+								events [i] = new EventInfo (etype, req_id) { ThreadId = thread_id, Id = id };
+								//EventHandler.TypeLoad (req_id, thread_id, id);
 							} else if (kind == EventKind.METHOD_ENTRY) {
 								long thread_id = r.ReadId ();
 								long id = r.ReadId ();
-								EventHandler.MethodEntry (req_id, thread_id, id);
+								events [i] = new EventInfo (etype, req_id) { ThreadId = thread_id, Id = id };
+								//EventHandler.MethodEntry (req_id, thread_id, id);
 							} else if (kind == EventKind.METHOD_EXIT) {
 								long thread_id = r.ReadId ();
 								long id = r.ReadId ();
-								EventHandler.MethodExit (req_id, thread_id, id);
+								events [i] = new EventInfo (etype, req_id) { ThreadId = thread_id, Id = id };
+								//EventHandler.MethodExit (req_id, thread_id, id);
 							} else if (kind == EventKind.BREAKPOINT) {
 								long thread_id = r.ReadId ();
 								long id = r.ReadId ();
 								long loc = r.ReadLong ();
-								EventHandler.Breakpoint (req_id, thread_id, id, loc);
+								events [i] = new EventInfo (etype, req_id) { ThreadId = thread_id, Id = id, Location = loc };
+								//EventHandler.Breakpoint (req_id, thread_id, id, loc);
 							} else if (kind == EventKind.STEP) {
 								long thread_id = r.ReadId ();
 								long id = r.ReadId ();
 								long loc = r.ReadLong ();
-								EventHandler.Step (req_id, thread_id, id, loc);
+								events [i] = new EventInfo (etype, req_id) { ThreadId = thread_id, Id = id, Location = loc };
+								//EventHandler.Step (req_id, thread_id, id, loc);
 							} else if (kind == EventKind.EXCEPTION) {
 								long thread_id = r.ReadId ();
 								long id = r.ReadId ();
 								long loc = 0; // FIXME
-								EventHandler.Exception (req_id, thread_id, id, loc);
+								events [i] = new EventInfo (etype, req_id) { ThreadId = thread_id, Id = id, Location = loc };
+								//EventHandler.Exception (req_id, thread_id, id, loc);
 							} else if (kind == EventKind.APPDOMAIN_CREATE) {
 								long thread_id = r.ReadId ();
 								long id = r.ReadId ();
-								EventHandler.AppDomainCreate (req_id, thread_id, id);
+								events [i] = new EventInfo (etype, req_id) { ThreadId = thread_id, Id = id };
+								//EventHandler.AppDomainCreate (req_id, thread_id, id);
 							} else if (kind == EventKind.APPDOMAIN_UNLOAD) {
 								long thread_id = r.ReadId ();
 								long id = r.ReadId ();
-								EventHandler.AppDomainUnload (req_id, thread_id, id);
+								events [i] = new EventInfo (etype, req_id) { ThreadId = thread_id, Id = id };
+								//EventHandler.AppDomainUnload (req_id, thread_id, id);
+							} else if (kind == EventKind.KEEPALIVE) {
+								events [i] = new EventInfo (etype, req_id) { };
 							} else {
 								throw new NotImplementedException ("Unknown event kind: " + kind);
 							}
 						}
+
+						EventHandler.Events (suspend_policy, events);
 					}
 				}
 
@@ -1047,7 +1187,7 @@ namespace Mono.Debugger.Soft
 		}
 
 		/* Send a request and call cb when a result is received */
-		void Send (CommandSet command_set, int command, PacketWriter packet, Action<PacketReader> cb) {
+		int Send (CommandSet command_set, int command, PacketWriter packet, Action<PacketReader> cb) {
 			int id = IdGenerator;
 
 			lock (reply_packets_monitor) {
@@ -1062,6 +1202,8 @@ namespace Mono.Debugger.Soft
 				WritePacket (EncodePacket (id, (int)command_set, command, null, 0));
 			else
 				WritePacket (EncodePacket (id, (int)command_set, command, packet.Data, packet.Offset));
+
+			return id;
 		}
 
 		PacketReader SendReceive (CommandSet command_set, int command, PacketWriter packet) {
@@ -1218,8 +1360,8 @@ namespace Mono.Debugger.Soft
 
 		public delegate void InvokeMethodCallback (ValueImpl v, ValueImpl exc, ErrorCode error, object state);
 
-		public void VM_BeginInvokeMethod (long thread, long method, ValueImpl this_arg, ValueImpl[] arguments, InvokeFlags flags, InvokeMethodCallback callback, object state) {
-			Send (CommandSet.VM, (int)CmdVM.INVOKE_METHOD, new PacketWriter ().WriteId (thread).WriteInt ((int)flags).WriteId (method).WriteValue (this_arg).WriteInt (arguments.Length).WriteValues (arguments), delegate (PacketReader r) {
+		public int VM_BeginInvokeMethod (long thread, long method, ValueImpl this_arg, ValueImpl[] arguments, InvokeFlags flags, InvokeMethodCallback callback, object state) {
+			return Send (CommandSet.VM, (int)CmdVM.INVOKE_METHOD, new PacketWriter ().WriteId (thread).WriteInt ((int)flags).WriteId (method).WriteValue (this_arg).WriteInt (arguments.Length).WriteValues (arguments), delegate (PacketReader r) {
 					ValueImpl v, exc;
 
 					if (r.ErrorCode != 0) {
@@ -1236,6 +1378,18 @@ namespace Mono.Debugger.Soft
 						callback (v, exc, 0, state);
 					}
 				});
+		}
+
+		public void VM_AbortInvoke (long thread, int id)
+		{
+			SendReceive (CommandSet.VM, (int)CmdVM.ABORT_INVOKE, new PacketWriter ().WriteId (thread).WriteInt (id));
+		}
+
+		public void SetSocketTimeouts (int send_timeout, int receive_timeout, int keepalive_interval)
+		{
+			socket.SendTimeout = send_timeout;
+			socket.ReceiveTimeout = receive_timeout;
+			SendReceive (CommandSet.VM, (int)CmdVM.SET_KEEPALIVE, new PacketWriter ().WriteId (keepalive_interval));
 		}
 
 		/*
@@ -1420,6 +1574,14 @@ namespace Mono.Debugger.Soft
 			return res;
 		}
 
+		public long Thread_GetId (long id) {
+			return SendReceive (CommandSet.THREAD, (int)CmdThread.GET_ID, new PacketWriter ().WriteId (id)).ReadLong ();
+		}
+
+		public long Thread_GetTID (long id) {
+			return SendReceive (CommandSet.THREAD, (int)CmdThread.GET_TID, new PacketWriter ().WriteId (id)).ReadLong ();
+		}
+
 		/*
 		 * MODULE
 		 */
@@ -1539,9 +1701,13 @@ namespace Mono.Debugger.Soft
 			return SendReceive (CommandSet.TYPE, (int)CmdType.GET_OBJECT, new PacketWriter ().WriteId (id)).ReadId ();
 		}
 
-		public ValueImpl[] Type_GetValues (long id, long[] fields) {
+		public ValueImpl[] Type_GetValues (long id, long[] fields, long thread_id) {
 			int len = fields.Length;
-			PacketReader r = SendReceive (CommandSet.TYPE, (int)CmdType.GET_VALUES, new PacketWriter ().WriteId (id).WriteInt (len).WriteIds (fields));
+			PacketReader r;
+			if (thread_id != 0)
+				r = SendReceive (CommandSet.TYPE, (int)CmdType.GET_VALUES_2, new PacketWriter ().WriteId (id).WriteId (thread_id).WriteInt (len).WriteIds (fields));
+			else
+				r = SendReceive (CommandSet.TYPE, (int)CmdType.GET_VALUES, new PacketWriter ().WriteId (id).WriteInt (len).WriteIds (fields));
 
 			ValueImpl[] res = new ValueImpl [len];
 			for (int i = 0; i < len; ++i)
@@ -1553,8 +1719,8 @@ namespace Mono.Debugger.Soft
 			SendReceive (CommandSet.TYPE, (int)CmdType.SET_VALUES, new PacketWriter ().WriteId (id).WriteInt (fields.Length).WriteIds (fields).WriteValues (values));
 		}
 
-		public string[] Type_GetSourceFiles (long id) {
-			var r = SendReceive (CommandSet.TYPE, (int)CmdType.GET_SOURCE_FILES, new PacketWriter ().WriteId (id));
+		public string[] Type_GetSourceFiles (long id, bool return_full_paths) {
+			var r = SendReceive (CommandSet.TYPE, return_full_paths ? (int)CmdType.GET_SOURCE_FILES_2 : (int)CmdType.GET_SOURCE_FILES, new PacketWriter ().WriteId (id));
 			int len = r.ReadInt ();
 			string[] res = new string [len];
 			for (int i = 0; i < len; ++i)
@@ -1741,34 +1907,8 @@ namespace Mono.Debugger.Soft
 	/* This is the interface exposed by the debugger towards the debugger agent */
 	interface IEventHandler
 	{
-		void VMStart (int req_id, long thread_id, string vm_uri);
-
-		void VMDeath (int req_id, long thread_id, string vm_uri);
+		void Events (SuspendPolicy suspend_policy, EventInfo[] events);
 
 		void VMDisconnect (int req_id, long thread_id, string vm_uri);
-
-		void ThreadStart (int req_id, long thread_id, long id);
-
-		void ThreadDeath (int req_id, long thread_id, long id);
-
-		void AssemblyLoad (int req_id, long thread_id, long id);
-
-		void AssemblyUnload (int req_id, long thread_id, long id);
-
-		void TypeLoad (int req_id, long thread_id, long id);
-
-		void MethodEntry (int req_id, long thread_id, long id);
-
-		void MethodExit (int req_id, long thread_id, long id);
-
-		void Breakpoint (int req_id, long thread_id, long method_id, long loc);
-
-		void Step (int req_id, long thread_id, long method_id, long loc);
-
-		void Exception (int req_id, long thread_id, long exc_id, long loc);
-
-		void AppDomainCreate (int req_id, long thread_id, long id);
-
-		void AppDomainUnload (int req_id, long thread_id, long id);
 	}
 }

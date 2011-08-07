@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 class Tests {
 
@@ -445,6 +446,29 @@ class Tests {
 		return 0;
 	}
 
+	public static int test_0_generic_virtual_on_interfaces_ref () {
+		Foo<string>.count1 = 0;
+		Foo<string>.count2 = 0;
+		Foo<string>.count3 = 0;
+		Foo<string>.count4 = 0;
+
+		IFoo f = new Foo<string> ("");
+		for (int i = 0; i < 1000; ++i) {
+			f.Bar <string> ();
+			f.Bar <object> ();
+			f.NonGeneric ();
+		}
+
+		if (Foo<string>.count2 != 1000)
+			return 2;
+		if (Foo<string>.count3 != 1000)
+			return 3;
+		if (Foo<string>.count4 != 1000)
+			return 4;
+
+		return 0;
+	}
+
 	//repro for #505375
 	[Category ("!FULLAOT")]
 	public static int test_2_cprop_bug () {
@@ -490,6 +514,11 @@ class Tests {
 		return l.Count;
 	}
 
+	public static int test_0_fullaot_comparer_t_2 () {
+		var l = new Dictionary <TimeSpan, int> ();
+		return l.Count;
+	}
+
 	static void enumerate<T> (IEnumerable<T> arr) {
 		foreach (var o in arr)
 			;
@@ -528,6 +557,57 @@ class Tests {
 		return cctor_count;
 	}
 
+	static int cctor_count2 = 0;
+
+	class ServiceController<T> {
+		static ServiceController () {
+			cctor_count2 ++;
+		}
+
+		public ServiceController () {
+		}
+	}
+
+	static ServiceController<T> Create<T>() {
+		return new ServiceController<T>();
+	}
+
+	// #631409
+	public static int test_2_generic_class_init_gshared_ctor_from_gshared () {
+		Create<object> ();
+		Create<string> ();
+
+		return cctor_count2;
+	}
+
+	public static Type get_type<T> () {
+		return typeof (T);
+	}
+
+	public static int test_0_gshared_delegate_rgctx () {
+		Func<Type> t = new Func<Type> (get_type<string>);
+
+		if (t () == typeof (string))
+			return 0;
+		else
+			return 1;
+	}
+
+	// Creating a delegate from a generic method from gshared code
+	public static int test_0_gshared_delegate_from_gshared () {
+		if (gshared_delegate_from_gshared <object> () != 0)
+			return 1;
+		if (gshared_delegate_from_gshared <string> () != 0)
+			return 2;
+		return 0;
+	}
+
+	public static int gshared_delegate_from_gshared <T> () {
+		Func<Type> t = new Func<Type> (get_type<T>);
+
+		return t () == typeof (T) ? 0 : 1;
+	}
+
 	public static int test_0_marshalbyref_call_from_gshared_virt_elim () {
 		/* Calling a virtual method from gshared code which is changed to a nonvirt call */
 		Class1<object> o = new Class1<object> ();
@@ -535,9 +615,106 @@ class Tests {
 		return 0;
 	}
 
+	class Pair<TKey, TValue> {
+		public static KeyValuePair<TKey, TValue> make_pair (TKey key, TValue value)
+			{
+				return new KeyValuePair<TKey, TValue> (key, value);
+			}
+
+		public delegate TRet Transform<TRet> (TKey key, TValue value);
+	}
+
+	public static int test_0_bug_620864 () {
+		var d = new Pair<string, Type>.Transform<KeyValuePair<string, Type>> (Pair<string, Type>.make_pair);
+
+		var p = d ("FOO", typeof (int));
+		if (p.Key != "FOO" || p.Value != typeof (int))
+			return 1;
+
+		return 0;
+	}
+
+
+	struct RecStruct<T> {
+		public void foo (RecStruct<RecStruct<T>> baz) {
+		}
+	}
+
+	public static int test_0_infinite_generic_recursion () {
+		// Check that the AOT compile can deal with infinite generic recursion through
+		// parameter types
+		RecStruct<int> bla;
+
+		return 0;
+	}
+
+	struct FooStruct {
+	}
+
+	bool IsNull2 <T> (object value) where T : struct {
+		T? item = (T?) value;
+
+		if (item.HasValue)
+			return false;
+
+		return true;
+	}
+
+	public static int test_0_full_aot_nullable_unbox_from_gshared_code () {
+		if (!new Tests ().IsNull2<FooStruct> (null))
+			return 1;
+		if (new Tests ().IsNull2<FooStruct> (new FooStruct ()))
+			return 2;
+		return 0;
+	}
+
+	public static int test_0_partial_sharing () {
+		if (PartialShared1 (new List<string> (), 1) != typeof (string))
+			return 1;
+		if (PartialShared1 (new List<Tests> (), 1) != typeof (Tests))
+			return 2;
+		if (PartialShared2 (new List<string> (), 1) != typeof (int))
+			return 3;
+		if (PartialShared2 (new List<Tests> (), 1) != typeof (int))
+			return 4;
+		return 0;
+	}
+
+	public static int test_6_partial_sharing_linq () {
+		var messages = new List<Message> ();
+
+		messages.Add (new Message () { MessageID = 5 });
+		messages.Add (new Message () { MessageID = 6 });
+
+		return messages.Max(i => i.MessageID);
+	}
+
+	public static int test_0_partial_shared_method_in_nonshared_class () {
+		var c = new Class1<double> ();
+		return (c.Foo<string> (5).GetType () == typeof (Class1<string>)) ? 0 : 1;
+	}
+
+	class Message {
+		public int MessageID {
+			get; set;
+		}
+	}
+
+	public static Type PartialShared1<T, K> (List<T> list, K k) {
+		return typeof (T);
+	}
+
+	public static Type PartialShared2<T, K> (List<T> list, K k) {
+		return typeof (K);
+	}
+
     public class Class1<T> {
 		public virtual void Do (Class2<T> t) {
 			t.Foo ();
+		}
+
+		public virtual object Foo<U> (T t) {
+			return new Class1<U> ();
 		}
 	}
 
@@ -549,6 +726,8 @@ class Tests {
 		public void Foo () {
 		}
 	}
+
+
 
 	public static void VirtualInterfaceCallFromGenericMethod <T> (IFoo f) {
 		f.Bar <T> ();
@@ -617,7 +796,7 @@ class Tests {
 			GenericEvent (this);
 		}
 
-		public static int count1, count2, count3;
+		public static int count1, count2, count3, count4;
 
 		public void NonGeneric () {
 			count3 ++;
@@ -628,6 +807,8 @@ class Tests {
 				count1 ++;
 			else if (typeof (T) == typeof (string))
 				count2 ++;
+			else if (typeof (T) == typeof (object))
+				count4 ++;
 			return null;
 		}
 	}
@@ -668,5 +849,40 @@ class Tests {
 	
 	static T Unbox <T> (object o) {
 		return (T) o;
+	}
+
+	interface IDefaultRetriever
+	{
+		T GetDefault<T>();
+	}
+
+	class DefaultRetriever : IDefaultRetriever
+	{
+		[MethodImpl(MethodImplOptions.Synchronized)]
+		public T GetDefault<T>()
+		{
+			return default(T);
+		}
+	}
+
+	[Category ("!FULLAOT")]
+	public static int test_0_regress_668095_synchronized_gshared () {
+		return DoSomething (new DefaultRetriever ());
+	}
+
+    static int DoSomething(IDefaultRetriever foo) {
+		int result = foo.GetDefault<int>();
+		return result;
+	}
+
+	class Response {
+	}
+
+	public static int test_0_687865_isinst_with_cache_wrapper () {
+		object o = new object ();
+		if (o is Action<IEnumerable<Response>>)
+			return 1;
+		else
+			return 0;
 	}
 }

@@ -1,4 +1,3 @@
-
 using System;
 using System.ComponentModel;
 using System.Drawing;
@@ -21,12 +20,9 @@ namespace MonoTests.System.Windows.Forms
 		public void DefaultValues ()
 		{
 			NumericUpDown n = new NumericUpDown ();
-#if NET_2_0
 			Assert.IsFalse (n.Accelerations.IsReadOnly, "#A1");
-#endif
 		}
 
-#if NET_2_0
 		[Test]
 		public void SortedAccelerationsTest ()
 		{
@@ -44,7 +40,7 @@ namespace MonoTests.System.Windows.Forms
 			Assert.AreEqual (9, numericUpDown1.Accelerations[2].Seconds, "#A3");
 			Assert.AreEqual (10, numericUpDown1.Accelerations[3].Seconds, "#A4");
 		}
-#endif
+
 		[Test]
 		public void Minimum ()
 		{
@@ -95,6 +91,9 @@ namespace MonoTests.System.Windows.Forms
 			nud.Hexadecimal = true;
 			Assert.AreEqual ("DDD5", nud.Text, "#A1");
 			Assert.AreEqual (56789, nud.Value, "#A2");
+			nud.Value = 0; // bug 661750
+			Assert.AreEqual ("0", nud.Text, "#A3");
+			Assert.AreEqual (0, nud.Value, "#A4");
 			f.Dispose ();
 		}
 
@@ -125,11 +124,7 @@ namespace MonoTests.System.Windows.Forms
 		}
 
 		[Test]
-#if NET_2_0
 		[ExpectedException (typeof (ArgumentOutOfRangeException))]
-#else
-		[ExpectedException (typeof (ArgumentException))]
-#endif
 		public void SetValueThrowsException ()
 		{
 			NumericUpDown nud = new NumericUpDown ();
@@ -139,11 +134,7 @@ namespace MonoTests.System.Windows.Forms
 		}
 
 		[Test]
-#if NET_2_0
 		[ExpectedException (typeof (ArgumentOutOfRangeException))]
-#else
-		[ExpectedException (typeof (ArgumentException))]
-#endif
 		public void InitTest ()
 		{
 			NumericUpDown nud = new NumericUpDown ();
@@ -153,6 +144,28 @@ namespace MonoTests.System.Windows.Forms
 			nud.EndInit ();
 			nud.Value = 4;
 			nud.Dispose ();
+		}
+
+		[Test]
+		[ExpectedException (typeof (OverflowException))]
+		public void TestHexadecimalMaximum ()
+		{
+			NumericUpDown nud = new NumericUpDown ();
+			nud.Hexadecimal = true;
+			nud.Maximum = Decimal.MaxValue;
+			nud.Value = Int64.MaxValue;
+			nud.Value++;
+		}
+
+		[Test]
+		[ExpectedException (typeof (OverflowException))]
+		public void TestHexadecimalMinimum ()
+		{
+			NumericUpDown nud = new NumericUpDown ();
+			nud.Hexadecimal = true;
+			nud.Minimum = Decimal.MinValue;
+			nud.Value = Int64.MinValue;
+			nud.Value--;
 		}
 	}
 }

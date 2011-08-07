@@ -1,3 +1,27 @@
+2010-09-14  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Distribute DbmlSchema.xsd so that tarball builds work.
+
+2010-09-13  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[sqlmetal] Fix /code from DBML file.
+
+	sqlmetal.exe is supposed to allow generating source code from a
+	.dbml file:
+
+	sqlmetal /code:foo.cs foo.dbml
+
+	However, this failed because the DbmlSchema.xsd file couldn't be
+	found (so that the DBML file could be validated).
+
+	Embed the DbmlSchema.xsd file so that the above `sqlmetal` command
+	works.
+
+2010-04-13  Jonathan Pryor  <jpryor@novell.com>
+
+	* src/**/*: Sync with DbLinq r1403.  This is DbLinq 0.20 + fixes.
+	  Primarily fixes sqlmetal, codegen, etc.
+
 2009-12-18  Jonathan Pryor  <jpryor@novell.com>
 
 	* src/**/*: Sync with DbLinq r1294.  This is DbLinq 0.19.  Fixes
@@ -10,11 +34,10 @@
 	  generate entity stubs against SQL Server databases.
 	* System.Data.Linq.dll.sources: Add files to the build.
 
-2009-11-09  Jonathan Pryor  <jpryor@novell.com>
+2009-11-07  Zoltan Varga  <vargaz@gmail.com>
 
-	* src/DbLinq.MySql/MysqlDataContext.cs: Delete.
-	* System.Data.Linq.dll.sources: Use src/DbLinq.MySql/MySqlDataContext.cs; 
-	  fixes the build for case-insensitive filesystems.
+	* System.Data.Linq.dll.sources: Use MySqlDataContext.cs instead of
+	MysqlDataContext.cs.
 
 2009-11-06  Jonathan Pryor  <jpryor@novell.com>
 

@@ -30,8 +30,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System;
 using System.CodeDom;
 using System.CodeDom.Compiler;
@@ -49,8 +47,12 @@ using System.Web.Caching;
 using System.Web.Configuration;
 using System.Web.Hosting;
 using System.Web.Util;
+#if NET_4_0
+using System.Runtime.Versioning;
+#endif
 
-namespace System.Web.Compilation {
+namespace System.Web.Compilation
+{
 	public sealed class BuildManager
 	{
 		internal const string FAKE_VIRTUAL_PATH_PREFIX = "/@@MonoFakeVirtualPath@@";
@@ -58,30 +60,41 @@ namespace System.Web.Compilation {
 		static int BUILD_MANAGER_VIRTUAL_PATH_CACHE_PREFIX_LENGTH = BUILD_MANAGER_VIRTUAL_PATH_CACHE_PREFIX.Length;
 
 		static readonly object bigCompilationLock = new object ();
+		static readonly object virtualPathsToIgnoreLock = new object ();
 		static readonly char[] virtualPathsToIgnoreSplitChars = {','};
 		
 		static EventHandlerList events = new EventHandlerList ();
 		static object buildManagerRemoveEntryEvent = new object ();
 		
 		static bool hosted;
-		static IEqualityComparer <string> comparer;
-		static StringComparison stringComparer;
 		static Dictionary <string, bool> virtualPathsToIgnore;
+		static bool virtualPathsToIgnoreChecked;
 		static bool haveVirtualPathsToIgnore;
 		static List <Assembly> AppCode_Assemblies = new List<Assembly>();
 		static List <Assembly> TopLevel_Assemblies = new List<Assembly>();
 		static Dictionary <Type, CodeDomProvider> codeDomProviders;
 		static Dictionary <string, BuildManagerCacheItem> buildCache;
 		static List <Assembly> referencedAssemblies;
-
+		static List <Assembly> configReferencedAssemblies;
+		static bool getReferencedAssembliesInvoked;
+		
 		static int buildCount;
 		static bool is_precompiled;
+		static bool allowReferencedAssembliesCaching;
+#if NET_4_0
+		static List <Assembly> dynamicallyRegisteredAssemblies;
+		static bool? batchCompilationEnabled;
+		static FrameworkName targetFramework;
+		static bool preStartMethodsDone;
+		static bool preStartMethodsRunning;
+#endif
 		//static bool updatable; unused
 		static Dictionary<string, PreCompilationData> precompiled;
 		
 		// This is here _only_ for the purpose of unit tests!
 		internal static bool suppressDebugModeMessages;
 
+		// See comment for the cacheLock field at top of System.Web.Caching/Cache.cs
 #if SYSTEMCORE_DEP
 		static ReaderWriterLockSlim buildCacheLock;
 #else
@@ -89,6 +102,11 @@ namespace System.Web.Compilation {
 #endif
 		static ulong recursionDepth;
 
+		internal static bool AllowReferencedAssembliesCaching {
+			get { return allowReferencedAssembliesCaching; }
+			set { allowReferencedAssembliesCaching = value; }
+		}
+		
 		internal static bool IsPrecompiled {
 			get { return is_precompiled; }
 		}
@@ -97,9 +115,51 @@ namespace System.Web.Compilation {
 			add { events.AddHandler (buildManagerRemoveEntryEvent, value); }
 			remove { events.RemoveHandler (buildManagerRemoveEntryEvent, value); }
 		}
+
+#if NET_4_0
+		internal static bool CompilingTopLevelAssemblies {
+			get; set;
+		}
 		
+		internal static bool PreStartMethodsRunning {
+			get { return preStartMethodsRunning; }
+		}
+		
+		public static bool? BatchCompilationEnabled {
+			get { return batchCompilationEnabled; }
+			set {
+				if (preStartMethodsDone)
+					throw new InvalidOperationException ("This method cannot be called after the application's pre-start initialization stage.");
+				batchCompilationEnabled = value;
+			}
+		}
+
+		public static FrameworkName TargetFramework {
+			get {
+				if (targetFramework == null) {
+					CompilationSection cs = CompilationConfig;
+					string framework;
+					if (cs == null)
+						framework = null;
+					else
+						framework = cs.TargetFramework;
+					
+					if (String.IsNullOrEmpty (framework))
+						targetFramework = new FrameworkName (".NETFramework,Version=v4.0");
+					else
+						targetFramework = new FrameworkName (framework);
+				}
+
+				return targetFramework;
+			}
+		}
+#endif
 		internal static bool BatchMode {
 			get {
+#if NET_4_0
+				if (batchCompilationEnabled != null)
+					return (bool)batchCompilationEnabled;
+#endif
 				if (!hosted)
 					return false; // Fix for bug #380985
 
@@ -130,16 +190,8 @@ namespace System.Web.Compilation {
 		
 		static BuildManager ()
 		{
-			if (HttpRuntime.CaseInsensitive) {
-				comparer = StringComparer.CurrentCultureIgnoreCase;
-				stringComparer = StringComparison.CurrentCultureIgnoreCase;
-			} else {
-				comparer = StringComparer.CurrentCulture;
-				stringComparer = StringComparison.CurrentCulture;
-			}
-			
 			hosted = (AppDomain.CurrentDomain.GetData (ApplicationHost.MonoHostedDataKey) as string) == "yes";
-			buildCache = new Dictionary <string, BuildManagerCacheItem> (comparer);
+			buildCache = new Dictionary <string, BuildManagerCacheItem> (RuntimeHelpers.StringEqualityComparer);
 #if SYSTEMCORE_DEP
 			buildCacheLock = new ReaderWriterLockSlim ();
 #else
@@ -153,9 +205,14 @@ namespace System.Web.Compilation {
 			is_precompiled = String.IsNullOrEmpty (appPath) ? false : File.Exists ((precomp_name = Path.Combine (appPath, "PrecompiledApp.config")));
 			if (is_precompiled)
 				is_precompiled = LoadPrecompilationInfo (precomp_name);
-			LoadVirtualPathsToIgnore ();
 		}
-
+#if NET_4_0
+		internal static void AssertPreStartMethodsRunning ()
+		{
+			if (!BuildManager.PreStartMethodsRunning)
+				throw new InvalidOperationException ("This method must be called during the application's pre-start initialization stage.");
+		}
+#endif
 		// Deal with precompiled sites deployed in a different virtual path
 		static void FixVirtualPaths ()
 		{
@@ -164,6 +221,7 @@ namespace System.Web.Compilation {
 			
 			string [] parts;
 			int skip = -1;
+			string appVirtualRoot = VirtualPathUtility.AppendTrailingSlash (HttpRuntime.AppDomainAppVirtualPath);
 			foreach (string vpath in precompiled.Keys) {
 				parts = vpath.Split ('/');
 				for (int i = 0; i < parts.Length; i++) {
@@ -172,7 +230,7 @@ namespace System.Web.Compilation {
 					// The path must be rooted, otherwise PhysicalPath returned
 					// below will be relative to the current request path and
 					// File.Exists will return a false negative. See bug #546053
-					string test_path = "/" + String.Join ("/", parts, i, parts.Length - i);
+					string test_path = appVirtualRoot + String.Join ("/", parts, i, parts.Length - i);
 					VirtualPath result = GetAbsoluteVirtualPath (test_path);
 					if (result != null && File.Exists (result.PhysicalPath)) {
 						skip = i - 1;
@@ -274,7 +332,7 @@ namespace System.Web.Compilation {
 			}
 			if (store) {
 				if (precompiled == null)
-					precompiled = new Dictionary<string, PreCompilationData> (comparer);
+					precompiled = new Dictionary<string, PreCompilationData> (RuntimeHelpers.StringEqualityComparerCulture);
 				precompiled.Add (pc_data.VirtualPath, pc_data);
 			}
 			return pc_data;
@@ -291,7 +349,7 @@ namespace System.Web.Compilation {
 		static void AddPathToIgnore (string vp)
 		{
 			if (virtualPathsToIgnore == null)
-				virtualPathsToIgnore = new Dictionary <string, bool> (comparer);
+				virtualPathsToIgnore = new Dictionary <string, bool> (RuntimeHelpers.StringEqualityComparerCulture);
 			
 			VirtualPath path = GetAbsoluteVirtualPath (vp);
 			string vpAbsolute = path.Absolute;
@@ -484,8 +542,171 @@ namespace System.Web.Compilation {
 
 			codeDomProviders.Add (type, ret);
 			return ret;
+		}		
+#if NET_4_0
+		internal static void CallPreStartMethods ()
+		{
+			if (preStartMethodsDone)
+				return;
+
+			preStartMethodsRunning = true;
+			MethodInfo mi = null;
+			try {
+				List <MethodInfo> methods = LoadPreStartMethodsFromAssemblies (GetReferencedAssemblies () as List <Assembly>);
+				if (methods == null || methods.Count == 0)
+					return;
+			
+				foreach (MethodInfo m in methods) {
+					mi = m;
+					m.Invoke (null, null);
+				}
+			} catch (Exception ex) {
+				throw new HttpException (
+					String.Format ("The pre-application start initialization method {0} on type {1} threw an exception with the following error message: {2}",
+						       mi != null ? mi.Name : "UNKNOWN",
+						       mi != null ? mi.DeclaringType.FullName : "UNKNOWN",
+						       ex.Message),
+					ex
+				);
+			} finally {
+				preStartMethodsRunning = false;
+				preStartMethodsDone = true;
+			}
+		}
+
+		static List <MethodInfo> LoadPreStartMethodsFromAssemblies (List <Assembly> assemblies)
+		{
+			if (assemblies == null || assemblies.Count == 0)
+				return null;
+
+			var ret = new List <MethodInfo> ();
+			object[] attributes;
+			Type type;
+			PreApplicationStartMethodAttribute attr;
+			
+			foreach (Assembly asm in assemblies) {
+				try {
+					attributes = asm.GetCustomAttributes (typeof (PreApplicationStartMethodAttribute), false);
+					if (attributes == null || attributes.Length == 0)
+						continue;
+
+					attr = attributes [0] as PreApplicationStartMethodAttribute;
+					type = attr.Type;
+					if (type == null)
+						continue;
+				} catch {
+					continue;
+				}
+
+				MethodInfo mi;
+				Exception error = null;
+				try {
+					if (type.IsPublic)
+						mi = type.GetMethod (attr.MethodName, BindingFlags.Static | BindingFlags.Public, null, new Type[] {}, null);
+					else
+						mi = null;
+				} catch (Exception ex) {
+					error = ex;
+					mi = null;
+				}
+
+				if (mi == null)
+					throw new HttpException (
+						String.Format (
+							"The method specified by the PreApplicationStartMethodAttribute on assembly '{0}' cannot be resolved. Type: '{1}', MethodName: '{2}'. Verify that the type is public and the method is public and static (Shared in Visual Basic).",
+							asm.FullName,
+							type.FullName,
+							attr.MethodName),
+						error
+					);
+				
+				ret.Add (mi);
+			}
+
+			return ret;
 		}
 		
+		public static Type GetGlobalAsaxType ()
+		{
+			Type ret = HttpApplicationFactory.AppType;
+			if (ret == null)
+				return typeof (HttpApplication);
+			
+			return ret;
+		}
+		
+		public static Stream CreateCachedFile (string fileName)
+		{
+			if (fileName != null && (fileName == String.Empty || fileName.IndexOf (Path.DirectorySeparatorChar) != -1))
+				throw new ArgumentException ("Value does not fall within the expected range.");
+
+			string path = Path.Combine (HttpRuntime.CodegenDir, fileName);
+			return new FileStream (path, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+		}
+
+		public static Stream ReadCachedFile (string fileName)
+		{
+			if (fileName != null && (fileName == String.Empty || fileName.IndexOf (Path.DirectorySeparatorChar) != -1))
+				throw new ArgumentException ("Value does not fall within the expected range.");
+
+			string path = Path.Combine (HttpRuntime.CodegenDir, fileName);
+			if (!File.Exists (path))
+				return null;
+			
+			return new FileStream (path, FileMode.Open, FileAccess.Read, FileShare.None);
+		}
+
+		[MonoDocumentationNote ("Fully implemented but no info on application pre-init stage is available yet.")]
+		public static void AddReferencedAssembly (Assembly assembly)
+		{
+			if (assembly == null)
+				throw new ArgumentNullException ("assembly");
+
+			if (preStartMethodsDone)
+				throw new InvalidOperationException ("This method cannot be called after the application's pre-start initialization stage.");
+
+			if (dynamicallyRegisteredAssemblies == null)
+				dynamicallyRegisteredAssemblies = new List <Assembly> ();
+
+			if (!dynamicallyRegisteredAssemblies.Contains (assembly))
+				dynamicallyRegisteredAssemblies.Add (assembly);
+		}
+
+		[MonoDocumentationNote ("Not used by Mono internally. Needed for MVC3")]
+		public static IWebObjectFactory GetObjectFactory (string virtualPath, bool throwIfNotFound)
+		{
+			if (CompilingTopLevelAssemblies)
+				throw new HttpException ("Method must not be called while compiling the top level assemblies.");
+
+			Type type;
+			if (is_precompiled) {
+				type = GetPrecompiledType (virtualPath);
+				if (type == null) {
+					if (throwIfNotFound)
+						throw new HttpException (String.Format ("Virtual path '{0}' not found in precompiled application type cache.", virtualPath));
+					else
+						return null;
+				}
+				return new SimpleWebObjectFactory (type);
+			}
+
+			Exception compileException = null;
+			try {
+				type = GetCompiledType (virtualPath);
+			} catch (Exception ex) {
+				compileException = ex;
+				type = null;
+			}
+			
+			if (type == null) {
+				if (throwIfNotFound)
+					throw new HttpException (String.Format ("Virtual path '{0}' does not exist.", virtualPath), compileException);
+				return null;
+			}
+			
+			return new SimpleWebObjectFactory (type);
+		}
+#endif
 		public static object CreateInstanceFromVirtualPath (string virtualPath, Type requiredBaseType)
 		{
 			return CreateInstanceFromVirtualPath (GetAbsoluteVirtualPath (virtualPath), requiredBaseType);
@@ -541,7 +762,7 @@ namespace System.Web.Compilation {
 				return null;
 
 			foreach (BuildProvider bp in group) {
-				if (String.Compare (path, req.MapPath (bp.VirtualPath), stringComparer) == 0)
+				if (String.Compare (path, req.MapPath (bp.VirtualPath), RuntimeHelpers.StringComparison) == 0)
 					return bp;
 			}
 			
@@ -567,6 +788,7 @@ namespace System.Web.Compilation {
 			}
 			
 			List <BuildProvider> failedBuildProviders = null;
+			StringComparison stringComparison = RuntimeHelpers.StringComparison;
 			foreach (BuildProvider bp in group) {
 				bvp = bp.VirtualPath;
 				if (HasCachedItemNoLock (bvp))
@@ -575,7 +797,7 @@ namespace System.Web.Compilation {
 				try {
 					bp.GenerateCode (abuilder);
 				} catch (Exception ex) {
-					if (String.Compare (bvp, vpabsolute, stringComparer) == 0) {
+					if (String.Compare (bvp, vpabsolute, stringComparison) == 0) {
 						if (ex is CompilationException || ex is ParseException)
 							throw;
 						
@@ -628,14 +850,12 @@ namespace System.Web.Compilation {
 			// to the assembly builder and, in effect, no assembly is produced but there are STILL types that need
 			// to be added to the cache.
 			Assembly compiledAssembly = results != null ? results.CompiledAssembly : null;
-			bool locked = false;
 			try {
 #if SYSTEMCORE_DEP
 				buildCacheLock.EnterWriteLock ();
 #else
 				buildCacheLock.AcquireWriterLock (-1);
 #endif
-				locked = true;
 				if (compiledAssembly != null)
 					referencedAssemblies.Add (compiledAssembly);
 				
@@ -646,13 +866,11 @@ namespace System.Web.Compilation {
 					StoreInCache (bp, compiledAssembly, results);
 				}
 			} finally {
-				if (locked) {
 #if SYSTEMCORE_DEP
-					buildCacheLock.ExitWriteLock ();
+				buildCacheLock.ExitWriteLock ();
 #else
-					buildCacheLock.ReleaseWriterLock ();
+				buildCacheLock.ReleaseWriterLock ();
 #endif
-				}
 			}
 		}
 		
@@ -685,27 +903,28 @@ namespace System.Web.Compilation {
 		{
 			return null; // null is ok here until we store the dependency set in the Cache.
 		}
-		
+#if NET_4_0
+		[MonoTODO ("Not implemented, always returns null")]
+		public static BuildDependencySet GetCachedBuildDependencySet (HttpContext context, string virtualPath, bool ensureIsUpToDate)
+		{
+			return null; // null is ok here until we store the dependency set in the Cache.
+		}
+#endif
 		static BuildManagerCacheItem GetCachedItem (string vp)
 		{
-			bool locked = false;
-			
 			try {
 #if SYSTEMCORE_DEP
 				buildCacheLock.EnterReadLock ();
 #else
 				buildCacheLock.AcquireReaderLock (-1);
 #endif
-				locked = true;
 				return GetCachedItemNoLock (vp);
 			} finally {
-				if (locked) {
 #if SYSTEMCORE_DEP
-					buildCacheLock.ExitReadLock ();
+				buildCacheLock.ExitReadLock ();
 #else
-					buildCacheLock.ReleaseReaderLock ();
+				buildCacheLock.ReleaseReaderLock ();
 #endif
-				}
 			}
 		}
 
@@ -735,14 +954,18 @@ namespace System.Web.Compilation {
 
 		static Type GetPrecompiledType (string virtualPath)
 		{
+			if (precompiled == null || precompiled.Count == 0)
+				return null;
+
 			PreCompilationData pc_data;
-			if (precompiled != null && precompiled.TryGetValue (virtualPath, out pc_data)) {
-				if (pc_data.Type == null) {
-					pc_data.Type = Type.GetType (pc_data.TypeName + ", " + pc_data.AssemblyFileName, true);
-				}
-				return pc_data.Type;
-			}
-			return null;
+			var vp = new VirtualPath (virtualPath);
+			if (!precompiled.TryGetValue (vp.Absolute, out pc_data))
+				if (!precompiled.TryGetValue (virtualPath, out pc_data))
+					return null;
+				
+			if (pc_data.Type == null)
+				pc_data.Type = Type.GetType (pc_data.TypeName + ", " + pc_data.AssemblyFileName, true);
+			return pc_data.Type;
 		}
 
 		internal static Type GetPrecompiledApplicationType ()
@@ -750,9 +973,10 @@ namespace System.Web.Compilation {
 			if (!is_precompiled)
 				return null;
 
-			Type apptype = GetPrecompiledType (VirtualPathUtility.Combine (HttpRuntime.AppDomainAppVirtualPath, "Global.asax"));
+			string appVp = VirtualPathUtility.AppendTrailingSlash (HttpRuntime.AppDomainAppVirtualPath);
+			Type apptype = GetPrecompiledType (VirtualPathUtility.Combine (appVp, "global.asax"));
 			if (apptype == null)
-				apptype = GetPrecompiledType (VirtualPathUtility.Combine (HttpRuntime.AppDomainAppVirtualPath , "global.asax"));
+				apptype = GetPrecompiledType (VirtualPathUtility.Combine (appVp, "Global.asax"));
 			return apptype;
 		}
 
@@ -876,40 +1100,52 @@ namespace System.Web.Compilation {
 
 		public static ICollection GetReferencedAssemblies ()
 		{
-			List <Assembly> al = new List <Assembly> ();
+			if (getReferencedAssembliesInvoked)
+				return configReferencedAssemblies;
+
+			if (allowReferencedAssembliesCaching)
+				getReferencedAssembliesInvoked = true;
+			
+			if (configReferencedAssemblies == null)
+				configReferencedAssemblies = new List <Assembly> ();
+			else if (getReferencedAssembliesInvoked)
+				configReferencedAssemblies.Clear ();
 			
 			CompilationSection compConfig = WebConfigurationManager.GetWebApplicationSection ("system.web/compilation") as CompilationSection;
                         if (compConfig == null)
-				return al;
+				return configReferencedAssemblies;
 			
                         bool addAssembliesInBin = false;
                         foreach (AssemblyInfo info in compConfig.Assemblies) {
                                 if (info.Assembly == "*")
                                         addAssembliesInBin = is_precompiled ? false : true;
                                 else
-                                        LoadAssembly (info, al);
+                                        LoadAssembly (info, configReferencedAssemblies);
                         }
 
 			foreach (Assembly topLevelAssembly in TopLevelAssemblies)
-				al.Add (topLevelAssembly);
+				configReferencedAssemblies.Add (topLevelAssembly);
 
 			foreach (string assLocation in WebConfigurationManager.ExtraAssemblies)
-				LoadAssembly (assLocation, al);
-
-
+				LoadAssembly (assLocation, configReferencedAssemblies);
+#if NET_4_0
+			if (dynamicallyRegisteredAssemblies != null)
+				foreach (Assembly registeredAssembly in dynamicallyRegisteredAssemblies)
+					configReferencedAssemblies.Add (registeredAssembly);
+#endif
 			// Precompiled sites unconditionally load all assemblies from bin/ (fix for
 			// bug #502016)
 			if (is_precompiled || addAssembliesInBin) {
 				foreach (string s in HttpApplication.BinDirectoryAssemblies) {
 					try {
-						LoadAssembly (s, al);
+						LoadAssembly (s, configReferencedAssemblies);
 					} catch (BadImageFormatException) {
 						// ignore silently
 					}
 				}
 			}
 				
-			return al;
+			return configReferencedAssemblies;
 		}
 		
 		// The 2 GetType() overloads work on the global.asax, App_GlobalResources, App_WebReferences or App_Browsers
@@ -917,28 +1153,69 @@ namespace System.Web.Compilation {
 		{
 			return GetType (typeName, throwOnError, false);
 		}
-
+		
 		public static Type GetType (string typeName, bool throwOnError, bool ignoreCase)
 		{
+			if (String.IsNullOrEmpty (typeName))
+				throw new HttpException ("Type name must not be empty.");
+			
 			Type ret = null;
+			Exception ex = null;
 			try {
-				foreach (Assembly asm in TopLevel_Assemblies) {
-					ret = asm.GetType (typeName, throwOnError, ignoreCase);
-					if (ret != null)
-						break;
+				string wantedAsmName;
+				string wantedTypeName;
+				int comma = typeName.IndexOf (',');
+
+				if (comma > 0 && comma < typeName.Length - 1) {
+					var aname = new AssemblyName (typeName.Substring (comma + 1));
+					wantedAsmName = aname.ToString ();
+					wantedTypeName = typeName.Substring (0, comma);
+				} else {
+					wantedAsmName = null;
+					wantedTypeName = typeName;
 				}
-			} catch (Exception ex) {
-				throw new HttpException ("Failed to find the specified type.", ex);
+
+				var assemblies = new List <Assembly> ();
+				assemblies.AddRange (BuildManager.GetReferencedAssemblies () as List <Assembly>);
+				assemblies.AddRange (TopLevel_Assemblies);
+				Type appType = HttpApplicationFactory.AppType;
+				if (appType != null)
+					assemblies.Add (appType.Assembly);
+				
+				foreach (Assembly asm in assemblies) {
+					if (asm == null)
+						continue;
+
+					if (wantedAsmName != null) {
+						// So dumb...
+						if (String.Compare (wantedAsmName, asm.GetName ().ToString (), StringComparison.Ordinal) == 0) {
+							ret = asm.GetType (wantedTypeName, throwOnError, ignoreCase);
+							if (ret != null)
+								return ret;
+						}
+						continue;
+					}
+					
+					ret = asm.GetType (wantedTypeName, false, ignoreCase);
+					if (ret != null)
+						return ret;
+				}
+			} catch (Exception e) {
+				ex = e;
 			}
-			return ret;
+
+			if (throwOnError)
+				throw new HttpException ("Failed to find the specified type.", ex);
+
+			return null;
 		}
 
-		public static IDictionary <string, bool> GetVirtualPathDependencies (string virtualPath)
+		public static ICollection GetVirtualPathDependencies (string virtualPath)
 		{
 			return GetVirtualPathDependencies (virtualPath, null);
 		}
 
-		internal static IDictionary <string, bool> GetVirtualPathDependencies (string virtualPath, BuildProvider bprovider)
+		internal static ICollection GetVirtualPathDependencies (string virtualPath, BuildProvider bprovider)
 		{
 			BuildProvider provider = bprovider;
 			if (provider == null) {
@@ -951,7 +1228,11 @@ namespace System.Web.Compilation {
 			if (provider == null)
 				return null;
 			
-			return provider.ExtractDependencies ();
+			IDictionary <string, bool> deps =  provider.ExtractDependencies ();
+			if (deps == null)
+				return null;
+
+			return (ICollection)deps.Keys;
 		}
 
 		internal static bool HasCachedItemNoLock (string vp, out bool entryExists)
@@ -975,6 +1256,14 @@ namespace System.Web.Compilation {
 		
 		internal static bool IgnoreVirtualPath (string virtualPath)
 		{
+			if (!virtualPathsToIgnoreChecked) {
+				lock (virtualPathsToIgnoreLock) {
+					if (!virtualPathsToIgnoreChecked)
+						LoadVirtualPathsToIgnore ();
+					virtualPathsToIgnoreChecked = true;
+				}
+			}
+			
 			if (!haveVirtualPathsToIgnore)
 				return false;
 			
@@ -1071,27 +1360,22 @@ namespace System.Web.Compilation {
 			else
 				return;
 			
-			bool locked = false;
 			try {
 #if SYSTEMCORE_DEP
 				buildCacheLock.EnterWriteLock ();
 #else
 				buildCacheLock.AcquireWriterLock (-1);
 #endif
-				locked = true;
-
 				if (HasCachedItemNoLock (virtualPath)) {
 					buildCache [virtualPath] = null;
 					OnEntryRemoved (virtualPath);
 				}
 			} finally {
-				if (locked) {
 #if SYSTEMCORE_DEP
-					buildCacheLock.ExitWriteLock ();
+				buildCacheLock.ExitWriteLock ();
 #else
-					buildCacheLock.ReleaseWriterLock ();
+				buildCacheLock.ReleaseWriterLock ();
 #endif
-				}
 			}
 		}
 		
@@ -1127,7 +1411,7 @@ namespace System.Web.Compilation {
 			foreach (CompilerError error in results.Errors) {
 				if (error.IsWarning)
 					continue;
-
+				
 				bp = abuilder.GetBuildProviderForPhysicalFilePath (error.FileName);
 				if (bp == null) {
 					bp = FindBuildProviderForPhysicalPath (error.FileName, group, req);
@@ -1185,11 +1469,11 @@ namespace System.Web.Compilation {
 			if (suppressDebugModeMessages)
 				return;
 			
-			Console.WriteLine ();
-			Console.WriteLine ("******* DEBUG MODE MESSAGE *******");
-			Console.WriteLine (msg);
-			Console.WriteLine ("******* DEBUG MODE MESSAGE *******");
-			Console.WriteLine ();
+			Console.Error.WriteLine ();
+			Console.Error.WriteLine ("******* DEBUG MODE MESSAGE *******");
+			Console.Error.WriteLine (msg);
+			Console.Error.WriteLine ("******* DEBUG MODE MESSAGE *******");
+			Console.Error.WriteLine ();
 		}
 
 		static void StoreInCache (BuildProvider bp, Assembly compiledAssembly, CompilerResults results)
@@ -1239,4 +1523,4 @@ namespace System.Web.Compilation {
 		}
 	}
 }
-#endif
+

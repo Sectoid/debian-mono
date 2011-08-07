@@ -32,6 +32,7 @@ using System;
 using System.Drawing;
 using System.Threading;
 using System.Collections;
+using System.Globalization;
 using System.IO;
 using System.Web;
 using System.Web.UI;
@@ -40,6 +41,7 @@ using System.Web.Security;
 using System.Text.RegularExpressions;
 using MonoTests.SystemWeb.Framework;
 using MonoTests.stand_alone.WebHarness;
+using MonoTests.Common;
 
 using NUnit.Framework;
 using System.Collections.Specialized;
@@ -138,6 +140,22 @@ namespace MonoTests.System.Web.UI.WebControls
 		[Test]
 		public void DefaultProperties ()
 		{
+			CultureInfo currentCulture = Thread.CurrentThread.CurrentCulture;
+			CultureInfo currentUICulture = Thread.CurrentThread.CurrentUICulture;
+
+			try {
+				CultureInfo ci = CultureInfo.GetCultureInfo ("en-US");
+				Thread.CurrentThread.CurrentCulture = ci;
+				Thread.CurrentThread.CurrentUICulture = ci;
+				RunDefaultPropertiesTests ();
+			} finally {
+				Thread.CurrentThread.CurrentCulture = currentCulture;
+				Thread.CurrentThread.CurrentUICulture = currentUICulture;
+			}
+		}
+
+		void RunDefaultPropertiesTests ()
+		{
 			TestChangePassword w = new TestChangePassword ();
 			Assert.AreEqual (0, w.Attributes.Count, "Attributes.Count");
 			Assert.AreEqual (0, w.StateBag.Count, "ViewState.Count");
@@ -164,7 +182,7 @@ namespace MonoTests.System.Web.UI.WebControls
 			Assert.AreEqual (string.Empty, w.PasswordRecoveryUrl, "PasswordRecoveryUrl");
 			Assert.AreEqual ("Confirm New Password:", w.ConfirmNewPasswordLabelText, "ConfirmNewPasswordLabelText");
 			Assert.AreEqual ("The Confirm New Password must match the New Password entry.", w.ConfirmPasswordCompareErrorMessage, "ConfirmPasswordCompareErrorMessage");
-			Assert.AreEqual (String.Empty, w.ConfirmPasswordRequiredErrorMessage, "ConfirmPasswordRequiredErrorMessage");
+			Assert.AreEqual ("Confirm New Password is required.", w.ConfirmPasswordRequiredErrorMessage, "ConfirmPasswordRequiredErrorMessage");
 			Assert.AreEqual (string.Empty, w.ContinueButtonImageUrl, "ContinueButtonImageUrl");
 			Assert.AreEqual ("Continue", w.ContinueButtonText, "ContinueButtonText");
 			Assert.AreEqual (ButtonType.Button, w.ContinueButtonType, "ContinueButtonType");
@@ -747,18 +765,13 @@ namespace MonoTests.System.Web.UI.WebControls
 			t.Request = fr;
 			html = t.Run ();
 			if (html.IndexOf ("Change Password Complete") < 0)
-				Assert.Fail ("Password has not beeb changed!");
+				Assert.Fail ("Password has not been changed!");
 			
 			fr = new FormRequest (t.Response, "form1");
 			fr.Controls.Add ("__EVENTTARGET");
 			fr.Controls.Add ("__EVENTARGUMENT");
-#if DOT_NET
 			fr.Controls.Add ("ChangePassword1$SuccessContainerID$ContinuePushButton");
 			fr.Controls["ChangePassword1$SuccessContainerID$ContinuePushButton"].Value = "Continue";
-#else
-			fr.Controls.Add ("ChangePassword1$SuccessContainerID$ContinueButton");
-			fr.Controls ["ChangePassword1$SuccessContainerID$ContinueButton"].Value = "Continue";
-#endif
 
 			t.Request = fr;
 			html = t.Run ();
@@ -811,7 +824,74 @@ namespace MonoTests.System.Web.UI.WebControls
 			RequiredFieldValidator rfv = cp.ChangePasswordTemplateContainer.FindControl ("text1required") as RequiredFieldValidator;
 			Assert.IsNotNull (rfv, "#A2");
 		}
-		
+#if NET_4_0
+		[Test]
+		public void RenderOuterTableForbiddenStyles ()
+		{
+			var cp = new ChangePassword ();
+			cp.RenderOuterTable = false;
+			cp.BackColor = Color.Red;
+
+			TestRenderFailure (cp, "BackColor");
+
+			cp = new ChangePassword ();
+			cp.RenderOuterTable = false;
+			cp.BorderColor = Color.Red;
+			TestRenderFailure (cp, "BorderColor");
+
+			cp = new ChangePassword ();
+			cp.RenderOuterTable = false;
+			cp.BorderStyle = BorderStyle.Dashed;
+			TestRenderFailure (cp, "BorderStyle");
+
+			cp = new ChangePassword ();
+			cp.RenderOuterTable = false;
+			cp.BorderWidth = new Unit (10, UnitType.Pixel);
+			TestRenderFailure (cp, "BorderWidth");
+
+			cp = new ChangePassword ();
+			cp.RenderOuterTable = false;
+			cp.CssClass = "MyClass";
+			TestRenderFailure (cp, "CssClass");
+
+			cp = new ChangePassword ();
+			cp.RenderOuterTable = false;
+			cp.Font.Bold = true;
+
+			TestRenderFailure (cp, "Font", false);
+
+			cp = new ChangePassword ();
+			cp.RenderOuterTable = false;
+			cp.ForeColor = Color.Red;
+			TestRenderFailure (cp, "ForeColor");
+
+			cp = new ChangePassword ();
+			cp.RenderOuterTable = false;
+			cp.Height = new Unit (20, UnitType.Pixel);
+			TestRenderFailure (cp, "Height");
+
+			cp = new ChangePassword ();
+			cp.RenderOuterTable = false;
+			cp.Width = new Unit (20, UnitType.Pixel);
+			TestRenderFailure (cp, "Width");
+		}
+
+		void TestRenderFailure (ChangePassword cp, string message, bool shouldFail = true)
+		{
+			using (var sw = new StringWriter ()) {
+				using (var w = new HtmlTextWriter (sw)) {
+					if (shouldFail)
+						AssertExtensions.Throws<InvalidOperationException> (() => {
+							cp.RenderControl (w);
+						}, message);
+					else {
+						cp.RenderControl (w);
+						Assert.IsTrue (sw.ToString ().Length > 0, message);
+					}
+				}
+			}
+		}
+#endif
 		[TestFixtureTearDown]
 		public void TearDown ()
 		{

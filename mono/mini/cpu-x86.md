@@ -55,11 +55,17 @@
 # the required specifiers are: len, clob (if registers are clobbered), the registers
 # specifiers if the registers are actually used, flags (when scheduling is implemented).
 #
+# Templates can be defined by using the 'template' keyword instead of an opcode name.
+# The template name is assigned from a (required) 'name' specifier.
+# To apply a template to an opcode, just use the template:template_name specifier: any value
+# defined by the template can be overridden by adding more specifiers after the template.
+#
 # See the code in mini-x86.c for more details on how the specifiers are used.
 #
 break: len:1
-jmp: len:32
+jmp: len:32 clob:c
 call: dest:a clob:c len:17
+tailcall: len:120 clob:c
 br: len:5
 seq_point: len:16
 
@@ -75,16 +81,18 @@ int_ble_un: len:6
 int_blt_un: len:6
 label: len:0
 
-int_add: dest:i src1:i src2:i len:2 clob:1
-int_sub: dest:i src1:i src2:i len:2 clob:1
-int_mul: dest:i src1:i src2:i len:3 clob:1
+template: name:ibalu dest:i src1:i src2:i clob:1 len:2
+
+int_add: template:ibalu
+int_sub: template:ibalu
+int_mul: template:ibalu len:3
 int_div: dest:a src1:a src2:i len:15 clob:d
 int_div_un: dest:a src1:a src2:i len:15 clob:d
 int_rem: dest:d src1:a src2:i len:15 clob:a
 int_rem_un: dest:d src1:a src2:i len:15 clob:a
-int_and: dest:i src1:i src2:i len:2 clob:1
-int_or: dest:i src1:i src2:i len:2 clob:1
-int_xor: dest:i src1:i src2:i len:2 clob:1
+int_and: template:ibalu
+int_or: template:ibalu
+int_xor: template:ibalu
 int_shl: dest:i src1:i src2:s clob:1 len:2
 int_shr: dest:i src1:i src2:s clob:1 len:2
 int_shr_un: dest:i src1:i src2:s clob:1 len:2
@@ -110,8 +118,8 @@ int_mul_ovf_un: dest:i src1:i src2:i len:16
 throw: src1:i len:13
 rethrow: src1:i len:13
 start_handler: len:16
-endfinally: len:16
-endfilter: src1:a len:16
+endfinally: len:16 nacl:21
+endfilter: src1:a len:16 nacl:21
 
 ckfinite: dest:f src1:f len:32
 ceq: dest:y len:6
@@ -127,18 +135,18 @@ oparglist: src1:b len:10
 checkthis: src1:b len:3
 voidcall: len:17 clob:c
 voidcall_reg: src1:i len:11 clob:c
-voidcall_membase: src1:b len:16 clob:c
+voidcall_membase: src1:b len:16 nacl:17 clob:c
 fcall: dest:f len:17 clob:c
 fcall_reg: dest:f src1:i len:11 clob:c
-fcall_membase: dest:f src1:b len:16 clob:c
+fcall_membase: dest:f src1:b len:16 nacl:17 clob:c
 lcall: dest:l len:17 clob:c
 lcall_reg: dest:l src1:i len:11 clob:c
-lcall_membase: dest:l src1:b len:16 clob:c
+lcall_membase: dest:l src1:b len:16 nacl:17 clob:c
 vcall: len:17 clob:c
 vcall_reg: src1:i len:11 clob:c
-vcall_membase: src1:b len:16 clob:c
-call_reg: dest:a src1:i len:11 clob:c
-call_membase: dest:a src1:b len:16 clob:c
+vcall_membase: src1:b len:16 nacl:17 clob:c
+call_reg: dest:a src1:i len:11 nacl:14 clob:c
+call_membase: dest:a src1:b len:16 nacl:18 clob:c
 iconst: dest:i len:5
 r4const: dest:f len:15
 r8const: dest:f len:16
@@ -154,6 +162,7 @@ storei8_membase_imm: dest:b
 storei8_membase_reg: dest:b src1:i 
 storer4_membase_reg: dest:b src1:f len:7
 storer8_membase_reg: dest:b src1:f len:7
+store_mem_imm: len:12
 load_membase: dest:i src1:b len:7
 loadi1_membase: dest:y src1:b len:7
 loadu1_membase: dest:y src1:b len:7
@@ -234,10 +243,11 @@ float_cgt_un: dest:y src1:f src2:f len:37
 float_clt: dest:y src1:f src2:f len:25
 float_clt_un: dest:y src1:f src2:f len:32
 float_conv_to_u: dest:i src1:f len:36
-call_handler: len:11
+call_handler: len:11 clob:c
 aot_const: dest:i len:5
 load_gotaddr: dest:i len:64
 got_entry: dest:i src1:b len:7
+nacl_gc_safe_point: clob:c
 x86_test_null: src1:i len:2
 x86_compare_membase_reg: src1:b src2:i len:7
 x86_compare_membase_imm: src1:b len:11
@@ -277,7 +287,7 @@ subcc: dest:i src1:i src2:i len:2 clob:1
 adc_imm: dest:i src1:i len:6 clob:1
 sbb: dest:i src1:i src2:i len:2 clob:1
 sbb_imm: dest:i src1:i len:6 clob:1
-br_reg: src1:i len:2
+br_reg: src1:i len:2 nacl:5
 sin: dest:f src1:f len:6
 cos: dest:f src1:f len:6
 abs: dest:f src1:f len:2
@@ -293,8 +303,10 @@ tls_get: dest:i len:20
 atomic_add_i4: src1:b src2:i dest:i len:16
 atomic_add_new_i4: src1:b src2:i dest:i len:16
 atomic_exchange_i4: src1:b src2:i dest:a len:24
-atomic_cas_i4: src1:b src2:i src3:a dest:i len:24
+atomic_cas_i4: src1:b src2:i src3:a dest:a len:24
 memory_barrier: len:16
+
+card_table_wbarrier: src1:a src2:i clob:d len:34
 
 relaxed_nop: len:2
 hard_nop: len:1
@@ -379,7 +391,7 @@ loadu2_mem: dest:i len:9
 
 vcall2: len:17 clob:c
 vcall2_reg: src1:i len:11 clob:c
-vcall2_membase: src1:b len:16 clob:c
+vcall2_membase: src1:b len:16 nacl:17 clob:c
 
 localloc_imm: dest:i len:120
 
@@ -443,6 +455,8 @@ rcpps: dest:x src1:x len:4
 pshufflew_high: dest:x src1:x len:5
 pshufflew_low: dest:x src1:x len:5
 pshuffled: dest:x src1:x len:5
+shufps: dest:x src1:x src2:x len:4 clob:1
+shufpd: dest:x src1:x src2:x len:5 clob:1
 
 extract_mask: dest:i src1:x len:4
 
@@ -550,6 +564,15 @@ pshrq_reg: dest:x src1:x src2:x len:4 clob:1
 pshlq: dest:x src1:x len:5 clob:1
 pshlq_reg: dest:x src1:x src2:x len:4 clob:1
 
+cvtdq2pd: dest:x src1:x len:4 clob:1
+cvtdq2ps: dest:x src1:x len:3 clob:1
+cvtpd2dq: dest:x src1:x len:4 clob:1
+cvtpd2ps: dest:x src1:x len:4 clob:1
+cvtps2dq: dest:x src1:x len:4 clob:1
+cvtps2pd: dest:x src1:x len:3 clob:1
+cvttpd2dq: dest:x src1:x len:4 clob:1
+cvttps2dq: dest:x src1:x len:4 clob:1
+
 xmove: dest:x src1:x len:4
 xzero: dest:x len:4
 
@@ -567,7 +590,7 @@ iconv_to_r8_raw: dest:f src1:i len:17
 insert_i2: dest:x src1:x src2:i len:5 clob:1
 
 extractx_u2: dest:i src1:x len:5
-insertx_u1_slow: dest:x src1:i src2:i len:15 clob:x
+insertx_u1_slow: dest:x src1:i src2:i len:16 clob:x
 
 insertx_i4_slow: dest:x src1:x src2:i len:13 clob:x
 insertx_r4_slow: dest:x src1:x src2:f len:24 clob:1
@@ -594,3 +617,7 @@ expand_r8: dest:x src1:f len:13
 
 liverange_start: len:0
 liverange_end: len:0
+gc_liveness_def: len:0
+gc_liveness_use: len:0
+gc_spill_slot_liveness_def: len:0
+gc_param_slot_liveness_def: len:0

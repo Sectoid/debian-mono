@@ -4,6 +4,7 @@
 // Author:
 //   Miguel de Icaza
 //   Atsushi Enomoto  <atsushi@ximian.com>
+//   Marek Safar (marek.safar@gmail.com)
 //
 // Copyright 2001 Ximian, Inc.
 // Copyright 2005 Novell, Inc.
@@ -11,8 +12,10 @@
 
 using System;
 using System.IO;
-using System.Collections;
+using System.Collections.Generic;
 using Mono.CompilerServices.SymbolWriter;
+using System.Diagnostics;
+using System.Linq;
 
 namespace Mono.CSharp {
 	/// <summary>
@@ -75,8 +78,8 @@ namespace Mono.CSharp {
 	public class CompilationUnit : SourceFile, ICompileUnit
 	{
 		CompileUnitEntry comp_unit;
-		Hashtable include_files;
-		Hashtable conditionals;
+		Dictionary<string, SourceFile> include_files;
+		Dictionary<string, bool> conditionals;
 
 		public CompilationUnit (string name, string path, int index)
 			: base (name, path, index, false)
@@ -88,16 +91,16 @@ namespace Mono.CSharp {
 				return;
 			
 			if (include_files == null)
-				include_files = new Hashtable ();
+				include_files = new Dictionary<string, SourceFile> ();
 
-			if (!include_files.Contains (file.Path))
+			if (!include_files.ContainsKey (file.Path))
 				include_files.Add (file.Path, file);
 		}
 
 		public void AddDefine (string value)
 		{
 			if (conditionals == null)
-				conditionals = new Hashtable (2);
+				conditionals = new Dictionary<string, bool> (2);
 
 			conditionals [value] = true;
 		}
@@ -105,9 +108,9 @@ namespace Mono.CSharp {
 		public void AddUndefine (string value)
 		{
 			if (conditionals == null)
-				conditionals = new Hashtable (2);
+				conditionals = new Dictionary<string, bool> (2);
 
-			conditionals [value] = null;
+			conditionals [value] = false;
 		}
 
 		CompileUnitEntry ICompileUnit.Entry {
@@ -135,12 +138,12 @@ namespace Mono.CSharp {
 		public bool IsConditionalDefined (string value)
 		{
 			if (conditionals != null) {
-				object res = conditionals [value];
-				if (res != null)
-					return (bool)res;
+				bool res;
+				if (conditionals.TryGetValue (value, out res))
+					return res;
 				
 				// When conditional was undefined
-				if (conditionals.Contains (value))
+				if (conditionals.ContainsKey (value))
 					return false;					
 			}
 
@@ -164,7 +167,8 @@ namespace Mono.CSharp {
 	///
 	///   http://lists.ximian.com/pipermail/mono-devel-list/2004-December/009508.html
 	/// </remarks>
-	public struct Location {
+	public struct Location : IEquatable<Location>
+	{
 		int token; 
 
 		struct Checkpoint {
@@ -180,9 +184,9 @@ namespace Mono.CSharp {
 			}
 		}
 
-		static ArrayList source_list;
-		static ArrayList compile_units;
-		static Hashtable source_files;
+		static List<SourceFile> source_list;
+		static List<CompilationUnit> compile_units;
+		static Dictionary<string, int> source_files;
 		static int checkpoint_bits;
 		static int source_count;
 		static int current_source;
@@ -199,19 +203,15 @@ namespace Mono.CSharp {
 		
 		static Location ()
 		{
-			source_files = new Hashtable ();
-			source_list = new ArrayList ();
-			compile_units = new ArrayList ();
-			current_source = 0;
-			current_compile_unit = 0;
+			Reset ();
 			checkpoints = new Checkpoint [10];
 		}
 
 		public static void Reset ()
 		{
-			source_files = new Hashtable ();
-			source_list = new ArrayList ();
-			compile_units = new ArrayList ();
+			source_files = new Dictionary<string, int> ();
+			source_list = new List<SourceFile> ();
+			compile_units = new List<CompilationUnit> ();
 			current_source = 0;
 			current_compile_unit = 0;
 			source_count = 0;
@@ -223,10 +223,9 @@ namespace Mono.CSharp {
 		static public void AddFile (Report r, string name)
 		{
 			string path = Path.GetFullPath (name);
-
-			if (source_files.Contains (path)){
-				int id = (int) source_files [path];
-				string other_name = ((SourceFile) source_list [id - 1]).Name;
+			int id;
+			if (source_files.TryGetValue (path, out id)){
+				string other_name = source_list [id - 1].Name;
 				if (name.Equals (other_name))
 					r.Warning (2002, 1, "Source file `{0}' specified multiple times", other_name);
 				else
@@ -240,8 +239,7 @@ namespace Mono.CSharp {
 			compile_units.Add (unit);
 		}
 
-		// IList<CompilationUnit>
-		static public ArrayList SourceFiles {
+		public static IList<CompilationUnit> SourceFiles {
 			get {
 				return compile_units;
 			}
@@ -279,7 +277,7 @@ namespace Mono.CSharp {
 			} else
 				path = name;
 
-			if (!source_files.Contains (path)) {
+			if (!source_files.ContainsKey (path)) {
 				if (source_count >= (1 << checkpoint_bits))
 					return new SourceFile (name, path, 0, true);
 
@@ -349,6 +347,11 @@ namespace Mono.CSharp {
 					(long) (target << (line_delta_bits + column_bits));
 				token = l > 0xFFFFFFFF ? 0 : (int) l;
 			}
+		}
+
+		public static Location operator - (Location loc, int columns)
+		{
+			return new Location (loc.Row, loc.Column - columns);
 		}
 
 		static void AddCheckpoint (int compile_unit, int file, int row)
@@ -462,22 +465,117 @@ if (checkpoints.Length <= CheckpointIndex) throw new Exception (String.Format ("
 				return (CompilationUnit) source_list [index - 1];
 			}
 		}
-	}
 
-	public class LocatedToken
-	{
-		public readonly Location Location;
-		public readonly string Value;
+		#region IEquatable<Location> Members
 
-		public LocatedToken (Location loc, string value)
+		public bool Equals (Location other)
 		{
-			Location = loc;
-			Value = value;
+			return this.token == other.token;
 		}
 
-		public override string ToString ()
+		#endregion
+	}
+
+	//
+	// A bag of additional locations to support full ast tree
+	//
+	public class LocationsBag
+	{
+		public class MemberLocations
 		{
-			return Location.ToString () + Value;
+			public readonly IList<Tuple<Modifiers, Location>> Modifiers;
+			Location[] locations;
+
+			public MemberLocations (IList<Tuple<Modifiers, Location>> mods, Location[] locs)
+			{
+				Modifiers = mods;
+				locations = locs;
+			}
+
+			#region Properties
+
+			public Location this [int index] {
+				get {
+					return locations [index];
+				}
+			}
+			
+			public int Count {
+				get {
+					return locations.Length;
+				}
+			}
+
+			#endregion
+
+			public void AddLocations (params Location[] additional)
+			{
+				if (locations == null) {
+					locations = additional;
+				} else {
+					int pos = locations.Length;
+					Array.Resize (ref locations, pos + additional.Length);
+					additional.CopyTo (locations, pos);
+				}
+			}
+		}
+
+		Dictionary<object, Location[]> simple_locs = new Dictionary<object, Location[]> (ReferenceEquality<object>.Default);
+		Dictionary<MemberCore, MemberLocations> member_locs = new Dictionary<MemberCore, MemberLocations> (ReferenceEquality<MemberCore>.Default);
+
+		[Conditional ("FULL_AST")]
+		public void AddLocation (object element, params Location[] locations)
+		{
+			simple_locs.Add (element, locations);
+		}
+
+		[Conditional ("FULL_AST")]
+		public void AddStatement (object element, params Location[] locations)
+		{
+			if (locations.Length == 0)
+				throw new ArgumentException ("Statement is missing semicolon location");
+
+			simple_locs.Add (element, locations);
+		}
+
+		[Conditional ("FULL_AST")]
+		public void AddMember (MemberCore member, IList<Tuple<Modifiers, Location>> modLocations, params Location[] locations)
+		{
+			member_locs.Add (member, new MemberLocations (modLocations, locations));
+		}
+
+		[Conditional ("FULL_AST")]
+		public void AppendTo (object existing, params Location[] locations)
+		{
+			Location[] locs;
+			if (simple_locs.TryGetValue (existing, out locs)) {
+				simple_locs [existing] = locs.Concat (locations).ToArray ();
+				return;
+			}
+		}
+
+		[Conditional ("FULL_AST")]
+		public void AppendToMember (MemberCore existing, params Location[] locations)
+		{
+			MemberLocations member;
+			if (member_locs.TryGetValue (existing, out member)) {
+				member.AddLocations (locations);
+				return;
+			}
+		}
+
+		public Location[] GetLocations (object element)
+		{
+			Location[] found;
+			simple_locs.TryGetValue (element, out found);
+			return found;
+		}
+
+		public MemberLocations GetMemberLocation (MemberCore element)
+		{
+			MemberLocations found;
+			member_locs.TryGetValue (element, out found);
+			return found;
 		}
 	}
 }

@@ -13,7 +13,7 @@
 #include <glib.h>
 #include <string.h>
 
-#include <mono/metadata/object.h>
+#include <mono/metadata/object-internals.h>
 #include <mono/metadata/process.h>
 #include <mono/metadata/assembly.h>
 #include <mono/metadata/appdomain.h>
@@ -23,6 +23,20 @@
 #include <mono/utils/strenc.h>
 #include <mono/utils/mono-proclib.h>
 #include <mono/io-layer/io-layer.h>
+#if defined (MINGW_CROSS_COMPILE) && defined (HAVE_GETPROCESSID)
+#undef HAVE_GETPROCESSID
+#endif
+#ifndef HAVE_GETPROCESSID
+#if defined(_MSC_VER) || defined(HAVE_WINTERNL_H)
+#include <winternl.h>
+#ifndef NT_SUCCESS
+#define NT_SUCCESS(status) ((NTSTATUS) (status) >= 0)
+#endif /* !NT_SUCCESS */
+#else /* ! (defined(_MSC_VER) || defined(HAVE_WINTERNL_H)) */
+#include <ddk/ntddk.h>
+#include <ddk/ntapi.h>
+#endif /* (defined(_MSC_VER) || defined(HAVE_WINTERNL_H)) */
+#endif /* !HAVE_GETPROCESSID */
 /* FIXME: fix this code to not depend so much on the inetrnals */
 #include <mono/metadata/class-internals.h>
 
@@ -65,7 +79,11 @@ void ves_icall_System_Diagnostics_Process_Process_free_internal (MonoObject *thi
 	g_message ("%s: Closing process %p, handle %p", __func__, this, process);
 #endif
 
+#if defined(TARGET_WIN32) || defined(HOST_WIN32)
 	CloseHandle (process);
+#else
+	CloseProcess (process);
+#endif
 }
 
 #define STASH_SYS_ASS(this) \
@@ -96,8 +114,7 @@ static void process_set_field_object (MonoObject *obj, const gchar *fieldname,
 
 	field=mono_class_get_field_from_name (mono_object_class (obj),
 					      fieldname);
-	/* FIXME: moving GC */
-	*(MonoObject **)(((char *)obj) + field->offset)=data;
+	mono_gc_wbarrier_generic_store (((char *)obj) + field->offset, data);
 }
 
 static void process_set_field_string (MonoObject *obj, const gchar *fieldname,
@@ -112,8 +129,7 @@ static void process_set_field_string (MonoObject *obj, const gchar *fieldname,
 	
 	field=mono_class_get_field_from_name (mono_object_class (obj),
 					      fieldname);
-	/* FIXME: moving GC */
-	*(MonoString **)(((char *)obj) + field->offset)=string;
+	mono_gc_wbarrier_generic_store (((char *)obj) + field->offset, (MonoObject*)string);
 }
 
 static void process_set_field_int (MonoObject *obj, const gchar *fieldname,
@@ -353,8 +369,7 @@ static void process_get_fileversion (MonoObject *filever, gunichar2 *filename)
 	}
 }
 
-static void process_add_module (GPtrArray *modules, HANDLE process, HMODULE mod,
-				gunichar2 *filename, gunichar2 *modulename)
+static MonoObject* process_add_module (HANDLE process, HMODULE mod, gunichar2 *filename, gunichar2 *modulename)
 {
 	MonoClass *proc_class, *filever_class;
 	MonoObject *item, *filever;
@@ -393,50 +408,47 @@ static void process_add_module (GPtrArray *modules, HANDLE process, HMODULE mod,
 				  unicode_chars (modulename));
 	process_set_field_object (item, "version_info", filever);
 
-	/* FIXME: moving GC */
-	g_ptr_array_add (modules, item);
+	return item;
 }
 
 /* Returns an array of System.Diagnostics.ProcessModule */
 MonoArray *ves_icall_System_Diagnostics_Process_GetModules_internal (MonoObject *this, HANDLE process)
 {
-	GPtrArray *modules_list=g_ptr_array_new ();
+	MonoArray *temp_arr = NULL;
 	MonoArray *arr;
 	HMODULE mods[1024];
 	gunichar2 filename[MAX_PATH];
 	gunichar2 modname[MAX_PATH];
 	DWORD needed;
-	guint32 count;
-	guint32 i;
-	
-	MONO_ARCH_SAVE_REGS;
+	guint32 count = 0;
+	guint32 i, num_added = 0;
 
 	STASH_SYS_ASS (this);
 
 	if (EnumProcessModules (process, mods, sizeof(mods), &needed)) {
 		count = needed / sizeof(HMODULE);
+		temp_arr = mono_array_new (mono_domain_get (), mono_get_object_class (), count);
 		for (i = 0; i < count; i++) {
-			if (GetModuleBaseName (process, mods[i], modname,
-					       MAX_PATH) &&
-			    GetModuleFileNameEx (process, mods[i], filename,
-						 MAX_PATH)) {
-				process_add_module (modules_list, process,
-						    mods[i], filename, modname);
+			if (GetModuleBaseName (process, mods[i], modname, MAX_PATH) &&
+					GetModuleFileNameEx (process, mods[i], filename, MAX_PATH)) {
+				MonoObject *module = process_add_module (process, mods[i],
+						filename, modname);
+				mono_array_setref (temp_arr, num_added++, module);
 			}
 		}
 	}
 
-	/* Build a MonoArray out of modules_list */
-	arr=mono_array_new (mono_domain_get (), mono_get_object_class (),
-			    modules_list->len);
-	
-	for(i=0; i<modules_list->len; i++) {
-		mono_array_setref (arr, i, g_ptr_array_index (modules_list, i));
+	if (count == num_added) {
+		arr = temp_arr;
+	} else {
+		/* shorter version of the array */
+		arr = mono_array_new (mono_domain_get (), mono_get_object_class (), num_added);
+
+		for (i = 0; i < num_added; i++)
+			mono_array_setref (arr, i, mono_array_get (temp_arr, MonoObject*, i));
 	}
-	
-	g_ptr_array_free (modules_list, TRUE);
-	
-	return(arr);
+
+	return arr;
 }
 
 void ves_icall_System_Diagnostics_FileVersionInfo_GetVersionInfo_internal (MonoObject *this, MonoString *filename)
@@ -456,7 +468,7 @@ static gchar *
 quote_path (const gchar *path)
 {
 	gchar *res = g_shell_quote (path);
-#ifdef PLATFORM_WIN32
+#ifdef TARGET_WIN32
 	{
 	gchar *q = res;
 	while (*q) {
@@ -477,7 +489,7 @@ complete_path (const gunichar2 *appname, gchar **completed)
 	gchar *found;
 
 	utf8appmemory = utf8app = g_utf16_to_utf8 (appname, -1, NULL, NULL, NULL);
-#ifdef PLATFORM_WIN32 // Should this happen on all platforms? 
+#ifdef TARGET_WIN32 // Should this happen on all platforms? 
 	{
 		// remove the quotes around utf8app.
 		size_t len;
@@ -518,7 +530,7 @@ complete_path (const gunichar2 *appname, gchar **completed)
 
 #ifndef HAVE_GETPROCESSID
 /* Run-time GetProcessId detection for Windows */
-#ifdef PLATFORM_WIN32
+#ifdef TARGET_WIN32
 #define HAVE_GETPROCESSID
 
 typedef DWORD (WINAPI *GETPROCESSID_PROC) (HANDLE);
@@ -583,7 +595,7 @@ static DWORD WINAPI GetProcessId_detect (HANDLE process)
 	GetProcessId = &GetProcessId_stub;
 	return GetProcessId (process);
 }
-#endif /* PLATFORM_WIN32 */
+#endif /* HOST_WIN32 */
 #endif /* !HAVE_GETPROCESSID */
 
 MonoBoolean ves_icall_System_Diagnostics_Process_ShellExecuteEx_internal (MonoProcessStartInfo *proc_start_info, MonoProcInfo *process_info)
@@ -630,7 +642,7 @@ MonoBoolean ves_icall_System_Diagnostics_Process_ShellExecuteEx_internal (MonoPr
 		/* It appears that there's no way to get the pid from a
 		 * process handle before windows xp.  Really.
 		 */
-#ifdef HAVE_GETPROCESSID
+#if defined(HAVE_GETPROCESSID) && !defined(MONO_CROSS_COMPILE)
 		process_info->pid = GetProcessId (shellex.hProcess);
 #else
 		process_info->pid = 0;
@@ -670,7 +682,7 @@ MonoBoolean ves_icall_System_Diagnostics_Process_CreateProcess_internal (MonoPro
 		process_info->pid = -ERROR_FILE_NOT_FOUND;
 		return FALSE;
 	}
-#ifdef PLATFORM_WIN32
+#ifdef TARGET_WIN32
 	/* Seems like our CreateProcess does not work as the windows one.
 	 * This hack is needed to deal with paths containing spaces */
 	shell_path = NULL;
@@ -889,25 +901,38 @@ MonoArray *ves_icall_System_Diagnostics_Process_GetProcesses_internal (void)
 	MonoArray *procs;
 	gboolean ret;
 	DWORD needed;
-	guint32 count, i;
-	DWORD pids[1024];
+	guint32 count;
+	guint32 *pids;
 
 	MONO_ARCH_SAVE_REGS;
 
-	ret=EnumProcesses (pids, sizeof(pids), &needed);
-	if(ret==FALSE) {
-		/* FIXME: throw an exception */
-		return(NULL);
-	}
+	count = 512;
+	do {
+		pids = g_new0 (guint32, count);
+		ret = EnumProcesses (pids, count * sizeof (guint32), &needed);
+		if (ret == FALSE) {
+			MonoException *exc;
+
+			g_free (pids);
+			pids = NULL;
+			exc = mono_get_exception_not_supported ("This system does not support EnumProcesses");
+			mono_raise_exception (exc);
+			g_assert_not_reached ();
+		}
+		if (needed < (count * sizeof (guint32)))
+			break;
+		g_free (pids);
+		pids = NULL;
+		count = (count * 3) / 2;
+	} while (TRUE);
+
+	count = needed / sizeof (guint32);
+	procs = mono_array_new (mono_domain_get (), mono_get_int32_class (), count);
+	memcpy (mono_array_addr (procs, guint32, 0), pids, needed);
+	g_free (pids);
+	pids = NULL;
 	
-	count=needed/sizeof(DWORD);
-	procs=mono_array_new (mono_domain_get (), mono_get_int32_class (),
-			      count);
-	for(i=0; i<count; i++) {
-		mono_array_set (procs, guint32, i, pids[i]);
-	}
-	
-	return(procs);
+	return procs;
 }
 
 MonoBoolean ves_icall_System_Diagnostics_Process_GetWorkingSet_internal (HANDLE process, guint32 *min, guint32 *max)

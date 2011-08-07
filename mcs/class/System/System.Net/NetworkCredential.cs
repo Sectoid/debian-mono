@@ -29,7 +29,7 @@
 namespace System.Net
 {
 	public class NetworkCredential : ICredentials
-#if NET_2_0 && !NET_2_1
+#if !MOONLIGHT
 					, ICredentialsByHost
 #endif
 	{
@@ -59,17 +59,17 @@ namespace System.Net
 		// Properties
 
 		public string Domain {
-			get { return domain == null ? String.Empty : domain; }
+			get { return domain ?? String.Empty; }
 			set { domain = value; }
 		}
 
 		public string UserName {
-			get { return userName == null ? String.Empty : userName; }
+			get { return userName ?? String.Empty; }
 			set { userName = value; }			
 		}
 
 		public string Password {
-			get { return password == null ? String.Empty : password; }
+			get { return password ?? String.Empty; }
 			set { password = value; }
 		}
 
@@ -78,7 +78,7 @@ namespace System.Net
 			return this;
 		}
 
-#if NET_2_0 && !NET_2_1
+#if !MOONLIGHT
 		public NetworkCredential GetCredential (string host, int port, string authenticationType)
 		{
 			return this;

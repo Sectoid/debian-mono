@@ -116,7 +116,6 @@ namespace System.Web.Compilation
 		public override string ErrorMessage {
 			get {
 				if (errmsg == null && errors != null) {
-#if NET_2_0
 					CompilerError firstError = null;
 					
 					foreach (CompilerError err in errors) {
@@ -125,19 +124,14 @@ namespace System.Web.Compilation
 						firstError = err;
 						break;
 					};
-					
-					errmsg = firstError.ToString ();
-					int idx = errmsg.IndexOf (" : error ");
-					if (idx > -1)
-						errmsg = errmsg.Substring (idx + 9);
-#else
-					StringBuilder sb = new StringBuilder ();
-					foreach (CompilerError err in errors) {
-						sb.Append (err);
-						sb.Append ("\n");
-					}
-					errmsg = sb.ToString ();
-#endif
+
+					if (firstError != null) {
+						errmsg = firstError.ToString ();
+						int idx = errmsg.IndexOf (" : error ");
+						if (idx > -1)
+							errmsg = errmsg.Substring (idx + 9);
+					} else
+						errmsg = String.Empty;
 				}
 
 				return errmsg;

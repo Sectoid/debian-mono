@@ -5,6 +5,7 @@
 //   Marek Habersack (grendello@gmail.com)
 //
 // (C) 2006 Marek Habersack
+// (C) 2007-2010 Novell, Inc (http://novell.com/)
 //
 
 //
@@ -31,15 +32,10 @@ using System.Security.Permissions;
 
 namespace System.Web.UI 
 {
-#if NET_2_0
 	// CAS
         [AspNetHostingPermission (SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
         [AspNetHostingPermission (SecurityAction.InheritanceDemand, Level = AspNetHostingPermissionLevel.Minimal)]
-	public
-#else
-	internal
-#endif
-	class HiddenFieldPageStatePersister : PageStatePersister
+	public class HiddenFieldPageStatePersister : PageStatePersister
 	{
 		public HiddenFieldPageStatePersister (Page page)
 			: base(page)
@@ -57,11 +53,14 @@ namespace System.Web.UI
 				return;
 			}
 #endif
+			string rawViewState = Page.RawViewState;
 			IStateFormatter formatter = StateFormatter;
-			Pair pair = formatter.Deserialize (Page.RawViewState) as Pair;
-			if (pair != null) {
-				ViewState = pair.First;
-				ControlState = pair.Second;
+			if (!String.IsNullOrEmpty (rawViewState)) {
+				Pair pair = formatter.Deserialize (rawViewState) as Pair;
+				if (pair != null) {
+					ViewState = pair.First;
+					ControlState = pair.Second;
+				}
 			}
 		}
 

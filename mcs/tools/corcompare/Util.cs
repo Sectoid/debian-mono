@@ -17,6 +17,9 @@ namespace CorCompare {
 				throw new ArgumentNullException ("typeref");
 
 			TypeDefinition td = typeref.Resolve ();
+			if (td == null)
+				return false;
+
 			return td.IsPublic;
 		}
 
@@ -27,10 +30,17 @@ namespace CorCompare {
 
 		internal static bool IsDerivedFrom (TypeReference type, string derivedFrom)
 		{
-			foreach (var def in WalkHierarchy (type))
+			bool first = true;
+			foreach (var def in WalkHierarchy (type)) {
+				if (first) {
+					first = false;
+					continue;
+				}
+				
 				if (def.FullName == derivedFrom)
 					return true;
-
+			}
+			
 			return false;
 		}
 
@@ -61,17 +71,17 @@ namespace CorCompare {
 
 		internal static bool IsPublic (CustomAttribute att)
 		{
-			return IsPublic (att.Constructor.DeclaringType);
+			return IsPublic (att.AttributeType);
 		}
 
 		internal static string GetFullName (CustomAttribute att)
 		{
-			return att.Constructor.DeclaringType.FullName;
+			return att.AttributeType.FullName;
 		}
 
 		internal static TypeDefinition GetTypeDefinition (CustomAttribute att)
 		{
-			return att.Constructor.DeclaringType.Resolve ();
+			return att.AttributeType.Resolve ();
 		}
 	}
 }

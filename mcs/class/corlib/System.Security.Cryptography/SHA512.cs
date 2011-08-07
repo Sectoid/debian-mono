@@ -29,22 +29,16 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 
 using System.Runtime.InteropServices;
 
 namespace System.Security.Cryptography {
 
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public abstract class SHA512 : HashAlgorithm {
 
-#if NET_2_0
 		protected SHA512 ()
-#else
-		public SHA512 ()
-#endif
 		{
 			HashSizeValue = 512;
 		}

@@ -25,6 +25,10 @@
 // Licensed under the MIT/X11 License.
 //
 
+//#define ORACLE_DATA_ACCESS
+// define ORACLE_DATA_ACCESS for Oracle.DataAccess functionality
+// otherwise it defaults to Microsoft's System.Data.OracleClient
+
 using System;
 using System.Collections;
 using System.Collections.Specialized;
@@ -36,7 +40,11 @@ using System.EnterpriseServices;
 using System.Globalization;
 using System.Text;
 
+//#if ORACLE_DATA_ACCESS
+//namespace Oracle.DataAccess
+//#else
 namespace System.Data.OracleClient
+//#endif
 {
 	internal struct OracleConnectionInfo
 	{
@@ -45,6 +53,8 @@ namespace System.Data.OracleClient
 		internal string Database;
 		internal string ConnectionString;
 		internal OciCredentialType CredentialType;
+		internal bool SetNewPassword;
+		internal string NewPassword;
 	}
 
 	[DefaultEvent ("InfoMessage")]
@@ -210,13 +220,15 @@ namespace System.Data.OracleClient
 			OciCalls.OCIServerVersion (sh, eh, ref buffer,  bufflen, OciHandleType.Service);
 			
 			// Get length of returned string
-			int 	rsize = 0;
+			ulong 	rsize = 0;
+			UIntPtr rsizep = new UIntPtr (rsize);
 			IntPtr	env = oci.Environment;
-			OciCalls.OCICharSetToUnicode (env, null, buffer, out rsize);
+			OciCalls.OCICharSetToUnicode (env, null, buffer, ref rsizep);
 			
 			// Get string
-			StringBuilder ret = new StringBuilder(rsize);
-			OciCalls.OCICharSetToUnicode (env, ret, buffer, out rsize);
+			rsize = rsizep.ToUInt64 ();
+			StringBuilder ret = new StringBuilder((int)rsize);
+			OciCalls.OCICharSetToUnicode (env, ret, buffer, ref rsizep);
 
 			return ret.ToString ();
 		}
@@ -361,12 +373,14 @@ namespace System.Data.OracleClient
 				ref buffer, bufflen, (ushort) item);
 
 			// Get length of returned string
-			int rsize = 0;
-			OciCalls.OCICharSetToUnicode (Environment, null, buffer, out rsize);
+			ulong rsize = 0;
+			UIntPtr rsizep = new UIntPtr (rsize);
+			OciCalls.OCICharSetToUnicode (Environment, null, buffer, ref rsizep);
 			
 			// Get string
-			StringBuilder ret = new StringBuilder (rsize);
-			OciCalls.OCICharSetToUnicode (Environment, ret, buffer, out rsize);
+			rsize = rsizep.ToUInt64 ();
+			StringBuilder ret = new StringBuilder ((int)rsize);
+			OciCalls.OCICharSetToUnicode (Environment, ret, buffer, ref rsizep);
 
 			return ret.ToString ();
 		}
@@ -402,7 +416,7 @@ namespace System.Data.OracleClient
 
 			PersistSecurityInfo ();
 
-			if (!pooling) {
+			if (!pooling || conInfo.SetNewPassword == true) {
 				oci = new OciGlue ();
 				oci.CreateConnection (conInfo);
 			} else {
@@ -413,6 +427,23 @@ namespace System.Data.OracleClient
 
 			CreateStateChange (ConnectionState.Closed, ConnectionState.Open);
 		}
+
+#if ORACLE_DATA_ACCESS
+		public void OpenWithNewPassword (string newPassword) 
+		{
+			if (State == ConnectionState.Open)
+				throw new InvalidOperationException ();
+
+			conInfo.SetNewPassword = true;
+			conInfo.NewPassword = newPassword;
+
+			Open ();
+
+			conInfo.SetNewPassword = false;
+			conInfo.NewPassword = string.Empty;
+			conInfo.Password = newPassword;
+		}
+#endif
 
 		internal void CreateInfoMessage (OciErrorInfo info)
 		{
@@ -573,6 +604,8 @@ namespace System.Data.OracleClient
 			conInfo.Database = string.Empty;
 			conInfo.Password = string.Empty;
 			conInfo.CredentialType = OciCredentialType.RDBMS;
+			conInfo.SetNewPassword = false;
+			conInfo.NewPassword = string.Empty;
 
 			if (connectionString == null || connectionString.Length == 0) {
 				this.connectionString = connectionString;

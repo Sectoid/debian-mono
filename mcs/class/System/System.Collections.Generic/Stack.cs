@@ -31,14 +31,16 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 using System;
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 
 namespace System.Collections.Generic
 {
 	[ComVisible (false)]
 	[Serializable]
+	[DebuggerDisplay ("Count={Count}")]
+	[DebuggerTypeProxy (typeof (CollectionDebuggerView))]
 	public class Stack <T> : IEnumerable <T>, ICollection, IEnumerable
 	{
 		T [] _array;
@@ -164,7 +166,7 @@ namespace System.Collections.Generic
 		{
 			try {
 				if (_array != null) {
-					_array.CopyTo (dest, idx);
+					Array.Copy (_array, 0, dest, idx, _size);
 					Array.Reverse (dest, idx, _size);
 				}
 			} catch (ArrayTypeMismatchException) {
@@ -211,7 +213,7 @@ namespace System.Collections.Generic
 			// broken.
 			public void Dispose ()
 			{
-				idx = NOT_STARTED;
+				idx = FINISHED;
 			}
 			
 			public bool MoveNext ()
@@ -249,4 +251,3 @@ namespace System.Collections.Generic
 		}
 	}
 }
-#endif

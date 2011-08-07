@@ -1,53 +1,27 @@
-// Compiler options: -langversion:future
-
 using System;
+
+public class Test
+{
+	public static int Main ()
+	{
+		S mc = new S ();
+		float? f = mc;
+		if (f != 5)
+			return 1;
+		
+		return 0;
+	}
+}
 
 struct S
 {
-}
-
-public class C
-{
-	static void Foo<T> (T t, T u = default (T))
+	public static implicit operator float (S p1)
 	{
-	}
-
-	static void TestParams (params int[] i)
-	{
-		throw new ApplicationException ();
-	}
-
-	static void TestParams (int i = 4)
-	{
-	}
-
-	static void TestStruct (S? s = new S ())
-	{
+		throw new ApplicationException ("should not be called");
 	}
 	
-	public string this [int i, string s = "test"] {
-		get { return s; }
-		set { value = s; }
-	}
-
-	public static int Main ()
+	public static implicit operator float? (S p1)
 	{
-		Foo ("f");
-		Foo (2);
-		Foo (2, 4);
-		Foo<long> (2);
-		Foo<string> ("2", "3");
-		
-		TestParams ();
-		
-		TestStruct ();
-		
-		C c = new C ();
-		if (c [1] != "test")
-			return 1;
-		
-		c [3] = "value";
-		
-		return 0;
+		return 5;
 	}
 }

@@ -21,7 +21,6 @@
 
 /*
  * mono_arch_get_unbox_trampoline:
- * @gsctx: the generic sharing context
  * @m: method pointer
  * @addr: pointer to native code for @m
  *
@@ -30,14 +29,11 @@
  * unboxing before calling the method
  */
 gpointer
-mono_arch_get_unbox_trampoline (MonoGenericSharingContext *gsctx, MonoMethod *m, gpointer addr)
+mono_arch_get_unbox_trampoline (MonoMethod *m, gpointer addr)
 {
 	guint8 *code, *start;
-	int this_pos = 4, reg;
+	int reg;
 
-	if (MONO_TYPE_ISSTRUCT (mono_method_signature (m)->ret))
-		this_pos = 8;
-	    
 	start = code = mono_global_codeman_reserve (36);
 
 	/* This executes in the context of the caller, hence o0 */
@@ -88,11 +84,15 @@ mono_arch_nullify_plt_entry (guint8 *code, mgreg_t *regs)
 #define ALIGN_TO(val,align) (((val) + ((align) - 1)) & ~((align) - 1))
 
 guchar*
-mono_arch_create_trampoline_code (MonoTrampolineType tramp_type)
+mono_arch_create_generic_trampoline (MonoTrampolineType tramp_type, MonoTrampInfo **info, gboolean aot)
 {
 	guint8 *buf, *code, *tramp_addr;
 	guint32 lmf_offset, regs_offset, method_reg, i;
 	gboolean has_caller;
+
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
 
 	if (tramp_type == MONO_TRAMPOLINE_JUMP)
 		has_caller = FALSE;
@@ -261,15 +261,13 @@ mono_arch_create_specific_trampoline (gpointer arg1, MonoTrampolineType tramp_ty
 	if (code_len)
 		*code_len = (code - buf) * 4;
 
-	mono_jit_stats.method_trampolines++;
-
 	mono_arch_flush_icache ((guint8*)buf, (code - buf) * 4);
 
 	return buf;
 }	
 
 gpointer
-mono_arch_create_rgctx_lazy_fetch_trampoline (guint32 encoded_offset)
+mono_arch_create_rgctx_lazy_fetch_trampoline (guint32 slot, MonoTrampInfo **info, gboolean aot)
 {
 	/* FIXME: implement! */
 	g_assert_not_reached ();

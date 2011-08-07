@@ -1,77 +1,65 @@
 thisdir = tools
 
-net_1_1_dirs := \
-	al			\
-	cilc		\
-	culevel		\
-	ictool		\
-	mono-xsd	\
-	security	\
-	wsdl		\
-	genxs		\
-	disco		\
-	soapsuds	\
-	browsercaps-updater	\
-	monop		\
-	gacutil		\
-	cil-strip	\
-	resgen		\
-	macpack		\
-	mkbundle	\
-	dtd2rng		\
-	dtd2xsd		\
-	mjs			\
-	prj2make	\
-	mono-service	\
-	monodoc		\
-	mod		\
+per_profile_dirs = \
+	al		\
 	compiler-tester	\
-	installvst		\
-	installutil
-
-net_2_0_dirs := \
-	al			\
-	corcompare	\
 	linker		\
 	tuner		\
-	csharplib	\
 	csharp		\
-	mono-xsd	\
-	wsdl		\
-	mono-xmltool	\
-	compiler-tester	\
-	monop		\
-	xbuild		\
-	resgen		\
-	mdoc		\
-	mono-service	\
-	mono-shlib-cop	\
+	culevel		\
+	genxs		\
 	mkbundle	\
+	monop		\
+	mono-service	\
+	mono-xsd	\
+	resgen		\
+	wsdl		\
+	xbuild
+
+net_4_0_dirs := \
+	$(per_profile_dirs) \
+	corcompare	\
+	mono-xmltool	\
+	mono-shlib-cop	\
 	sgen		\
-	security	\
 	mconfig		\
 	installutil	\
 	nunitreport	\
 	pdb2mdb		\
 	sqlsharp	\
 	sqlmetal	\
-	gacutil		\
 	svcutil		\
-	lc
+	ictool		\
+	disco		\
+	soapsuds	\
+	browsercaps-updater	\
+	cil-strip	\
+	macpack		\
+	dtd2rng		\
+	dtd2xsd		\
+	mod		\
+	installvst	\
+	lc		\
+	mono-configuration-crypto \
+	ccrewrite
 
-net_2_1_dirs := \
+net_2_0_dirs := \
+	$(per_profile_dirs) \
+	monodoc		\
+	mdoc		\
 	compiler-tester
-	
-net_1_1_bootstrap_SUBDIRS = gacutil security resgen culevel
-net_1_1_SUBDIRS := $(net_1_1_dirs)
-net_2_0_bootstrap_SUBDIRS = resgen
-net_2_0_SUBDIRS := $(net_2_0_dirs)
-net_2_1_raw_SUBDIRS := $(net_2_1_dirs)
-net_2_1_SUBDIRS := $(net_2_1_dirs)
-net_4_0_bootstrap_SUBDIRS = resgen
-net_4_0_SUBDIRS := $(net_2_0_dirs)
 
-SUBDIRS = $(net_1_1_SUBDIRS) $(net_2_0_SUBDIRS) $(net_2_1_SUBDIRS)
+moonlight_dirs := \
+	compiler-tester
+
+basic_SUBDIRS = gacutil resgen security culevel
+net_2_0_SUBDIRS := $(basic_SUBDIRS) $(net_2_0_dirs)
+moonlight_raw_SUBDIRS := $(moonlight_dirs)
+moonlight_SUBDIRS := $(moonlight_dirs)
+net_4_0_SUBDIRS := $(net_4_0_dirs) $(basic_SUBDIRS)
+
+SUBDIRS = $(basic_SUBDIRS) $(net_2_0_SUBDIRS) $(moonlight_SUBDIRS)
+DIST_SUBDIRS = $(SUBDIRS) $(net_4_0_dirs)
 
 include ../build/rules.make
 
@@ -83,10 +71,9 @@ DISTFILES = \
 	scan-tests.pl			\
 	tinderbox/smtp.c		\
 	tinderbox/tinderbox.sh		\
-	gensources.sh			\
 	removecomments.sh
 
-test-local run-test-local run-test-ondotnet-local all-local install-local uninstall-local doc-update-local:
+test-local csproj-local run-test-local run-test-ondotnet-local all-local install-local uninstall-local doc-update-local:
 	@:
 
 dist-local: dist-default

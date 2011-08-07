@@ -1,11 +1,33 @@
+2011-03-15  Veerapuram Varadhan  <v.varadhan@gmail.com>
+
+	* DataSetTest2.cs (WriteXmlSchema_Relations_ForeignKeys): Add
+	PrimaryKey before other constraints.  Fixes regression of #672113.
+	
+2010-10-01  Veerapuram Varadhan  <v.varadhan@gmail.com>
+	
+	* DataSetReadXmlTest.cs: Added new test for #582732.
+	
+2010-07-23  Veerapuram Varadhan  <v.varadhan@gmail.com>
+
+	* DataColumnTest.cs (B623451_SetOrdinalTest): Added new.
+	
+2010-07-23  Veerapuram Varadhan  <v.varadhan@gmail.com>
+
+	* DataColumnTest.cs (B565616_NonIConvertibleTypeTest): Added new.
+	
+2010-01-21  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataTableTest2.cs: Mark PrimaryKey test as NotWorking.
+	Bug filed as 572722.
+
 2009-10-13  Veerapuram Varadhan  <vvaradhan@novell.com>
 
 	* DataSetTest2.cs (Bug537229_BinFormatSerializer_Test): Added new.
 	
 2009-09-26  Veerapuram Varadhan  <vvaradhan@novell.com>
 
-	* DataSetTest2.cs: Don't run the test for Bug#536194 in 1.x
-	profile.  Makes build bot go all green on Sys.Data.
+	* DataSetTest2.cs: Don't run test for Bug#536194 on 1.x
+	profile. Fixes 1.x test break.
 	
 2009-09-26  Veerapuram Varadhan  <vvaradhan@novell.com>
 

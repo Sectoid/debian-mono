@@ -2,30 +2,27 @@
  *
  * Copyright (c) Microsoft Corporation. 
  *
- * This source code is subject to terms and conditions of the Microsoft Public License. A 
+ * This source code is subject to terms and conditions of the Apache License, Version 2.0. A 
  * copy of the license can be found in the License.html file at the root of this distribution. If 
- * you cannot locate the  Microsoft Public License, please send an email to 
+ * you cannot locate the  Apache License, Version 2.0, please send an email to 
  * dlr@microsoft.com. By using this source code in any fashion, you are agreeing to be bound 
- * by the terms of the Microsoft Public License.
+ * by the terms of the Apache License, Version 2.0.
  *
  * You must not remove this notice, or any other, from this software.
  *
  *
  * ***************************************************************************/
-using System; using Microsoft;
-
 
 using System.Collections;
 using System.Collections.Generic;
 
-#if CODEPLEX_40
 // Note: can't move to Utils because name conflicts with System.Linq.Set
-namespace System.Linq.Expressions {
+#if CLR2
+namespace Microsoft.Scripting.Ast {
 #else
-// Note: can't move to Utils because name conflicts with Microsoft.Linq.Set
-namespace Microsoft.Linq.Expressions {
+namespace System.Linq.Expressions {
 #endif
-    
+
     /// <summary>
     /// A simple hashset, built on Dictionary{K, V}
     /// </summary>

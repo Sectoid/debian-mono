@@ -5,7 +5,6 @@
 //   Kazuki Oikawa  (kazuki@panicode.com)
 //
 
-#if NET_2_0
 
 using System;
 using System.Runtime.ConstrainedExecution;
@@ -48,17 +47,14 @@ namespace System.Runtime.InteropServices
 			if (_disposed)
 				return;
 
-			_disposed = true;
-			if (IsInvalid)
-				return;
-
-			if (disposing == true && !IsInvalid){
-				if (!ReleaseHandle ()) {
+			if (!IsInvalid){
+				if (!_disposed && !ReleaseHandle ()) {
 					GC.SuppressFinalize (this);
 				} else {
 					// Failed in release...
 				}
 			}
+			_disposed = true;
 		}
 
 		[ReliabilityContract (Consistency.WillNotCorruptState, Cer.Success)]
@@ -87,4 +83,3 @@ namespace System.Runtime.InteropServices
 		}
 	}
 }
-#endif
