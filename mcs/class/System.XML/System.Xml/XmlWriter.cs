@@ -35,17 +35,13 @@ using System;
 using System.Collections;
 using System.IO;
 using System.Text;
-#if NET_2_0 && (!NET_2_1 || MONOTOUCH)
+#if !MOONLIGHT
 using System.Xml.XPath;
 #endif
 
 namespace System.Xml
 {
-#if NET_2_0
 	public abstract class XmlWriter : IDisposable
-#else
-	public abstract class XmlWriter
-#endif
 	{
 #if NET_2_0
 		XmlWriterSettings settings;
@@ -61,11 +57,7 @@ namespace System.Xml
 
 #if NET_2_0
 		public virtual XmlWriterSettings Settings {
-			get {
-				if (settings == null)
-					settings = new XmlWriterSettings ();
-				return settings;
-			}
+			get { return settings; }
 		}
 #endif
 
@@ -146,7 +138,36 @@ namespace System.Xml
 		{
 			if (settings == null)
 				settings = new XmlWriterSettings ();
-			writer.settings = settings;
+			else
+				settings = settings.Clone ();
+
+			var src = writer.Settings;
+			if (src == null) {
+				settings.ConformanceLevel = ConformanceLevel.Document; // Huh? Why??
+				writer = new DefaultXmlWriter (writer);
+				writer.settings = settings;
+			} else {
+				ConformanceLevel dst = src.ConformanceLevel;
+				switch (src.ConformanceLevel) {
+				case ConformanceLevel.Auto:
+					dst = settings.ConformanceLevel;
+					break;
+				case ConformanceLevel.Document:
+				case ConformanceLevel.Fragment:
+					if (settings.ConformanceLevel != ConformanceLevel.Auto)
+						dst = settings.ConformanceLevel;
+					break;
+				}
+
+				settings.MergeFrom (src);
+
+				// It returns a new XmlWriter instance if 1) Settings is null, or 2) Settings ConformanceLevel (or might be other members as well) give significant difference.
+				if (src.ConformanceLevel != dst) {
+					writer = new DefaultXmlWriter (writer, false);
+					writer.settings = settings;
+				}
+			}
+
 			return writer;
 		}
 
@@ -179,7 +200,7 @@ namespace System.Xml
 				return;
 
 			WriteStartAttribute (reader.Prefix, reader.LocalName, reader.NamespaceURI);
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 			// no ReadAttributeValue() in 2.1 profile.
 			WriteString (reader.Value);
 #else
@@ -369,12 +390,16 @@ namespace System.Xml
 				ns = String.Empty;
 
 #if NET_2_0
-			switch (Settings.ConformanceLevel) {
-			case ConformanceLevel.Document:
-			case ConformanceLevel.Fragment:
-				XmlConvert.VerifyNCName (localName);
-				break;
+			if (Settings != null) {
+				switch (Settings.ConformanceLevel) {
+				case ConformanceLevel.Document:
+				case ConformanceLevel.Fragment:
+					XmlConvert.VerifyNCName (localName);
+					break;
+				}
 			}
+			else
+				XmlConvert.VerifyNCName (localName);
 #else
 			XmlConvert.VerifyNCName (localName);
 #endif
@@ -392,7 +417,7 @@ namespace System.Xml
 				WriteString (localName);
 		}
 
-#if NET_2_0 && (!NET_2_1 || MONOTOUCH)
+#if !MOONLIGHT
 		public virtual void WriteNode (XPathNavigator navigator, bool defattr)
 		{
 			if (navigator == null)
@@ -655,6 +680,8 @@ namespace System.Xml
 				WriteValue ((float) value);
 			else if (value is TimeSpan) // undocumented
 				WriteString (XmlConvert.ToString ((TimeSpan) value));
+			else if (value is Uri)
+				WriteString (((Uri) value).ToString ());
 			else if (value is XmlQualifiedName) {
 				XmlQualifiedName qname = (XmlQualifiedName) value;
 				if (!qname.Equals (XmlQualifiedName.Empty)) {

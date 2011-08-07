@@ -1,3 +1,21 @@
+2010-12-01  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Add response file suport to Mono.Options.
+
+	Response file support is an "opt-in" feature, performed by adding
+	a ResponseFileSource to the OptionSet initialization logic:
+
+	var p = new OptionSet () { // normal options here... new
+	ResponseFileSource (), };
+
+	Response files make use of the new "ArgumentSource" support, which
+	acts as a low-level argument pre-processor, allowing processing of
+	arguments _before_ Option processing is performed.
+
+2010-06-09  Jonathan Pryor  <jpryor@novell.com>
+
+	* Mono.Options_test.dll.sources: Add additional sources.
+
 2008-10-22  Jonathan Pryor  <jpryor@novell.com>
 
 	* Documentation/en/**/*.xml: s/NDesk.Options/Mono.Options/g (How'd I

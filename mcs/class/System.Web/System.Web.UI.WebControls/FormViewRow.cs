@@ -4,7 +4,7 @@
 // Authors:
 //	Lluis Sanchez Gual (lluis@novell.com)
 //
-// (C) 2005 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2004-2010 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -25,10 +25,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-// Copyright (C) 2004 Novell, Inc (http://www.novell.com)
 //
-
-#if NET_2_0
 
 using System;
 using System.Collections;
@@ -45,7 +42,12 @@ namespace System.Web.UI.WebControls
 		int rowIndex;
 		DataControlRowState rowState;
 		DataControlRowType rowType;
-		
+#if NET_4_0
+		internal bool RenderJustCellContents {
+			get;
+			set;
+		}
+#endif
 		public FormViewRow (int rowIndex, DataControlRowType rowType, DataControlRowState rowState)
 		{
 			this.rowIndex = rowIndex;
@@ -76,7 +78,18 @@ namespace System.Web.UI.WebControls
 			}
 			return false;
 		}
+#if NET_4_0
+		protected internal override void Render (HtmlTextWriter writer)
+		{
+			if (!RenderJustCellContents) {
+				base.Render (writer);
+				return;
+			}
+
+			foreach (TableCell cell in Cells)
+				cell.RenderContents (writer);
+		}
+#endif
 	}
 }
 
-#endif

@@ -1,19 +1,42 @@
+2011-03-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] Match exceptions from MS on cleanup.
+
+	When the listener is aborted or closed, we get different
+	exceptions depending on whether there's a GetContext() call in
+	progress or not.
+
+2011-03-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Test for both Set-Cookie and Set-Cookie2
+
+2011-01-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpWebRequest] Support 4.0 Host property.
+
+2010-08-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix running of tests under net 4.0.
+
 2010-01-21  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* CookieContainerTest.cs: Additional test cases from Tom Philpot
-	[Backport r149976 + NET_1_1 fixes]
+
+2010-01-15  Jonathan Pobst  <monkey@jpobst.com>
+
+	* HttpWebRequestTest.cs: Mark test WriteServerAborts as
+	NotWorking.  Documented on bug #312968.
 
 2010-01-12  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* NetworkCredentialTest.cs: New. Unit tests.
-	[Backport r149401]
 
 2009-12-24  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* CookieContainerTest.cs: Split many tests into smaller test 
 	cases. Add test cases for DefaultPerDomainCookieLimit and
-	DefaultCookieLimit. Remove all, but one 1.x, [Category 
-	("NotWorking")] since everything works now.
+	DefaultCookieLimit. Remove all [Category ("NotWorking")] since
+	everything works now.
 
 2009-10-23  Alexandre Gomes  <alexmipego@gmail.com>
 

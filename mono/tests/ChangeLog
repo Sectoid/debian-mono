@@ -1,6 +1,372 @@
-2010-02-03  Sylvain Dupont <duposyl@gmail.com>
+2011-03-10  Zoltan Varga  <vargaz@gmail.com>
 
-	backport of r149817
+	Mark threads created when calling from native code into the
+	runtime as background threads. Fixes #678164.
+
+2011-03-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable testbundle for powerpc too.
+
+2011-02-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix reading of cattr arguments of type Type[]. Fixes #670331.
+
+2011-01-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix compilation of tests/assemblyresolve with newer mcs-es.
+
+2011-01-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Dist finally_guard.cs.
+
+2011-01-04  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Make test messages more usefull
+
+2010-12-14  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add one more test for marshaling of char arrays
+
+2010-12-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix handling of gshared methods declared in generic superclasses
+	of nongeneric classes in stack traces. Fixes #658645.
+
+2010-12-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Clean up the appdomain at the end of the remoting4 test.
+
+2010-12-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable a test which breaks under AOT.
+
+2010-12-01  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add regression test for #647267
+
+2010-11-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Enable test for #318677
+
+2010-11-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable finally_guard.exe on amd64 until it is fixed.
+
+2010-11-26  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix those tests so they are verifiable.
+
+2010-11-12  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* gc-oom-handling.cs: Modify this test to test major fragmentation
+	too.
+
+	* gc-oom-handling2.cs: Add tests for some heavy reflection
+	allocators.
+
+2010-11-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add test for string interning OOM.
+
+2010-11-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add tests for OOM handling.
+
+2010-11-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix FieldInfo::GetFieldFromHandle signature.
+
+2010-11-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Enlarge try-finally blocks preceeded by a Monitor.Enter () call to
+	include the call itself, to avoid races inherent in such code.
+	Fixes #651546.
+
+2010-10-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Add tests for the eglib remapper.
+
+2010-10-14  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add tests for protected finally blocks.
+
+2010-10-06  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix Marshal.SizeOf() for structs with explicit layout
+
+	Marshal.SizeOf is now returning the expected values for explicit
+	layout in 32 and 64 bits systems.
+
+	Fixes bug #641535.
+
+2010-10-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Re-enable the tests.
+
+2010-10-06  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Disabled test until ?mcs is fixed.
+
+	This test failed to compile (internal error). Large changes
+	required in ?mcs before this can be compiled.
+
+2010-10-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Execute some specialized tests using the normal test
+	infrastructure.
+
+2010-09-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add runtime test for delegates with null target.
+
+2010-09-25  Zoltan Varga  <vargaz@gmail.com>
+
+	Enable support for wrapping non Exception subclasses in
+	RuntimeWrappedException objects, implement support for
+	RuntimeCompatibilityAttribute.
+
+2010-09-15  Raja R Harinath  <harinath@hurrynot.org>
+
+	Fix a few CRLF issues
+
+2010-09-06  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* bug-348522.2.cs: gmcs now complains about a thinko here.
+
+2010-08-24  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add regression test for 633291.
+
+2010-08-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a CAS regalloc test.
+
+2010-08-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix invoking of gshared methods in marshalbyref objects. Fixes
+	#632316.
+
+2010-08-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Try to make delegate2 test always pass
+
+	This test is failing randomly in windows and linux. Adding the
+	.config file in windows makes it work.
+
+2010-08-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Add an option for running the runtime tests under valgrind.
+
+2010-08-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove support for building with system glib.
+
+2010-08-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix infinite loop in mono_class_get_nested_types () if a nested
+	type fails to load. Fixes # 630041. Add a test.
+
+2010-08-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	New threadpool exception test
+
+	Add new test for a threadpool thread that is in a domain that will
+	be unloaded.
+
+2010-08-09  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Ignore a few more files.
+
+2010-08-05  Raja R Harinath  <harinath@hurrynot.org>
+
+	* mono/tests/appdomain-unload.cs (Main): Pass along arguments to
+	TestDriver.
+
+2010-08-01  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	* Makefile.am: added 2 new tests * threadpool-exceptions6.cs: new
+	thread.abort inside the threadpool test. *
+	appdomain-unload.exe.config: this test does not work in .NET
+	without having the legacy unhandled exception mode enabled.
+
+2010-08-01  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	New threadpool + exception test.
+
+2010-07-12 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* bug-389886-3.cs: New regression test.
+
+2010-07-10  Jonathan Pryor <jpryor@novell.com>
+
+	* Makfile.am (test-process-exit): Expected output is in $srcdir.
+
+2010-07-06  Zoltan Varga  <vargaz@gmail.com>
+
+	* bug-81691.cs: Fix this test by catching FileNotFoundException as well.
+
+2010-06-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am: Disable bug-459094.exe it creates a very deep directory hierarchy
+	without cleaning it up.
+
+	* Makefile.am (bug-81691.exe): Fix the dependencies of this test.
+
+2010-06-26  Mark Probst  <mark.probst@gmail.com>
+
+	* bug-616463.cs: New test.
+
+	* Makefile.am: Test added to generic tests.
+
+2010-06-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am: Add an 'SGEN' make variable to allow tests to be run with SGEN.
+
+2010-06-15  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs dtest-app.cs: Removed, moved to mcs/Mono.Debugger.Soft.
+
+2010-06-10  Jonathan Pryor  <jpryor@novell.com>
+
+	* Makefile.am: Add test-process-exit target.
+	* bug-438454.cs: Added; test case for #438454.
+	* bug-438454.exe.stdout.expected: Added; expected output when
+	  executing bug-438454.exe, to test the ordering of the
+	  AppDomain.ProcessExit event wrt ThreadPool disposal.
+
+2010-06-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs dtest-app.cs: Add tests for StackFrame.GetVisibleVariables ().
+
+2010-05-31  Robert Jordan  <robertj@gmx.net>
+
+	* pinvoke2.cs (test_0_calli_dynamic): Use the cdecl version
+	of mono_test_marshal_inout_array. Fixes the test when compiled
+	with MSC (and GCC where it worked by accident).
+
+	* libtest.c (mono_test_marshal_inout_array_cdecl):
+	New. cdecl wrapper for the function with the same name.
+
+2010-05-31  Robert Jordan  <robertj@gmx.net>
+
+	* libtest.c (mono_test_marshal_lookup_symbol): Export as STDCALL because
+	it's DllImported from pinvoke2.
+
+2010-05-28  Robert Jordan  <robertj@gmx.net>
+
+	* libtest.c: Implement and use marshal_strdup () as a g_strdup ()
+	replacement under Windows. Fixes memory allocation mismatches.
+
+2010-05-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* interlocked.cs: Add a test for Interlocked.Exchange on a local variable.
+
+2010-05-13 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* typeload-unaligned.cs: Move the reference to the broken type
+	to an inner function since mono now detects the brokenness earlier.
+
+2010-05-13  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs: Add a test for nullref exceptions + single threaded invokes.
+
+2010-05-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs dtest-app.cs: Add a test for pending breakpoints in domains.
+
+2010-04-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs: Add a test for TypeMirror.GetSourceFiles (true).
+
+2010-04-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* load-missing.il: Make BrokenClass inherit from a class in t, not mscorlib, so
+	mcs can load load-missing.dll as a reference.
+
+2010-04-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am (DISABLED_TESTS): Add gc-altstack.exe since it randomly fails
+	under Boehm, which can't handle threads which are executing on an altstack during
+	stack marking.
+
+2010-04-10  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs: Add a minimal test for Thread.ThreadId.
+
+2010-04-08  Zoltan Varga  <vargaz@gmail.com>
+
+	* exit-stress-threadpool.cs: New stress test.
+
+2010-04-07  Zoltan Varga  <vargaz@gmail.com>
+
+	* interlocked-2.2.cs: Add an Interlocked.CompareExchange(long) test.
+
+2010-04-06 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* bug-575941.cs: New regression test.
+
+2010-04-05 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* bug-515884.il: New regression test.
+
+2010-04-02  Zoltan Varga  <vargaz@gmail.com>
+
+	* libtest.c: Add OpenBSD to the list of defines.
+
+2010-03-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am: Disable testbundle for now as it depends on having a system mono.
+
+2010-03-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am (BASE_TEST_CS_SRC): Remove make-imt-test.cs, it is not a test.
+
+	* test-runner.cs: Add an option to run the tests with different optimization
+	sets.
+
+	* Makefile.am: Make it possible to run the normal+gshared tests using the managed
+	test runner by passing the M=1 option to make.
+
+2010-03-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am (runtest): Save the output of the aot compiler into a file.
+
+2010-03-05  Robert Jordan  <robertj@gmx.net>
+
+	* remoting4.cs: Add test for bug #504886.
+
+2010-03-03 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* bug-562150.cs: Regression test.
+
+2010-03-02  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* Makefile.am: Renamed INSTALL_2_1 to MOONLIGHT.
+
+2010-03-01  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs: Add a test for CreateBoxedValue.
+
+2010-02-11  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs: Add a test for exception subclasses.
+
+2010-02-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs: Add a test for TypeMirror.EnumUnderlyingType.
+
+	* dtest.cs dtest-app.cs: Add tests for TypeMirror.IsEnum and
+	VirtualMachine.CreateEnumMirror ().
+
+2010-01-28  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs: Add minimal tests for assembly unloading.
+
+2010-01-28 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* large-gc-bitmap.cs: Respect the 1Mb size limit for valuetype types.
+
+2010-01-19  Sylvain Dupont <duposyl@gmail.com>
 
 	* cominterop.cs libtest.c: Added tests for marshalling
 	  in, in/byref, in/out, in/out/byref parameters of type
@@ -8,9 +374,43 @@
 
 	Code is contributed under MIT/X11 license.
 
+2010-01-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs dtest-app.cs: Add a test for single stepping + out of line bblocks.
+
+	* dtest.cs: Upgrade after debugging namespace change.
+
+2010-01-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest-app.cs dtest.cs: Add tests for handling vtypes with IntPtr fields.
+
+2009-12-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* bug-561239.cs: New test for bug #561239.
+
+2009-12-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs dtest-app.cs: Add more single stepping tests.
+
 2009-12-17  Zoltan Varga  <vargaz@gmail.com>
 
 	* libtest.c pinvoke2.cs: Add a test for calling pinvoke methods using calli.
+
+2009-12-05  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs dtest-app.cs: Add a test for intptrs.
+
+2009-12-01  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs: Add a a test for invokes on not suspended threads.
+
+2009-11-24  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs dtest-app.cs: Add a test for single threaded invokes + events.
+
+2009-11-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs dtest-app.cs: Add a test for single threaded invokes.
 
 2009-11-20  Zoltan Varga  <vargaz@gmail.com>
 
@@ -20,13 +420,84 @@
 	* marshalbool.cs: Pass -1 as the 'expected' argument instead of 0xffff, which
 	causes sign extensions issues on some platforms.
 
+2009-11-19  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs: Add a test for AssemblyMirror.GetName ().
+
+2009-11-16  Mark Probst  <mark.probst@gmail.com>
+
+	* large-gc-bitmap.cs: New test for large GC bitmaps.
+
+	* Makefile.am: Test added.
+
+2009-11-14  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs: Add a test for stack traces in native code.
+
+2009-11-13  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs: Add a test for InvokeOptions.DisableBreakpoints.
+
+2009-11-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs: Update to latest APIs.
+
+	* generic-virtual.2.cs: Add a test for rebuilding virtual generic method
+	thunks.
+
+2009-11-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am (PLATFORM_DISABLED_TESTS): Disable filter-stack.exe on ARM.
+
+2009-11-07  Zoltan Varga  <vargaz@gmail.com>
+
+	* gen-runtime-invoke.cs: Add a test.
+
+	* invoke.cs: Convert to using the TestRunner. Remove a test which is
+	auto-generated now.
+
+2009-11-06  Zoltan Varga  <vargaz@gmail.com>
+
+	* dtest.cs (Threads): Fix a race.
+
+2009-11-05  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am (dcheck): New target to run the soft-debugger tests.
+
+	* dtest.cs dtest-app.cs: New files containing tests for the soft debugger.
+
+2009-11-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* thread6.cs: Add a test for 539394. Convert to using the TestRunner.
+
+2009-11-03  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* interface-with-static-method.il: New test for an interface with static
+	constructor.
+
 2009-10-25  Zoltan Varga  <vargaz@gmail.com>
 
 	* gc-altstack.cs: New test.
 
+2009-10-23  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Makefile.am (modules.exe): Depend on TestDriver.dll too.
+
+2009-10-20  Zoltan Varga  <vargaz@gmail.com>
+
+	* libtest.c pinvoke2.cs: Add a test for #548276.
+
+2009-10-16  Bill Holmes  <billholmes54@gmail.com>
+
+	* cominterop.cs : Adding a test for 547030. 
+
+	Contributed under MIT/X11 license.
+
 2009-10-07  Zoltan Varga  <vargaz@gmail.com>
 
 	* pinvoke2.cs libtest.c: Add a test for marshalling DateTime to unmanaged code.
+
+	* Makefile.am: Fix make dist.
 
 2009-10-06  Mark Probst  <mark.probst@gmail.com>
 
@@ -34,11 +505,20 @@
 
 	* Makefile.am: Test added.
 
-	Backport of r143506.
+2009-10-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am: Replace make_imt_test_.sh with a faster C# version.
 
 2009-09-30  Zoltan Varga  <vargaz@gmail.com>
 
 	* pinvoke2.cs libtest.c: Add a test for #543133.
+
+2009-09-25  Mark Probst  <mark.probst@gmail.com>
+
+	* xdomain-threads.c: Test for checking whether Thread is correctly
+	separated between appdomains.
+
+	* Makefile.am: Test added.
 
 2009-09-22  Zoltan Varga  <vargaz@gmail.com>
 

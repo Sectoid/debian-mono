@@ -26,8 +26,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using NUnit.Framework;
 
 using System;
@@ -213,7 +211,6 @@ namespace MonoTests.System
 		}
 
 		[Test] // TryCreate (Uri, String, Uri)
-		[Category ("NotWorking")]
 		public void TryCreate2 ()
 		{
 			Uri baseUri = new Uri (absolute);
@@ -253,7 +250,6 @@ namespace MonoTests.System
 		}
 
 		[Test] // TryCreate (Uri, Uri, Uri)
-		[Category ("NotWorking")]
 		public void TryCreate3 ()
 		{
 			Uri baseUri = new Uri (absolute);
@@ -292,8 +288,16 @@ namespace MonoTests.System
 			Uri baseUri = new Uri (absolute);
 			try {
 				Uri.TryCreate (baseUri, (Uri) null, out uri);
-				Assert.Fail ();
-			} catch (NullReferenceException) {
+#if NET_4_0
+				Assert.IsNull (uri);
+#else
+				Assert.Fail ("throw NRE under FX 2.0");
+#endif
+			}
+			catch (NullReferenceException) {
+#if NET_4_0
+				Assert.Fail ("does not throw NRE under FX 4.0");
+#endif
 			}
 		}
 
@@ -304,6 +308,7 @@ namespace MonoTests.System
 			Assert.IsTrue (Uri.IsWellFormedUriString ("http://www.go-mono.com/Main%20Page", UriKind.Absolute), "http/%20");
 			Assert.IsFalse (Uri.IsWellFormedUriString (null, UriKind.Absolute), "null");
 			Assert.IsFalse (Uri.IsWellFormedUriString ("data", UriKind.Absolute), "data");
+			Assert.IsTrue (Uri.IsWellFormedUriString ("http://www.go-mono.com/Main_Page#1", UriKind.Absolute), "http/hex");
 		}
 
 		[Test]
@@ -409,8 +414,14 @@ namespace MonoTests.System
 			try {
 				http.IsBaseOf (null);
 				Assert.Fail ();
-			} catch (NullReferenceException) {
 			}
+#if NET_4_0
+			catch (ArgumentNullException) {
+			}
+#else
+			catch (NullReferenceException) {
+			}
+#endif
 		}
 
 		[Test] 
@@ -462,32 +473,26 @@ namespace MonoTests.System
 		}
 
 		[Test]
-		[Category ("NotDotNet")] // https://connect.microsoft.com/VisualStudio/feedback/ViewFeedback.aspx?FeedbackID=299942
-		public void MakeRelativeUri_Uri_Null_Mono ()
+		public void MakeRelativeUri_Uri_Null ()
 		{
 			Uri uri = new Uri ("http://test.com");
 			try {
 				uri.MakeRelativeUri ((Uri) null);
 				Assert.Fail ("#1");
-			} catch (ArgumentNullException ex) {
+			}
+#if NET_4_0
+			catch (ArgumentNullException ex) {
 				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
 				Assert.IsNull (ex.InnerException, "#3");
 				Assert.IsNotNull (ex.Message, "#4");
 				Assert.IsNotNull (ex.ParamName, "#5");
 				Assert.AreEqual ("uri", ex.ParamName, "#6");
 			}
-		}
-
-		[Test]
-		[Category ("NotWorking")] // https://connect.microsoft.com/VisualStudio/feedback/ViewFeedback.aspx?FeedbackID=299942
-		public void MakeRelativeUri_Uri_Null_MS ()
-		{
-			Uri uri = new Uri ("http://test.com");
-			try {
-				uri.MakeRelativeUri ((Uri) null);
-				Assert.Fail ("#1");
-			} catch (NullReferenceException) {
+#else
+			catch (NullReferenceException) {
+				// https://connect.microsoft.com/VisualStudio/feedback/ViewFeedback.aspx?FeedbackID=299942
 			}
+#endif
 		}
 
 		[Test] // LAMESPEC: see bug #321113
@@ -499,7 +504,7 @@ namespace MonoTests.System
 
 			Uri a = new Uri ("http://www.mono-project.com:808/foo");
 			Uri b = new Uri (a, "../docs?queryyy#% %20%23%25bar");
-			//Assert.AreEqual ("http://www.mono-project.com:808/docs?queryyy#% %20%23%25bar", b.OriginalString, "#2");
+			Assert.AreEqual ("http://www.mono-project.com:808/docs?queryyy#% %20%23%25bar", b.OriginalString, "#2");
 
 			Uri c = new Uri ("http://www.mono-project.com:808/foo");
 			Uri d = new Uri (a, "../docs?queryyy#%20%23%25bar");
@@ -601,6 +606,12 @@ namespace MonoTests.System
 			}
 		}
 
+		[Test]
+		public void ParseShortNameAsRelativeOrAbsolute ()
+		{
+			new Uri ("x", UriKind.RelativeOrAbsolute);
+		}
+
 		private class TolerantUriParser : GenericUriParser
 		{
 			private const GenericUriParserOptions DefaultOptions
@@ -616,4 +627,3 @@ namespace MonoTests.System
 	}
 }
 
-#endif

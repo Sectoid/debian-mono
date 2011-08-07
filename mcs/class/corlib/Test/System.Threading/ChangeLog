@@ -1,3 +1,85 @@
+2011-04-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fail gracefully when CancellationToken has been created
+	uninitialized by user.
+
+	Also add corresponding unit test.
+
+2011-04-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add CancellationToken unit tests
+
+2011-04-15  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	[corlib] Ensure Thread.ManagedThreadId is unique per thread.
+
+	This fixes bug #667329.
+
+	The problem was that ManagedThreadId was created from a
+	per-appdomain counter, but stored in a per-thread storage, so if
+	two threads could end up with the same ManagedThreadId if a second
+	appdomain executed on the second thread first.
+
+2011-01-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Avoid random failure in CountdownEvent unit test
+
+2011-01-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Update ThreadLocal to use default(T) for initialization with
+	parameterless ctor following comment on
+	https://connect.microsoft.com/VisualStudio/feedback/details/630350/threadlocal-documentation-and-actual-behavior-mismatch
+
+2010-12-09  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix semantic of CountdownEvent Reset methods. Fix #658244.
+
+2010-08-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Force usage of 2 threads in one of ManualResetEventSlim unit test.
+	It has no sense for more than that.
+
+2010-08-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Rename ThreadLocal unit tests to reflect API name change (was
+	ThreadLazy).
+
+2010-08-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Include set accessor in ThreadLocal's Value property. Catch
+	possible exception in the initialization function and re-throw it
+	accordingly. Track circular calling of Value property. Add
+	corresponding unit-tests.
+
+2010-08-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add a coherence subtest to SemaphoreSlim unit tests to enforce
+	that only the correct number of thread are allowed to run
+	concurrently.
+
+2010-03-24  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* SpinLockTests.cs: Add a correctness check unit test
+
+2010-03-08  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* SpinLockTests.cs: Added unit tests for SpinLock
+
+2010-02-08  Zoltan Varga  <vargaz@gmail.com>
+
+	* WaitHandleTest.cs: Add a test for #576039.
+
+2010-02-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* CancellationTokenTests.cs:
+	* LazyInitTests.cs:
+	* ThreadLazyTests.cs: Update namespace and tested methods
+
+2009-12-09  Jb Evain  <jbevain@novell.com>
+
+	* ThreadTest.cs: add a test for a null callback passed to
+	ThreadPool.QueueUserWorkItem.
+
 2009-11-02  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	* ParallelTests.cs: Added unit test for Bug #536919, cleaned up.
@@ -5,38 +87,29 @@
 2009-10-26  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* InterlockedTest.cs: Add test case for generic methods
-	CompareExchange and Exchange
-	[Backport r144840]
+	ComapreExchange and Exchange
 
 2009-10-25  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* ThreadTest.cs: Add test cases for Current[UI]Culture (not 
 	working), Name, Join, Sleep and SpinWait
-	[Backport r144824]
 
 2009-10-22  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* EventWaitHandleTest.cs: New. Test case for EventResetMode 
 	validation
-	[Backport r144681]
-
-2009-10-22  Sebastien Pouliot  <sebastien@ximian.com> 
-
 	* MonitorTest.cs: Mark existing tests as "NotWorking" since they
 	fail in MS FX2 (maybe they worked in 1.x?). Add more test cases
 	to validate the TryEnter and Wait overloaded methods.
-	[Backport r144627]
 
 2009-10-21  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* WaitHandleTest.cs: New. Add test cases for Wait[One|All|Any]
 	methods overloads (at least the one present in Silverlight 2)
-	[Backport r144529]
 
 2009-10-20  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* TimerTest.cs: Add more validation tests
-	[Backport r144466]
 
 2009-08-11  Jérémie Laval  <jeremie.laval@gmail.com>
 

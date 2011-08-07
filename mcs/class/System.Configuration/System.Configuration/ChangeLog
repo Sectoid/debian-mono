@@ -1,3 +1,97 @@
+2011-04-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Use xmlns-ignoring XmlDocument derivation for config files. Fixed
+	bug #641935.
+
+2010-12-14  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #467221. Properly match location sub-paths
+	for security trimming
+
+	When security trimming is requested for sub-path of a location
+	specified in the config file, make sure that we match such a
+	request to its parent location.
+
+	Based on patch from Mike Morano <mmorano@mikeandwan.us>, thanks!
+
+2010-10-04  Marek Habersack  <grendel@twistedcode.net>
+
+	[configuration] Part of fix for bug #579837.
+	CommaDelimitedStringCollection must properly note that it was
+	modified.
+
+	When one manipulates the collection as an instance of
+	StringCollection, the 'modified' field will not be set (Add,
+	Remove etc. from the underlying StringCollection type will be
+	used). To work around it a check has to be performed in IsModified
+	whether the contents of the collection changed. It is done by
+	comparing string hash codes of the original vs current string.
+	CommaDelimitedStringCollectionConverter forces string hash code
+	update on the new collection, so that IsModified works correctly
+	on collections converted from comma-delimited strings.
+
+2010-08-09  Laurent Etiemble  <laurent.etiemble@gmail.com>
+
+	*
+	mcs/class/System.Configuration/System.Configuration/InternalConfigurationHost.cs:
+	Add new internal call to retrieve embedded application config.
+	First check if an embedded configuration exists before looking up
+	on the filesystem.
+
+2010-08-06  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Remove System.Configuration.ConfigurationErrorsExceptions from
+	startup.
+
+	If an app uses e.g. System.Diagnostics.Trace (and the Trace
+	methods are actually invoked, e.g. by building with -d:TRACE and
+	using Trace.WriteLine()), at least one
+	System.Configuration.ConfigurationErrorsException was being
+	generated as part of startup (one from parsing machine.config, and
+	an optional second exception from parsing AppName.exe.config).
+
+	The exception was caught, so it didn't break anything, but it was
+	still undesirable.
+
+	The cause of the exception is as follows: The
+	<system.diagnostics/> configuration section is processed by
+	DiagnosticsConfigurationHandler, which is an
+	IConfigurationSectionHandler implementation. In .NET 2.0,
+	configuration file processing was moved to use
+	System.Configuration.ConfigurationSection implementations, which
+	would delegate to IConfigurationSectionHandlers if/when specified.
+
+	However, before ConfigurationSection.GetRuntimeObject() calls into
+	DiagnosticsConfigurationHandler, it would indirectly call
+	ConfigurationElement.DeserializeElement() to process the e.g.
+	<system.diagnostics/> element, which would throw as
+	ConfigurationElement was hitting "unrecognized" XML elements (as
+	ConfigurationElement doesn't know about
+	DiagnosticsConfigurationHandler-specific XML). This would result
+	in a ConfigurationErrorsException, which would be caught in
+	GetRuntimeObject(), then DiagnosticsConfigurationHandler.Create()
+	would be invoked (doing the "actual" <system.diagnostics/>
+	parsing, allowing Trace to work, etc.
+
+	The fix taken here is to avoid calling
+	ConfigurationElement.DeserializeElement() if there's an
+	IConfigurationSectionHandler present, as it doesn't make sense to
+	parse the same section with two different handlers.
+
+2010-08-05  Jb Evain  <jbevain@gmail.com>
+
+	[Perf] avoid an exception when reading a non existent app
+	configuration
+
+	Make implementors of IInternalConfigurationHost.OpenStreamForRead
+	return null instead of throwing an exception when there's no
+	usable configuration file and deal with null at the call site.
+
+2010-07-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ConfigurationPropertyCollection.cs, PropertyInformation.cs:
+	  add null check to detect bogus configuration early.
+
 2010-01-09  Marek Habersack  <mhabersack@novell.com>
 
 	* ConfigurationLocation.cs: trailing / characters are removed from
@@ -10,6 +104,13 @@
 	Locations are sought for using paths relative to the current
 	instance's configPath, not to the root path.
 	All of the above is part of fix for bug #568441
+
+2009-12-14  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* SectionInformation.cs: ConfigSource should never be null, but empty.
+	Also, the Type property should throw an argument exception if the
+	new value is null or empty.
+	Fixes #458185.
 
 2009-10-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
 

@@ -128,6 +128,7 @@ namespace System.Xml.Schema
 		ValidationFlags options;
 
 		// Validation state
+		bool initial = true;
 		Transition transition;
 		XsdParticleStateManager state;
 
@@ -158,6 +159,8 @@ namespace System.Xml.Schema
 		// Here XmlSchemaValidatingReader needs "current type"
 		// information to validate attribute values.
 		internal XmlSchemaDatatype CurrentAttributeType;
+
+		XmlSchemaInfo current_info;
 
 		#endregion
 
@@ -358,7 +361,11 @@ namespace System.Xml.Schema
 			if (attributeValue == null)
 				throw new ArgumentNullException ("attributeValue");
 
-			CheckState (Transition.StartTag);
+			bool wasInitial = initial;
+			if (initial)
+				initial = false;
+			else
+				CheckState (Transition.StartTag);
 
 			QName qname = new QName (localName, ns);
 			if (occuredAtts.Contains (qname))
@@ -370,6 +377,13 @@ namespace System.Xml.Schema
 
 			if (schemas.Count == 0)
 				return null;
+
+			if (wasInitial) {
+				var xa = startType as XmlSchemaAttribute;
+				if (xa == null)
+					return null;
+				return AssessAttributeLocallyValid (xa, info, attributeValue);
+			}
 
 			if (Context.Element != null && Context.XsiType == null) {
 
@@ -404,6 +418,8 @@ namespace System.Xml.Schema
 				throw new ArgumentNullException ("localName");
 			if (ns == null)
 				throw new ArgumentNullException ("ns");
+			SetCurrentInfo (info);
+			try {
 
 			CheckState (Transition.Content);
 			transition = Transition.StartTag;
@@ -449,6 +465,10 @@ namespace System.Xml.Schema
 				info.MemberType = null;
 				// FIXME: supply Validity (really useful?)
 			}
+
+			} finally {
+				current_info = null;
+			}
 		}
 
 		public object ValidateEndElement (XmlSchemaInfo info)
@@ -465,10 +485,15 @@ namespace System.Xml.Schema
 		public object ValidateEndElement (XmlSchemaInfo info,
 			object var)
 		{
+			SetCurrentInfo (info);
+			try {
+
 			// If it is going to validate an empty element, then
 			// first validate end of attributes.
-			if (transition == Transition.StartTag)
+			if (transition == Transition.StartTag) {
+				current_info = null;
 				ValidateEndOfAttributes (info);
+			}
 
 			CheckState (Transition.Content);
 
@@ -487,6 +512,10 @@ namespace System.Xml.Schema
 			else if (skipValidationDepth < 0 || depth <= skipValidationDepth)
 				ret = AssessEndElementSchemaValidity (info);
 			return ret;
+
+			} finally {
+				current_info = null;
+			}
 		}
 
 		// StartTagCloseDeriv
@@ -494,6 +523,8 @@ namespace System.Xml.Schema
 		public void ValidateEndOfAttributes (XmlSchemaInfo info)
 		{
 			try {
+				SetCurrentInfo (info);
+
 				CheckState (Transition.StartTag);
 				transition = Transition.Content;
 				if (schemas.Count == 0)
@@ -503,6 +534,7 @@ namespace System.Xml.Schema
 					AssessCloseStartElementSchemaValidity (info);
 				depth++;
 			} finally {
+				current_info = null;
 				occuredAtts.Clear ();
 			}
 		}
@@ -579,6 +611,8 @@ namespace System.Xml.Schema
 		private void HandleError (string message,
 			Exception innerException, bool isWarning)
 		{
+			if (current_info != null)
+				current_info.Validity = XmlSchemaValidity.Invalid;
 			if (isWarning && IgnoreWarnings)
 				return;
 
@@ -595,6 +629,9 @@ namespace System.Xml.Schema
 
 		private void HandleError (ValException exception, bool isWarning)
 		{
+			if (current_info != null)
+				current_info.Validity = XmlSchemaValidity.Invalid;
+
 			if (isWarning && IgnoreWarnings)
 				return;
 
@@ -611,8 +648,19 @@ namespace System.Xml.Schema
 
 		#endregion
 
+		// call this at entry point of every public method.
+		private void SetCurrentInfo (XmlSchemaInfo info)
+		{
+			if (current_info != null)
+				throw new InvalidOperationException ("Not allowed concurrent call to validation method");
+			current_info = info;
+			if (info != null && info.Validity == XmlSchemaValidity.NotKnown)
+				current_info.Validity = XmlSchemaValidity.Valid;
+		}
+
 		private void CheckState (Transition expected)
 		{
+			initial = false;
 			if (transition != expected) {
 				if (transition == Transition.None)
 					throw new InvalidOperationException ("Initialize() must be called before processing validation.");
@@ -831,6 +879,11 @@ namespace System.Xml.Schema
 		// 3.2.4 Attribute Locally Valid and 3.4.4
 		private object AssessAttributeLocallyValid (XsAttribute attr, XmlSchemaInfo info, XmlValueGetter getter)
 		{
+			if (info != null) {
+				info.SchemaAttribute = attr;
+				info.SchemaType = attr.AttributeSchemaType;
+			}
+
 			// 2. - 4.
 			if (attr.AttributeType == null)
 				HandleError ("Attribute type is missing for " + attr.QualifiedName);
@@ -850,9 +903,17 @@ namespace System.Xml.Schema
 				}
 
 				// check part of 3.14.4 StringValid
-				SimpleType st = attr.AttributeType as SimpleType;
-				if (st != null)
-					ValidateRestrictedSimpleTypeValue (st, ref dt, new XmlAtomicValue (parsedValue, attr.AttributeSchemaType).Value);
+				SimpleType st = attr.AttributeSchemaType;
+				if (st != null) {
+					string xav = null;
+					try {
+						xav = new XmlAtomicValue (parsedValue, attr.AttributeSchemaType).Value;
+					} catch (Exception ex) {
+						HandleError (String.Format ("Failed to convert attribute value to type {0}", st.QualifiedName), ex);
+					}
+					if (xav != null)
+						ValidateRestrictedSimpleTypeValue (st, ref dt, xav);
+				}
 
 				if (attr.ValidatedFixedValue != null) {
 					if (!XmlSchemaUtil.AreSchemaDatatypeEqual (attr.AttributeSchemaType, attr.ValidatedFixedTypedValue, attr.AttributeSchemaType, parsedValue))
@@ -965,6 +1026,16 @@ namespace System.Xml.Schema
 					dt = st.Datatype;
 				} else {
 					ComplexType ct = Context.ActualType as ComplexType;
+					var ctsm = ct.ContentModel as XmlSchemaSimpleContent;
+					if (ctsm != null) {
+						var scr = ctsm.Content as XmlSchemaSimpleContentRestriction;
+						if (scr != null)
+							st = FindSimpleBaseType (scr.BaseType ?? FindType (scr.BaseTypeName));
+						var sce = ctsm.Content as XmlSchemaSimpleContentExtension;
+						if (sce != null)
+							st = FindSimpleBaseType (FindType (sce.BaseTypeName));
+					}
+
 					dt = ct.Datatype;
 					switch (ct.ContentType) {
 					case XmlSchemaContentType.ElementOnly:
@@ -1006,6 +1077,16 @@ namespace System.Xml.Schema
 			}
 
 			return ret;
+		}
+
+		SimpleType FindSimpleBaseType (XmlSchemaType xt)
+		{
+			var st = xt as SimpleType;
+			if (st != null)
+				return st;
+			if (xt == null)
+				return null;
+			return FindSimpleBaseType (xt.BaseXmlSchemaType);
 		}
 
 		// 3.14.4 String Valid 

@@ -42,9 +42,7 @@ using System.Runtime.Remoting.Lifetime;
 
 namespace System.Runtime.Remoting.Contexts {
 
-#if NET_2_0
 	[System.Runtime.InteropServices.ComVisible (true)]
-#endif
 	public class Context 
 	{
 #pragma warning disable 169, 414
@@ -66,10 +64,14 @@ namespace System.Runtime.Remoting.Contexts {
 
 		object[] datastore;
 		ArrayList context_properties;
-		bool frozen;
+//		bool frozen;
 		
 		static int global_count;
-		static Hashtable namedSlots = new Hashtable ();
+
+		/* Wrap this in a nested class so its not constructed during shutdown */
+		class NamedSlots {
+			public static Hashtable namedSlots = new Hashtable ();
+		}
 
 		static DynamicPropertyCollection global_dynamic_properties;
 		DynamicPropertyCollection context_dynamic_properties;
@@ -210,8 +212,8 @@ namespace System.Runtime.Remoting.Contexts {
 			if (this == DefaultContext)
 				throw new InvalidOperationException ("Can not add properties to " +
 								     "default context");
-			if (frozen)
-				throw new InvalidOperationException ("Context is Frozen");
+//			if (frozen)
+//				throw new InvalidOperationException ("Context is Frozen");
 			
 			if (context_properties == null)
 				context_properties = new ArrayList ();
@@ -348,7 +350,7 @@ namespace System.Runtime.Remoting.Contexts {
 			callback_object.DoCallBack (deleg);
 		}
 		
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		public static LocalDataStoreSlot AllocateDataSlot ()
 		{
 			return new LocalDataStoreSlot (false);
@@ -356,19 +358,19 @@ namespace System.Runtime.Remoting.Contexts {
 		
 		public static LocalDataStoreSlot AllocateNamedDataSlot (string name)
 		{
-			lock (namedSlots.SyncRoot)
+			lock (NamedSlots.namedSlots.SyncRoot)
 			{
 				LocalDataStoreSlot slot = AllocateDataSlot ();
-				namedSlots.Add (name, slot);
+				NamedSlots.namedSlots.Add (name, slot);
 				return slot;
 			}
 		}
 		
 		public static void FreeNamedDataSlot (string name)
 		{
-			lock (namedSlots.SyncRoot)
+			lock (NamedSlots.namedSlots.SyncRoot)
 			{
-				namedSlots.Remove (name);
+				NamedSlots.namedSlots.Remove (name);
 			}
 		}
 		
@@ -386,9 +388,9 @@ namespace System.Runtime.Remoting.Contexts {
 		
 		public static LocalDataStoreSlot GetNamedDataSlot (string name)
 		{
-			lock (namedSlots.SyncRoot)
+			lock (NamedSlots.namedSlots.SyncRoot)
 			{
-				LocalDataStoreSlot slot = namedSlots [name] as LocalDataStoreSlot;
+				LocalDataStoreSlot slot = NamedSlots.namedSlots [name] as LocalDataStoreSlot;
 				if (slot == null) return AllocateNamedDataSlot (name);
 				else return slot;
 			}

@@ -34,10 +34,8 @@ using System.Runtime.CompilerServices;
 
 namespace System.Reflection {
 
-#if NET_2_0
 	[ComVisible (true)]
 	[ComDefaultInterfaceAttribute (typeof (_PropertyInfo))]
-#endif
 	[Serializable]
 	[ClassInterface(ClassInterfaceType.None)]
 	public abstract class PropertyInfo : MemberInfo, _PropertyInfo {
@@ -72,13 +70,6 @@ namespace System.Reflection {
 		
 		public abstract ParameterInfo[] GetIndexParameters();
 
-#if ONLY_1_1
-		public new Type GetType ()
-		{
-			return base.GetType ();
-		}
-#endif
-
 		public MethodInfo GetSetMethod()
 		{
 			return GetSetMethod (false);
@@ -104,8 +95,6 @@ namespace System.Reflection {
 		
 		public abstract void SetValue (object obj, object value, BindingFlags invokeAttr, Binder binder, object[] index, CultureInfo culture);
 
-#if NET_2_0 || BOOTSTRAP_NET_2_0
-
 		public virtual Type[] GetOptionalCustomModifiers () {
 			return Type.EmptyTypes;
 		}
@@ -114,14 +103,46 @@ namespace System.Reflection {
 			return Type.EmptyTypes;
 		}
 
-		[MonoTODO("Not implemented")]
-		public virtual object GetConstantValue () {
-			throw new NotImplementedException ();
+		static NotImplementedException CreateNIE ()
+		{
+			return new NotImplementedException ();
 		}
 
-		[MonoTODO("Not implemented")]
+		public virtual object GetConstantValue () {
+			throw CreateNIE ();
+		}
+
 		public virtual object GetRawConstantValue() {
-			throw new NotImplementedException ();
+			throw CreateNIE ();
+		}
+
+#if NET_4_0
+		public override bool Equals (object obj)
+		{
+			return obj == (object) this;
+		}
+
+		public override int GetHashCode ()
+		{
+			return base.GetHashCode ();
+		}
+
+		public static bool operator == (PropertyInfo left, PropertyInfo right)
+		{
+			if ((object)left == (object)right)
+				return true;
+			if ((object)left == null ^ (object)right == null)
+				return false;
+			return left.Equals (right);
+		}
+
+		public static bool operator != (PropertyInfo left, PropertyInfo right)
+		{
+			if ((object)left == (object)right)
+				return false;
+			if ((object)left == null ^ (object)right == null)
+				return true;
+			return !left.Equals (right);
 		}
 #endif
 

@@ -31,6 +31,7 @@
 #if NET_2_0
 using System.Collections;
 using System.Collections.Specialized;
+using System.Data;
 using System.Text;
 using System.ComponentModel;
 
@@ -58,13 +59,22 @@ namespace System.Web.UI.WebControls {
 		{
 			QueryStringField = queryStringField;
 		}
+
+		public QueryStringParameter (string name, DbType dbType, string queryStringField) : base (name, dbType)
+		{
+			QueryStringField = queryStringField;
+		}
 		
 		protected override Parameter Clone ()
 		{
 			return new QueryStringParameter (this);
 		}
-		
-		protected override object Evaluate (HttpContext ctx, Control control)
+#if NET_4_0
+		protected internal
+#else
+		protected
+#endif
+		override object Evaluate (HttpContext ctx, Control control)
 		{
 			if (ctx == null || ctx.Request == null)
 				return null;
@@ -72,7 +82,7 @@ namespace System.Web.UI.WebControls {
 			return ctx.Request.QueryString [QueryStringField];
 		}
 		
-	    [DefaultValueAttribute ("")]
+		[DefaultValueAttribute ("")]
 		public string QueryStringField {
 			get {
 				string s = ViewState ["QueryStringField"] as string;

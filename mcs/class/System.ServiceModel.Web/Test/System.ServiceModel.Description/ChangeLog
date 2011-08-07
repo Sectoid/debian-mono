@@ -1,3 +1,23 @@
+2010-10-15  Frank Wilhelm  <fwilhelm@nowisys.de>
+
+	Make Validate() less restrictive for contracts with explicit
+	UriTemplate.
+
+2010-09-13  Atsushi Eno  <atsushi@ximian.com>
+
+	implemented large parts of WCF standard endpoints and
+	configuration support.
+
+2010-07-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WebHttpBehaviorTest.cs : add test for deserializing Raw request
+	  message too.
+
+2010-07-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WebHttpBehaviorTest.cs : add test for bug #619542 (not sure if it
+	  works on mono; run-test is broken in trunk. Verified under .NET).
+
 2009-10-08  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* WebScriptEnablingBehaviorTest.cs : new test.

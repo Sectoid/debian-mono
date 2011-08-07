@@ -1,3 +1,61 @@
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System.Data build for monodroid
+
+2011-03-22  Veerapuram Varadhan  <v.varadhan@gmail.com>
+
+	** Fixes 663914 - Patch by Gábor Remete <rg@njl.hu>
+	* DataRow.cs (SetOriginalValue): When setting original value for a column, 
+	ensure that original values of other columns are also restored.
+	
+2011-03-15  Veerapuram Varadhan  <v.varadhan@gmail.com>
+
+	** Fixes 672113
+	* UniqueConstraint.cs (ctor): Make a copy of columns and columnnames array
+	* ForeignKeyConstraint.cs (ctor): Make a copy of parent and child columns array
+	
+2010-10-01  Veerapuram Varadhan  <v.varadhan@gmail.com>
+
+	** Fixes #582732 - Patch by Jeffrey Alvarez <kuritsu@gmail.com>
+	* DataColumn.cs (Clone): Deep copy the ExtendedProperties collection.
+	* XmlSchemaDataImporter.cs: Support import of extended properties.
+	* XmlSchemaWriter.cs: Fix exception by writing the extended properties 
+	before simpletype element.
+	
+2010-07-23  Veerapuram Varadhan  <v.varadhan@gmail.com>
+
+	** Fixes #623451
+	* DataColumnCollection.cs (MoveColumn): Fix shifting of DataColumn  
+	according to the direction of movement.
+	
+2010-06-23  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #581679
+	* DataRelationCollection.cs (Add, Remove): Use DataRelation obj instead 
+	of this when raising OnCollectionChang(ing, ed) events.
+	
+2010-04-11  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #591443
+	* DataColumn.cs (Clone): Use propert to clone Expression as it builds 
+	compiled expression also, if any. 
+	
+2010-04-10  Veerapuram Varadhan  <vvaradhan@novell.com>
+	
+	** Fixes #589482
+	* DataColumn.cs (set_DataType): Preserve autoIncrement value 
+	for Decimal types as well.
+	
+2010-04-09  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #576520 - Based on a patch by Greg SIROU <gspam@secway.fr>
+	* DataSet.cs (WriteColumnAsElement): Handle system.object types sanely.
+
+2010-04-09  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #590232
+	* DataColumn.cs (Clone): Clone extended properties as well
+	
 2010-02-10  Marek Habersack  <mhabersack@novell.com>
 
 	* XmlSchemaDataImporter.cs: the <connections> element might be

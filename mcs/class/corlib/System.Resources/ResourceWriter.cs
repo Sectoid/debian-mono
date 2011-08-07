@@ -40,9 +40,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 
 namespace System.Resources
 {
-#if NET_2_0
 	[System.Runtime.InteropServices.ComVisible (true)]
-#endif
 	public sealed class ResourceWriter : IResourceWriter, IDisposable
 	{
 		class TypeByNameObject
@@ -57,11 +55,21 @@ namespace System.Resources
 			}
 		}
 
-#if NET_2_0
-		SortedList resources = new SortedList (StringComparer.OrdinalIgnoreCase);
-#else
-		Hashtable resources = new Hashtable (CaseInsensitiveHashCodeProvider.Default, CaseInsensitiveComparer.Default);
+#if NET_4_0
+		class StreamWrapper
+		{
+			public readonly bool CloseAfterWrite;
+			public readonly Stream Stream;
+
+			public StreamWrapper (Stream stream, bool closeAfterWrite)
+			{
+				Stream = stream;
+				CloseAfterWrite = closeAfterWrite;
+			}
+		}
 #endif
+
+		SortedList resources = new SortedList (StringComparer.OrdinalIgnoreCase);
 		Stream stream;
 		
 		public ResourceWriter (Stream stream)
@@ -82,6 +90,19 @@ namespace System.Resources
 			stream = new FileStream(fileName, FileMode.Create,
 				FileAccess.Write);
 		}
+
+#if NET_4_0
+		Func <Type, string> type_name_converter;
+
+		public Func<Type, string> TypeNameConverter {
+			get {
+				return type_name_converter;
+			}
+			set {
+				type_name_converter = value;
+			}
+		}
+#endif
 		
 		public void AddResource (string name, byte[] value)
 		{
@@ -103,6 +124,16 @@ namespace System.Resources
 				throw new InvalidOperationException ("The resource writer has already been closed and cannot be edited");
 			if (resources[name] != null)
 				throw new ArgumentException ("Resource already present: " + name);
+#if NET_4_0
+			if (value is Stream) {
+				Stream stream = value as Stream;
+				if (!stream.CanSeek)
+					throw new ArgumentException ("Stream does not support seeking.");
+
+				if (!(value is MemoryStream)) // We already support MemoryStream
+					value = new StreamWrapper (stream, false);
+			}
+#endif
 
 			resources.Add(name, value);
 		}
@@ -118,6 +149,35 @@ namespace System.Resources
 
 			resources.Add(name, value);
 		}
+
+#if NET_4_0
+		public void AddResource (string name, Stream value)
+		{
+			// It seems .Net adds this overload just to make the api complete,
+			// but AddResource (string name, object value) is already checking for Stream.
+			AddResource (name, (object)value);
+		}
+
+		public void AddResource (string name, Stream value, bool closeAfterWrite)
+		{
+			if (name == null)
+				throw new ArgumentNullException ("name");
+			if (resources == null)
+				throw new InvalidOperationException ("The resource writer has already been closed and cannot be edited");
+			if (resources [name] != null)
+				throw new ArgumentException ("Resource already present: " + name);
+
+			if (stream == null) {
+				resources.Add (name, null); // Odd.
+				return;
+			}
+				
+			if (!stream.CanSeek)
+				throw new ArgumentException ("Stream does not support seeking.");
+
+			resources.Add (name, new StreamWrapper (value, true));
+		}
+#endif
 
 		public void Close ()
 		{
@@ -142,7 +202,6 @@ namespace System.Resources
 			stream = null;
 		}
 
-#if NET_2_0
 		public void AddResourceData (string name, string typeName, byte [] serializedData)
 		{
 			if (name == null)
@@ -155,7 +214,6 @@ namespace System.Resources
 			// shortcut
 			AddResource (name, new TypeByNameObject (typeName, serializedData));
 		}
-#endif
 
 		public void Generate ()
 		{
@@ -181,12 +239,18 @@ namespace System.Resources
 			BinaryWriter resman = new BinaryWriter (resman_stream,
 							     Encoding.UTF8);
 
-			resman.Write (typeof (ResourceReader).AssemblyQualifiedName);
-#if NET_2_0
-			resman.Write (typeof (RuntimeResourceSet).FullName);
+#if NET_4_0
+			string type_name = null;
+			if (type_name_converter != null)
+				type_name = type_name_converter (typeof (ResourceReader));
+			if (type_name == null)
+				type_name = typeof (ResourceReader).AssemblyQualifiedName;
+
+			resman.Write (type_name);
 #else
-			resman.Write (typeof (ResourceSet).AssemblyQualifiedName);
+			resman.Write (typeof (ResourceReader).AssemblyQualifiedName);
 #endif
+			resman.Write (typeof (RuntimeResourceSet).FullName);
 
 			/* Only space for 32 bits of header len in the
 			 * resource file format
@@ -241,7 +305,6 @@ namespace System.Resources
 				object typeObj = tbn != null ? (object) tbn.TypeName : type;
 
 				/* Keep a list of unique types */
-#if NET_2_0
 				// do not output predefined ones.
 				switch ((type != null && !type.IsEnum) ? Type.GetTypeCode (type) : TypeCode.Empty) {
 				case TypeCode.Decimal:
@@ -263,6 +326,10 @@ namespace System.Resources
 						break;
 					if (type == typeof (MemoryStream))
 						break;
+#if NET_4_0
+					if (type == typeof (StreamWrapper))
+						break;
+#endif
 					if (type==typeof(byte[]))
 						break;
 
@@ -272,17 +339,10 @@ namespace System.Resources
 					Write7BitEncodedInt(res_data, (int) PredefinedResourceType.FistCustom + types.IndexOf(typeObj));
 					break;
 				}
-#else
-				if (!types.Contains (typeObj))
-					types.Add (typeObj);
-				/* Write the data section */
-				Write7BitEncodedInt(res_data, types.IndexOf(type));
-#endif
 
 				/* Strangely, Char is serialized
 				 * rather than just written out
 				 */
-#if NET_2_0
 				if (tbn != null)
 					res_data.Write((byte []) tbn.Value);
 				else if (type == typeof (Byte)) {
@@ -337,49 +397,25 @@ namespace System.Resources
 					byte [] data = ((MemoryStream) res_enum.Value).ToArray ();
 					res_data.Write ((uint) data.Length);
 					res_data.Write (data, 0, data.Length);
-				} else {
-					/* non-intrinsic types are
-					 * serialized
-					 */
-					formatter.Serialize (res_data.BaseStream, res_enum.Value);
-				}
-#else
-				if (type == typeof (Byte)) {
-					res_data.Write ((Byte) res_enum.Value);
-				} else if (type == typeof (Decimal)) {
-					res_data.Write ((Decimal) res_enum.Value);
-				} else if (type == typeof (DateTime)) {
-					res_data.Write (((DateTime) res_enum.Value).Ticks);
-				} else if (type == typeof (Double)) {
-					res_data.Write ((Double) res_enum.Value);
-				} else if (type == typeof (Int16)) {
-					res_data.Write ((Int16) res_enum.Value);
-				} else if (type == typeof (Int32)) {
-					res_data.Write ((Int32) res_enum.Value);
-				} else if (type == typeof (Int64)) {
-					res_data.Write ((Int64) res_enum.Value);
-				} else if (type == typeof (SByte)) {
-					res_data.Write ((SByte) res_enum.Value);
-				} else if (type == typeof (Single)) {
-					res_data.Write ((Single) res_enum.Value);
-				} else if (type == typeof (String)) {
-					res_data.Write ((String) res_enum.Value);
-				} else if (type == typeof (TimeSpan)) {
-					res_data.Write (((TimeSpan) res_enum.Value).Ticks);
-				} else if (type == typeof (UInt16)) {
-					res_data.Write ((UInt16) res_enum.Value);
-				} else if (type == typeof (UInt32)) {
-					res_data.Write ((UInt32) res_enum.Value);
-				} else if (type == typeof (UInt64)) {
-					res_data.Write ((UInt64) res_enum.Value);
-				} else {
-					/* non-intrinsic types are
-					 * serialized
-					 */
-					formatter.Serialize (res_data.BaseStream, res_enum.Value);
-				}
-#endif
+#if NET_4_0
+				} else if (type == typeof (StreamWrapper)) {
+					StreamWrapper sw = (StreamWrapper) res_enum.Value;
+					sw.Stream.Position = 0;
 
+					res_data.Write ((byte) PredefinedResourceType.Stream);
+					byte [] data = ReadStream (sw.Stream);
+					res_data.Write ((uint) data.Length);
+					res_data.Write (data, 0, data.Length);
+
+					if (sw.CloseAfterWrite)
+						sw.Stream.Close ();
+#endif
+				} else {
+					/* non-intrinsic types are
+					 * serialized
+					 */
+					formatter.Serialize (res_data.BaseStream, res_enum.Value);
+				}
 				count++;
 			}
 
@@ -390,11 +426,7 @@ namespace System.Resources
 			
 			/* now do the ResourceReader header */
 
-#if NET_2_0
 			writer.Write (2);
-#else
-			writer.Write (1);
-#endif
 			writer.Write (resources.Count);
 			writer.Write (types.Count);
 
@@ -447,6 +479,27 @@ namespace System.Resources
 			// ResourceWriter is no longer editable
 			resources = null;
 		}
+
+#if NET_4_0
+		byte [] ReadStream (Stream stream)
+		{
+			byte [] buff = new byte [stream.Length];
+			int pos = 0;
+
+			// Read Stream.Length bytes at most, and stop
+			// immediately if Read returns 0.
+			do {
+				int n = stream.Read (buff, pos, buff.Length - pos);
+				if (n == 0)
+					break;
+
+				pos += n;
+
+			} while (pos < stream.Length);
+
+			return buff;
+		}
+#endif
 
 		// looks like it is (similar to) DJB hash
 		int GetHash (string name)

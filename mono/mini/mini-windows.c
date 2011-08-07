@@ -38,7 +38,7 @@
 #include <mono/utils/mono-math.h>
 #include <mono/utils/mono-compiler.h>
 #include <mono/utils/mono-counters.h>
-#include <mono/utils/mono-logger.h>
+#include <mono/utils/mono-logger-internal.h>
 #include <mono/utils/mono-mmap.h>
 #include <mono/utils/dtrace.h>
 
@@ -50,26 +50,49 @@
 
 #include "jit-icalls.h"
 
+extern LPTOP_LEVEL_EXCEPTION_FILTER mono_old_win_toplevel_exception_filter;
+extern guint64 mono_win_chained_exception_filter_result;
+extern gboolean mono_win_chained_exception_filter_didrun;
+
 void
 mono_runtime_install_handlers (void)
 {
+#ifndef MONO_CROSS_COMPILE
 	win32_seh_init();
 	win32_seh_set_handler(SIGFPE, mono_sigfpe_signal_handler);
 	win32_seh_set_handler(SIGILL, mono_sigill_signal_handler);
 	win32_seh_set_handler(SIGSEGV, mono_sigsegv_signal_handler);
 	if (mini_get_debug_options ()->handle_sigint)
 		win32_seh_set_handler(SIGINT, mono_sigint_signal_handler);
+#endif
 }
 
 void
 mono_runtime_cleanup_handlers (void)
 {
+#ifndef MONO_CROSS_COMPILE
 	win32_seh_cleanup();
+#endif
 }
 
+
+/* mono_chain_signal:
+ *
+ *   Call the original signal handler for the signal given by the arguments, which
+ * should be the same as for a signal handler. Returns TRUE if the original handler
+ * was called, false otherwise.
+ */
 gboolean
 SIG_HANDLER_SIGNATURE (mono_chain_signal)
 {
+	int signal = _dummy;
+	GET_CONTEXT;
+
+	if (mono_old_win_toplevel_exception_filter) {
+		mono_win_chained_exception_filter_didrun = TRUE;
+		mono_win_chained_exception_filter_result = (*mono_old_win_toplevel_exception_filter)(info);
+		return TRUE;
+	}
 	return FALSE;
 }
 

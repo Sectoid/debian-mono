@@ -1,24 +1,13 @@
-using System;
-using System.Collections;
+// Compiler options: -r:test-645-lib.dll
 
-class Program
+class C
 {
-    static public IEnumerable Empty {
-        get {
-            object [] os = new object [] { };
-            foreach (object o in os) {
-                yield return o;
-            }
-        }
-    }
-
-    static void Main()
-    {
-        IEnumerator enumerator = Empty.GetEnumerator();
-        if (enumerator.Current == null)
-            Console.WriteLine("Successful");
-        enumerator.MoveNext();
-        if (enumerator.Current == null)
-            Console.WriteLine("Successful");
-    }
+	public static void Main ()
+	{
+		var n = new A.AN ();
+		n.TestReturn ().Test ();
+		
+		var t2 = new T2 ();
+		t2.Test ();
+	}
 }

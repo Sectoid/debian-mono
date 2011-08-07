@@ -30,6 +30,7 @@
 //
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
@@ -62,7 +63,7 @@ namespace System.Xml.Schema
 
 		bool isCompiled;
 
-		internal Guid CompilationId;
+		internal Guid CompilationId { get; private set; }
 
 		public XmlSchemaSet ()
 			: this (new NameTable ())
@@ -163,7 +164,7 @@ namespace System.Xml.Schema
 		{
 			XmlSchema schema = XmlSchema.Read (reader, ValidationEventHandler);
 			if (schema.TargetNamespace == null)
-				schema.TargetNamespace = targetNamespace;
+				schema.TargetNamespace = targetNamespace == String.Empty ? null : targetNamespace; // this weirdness is due to bug #571660.
 			else if (targetNamespace != null && schema.TargetNamespace != targetNamespace)
 				throw new XmlSchemaException ("The actual targetNamespace in the schema does not match the parameter.");
 			Add (schema);
@@ -199,7 +200,7 @@ namespace System.Xml.Schema
 			IDCollection.Clear ();
 			NamedIdentities.Clear ();
 
-			Hashtable handledUris = new Hashtable ();
+			var handledUris = new List<CompiledSchemaMemo> ();
 			foreach (XmlSchema schema in al)
 				if (!schema.IsCompiled)
 					schema.CompileSubset (ValidationEventHandler, this, xmlResolver, handledUris);

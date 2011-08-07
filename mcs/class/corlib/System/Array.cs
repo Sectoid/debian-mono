@@ -34,28 +34,26 @@ using System.Collections;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-#if NET_2_0
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Runtime.ConstrainedExecution;
-#endif
+using System.Reflection.Emit;
 
 namespace System
 {
 	[Serializable]
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	// FIXME: We are doing way to many double/triple exception checks for the overloaded functions"
-	// FIXME: Sort overloads parameter checks are VERY inconsistent"
 	public abstract class Array : ICloneable, ICollection, IList, IEnumerable
+#if NET_4_0 || MOONLIGHT || MOBILE
+		, IStructuralComparable, IStructuralEquatable
+#endif
 	{
 		// Constructor
 		private Array ()
 		{
 		}
 
-#if NET_2_0
 		/*
 		 * These methods are used to implement the implicit generic interfaces 
 		 * implemented by arrays in NET 2.0.
@@ -260,13 +258,10 @@ namespace System
 				}
 			}
 		}
-#endif
 
 		// Properties
 		public int Length {
-#if NET_2_0
 			[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.Success)]
-#endif
 			get {
 				int length = this.GetLength (0);
 
@@ -277,20 +272,14 @@ namespace System
 			}
 		}
 
-#if NET_1_1
 		[ComVisible (false)]
 		public long LongLength {
-#if NET_2_0
 			[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.Success)]
-#endif
 			get { return Length; }
 		}
-#endif
 
 		public int Rank {
-#if NET_2_0
 			[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.Success)]
-#endif
 			get {
 				return this.GetRank ();
 			}
@@ -337,9 +326,7 @@ namespace System
 			return false;
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.MayFail)]
-#endif
 		int IList.IndexOf (object value)
 		{
 			if (this.Rank > 1)
@@ -381,17 +368,13 @@ namespace System
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		public extern int GetLength (int dimension);
 
-#if NET_1_1
 		[ComVisible (false)]
 		public long GetLongLength (int dimension)
 		{
 			return GetLength (dimension);
 		}
-#endif
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.Success)]
-#endif
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		public extern int GetLowerBound (int dimension);
 
@@ -422,58 +405,97 @@ namespace System
 			}
 		}
 
-		public
-#if !NET_2_0
-		virtual
-#endif
-		bool IsSynchronized {
+		public bool IsSynchronized {
 			get {
 				return false;
 			}
 		}
 
-		public
-#if !NET_2_0
-		virtual
-#endif
-		object SyncRoot {
+		public object SyncRoot {
 			get {
 				return this;
 			}
 		}
 
-		public
-#if !NET_2_0
-		virtual
-#endif
-		bool IsFixedSize {
+		public bool IsFixedSize {
 			get {
 				return true;
 			}
 		}
 
-		public
-#if !NET_2_0
-		virtual
-#endif
-		bool IsReadOnly {
+		public bool IsReadOnly {
 			get {
 				return false;
 			}
 		}
 
-		public
-#if !NET_2_0
-		virtual
-#endif
-		IEnumerator GetEnumerator ()
+		public IEnumerator GetEnumerator ()
 		{
 			return new SimpleEnumerator (this);
 		}
 
-#if NET_2_0
-		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.Success)]
+#if NET_4_0 || MOONLIGHT || MOBILE
+		int IStructuralComparable.CompareTo (object other, IComparer comparer)
+		{
+			if (other == null)
+				return 1;
+
+			Array arr = other as Array;
+			if (arr == null)
+				throw new ArgumentException ("Not an array", "other");
+
+			int len = GetLength (0);
+			if (len != arr.GetLength (0))
+				throw new ArgumentException ("Not of the same length", "other");
+
+			if (Rank > 1)
+				throw new ArgumentException ("Array must be single dimensional");
+
+			if (arr.Rank > 1)
+				throw new ArgumentException ("Array must be single dimensional", "other");
+
+			for (int i = 0; i < len; ++i) {
+				object a = GetValue (i);
+				object b = arr.GetValue (i);
+				int r = comparer.Compare (a, b);
+				if (r != 0)
+					return r;
+			}
+			return 0;
+		}
+
+		bool IStructuralEquatable.Equals (object other, IEqualityComparer comparer)
+		{
+			Array o = other as Array;
+			if (o == null || o.Length != Length)
+				return false;
+
+			if (Object.ReferenceEquals (other, this))
+				return true;
+
+			for (int i = 0; i < Length; i++) {
+				object this_item = this.GetValue (i);
+				object other_item = o.GetValue (i);
+				if (!comparer.Equals (this_item, other_item))
+					return false;
+			}
+			return true;
+		}
+
+ 
+		int IStructuralEquatable.GetHashCode (IEqualityComparer comparer)
+		{
+			if (comparer == null)
+				throw new ArgumentNullException ("comparer");
+
+			int hash = 0;
+			for (int i = 0; i < Length; i++)
+				hash = ((hash << 7) + hash) ^ GetValue (i).GetHashCode ();
+			return hash;
+		}
 #endif
+
+		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.Success)]
 		public int GetUpperBound (int dimension)
 		{
 			return GetLowerBound (dimension) + GetLength (dimension) - 1;
@@ -502,7 +524,6 @@ namespace System
 			return GetValue (ind);
 		}
 
-#if NET_1_1
 		[ComVisible (false)]
 		public object GetValue (long index)
 		{
@@ -588,7 +609,6 @@ namespace System
 			int[] ind = {(int) index1, (int) index2, (int) index3};
 			SetValue (value, ind);
 		}
-#endif
 
 		public void SetValue (object value, int index)
 		{
@@ -651,10 +671,10 @@ namespace System
 				throw new ArgumentException ("Type must be a type provided by the runtime.", "elementType");
 			if (elementType.Equals (typeof (void)))
 				throw new NotSupportedException ("Array type can not be void");
-#if NET_2_0
 			if (elementType.ContainsGenericParameters)
 				throw new NotSupportedException ("Array type can not be an open generic type");
-#endif
+			if ((elementType is TypeBuilder) && !(elementType as TypeBuilder).IsCreated ())
+				throw new NotSupportedException ("Can't create an array of the unfinished type '" + elementType + "'.");
 			
 			return CreateInstanceImpl (elementType, lengths, bounds);
 		}
@@ -673,10 +693,8 @@ namespace System
 				throw new ArgumentException ("Type must be a type provided by the runtime.", "elementType");
 			if (elementType.Equals (typeof (void)))
 				throw new NotSupportedException ("Array type can not be void");
-#if NET_2_0
 			if (elementType.ContainsGenericParameters)
 				throw new NotSupportedException ("Array type can not be an open generic type");
-#endif
 
 			if (lengths.Length < 1)
 				throw new ArgumentException (Locale.GetText ("Arrays must contain >= 1 elements."));
@@ -699,7 +717,6 @@ namespace System
 			return CreateInstanceImpl (elementType, lengths, lowerBounds);
 		}
 
-#if NET_1_1
 		static int [] GetIntArray (long [] values)
 		{
 			int len = values.Length;
@@ -717,37 +734,28 @@ namespace System
 
 		public static Array CreateInstance (Type elementType, params long [] lengths)
 		{
-#if NET_2_0
 			if (lengths == null)
 				throw new ArgumentNullException ("lengths");
-#endif
 			return CreateInstance (elementType, GetIntArray (lengths));
 		}
 
 		[ComVisible (false)]
 		public object GetValue (params long [] indices)
 		{
-#if NET_2_0
 			if (indices == null)
 				throw new ArgumentNullException ("indices");
-#endif
 			return GetValue (GetIntArray (indices));
 		}
 
 		[ComVisible (false)]
 		public void SetValue (object value, params long [] indices)
 		{
-#if NET_2_0
 			if (indices == null)
 				throw new ArgumentNullException ("indices");
-#endif
 			SetValue (value, GetIntArray (indices));
 		}
-#endif
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.MayFail)]
-#endif 
 		public static int BinarySearch (Array array, object value)
 		{
 			if (array == null)
@@ -768,9 +776,7 @@ namespace System
 			return DoBinarySearch (array, array.GetLowerBound (0), array.GetLength (0), value, null);
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.MayFail)]
-#endif
 		public static int BinarySearch (Array array, object value, IComparer comparer)
 		{
 			if (array == null)
@@ -789,9 +795,7 @@ namespace System
 			return DoBinarySearch (array, array.GetLowerBound (0), array.GetLength (0), value, comparer);
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.MayFail)]
-#endif
 		public static int BinarySearch (Array array, int index, int length, object value)
 		{
 			if (array == null)
@@ -821,9 +825,7 @@ namespace System
 			return DoBinarySearch (array, index, length, value, null);
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.MayFail)]
-#endif
 		public static int BinarySearch (Array array, int index, int length, object value, IComparer comparer)
 		{
 			if (array == null)
@@ -888,9 +890,7 @@ namespace System
 			return ~iMin;
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.Success)]
-#endif
 		public static void Clear (Array array, int index, int length)
 		{
 			if (array == null)
@@ -914,15 +914,9 @@ namespace System
 		static extern void ClearInternal (Array a, int index, int count);
 
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		public
-#if !NET_2_0
-		virtual
-#endif
-		extern object Clone ();
+		public extern object Clone ();
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
-#endif
 		public static void Copy (Array sourceArray, Array destinationArray, int length)
 		{
 			// need these checks here because we are going to use
@@ -937,9 +931,7 @@ namespace System
 				destinationArray.GetLowerBound (0), length);
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
-#endif
 		public static void Copy (Array sourceArray, int sourceIndex, Array destinationArray, int destinationIndex, int length)
 		{
 			if (sourceArray == null)
@@ -973,11 +965,7 @@ namespace System
 			if (dest_pos > destinationArray.Length - length) {
 				string msg = "Destination array was not long enough. Check " +
 					"destIndex and length, and the array's lower bounds";
-#if NET_2_0
 				throw new ArgumentException (msg, string.Empty);
-#else
-				throw new ArgumentException (msg);
-#endif
 			}
 
 			if (sourceArray.Rank != destinationArray.Rank)
@@ -1018,10 +1006,7 @@ namespace System
 			}
 		}
 
-#if NET_1_1
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
-#endif
 		public static void Copy (Array sourceArray, long sourceIndex, Array destinationArray,
 		                         long destinationIndex, long length)
 		{
@@ -1046,9 +1031,7 @@ namespace System
 			Copy (sourceArray, (int) sourceIndex, destinationArray, (int) destinationIndex, (int) length);
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
-#endif
 		public static void Copy (Array sourceArray, Array destinationArray, long length)
 		{
 			if (length < 0 || length > Int32.MaxValue)
@@ -1057,11 +1040,8 @@ namespace System
 
 			Copy (sourceArray, destinationArray, (int) length);
 		}
-#endif
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.MayFail)]
-#endif
 		public static int IndexOf (Array array, object value)
 		{
 			if (array == null)
@@ -1070,9 +1050,7 @@ namespace System
 			return IndexOf (array, value, 0, array.Length);
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.MayFail)]
-#endif
 		public static int IndexOf (Array array, object value, int startIndex)
 		{
 			if (array == null)
@@ -1081,9 +1059,7 @@ namespace System
 			return IndexOf (array, value, startIndex, array.Length - startIndex);
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.MayFail)]
-#endif
 		public static int IndexOf (Array array, object value, int startIndex, int count)
 		{
 			if (array == null)
@@ -1112,9 +1088,7 @@ namespace System
 			// in C# so no exception is trown by the moment.
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.MayFail)]
-#endif
 		public static int LastIndexOf (Array array, object value)
 		{
 			if (array == null)
@@ -1125,9 +1099,7 @@ namespace System
 			return LastIndexOf (array, value, array.Length - 1);
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.MayFail)]
-#endif
 		public static int LastIndexOf (Array array, object value, int startIndex)
 		{
 			if (array == null)
@@ -1136,9 +1108,7 @@ namespace System
 			return LastIndexOf (array, value, startIndex, startIndex - array.GetLowerBound (0) + 1);
 		}
 		
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.MayFail)]
-#endif
 		public static int LastIndexOf (Array array, object value, int startIndex, int count)
 		{
 			if (array == null)
@@ -1164,10 +1134,8 @@ namespace System
 			return lb - 1;
 		}
 
-#if !BOOTSTRAP_WITH_OLDLIB
 		/* delegate used to swap array elements */
 		delegate void Swapper (int i, int j);
-#endif
 
 		static Swapper get_swapper (Array array)
 		{
@@ -1181,23 +1149,7 @@ namespace System
 			return new Swapper (array.slow_swapper);
 		}
 
-#if NET_2_0
-		static Swapper get_swapper<T> (T [] array)
-		{
-			if (array is int[])
-				return new Swapper (array.int_swapper);
-			if (array is double[])
-				return new Swapper (array.double_swapper);
-
-			// gmcs refuses to compile this
-			//return new Swapper (array.generic_swapper<T>);
-			return new Swapper (array.slow_swapper);
-		}
-#endif
-
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
-#endif
 		public static void Reverse (Array array)
 		{
 			if (array == null)
@@ -1206,9 +1158,7 @@ namespace System
 			Reverse (array, array.GetLowerBound (0), array.GetLength (0));
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
-#endif
 		public static void Reverse (Array array, int index, int length)
 		{
 			if (array == null)
@@ -1267,87 +1217,96 @@ namespace System
 			}
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
-#endif
 		public static void Sort (Array array)
 		{
-			if (array == null)
-				throw new ArgumentNullException ("array");
-
-			Sort (array, null, array.GetLowerBound (0), array.GetLength (0), null);
+			Sort (array, (IComparer)null);
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
-#endif
 		public static void Sort (Array keys, Array items)
 		{
-			if (keys == null)
-				throw new ArgumentNullException ("keys");
-
-			Sort (keys, items, keys.GetLowerBound (0), keys.GetLength (0), null);
+			Sort (keys, items, (IComparer)null);
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
-#endif
 		public static void Sort (Array array, IComparer comparer)
 		{
 			if (array == null)
 				throw new ArgumentNullException ("array");
 
-			Sort (array, null, array.GetLowerBound (0), array.GetLength (0), comparer);
+			if (array.Rank > 1)
+				throw new RankException (Locale.GetText ("Only single dimension arrays are supported."));
+
+			SortImpl (array, null, array.GetLowerBound (0), array.GetLength (0), comparer);
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
-#endif
 		public static void Sort (Array array, int index, int length)
 		{
-			Sort (array, null, index, length, null);
+			Sort (array, index, length, (IComparer)null);
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
-#endif
 		public static void Sort (Array keys, Array items, IComparer comparer)
 		{
+			if (items == null) {
+				Sort (keys, comparer);
+				return;
+			}		
+		
 			if (keys == null)
 				throw new ArgumentNullException ("keys");
 
-			Sort (keys, items, keys.GetLowerBound (0), keys.GetLength (0), comparer);
+			if (keys.Rank > 1 || items.Rank > 1)
+				throw new RankException (Locale.GetText ("Only single dimension arrays are supported."));
+
+			SortImpl (keys, items, keys.GetLowerBound (0), keys.GetLength (0), comparer);
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
-#endif
 		public static void Sort (Array keys, Array items, int index, int length)
 		{
-			Sort (keys, items, index, length, null);
+			Sort (keys, items, index, length, (IComparer)null);
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
-#endif
 		public static void Sort (Array array, int index, int length, IComparer comparer)
 		{
-			Sort (array, null, index, length, comparer);
+			if (array == null)
+				throw new ArgumentNullException ("array");
+				
+			if (array.Rank > 1)
+				throw new RankException (Locale.GetText ("Only single dimension arrays are supported."));
+
+			if (index < array.GetLowerBound (0))
+				throw new ArgumentOutOfRangeException ("index");
+
+			if (length < 0)
+				throw new ArgumentOutOfRangeException ("length", Locale.GetText (
+					"Value has to be >= 0."));
+
+			if (array.Length - (array.GetLowerBound (0) + index) < length)
+				throw new ArgumentException ();
+				
+			SortImpl (array, null, index, length, comparer);
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
-#endif
-
 		public static void Sort (Array keys, Array items, int index, int length, IComparer comparer)
 		{
+			if (items == null) {
+				Sort (keys, index, length, comparer);
+				return;
+			}
+
 			if (keys == null)
 				throw new ArgumentNullException ("keys");
 
-			if (keys.Rank > 1 || (items != null && items.Rank > 1))
+			if (keys.Rank > 1 || items.Rank > 1)
 				throw new RankException ();
 
-			if (items != null && keys.GetLowerBound (0) != items.GetLowerBound (0))
+			if (keys.GetLowerBound (0) != items.GetLowerBound (0))
 				throw new ArgumentException ();
 
 			if (index < keys.GetLowerBound (0))
@@ -1357,37 +1316,63 @@ namespace System
 				throw new ArgumentOutOfRangeException ("length", Locale.GetText (
 					"Value has to be >= 0."));
 
-			if (keys.Length - (index + keys.GetLowerBound (0)) < length || (items != null && index > items.Length - length))
+			if (items.Length - (index + items.GetLowerBound (0)) < length || keys.Length - (index + keys.GetLowerBound (0)) < length)
 				throw new ArgumentException ();
 
+			SortImpl (keys, items, index, length, comparer);
+		}
+
+		private static void SortImpl (Array keys, Array items, int index, int length, IComparer comparer)
+		{
 			if (length <= 1)
 				return;
 
-			if (comparer == null) {
-				Swapper iswapper;
-				if (items == null)
-					iswapper = null;
-				else 
-					iswapper = get_swapper (items);
-				if (keys is double[]) {
-					combsort (keys as double[], index, length, iswapper);
+			int low = index;
+			int high = index + length - 1;
+			
+#if !BOOTSTRAP_BASIC			
+			if (comparer == null && items is object[]) {
+				if (keys is int[]) {
+					qsort (keys as int[], items as object[], low, high);
 					return;
 				}
-				if (keys is int[]) {
-					combsort (keys as int[], index, length, iswapper);
+				if (keys is long[]) {
+					qsort (keys as long[], items as object[], low, high);
 					return;
 				}
 				if (keys is char[]) {
-					combsort (keys as char[], index, length, iswapper);
+					qsort (keys as char[], items as object[], low, high);
 					return;
 				}
+				if (keys is double[]) {
+					qsort (keys as double[], items as object[], low, high);
+					return;
+				}
+				if (keys is uint[]) {
+					qsort (keys as uint[], items as object[], low, high);
+					return;
+				}
+				if (keys is ulong[]) {
+					qsort (keys as ulong[], items as object[], low, high);
+					return;
+				}
+				if (keys is byte[]) {
+					qsort (keys as byte[], items as object[], low, high);
+					return;
+				}
+				if (keys is ushort[]) {
+					qsort (keys as ushort[], items as object[], low, high);
+					return;
+				}				
 			}
+#endif
+
+			if (comparer == null)
+				CheckComparerAvailable (keys, low, high);
+ 
 			try {
-				int low0 = index;
-				int high0 = index + length - 1;
-				qsort (keys, items, low0, high0, comparer);
-			}
-			catch (Exception e) {
+				qsort (keys, items, low, high, comparer);
+			} catch (Exception e) {
 				throw new InvalidOperationException (Locale.GetText ("The comparer threw an exception."), e);
 			}
 		}
@@ -1420,106 +1405,37 @@ namespace System
 			array [j] = val;
 		}
 
-		static int new_gap (int gap)
-		{
-			gap = (gap * 10) / 13;
-			if (gap == 9 || gap == 10)
-				return 11;
-			if (gap < 1)
-				return 1;
-			return gap;
-		}
-
-		/* we use combsort because it's fast enough and very small, since we have
-		 * several specialized versions here.
-		 */
-		static void combsort (double[] array, int start, int size, Swapper swap_items)
-		{
-			int gap = size;
-			while (true) {
-				gap = new_gap (gap);
-				bool swapped = false;
-				int end = start + size - gap;
-				for (int i = start; i < end; i++) {
-					int j = i + gap;
-					if (array [i] > array [j]) {
-						double val = array [i];
-						array [i] = array [j];
-						array [j] = val;
-						swapped = true;
-						if (swap_items != null)
-							swap_items (i, j);
-					}
-				}
-				if (gap == 1 && !swapped)
-					break;
-			}
-		}
-
-		static void combsort (int[] array, int start, int size, Swapper swap_items)
-		{
-			int gap = size;
-			while (true) {
-				gap = new_gap (gap);
-				bool swapped = false;
-				int end = start + size - gap;
-				for (int i = start; i < end; i++) {
-					int j = i + gap;
-					if (array [i] > array [j]) {
-						int val = array [i];
-						array [i] = array [j];
-						array [j] = val;
-						swapped = true;
-						if (swap_items != null)
-							swap_items (i, j);
-					}
-				}
-				if (gap == 1 && !swapped)
-					break;
-			}
-		}
-
-		static void combsort (char[] array, int start, int size, Swapper swap_items)
-		{
-			int gap = size;
-			while (true) {
-				gap = new_gap (gap);
-				bool swapped = false;
-				int end = start + size - gap;
-				for (int i = start; i < end; i++) {
-					int j = i + gap;
-					if (array [i] > array [j]) {
-						char val = array [i];
-						array [i] = array [j];
-						array [j] = val;
-						swapped = true;
-						if (swap_items != null)
-							swap_items (i, j);
-					}
-				}
-				if (gap == 1 && !swapped)
-					break;
-			}
-		}
-
 		private static void qsort (Array keys, Array items, int low0, int high0, IComparer comparer)
 		{
-			if (low0 >= high0)
-				return;
-
 			int low = low0;
 			int high = high0;
 
 			// Be careful with overflows
 			int mid = low + ((high - low) / 2);
-			object objPivot = keys.GetValueImpl (mid);
+			object keyPivot = keys.GetValueImpl (mid);
+			IComparable cmpPivot = keyPivot as IComparable;
 
 			while (true) {
 				// Move the walls in
-				while (low < high0 && compare (keys.GetValueImpl (low), objPivot, comparer) < 0)
-					++low;
-				while (high > low0 && compare (objPivot, keys.GetValueImpl (high), comparer) < 0)
-					--high;
+				if (comparer != null) {
+					while (low < high0 && comparer.Compare (keyPivot, keys.GetValueImpl (low)) > 0)
+						++low;
+					while (high > low0 && comparer.Compare (keyPivot, keys.GetValueImpl (high)) < 0)
+						--high;
+				} else {
+					if (keyPivot == null){
+						// This has the effect of moving the null values to the front if comparer is null
+						while (high > low0 && keys.GetValueImpl (high) != null)
+							--high;
+						while (low < high0 && keys.GetValueImpl (low) == null)
+							++low;
+					} else {
+						while (low < high0 && cmpPivot.CompareTo (keys.GetValueImpl (low)) > 0)
+							++low;
+						while (high > low0 && cmpPivot.CompareTo (keys.GetValueImpl (high)) < 0)
+							--high;
+					}
+				}
 
 				if (low <= high) {
 					swap (keys, items, low, high);
@@ -1535,12 +1451,25 @@ namespace System
 				qsort (keys, items, low, high0, comparer);
 		}
 
+		private static void CheckComparerAvailable (Array keys, int low, int high)
+		{
+			// move null keys to beginning of array,
+			// ensure that non-null keys implement IComparable
+			for (int i = 0; i < high; i++) {
+				object obj = keys.GetValueImpl (i);
+				if (obj == null)
+					continue;
+				if (!(obj is IComparable)) {
+					string msg = Locale.GetText ("No IComparable interface found for type '{0}'.");
+					throw new InvalidOperationException (String.Format (msg, obj.GetType ()));
+				}  
+			}
+		}
+
 		private static void swap (Array keys, Array items, int i, int j)
 		{
-			object tmp;
-
-			tmp = keys.GetValueImpl (i);
-			keys.SetValueImpl (keys.GetValue (j), i);
+			object tmp = keys.GetValueImpl (i);
+			keys.SetValueImpl (keys.GetValueImpl (j), i);
 			keys.SetValueImpl (tmp, j);
 
 			if (items != null) {
@@ -1550,35 +1479,16 @@ namespace System
 			}
 		}
 
-		private static int compare (object value1, object value2, IComparer comparer)
-		{
-			if (value1 == null)
-				return value2 == null ? 0 : -1;
-			else if (value2 == null)
-				return 1;
-			else if (comparer == null)
-				return ((IComparable) value1).CompareTo (value2);
-			else
-				return comparer.Compare (value1, value2);
-		}
-	
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
 		public static void Sort<T> (T [] array)
 		{
-			if (array == null)
-				throw new ArgumentNullException ("array");
-
-			Sort<T, T> (array, null, 0, array.Length, null);
+			Sort<T> (array, (IComparer<T>)null);
 		}
 
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
 		public static void Sort<TKey, TValue> (TKey [] keys, TValue [] items)
 		{
-			if (keys == null)
-				throw new ArgumentNullException ("keys");
-			
-			Sort<TKey, TValue> (keys, items, 0, keys.Length, null);
+			Sort<TKey, TValue> (keys, items, (IComparer<TKey>)null);
 		}
 
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
@@ -1587,31 +1497,36 @@ namespace System
 			if (array == null)
 				throw new ArgumentNullException ("array");
 
-			Sort<T, T> (array, null, 0, array.Length, comparer);
+			SortImpl<T, T> (array, null, 0, array.Length, comparer);
 		}
 
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
 		public static void Sort<TKey, TValue> (TKey [] keys, TValue [] items, IComparer<TKey> comparer)
 		{
+			if (items == null) {
+				Sort<TKey> (keys, comparer);
+				return;
+			}		
+		
 			if (keys == null)
 				throw new ArgumentNullException ("keys");
+				
+			if (keys.Length != items.Length)
+				throw new ArgumentException ("Length of keys and items does not match.");
 			
-			Sort<TKey, TValue> (keys, items, 0, keys.Length, comparer);
+			SortImpl<TKey, TValue> (keys, items, 0, keys.Length, comparer);
 		}
 
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
 		public static void Sort<T> (T [] array, int index, int length)
 		{
-			if (array == null)
-				throw new ArgumentNullException ("array");
-			
-			Sort<T, T> (array, null, index, length, null);
+			Sort<T> (array, index, length, (IComparer<T>)null);
 		}
 
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
 		public static void Sort<TKey, TValue> (TKey [] keys, TValue [] items, int index, int length)
 		{
-			Sort<TKey, TValue> (keys, items, index, length, null);
+			Sort<TKey, TValue> (keys, items, index, length, (IComparer<TKey>)null);
 		}
 
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
@@ -1620,12 +1535,27 @@ namespace System
 			if (array == null)
 				throw new ArgumentNullException ("array");
 
-			Sort<T, T> (array, null, index, length, comparer);
+			if (index < 0)
+				throw new ArgumentOutOfRangeException ("index");
+
+			if (length < 0)
+				throw new ArgumentOutOfRangeException ("length", Locale.GetText (
+					"Value has to be >= 0."));
+
+			if (index + length > array.Length)
+				throw new ArgumentException ();
+				
+			SortImpl<T, T> (array, null, index, length, comparer);
 		}
 
 		[ReliabilityContractAttribute (Consistency.MayCorruptInstance, Cer.MayFail)]
 		public static void Sort<TKey, TValue> (TKey [] keys, TValue [] items, int index, int length, IComparer<TKey> comparer)
 		{
+			if (items == null) {
+				Sort<TKey> (keys, index, length, comparer);
+				return;
+			}
+
 			if (keys == null)
 				throw new ArgumentNullException ("keys");
 
@@ -1635,94 +1565,185 @@ namespace System
 			if (length < 0)
 				throw new ArgumentOutOfRangeException ("length");
 
-			if (keys.Length - index < length
-				|| (items != null && index > items.Length - length))
+			if (items.Length - index < length || keys.Length - index < length)
 				throw new ArgumentException ();
 
-			if (length <= 1)
+			SortImpl<TKey, TValue> (keys, items, index, length, comparer);
+		}
+
+		private static void SortImpl<TKey, TValue> (TKey [] keys, TValue [] items, int index, int length, IComparer<TKey> comparer)
+		{
+			if (keys.Length <= 1)
 				return;
+
+			int low = index;
+			int high = index + length - 1;
 			
 			//
 			// Check for value types which can be sorted without Compare () method
 			//
 			if (comparer == null) {
-				Swapper iswapper;
-				if (items == null)
-					iswapper = null;
-				else 
-					iswapper = get_swapper<TValue> (items);
-				if (keys is double[]) {
-					combsort (keys as double[], index, length, iswapper);
+#if !BOOTSTRAP_BASIC				
+				switch (Type.GetTypeCode (typeof (TKey))) {
+				case TypeCode.Int32:
+					qsort (keys as Int32[], items, low, high);
+					return;
+				case TypeCode.Int64:
+					qsort (keys as Int64[], items, low, high);
+					return;
+				case TypeCode.Byte:
+					qsort (keys as byte[], items, low, high);
+					return;
+				case TypeCode.Char:
+					qsort (keys as char[], items, low, high);
+					return;
+				case TypeCode.DateTime:
+					qsort (keys as DateTime[], items, low, high);
+					return;
+				case TypeCode.Decimal:
+					qsort (keys as decimal[], items, low, high);
+					return;
+				case TypeCode.Double:
+					qsort (keys as double[], items, low, high);
+					return;
+				case TypeCode.Int16:
+					qsort (keys as Int16[], items, low, high);
+					return;
+				case TypeCode.SByte:
+					qsort (keys as SByte[], items, low, high);
+					return;
+				case TypeCode.Single:
+					qsort (keys as Single[], items, low, high);
+					return;
+				case TypeCode.UInt16:
+					qsort (keys as UInt16[], items, low, high);
+					return;	
+				case TypeCode.UInt32:
+					qsort (keys as UInt32[], items, low, high);
+					return;
+				case TypeCode.UInt64:
+					qsort (keys as UInt64[], items, low, high);
 					return;
 				}
-				if (keys is int[]) {
-					combsort (keys as int[], index, length, iswapper);
-					return;
-				}
-				if (keys is char[]) {
-					combsort (keys as char[], index, length, iswapper);
-					return;
-				}
+#endif
+				// Using Comparer<TKey> adds a small overload, but with value types it
+				// helps us to not box them.
+				if (typeof (IComparable<TKey>).IsAssignableFrom (typeof (TKey)) &&
+						typeof (TKey).IsValueType)
+					comparer = Comparer<TKey>.Default;
+			}
 
-				// Use Comparer<T>.Default instead
-				// comparer = Comparer<K>.Default;
-			}
-			
-			try {
-				int low0 = index;
-				int high0 = index + length - 1;
-				qsort<TKey, TValue> (keys, items, low0, high0, comparer);
-			}
-			catch (Exception e) {
-				throw new InvalidOperationException (Locale.GetText ("The comparer threw an exception."), e);
-			}
+			if (comparer == null)
+				CheckComparerAvailable<TKey> (keys, low, high);
+ 
+			//try {
+				qsort (keys, items, low, high, comparer);
+				//} catch (Exception e) {
+				//throw new InvalidOperationException (Locale.GetText ("The comparer threw an exception."), e);
+				//}
 		}
-
+		
 		public static void Sort<T> (T [] array, Comparison<T> comparison)
 		{
 			if (array == null)
 				throw new ArgumentNullException ("array");
-			Sort<T> (array, array.Length, comparison);
-		}
 
-		internal static void Sort<T> (T [] array, int length, Comparison<T> comparison)
-		{
 			if (comparison == null)
 				throw new ArgumentNullException ("comparison");
 
-			if (length <= 1 || array.Length <= 1)
+			SortImpl<T> (array, array.Length, comparison);
+		}
+
+		// used by List<T>.Sort (Comparison <T>)
+		internal static void SortImpl<T> (T [] array, int length, Comparison<T> comparison)
+		{
+			if (length <= 1)
 				return;
 			
 			try {
 				int low0 = 0;
 				int high0 = length - 1;
 				qsort<T> (array, low0, high0, comparison);
-			}
-			catch (Exception e) {
+			} catch (InvalidOperationException) {
+				throw;
+			} catch (Exception e) {
 				throw new InvalidOperationException (Locale.GetText ("Comparison threw an exception."), e);
 			}
 		}
+		
+		private static void qsort<T, U> (T[] array, U[] items, int low0, int high0) where T : IComparable<T>
+		{
+			int low = low0;
+			int high = high0;
+
+			// Be careful with overflows
+			int mid = low + ((high - low) / 2);
+			var keyPivot = array [mid];
+
+			while (true) {
+				if (keyPivot == null){
+					while (low < high0 && array [low] == null)
+						++low;
+					while (high > low0 && array [high] != null)
+						--high;
+				} else {
+					// Move the walls in
+					while (low < high0 && keyPivot.CompareTo (array [low]) > 0)
+						++low;
+					while (high > low0 && keyPivot.CompareTo (array [high]) < 0)
+						--high;
+				}
+				
+				if (low <= high) {
+					swap (array, items, low, high);
+					++low;
+					--high;
+				} else
+					break;
+			}
+
+			if (low0 < high)
+				qsort (array, items, low0, high);
+			if (low < high0)
+				qsort (array, items, low, high0);
+		}		
 
 		private static void qsort<K, V> (K [] keys, V [] items, int low0, int high0, IComparer<K> comparer)
 		{
-			if (low0 >= high0)
-				return;
-
 			int low = low0;
 			int high = high0;
 
 			// Be careful with overflows
 			int mid = low + ((high - low) / 2);
 			K keyPivot = keys [mid];
+			IComparable<K> genCmpPivot = keyPivot as IComparable<K>;
+			IComparable cmpPivot = keyPivot as IComparable;
 
 			while (true) {
 				// Move the walls in
-				//while (low < high0 && comparer.Compare (keys [low], keyPivot) < 0)
-				while (low < high0 && compare (keys [low], keyPivot, comparer) < 0)
-					++low;
-				//while (high > low0 && comparer.Compare (keyPivot, keys [high]) < 0)
-				while (high > low0 && compare (keyPivot, keys [high], comparer) < 0)
-					--high;
+				if (comparer != null) {
+					while (low < high0 && comparer.Compare (keyPivot, keys [low]) > 0)
+						++low;
+					while (high > low0 && comparer.Compare (keyPivot, keys [high]) < 0)
+						--high;
+				} else {
+					if (genCmpPivot != null) {
+						while (low < high0 && genCmpPivot.CompareTo (keys [low]) > 0)
+							++low;
+						while (high > low0 && genCmpPivot.CompareTo (keys [high]) < 0)
+							--high;
+					} else if (cmpPivot != null) {
+						while (low < high0 && cmpPivot.CompareTo (keys [low]) > 0)
+							++low;
+						while (high > low0 && cmpPivot.CompareTo (keys [high]) < 0)
+							--high;
+					} else {
+						while (low < high0 && keys [low] == null)
+							++low;
+						while (high > low0 && keys [high] != null)
+							--high;
+					}
+				}
 
 				if (low <= high) {
 					swap<K, V> (keys, items, low, high);
@@ -1738,28 +1759,8 @@ namespace System
 				qsort<K, V> (keys, items, low, high0, comparer);
 		}
 
-		private static int compare<T> (T value1, T value2, IComparer<T> comparer)
-		{
-			if (comparer != null)
-				return comparer.Compare (value1, value2);
-			else if (value1 == null)
-				return value2 == null ? 0 : -1;
-			else if (value2 == null)
-				return 1;
-			else if (value1 is IComparable<T>)
-				return ((IComparable<T>) value1).CompareTo (value2);
-			else if (value1 is IComparable)
-				return ((IComparable) value1).CompareTo (value2);
-
-			string msg = Locale.GetText ("No IComparable or IComparable<{0}> interface found.");
-			throw new InvalidOperationException (String.Format (msg, typeof (T)));
-		}
-
 		private static void qsort<T> (T [] array, int low0, int high0, Comparison<T> comparison)
 		{
-			if (low0 >= high0)
-				return;
-
 			int low = low0;
 			int high = high0;
 
@@ -1768,11 +1769,18 @@ namespace System
 			T keyPivot = array [mid];
 
 			while (true) {
-				// Move the walls in
-				while (low < high0 && comparison (array [low], keyPivot) < 0)
-					++low;
-				while (high > low0 && comparison (keyPivot, array [high]) < 0)
-					--high;
+				if (keyPivot == null){
+					while (low < high0 && array [low] == null)
+						++low;
+					while (high > low0 && array [high] != null)
+						--high;
+				} else {
+					// Move the walls in
+					while (low < high0 && comparison (array [low], keyPivot) < 0)
+						++low;
+					while (high > low0 && comparison (keyPivot, array [high]) < 0)
+						--high;
+				}
 
 				if (low <= high) {
 					swap<T> (array, low, high);
@@ -1786,6 +1794,21 @@ namespace System
 				qsort<T> (array, low0, high, comparison);
 			if (low < high0)
 				qsort<T> (array, low, high0, comparison);
+		}
+
+		private static void CheckComparerAvailable<K> (K [] keys, int low, int high)
+		{
+			// move null keys to beginning of array,
+			// ensure that non-null keys implement IComparable
+			for (int i = low; i < high; i++) {
+				K key = keys [i];
+				if (key != null) {
+					if (!(key is IComparable<K>) && !(key is IComparable)) {
+						string msg = Locale.GetText ("No IComparable<T> or IComparable interface found for type '{0}'.");
+						throw new InvalidOperationException (String.Format (msg, key.GetType ()));
+					}  
+				}
+			}
 		}
 
 		private static void swap<K, V> (K [] keys, V [] items, int i, int j)
@@ -1810,13 +1833,8 @@ namespace System
 			array [i] = array [j];
 			array [j] = tmp;
 		}
-#endif
 		
-		public
-#if !NET_2_0
-		virtual
-#endif
-		void CopyTo (Array array, int index)
+		public void CopyTo (Array array, int index)
 		{
 			if (array == null)
 				throw new ArgumentNullException ("array");
@@ -1838,13 +1856,8 @@ namespace System
 			Copy (this, this.GetLowerBound (0), array, index, this.GetLength (0));
 		}
 
-#if NET_1_1
 		[ComVisible (false)]
-		public
-#if !NET_2_0
-		virtual
-#endif
-		void CopyTo (Array array, long index)
+		public void CopyTo (Array array, long index)
 		{
 			if (index < 0 || index > Int32.MaxValue)
 				throw new ArgumentOutOfRangeException ("index", Locale.GetText (
@@ -1852,7 +1865,6 @@ namespace System
 
 			CopyTo (array, (int) index);
 		}
-#endif
 
 		internal class SimpleEnumerator : IEnumerator, ICloneable
 		{
@@ -1905,14 +1917,8 @@ namespace System
 			}
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.MayFail)]
 		public static void Resize<T> (ref T [] array, int newSize)
-		{
-			Resize<T> (ref array, array == null ? 0 : array.Length, newSize);
-		}
-
-		internal static void Resize<T> (ref T[] array, int length, int newSize)
 		{
 			if (newSize < 0)
 				throw new ArgumentOutOfRangeException ();
@@ -1921,12 +1927,14 @@ namespace System
 				array = new T [newSize];
 				return;
 			}
-			
-			if (array.Length == newSize)
+
+			int length = array.Length;
+			if (length == newSize)
 				return;
 			
 			T [] a = new T [newSize];
-			Array.Copy (array, a, Math.Min (newSize, length));
+			if (length != 0)
+				FastCopy (array, 0, a, 0, Math.Min (newSize, length));
 			array = a;
 		}
 		
@@ -2208,7 +2216,8 @@ namespace System
 		{
 			if (array == null)
 				throw new ArgumentNullException ("array");
-			return new ReadOnlyCollection<T> (new ArrayReadOnlyList<T> (array));
+
+			return new ReadOnlyCollection<T> (array);
 		}
 
 		public static T Find<T> (T [] array, Predicate<T> match)
@@ -2250,96 +2259,5 @@ namespace System
 		{
 			Copy (sourceArray, sourceIndex, destinationArray, destinationIndex, length);
 		}
-#endif 
-
-#if NET_2_0
-		class ArrayReadOnlyList<T> : IList<T>
-		{
-			T [] array;
-
-			public ArrayReadOnlyList (T [] array)
-			{
-				this.array = array;
-			}
-
-			public T this [int index] {
-				get {
-					if (unchecked ((uint) index) >= unchecked ((uint) array.Length))
-						throw new ArgumentOutOfRangeException ("index");
-					return array [index];
-				}
-				set { throw ReadOnlyError (); }
-			}
-
-			public int Count {
-				get { return array.Length; }
-			}
-
-			public bool IsReadOnly {
-				get { return true; }
-			}
-
-			public void Add (T item)
-			{
-				throw ReadOnlyError ();
-			}
-
-			public void Clear ()
-			{
-				throw ReadOnlyError ();
-			}
-
-			public bool Contains (T item)
-			{
-				return Array.IndexOf<T> (array, item) >= 0;
-			}
-
-			public void CopyTo (T [] array, int index)
-			{
-				this.array.CopyTo (array, index);
-			}
-
-			IEnumerator IEnumerable.GetEnumerator ()
-			{
-				return GetEnumerator ();
-			}
-
-			public IEnumerator<T> GetEnumerator ()
-			{
-				for (int i = 0; i < array.Length; i++)
-					yield return array [i];
-			}
-
-			public int IndexOf (T item)
-			{
-				return Array.IndexOf<T> (array, item);
-			}
-
-			public void Insert (int index, T item)
-			{
-				throw ReadOnlyError ();
-			}
-
-			public bool Remove (T item)
-			{
-				throw ReadOnlyError ();
-			}
-
-			public void RemoveAt (int index)
-			{
-				throw ReadOnlyError ();
-			}
-
-			static Exception ReadOnlyError ()
-			{
-				return new NotSupportedException ("This collection is read-only.");
-			}
-		}
-#endif
 	}
-
-#if BOOTSTRAP_WITH_OLDLIB
-	/* delegate used to swap array elements, keep defined outside Array */
-	delegate void Swapper (int i, int j);
-#endif
 }

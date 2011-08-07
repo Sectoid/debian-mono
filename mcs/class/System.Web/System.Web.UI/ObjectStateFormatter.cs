@@ -44,20 +44,16 @@ using System.Text;
 using System.Web.UI.WebControls;
 using System.Web.Util;
 using System.Diagnostics;
-using System.Security.Cryptography;
 using System.Web.Configuration;
 
-namespace System.Web.UI {
-#if NET_2_0
-	public
-#else
-	internal
-#endif
-	sealed class ObjectStateFormatter : IFormatter, IStateFormatter
+namespace System.Web.UI
+{
+	public sealed class ObjectStateFormatter : IFormatter, IStateFormatter
 	{
+		const ushort SERIALIZED_STREAM_MAGIC = 0x01FF;
+
 		Page page;
-		HashAlgorithm algo;
-		byte [] vkey;
+		MachineKeySection section;
 
 		public ObjectStateFormatter ()
 		{
@@ -68,140 +64,103 @@ namespace System.Web.UI {
 			this.page = page;
 		}
 
-		internal ObjectStateFormatter (byte [] vkey)
-		{
-			this.vkey = vkey;
-		}
-		
-		internal bool EnableMac {
+		bool EnableMac {
 			get {
-				if (page == null) {
-					if (vkey == null)
-						return false;
-					return true;
-				} else {
-				
-#if NET_2_0
-					return page.EnableViewStateMac;
-#elif NET_1_1
-					return page.EnableViewStateMacInternal;
-#else
-					return false;
-#endif
-				}
+				return (page == null) ? (section != null) : page.EnableViewStateMac;
 			}
 		}
 
-		internal HashAlgorithm GetAlgo ()
-		{
-			if (algo != null)
-				return algo;
-			if (!EnableMac)
-				return null;
-			
-			byte [] algoKey;
-			if (page != null) {
-#if NET_2_0
-				MachineKeySection mconfig = (MachineKeySection) WebConfigurationManager.GetWebApplicationSection ("system.web/machineKey");
-				algoKey = MachineKeySectionUtils.ValidationKeyBytes (mconfig);
-#else
-				MachineKeyConfig mconfig = HttpContext.GetAppConfig ("system.web/machineKey") as MachineKeyConfig;
-				algoKey = mconfig.ValidationKey;
-#endif
-			} else
-				algoKey = vkey;
-
-			algo = new HMACSHA1 (algoKey);
-			return algo;
-		}
-
-		static int ValidateInput (HashAlgorithm algo, byte [] data, int offset, int size)
-		{
-			if (algo == null)
-				throw new HttpException ("Unable to validate data.");
-			
-			int hash_size = algo.HashSize / 8;
-			if (size != 0 && size < hash_size)
-				throw new HttpException ("Unable to validate data.");
-
-			int data_length = size - hash_size;
-			MemoryStream data_stream = new MemoryStream (data, offset, data_length, false, false);
-			byte [] hash = algo.ComputeHash (data_stream);
-			for (int i = 0; i < hash_size; i++) {
-				if (hash [i] != data [data_length + i])
-					throw new HttpException ("Unable to validate data.");
+		bool NeedViewStateEncryption {
+			get {
+				return (page == null) ? false : page.NeedViewStateEncryption;
 			}
-			return data_length;
 		}
-		
+
+		internal MachineKeySection Section {
+			get {
+				if (section == null)
+					section = (MachineKeySection) WebConfigurationManager.GetWebApplicationSection ("system.web/machineKey");
+				return section;
+			}
+			set {
+				section = value;
+			}
+		}
+
+		// There's no need to implement encryption support in this overload. Encryption is
+		// performed only when ObjectStateFormatter is created in the Page context, and that
+		// can happen only internally to System.Web. Since System.Web doesn't use this
+		// overload, the encryption code in here would be effectively dead.
 		public object Deserialize (Stream inputStream)
 		{
 			if (inputStream == null)
 				throw new ArgumentNullException ("inputStream");
 
-			return DeserializeObject (new BinaryReader (inputStream));
+			BinaryReader reader = new BinaryReader (inputStream);
+			short magic = reader.ReadInt16 ();
+			if (magic != SERIALIZED_STREAM_MAGIC)
+				throw new ArgumentException ("The serialized data is invalid");
+
+			return DeserializeObject (reader);
 		}
 		
 		public object Deserialize (string inputString)
 		{
 			if (inputString == null)
 				throw new ArgumentNullException ("inputString");
-#if NET_2_0
 			if (inputString.Length == 0)
 				throw new ArgumentNullException ("inputString");
-#else
-			if (inputString == "")
-				return "";
-#endif
-			byte [] buffer = Convert.FromBase64String (inputString);
-			int length;
-			if (buffer == null || (length = buffer.Length) == 0)
+
+			byte [] data = Convert.FromBase64String (inputString);
+			if (data == null || (data.Length) == 0)
 				throw new ArgumentNullException ("inputString");
-			if (page != null && EnableMac)
-				length = ValidateInput (GetAlgo (), buffer, 0, length);
-#if NET_2_0
-			bool isEncrypted = ((int)buffer [--length] == 1)? true : false;
-#endif
-			Stream ms = new MemoryStream (buffer, 0, length, false, false);
-#if NET_2_0
-			if (isEncrypted)
-				ms = new CryptoStream (ms, page.GetCryptoTransform (CryptoStreamMode.Read), CryptoStreamMode.Read);
-#endif
-			return Deserialize (ms);
+
+			if (NeedViewStateEncryption) {
+				if (EnableMac) {
+					data = MachineKeySectionUtils.VerifyDecrypt (Section, data);
+				} else {
+					data = MachineKeySectionUtils.Decrypt (Section, data);
+				}
+			} else if (EnableMac) {
+				data = MachineKeySectionUtils.Verify (Section, data);
+			}
+
+			if (data == null)
+				throw new HttpException ("Unable to validate data.");
+
+			using (MemoryStream ms = new MemoryStream (data)) {
+				return Deserialize (ms);
+			}
 		}
 		
 		public string Serialize (object stateGraph)
 		{
 			if (stateGraph == null)
-				return "";
-			
-			MemoryStream ms = new MemoryStream ();
-			Stream output = ms;
-#if NET_2_0
-			bool needEncryption = page == null ? false : page.NeedViewStateEncryption;
-			if (needEncryption){
-				output = new CryptoStream (output, page.GetCryptoTransform (CryptoStreamMode.Write), CryptoStreamMode.Write);
+				return String.Empty;
+
+			byte[] data = null;
+			using (MemoryStream ms = new MemoryStream ()) {
+				Serialize (ms, stateGraph);
+				data = ms.GetBuffer ();
 			}
-#endif
-			Serialize (output, stateGraph);
-#if NET_2_0
-			ms.WriteByte((byte)(needEncryption? 1 : 0));
-#endif
-			
-#if TRACE
-			ms.WriteTo (File.OpenWrite (Path.GetTempFileName ()));
-#endif
-			if (EnableMac && ms.Length > 0) {
-				HashAlgorithm algo = GetAlgo ();
-				if (algo != null) {
-					byte [] hash = algo.ComputeHash (ms.GetBuffer (), 0, (int) ms.Length);
-					ms.Write (hash, 0, hash.Length);
+
+			if (NeedViewStateEncryption) {
+				if (EnableMac) {
+					data = MachineKeySectionUtils.EncryptSign (Section, data);
+				} else {
+					data = MachineKeySectionUtils.Encrypt (Section, data);
 				}
-				
+			} else if (EnableMac) {
+				data = MachineKeySectionUtils.Sign (Section, data);
 			}
-			return Convert.ToBase64String (ms.GetBuffer (), 0, (int) ms.Length);
+			
+			return Convert.ToBase64String (data, 0, data.Length);
 		}
-		
+
+		// There's no need to implement encryption support in this overload. Encryption is
+		// performed only when ObjectStateFormatter is created in the Page context, and that
+		// can happen only internally to System.Web. Since System.Web doesn't use this
+		// overload, the encryption code in here would be effectively dead.
 		public void Serialize (Stream outputStream, object stateGraph)
 		{
 			if (outputStream == null)
@@ -210,7 +169,10 @@ namespace System.Web.UI {
 			if (stateGraph == null)
 				throw new ArgumentNullException ("stateGraph");
 
-			SerializeValue (new BinaryWriter (outputStream), stateGraph);
+			BinaryWriter writer = new BinaryWriter (outputStream);
+			writer.Write (SERIALIZED_STREAM_MAGIC);
+
+			SerializeValue (writer, stateGraph);
 		}
 		
 		void SerializeValue (BinaryWriter w, object o)
@@ -331,10 +293,7 @@ namespace System.Web.UI {
 				new ObjectArrayFormatter ().Register ();
 				new UnitFormatter ().Register ();
 				new FontUnitFormatter ().Register ();
-#if NET_2_0
 				new IndexedStringFormatter ().Register ();
-#endif
-				
 				new ColorFormatter ().Register ();
 
 				enumFormatter = new EnumFormatter ();
@@ -535,7 +494,7 @@ namespace System.Web.UI {
 				get { return 2; }
 			}
 		}
-#if NET_2_0
+
 		class IndexedStringFormatter : StringFormatter
 		{
 			protected override void Write (BinaryWriter w, object o, WriterContext ctx)
@@ -565,7 +524,7 @@ namespace System.Web.UI {
 				get { return 2; }
 			}
 		}
-#endif
+		
 		class Int64Formatter : ObjectFormatter
 		{
 			protected override void Write (BinaryWriter w, object o, WriterContext ctx)

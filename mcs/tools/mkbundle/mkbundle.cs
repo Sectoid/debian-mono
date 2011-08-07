@@ -396,16 +396,16 @@ class MakeBundle {
 			if (static_link) {
 				string smonolib;
 				if (style == "osx")
-					smonolib = "`pkg-config --variable=libdir mono`/libmono.a ";
+					smonolib = "`pkg-config --variable=libdir mono-2`/libmono-2.0.a ";
 				else
-					smonolib = "-Wl,-Bstatic -lmono -Wl,-Bdynamic ";
-				cmd = String.Format ("{4} -o {2} -Wall `pkg-config --cflags mono` {0} {3} " +
-						     "`pkg-config --libs-only-L mono` " + smonolib +
-						     "`pkg-config --libs-only-l mono | sed -e \"s/\\-lmono //\"` {1}",
+					smonolib = "-Wl,-Bstatic -lmono-2.0 -Wl,-Bdynamic ";
+				cmd = String.Format ("{4} -o {2} -Wall `pkg-config --cflags mono-2` {0} {3} " +
+						     "`pkg-config --libs-only-L mono-2` " + smonolib +
+						     "`pkg-config --libs-only-l mono-2 | sed -e \"s/\\-lmono-2.0 //\"` {1}",
 						     temp_c, temp_o, output, zlib, cc);
 			} else {
 				
-				cmd = String.Format ("{4} " + debugging + " -o {2} -Wall {0} `pkg-config --cflags --libs mono` {3} {1}",
+				cmd = String.Format ("{4} " + debugging + " -o {2} -Wall {0} `pkg-config --cflags --libs mono-2` {3} {1}",
 						     temp_c, temp_o, output, zlib, cc);
 			}
                             
@@ -523,18 +523,20 @@ class MakeBundle {
 	{
 		Console.WriteLine ("Usage is: mkbundle [options] assembly1 [assembly2...]\n\n" +
 				   "Options:\n" +
-				   "    -c              Produce stub only, do not compile\n" +
-				   "    -o out          Specifies output filename\n" +
-				   "    -oo obj         Specifies output filename for helper object file\n" +
-				   "    -L path         Adds `path' to the search path for assemblies\n" +
-				   "    --nodeps        Turns off automatic dependency embedding (default)\n" +
-				   "    --deps          Turns on automatic dependency embedding\n" +
-				   "    --keeptemp      Keeps the temporary files\n" +
-				   "    --config F      Bundle system config file `F'\n" +
-				   "    --config-dir D  Set MONO_CFG_DIR to `D'\n" +
-				   "    --static        Statically link to mono libs\n" +
-				   "    --nomain        Don't include a main() function, for libraries\n" +
-				   "    -z              Compress the assemblies before embedding.\n");
+				   "    -c                  Produce stub only, do not compile\n" +
+				   "    -o out              Specifies output filename\n" +
+				   "    -oo obj             Specifies output filename for helper object file\n" +
+				   "    -L path             Adds `path' to the search path for assemblies\n" +
+				   "    --nodeps            Turns off automatic dependency embedding (default)\n" +
+				   "    --deps              Turns on automatic dependency embedding\n" +
+				   "    --keeptemp          Keeps the temporary files\n" +
+				   "    --config F          Bundle system config file `F'\n" +
+				   "    --config-dir D      Set MONO_CFG_DIR to `D'\n" +
+				   "    --machine-config F  Use the given file as the machine.config for the application.\n" +
+				   "    --static            Statically link to mono libs\n" +
+				   "    --nomain            Don't include a main() function, for libraries\n" +
+				   "    -z                  Compress the assemblies before embedding.\n" +
+				   "                        You need zlib development headers and libraries.\n");
 	}
 
 	[DllImport ("libc")]
@@ -553,6 +555,7 @@ class MakeBundle {
 		IntPtr buf = UnixMarshal.AllocHeap(8192);
 		if (uname (buf) != 0){
 			Console.WriteLine ("Warning: Unable to detect OS");
+			UnixMarshal.FreeHeap(buf);
 			return;
 		}
 		string os = Marshal.PtrToStringAnsi (buf);

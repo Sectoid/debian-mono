@@ -1,3 +1,440 @@
+2011-07-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Ensure that Task is in a correct initial state before starting it
+	for real
+
+2011-07-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Allow using a worker number that is greater than
+	Environment.ProcessorCount for parallel loops.
+
+2011-03-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Revert fcbb5717c18ff8393f2300a254bb13e6fab9c7e4 and implement it
+	differently.
+
+	The commit had the good idea but since some values of the
+	enumeration overlap it broke the correct behavior. Instead we now
+	turn off the extra options and use the previous way to check.
+
+2011-03-18  Miguel de Icaza  <miguel@gnome.org>
+
+	Merged compile fix from master
+
+2011-03-18  Rafael Munitic  <rafael.munitic@gmail.com>
+
+	Must pass null to overloaded constructor instead of wrapper lambda
+	(TaskCompletionSource can use overloaded constructors and it will
+	pass null in function argument)
+
+2011-03-18  Rafael Munitic  <rafael.munitic@gmail.com>
+
+	Continuation options should be checked as flags
+
+2011-03-18  Rafael Munitic  <rafael.munitic@gmail.com>
+
+	If the function is null Wait will not get called and will not
+	check if Future is in faulted state/raise the exception
+
+2011-03-16  Koushik Dutta  <koushd@gmail.com>
+
+	Fix bug where if a task is Start-ed with a specific scheduler,
+	that scheduler is ignored if it is in a thread owned by another
+	scheduler. Tasks should not be locked to the scheduler that owns
+	the calling thread.
+
+	Fix bug where TryExecuteTask does not actually try to execute the
+	task. Instead, TryExecuteTaskInline is called, which is abstract.
+	The TpScheduler implementation, the default, then calls the
+	internal method Task.Execute which then actually executes the
+	task. The problem with this is that only 3rd party schedulers,
+	can't actually execute a task, thus making extending TaskScheduler
+	impossible. (Unless they use some serious Mono specific reflection
+	hacks as I am now.)
+
+2011-03-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Don't throw an exception when task array is empty in WaitAll and
+	throw in case a null element is encountered in it.
+
+	Fix for #679183
+
+2011-03-16  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Correctly implement enumerating CyclicDequeue.
+
+	Fix #679174
+
+2011-02-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fix the mobile build
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Allow people to optionally fallback to the old scheduler with an
+	environment variable
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Remove ctors in TpScheduler
+
+	This also remove the capping of the ThreadPool, problem needs to
+	be fixed in the pool itself.
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Make TryExecuteTaskInline a bit smarter
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Refactor common code block of TpScheduler and SyncContextScheduler
+	in SchedulerProxy
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Kill old IScheduler interface.
+
+	We still use the ParticipateUntil facility of IScheduler
+	internally and provide a default implementation for pure
+	TaskScheduler
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	When finding best worker number in Parallel loops use current
+	TaskScheduler instead of default TaskScheduler
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Adapt TpScheduler to the new API in TaskScheduler
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Cache callback delegate in TpScheduler when passing Task to
+	QueueUserWorkItem
+
+2011-02-14  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Don't create a new lambda everytime when queuing Task via
+	ThreadPool QueueUserWorkItem
+
+2011-02-14  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Try to execute task inline when they are ready to run and we wait
+	on them with no timeout
+
+2011-02-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Threadpool Task scheduler
+
+2011-02-16  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Implement properly TaskScheduler's
+	FromCurrentSynchronizationContext
+
+2011-01-31  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Adapt Parallel.For stealing to all processor flavors
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Allow multiple invocation of Task Execute method to allow
+	short-circuiting without breaking deque ordering
+
+2011-02-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Implement TaskFactory.FromAsync
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add pfx to the mobile profile
+
+2011-01-24  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Make sure a synchronous continuation get executed synchronously in
+	all cases
+
+2011-01-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Make use of the wait changes in the internal TaskScheduler ->
+	IScheduler proxy.
+
+2011-01-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Rework internal wait mechanism in thread workers participation
+	code
+
+2011-01-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix continuation not being scheduled because of too early and too
+	greedy disposing.
+
+2011-01-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Explicitely attach loop underlying tasks to their eventual parent
+
+2011-01-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use wider acceptance criteria to cope with nested child Task
+	waiting and external task waiting
+
+2011-01-05  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Ensure task wait chain isn't executed out of order in scheduler
+
+2011-01-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use proper pattern for executing synchronous Task
+
+2010-12-16  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Clean and finish TaskFactory
+
+2010-12-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add prototype for Parallel.For long overloads
+
+2010-12-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	More parameter renaming
+
+2010-12-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Update Task parameter names
+
+2010-12-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task scheduler] Change waiting layout/wakeup point and use
+	adaptative deep sleeping
+
+2010-12-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task Scheduler] Revisit Task waiting in Scheduler using
+	ManualResetEventSlim
+
+2010-12-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task Scheduler] Track re-entrant call to WorkerMethod from normal
+	ThreadWorker and make them use their deque
+
+2010-12-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task] Add an extra check in Task.WaitAny to make sure the index
+	returned is valid
+
+2010-12-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task] Dumb bugfix when checking timeout in Task.WaitAny
+
+2010-11-26  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix typo
+
+2010-11-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task] In every TaskFactory method accepting a Task array, we have
+	to make a private copy to avoid changes to the array content from
+	the moment we register the continuation to when we call the
+	callback
+
+2010-11-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task] Check if Task isn't finished before going into the
+	Scheduler for Wait
+
+2010-11-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task] Set continuation status to WaitingForActivation in
+	ContinueWithCore
+
+2010-11-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task] Only launch continuation synchronously when the
+	corresponding option in TaskContinuationOptions is set
+
+2010-11-19  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Remove AreTasksFinished in Scheduler and directly use a non
+	volatile version of IsCompleted
+
+2010-11-19  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Increase the deepSleepTime of ThreadWorker
+
+2010-11-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task scheduler] Refactoring and cleanup. Removed a bunch of
+	not-so needed lambdas to avoid delegate invocation cost.
+
+2010-11-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Throw an an exception when Break and Stop are used in combination.
+
+2010-11-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Simplify Parallel.ForEach loop execution
+
+2010-11-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Cleanup ForEach overloads in Parallel
+
+2010-11-11  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Refine precedent algorithm for Parallel.For index stealing.
+
+2010-11-11  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add a new lightweight stealing algorithm to Parallel.For
+
+2010-11-11  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	In Parallel.For, returns immediately if the initial bound is
+	superior or equal to the upper bound.
+
+2010-11-11  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Small logic fix in choosing step in Parallel.For
+
+2010-11-10  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Simplify Parallel.For execution.
+
+	This commit remove the stealing path until a better solution for
+	it is devised.
+
+2010-11-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Implement Partitioner.Create int and long overloads. Add
+	corresponding unit tests.
+
+2010-11-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add TaskExtensions class and Unwrap extension methods
+
+2010-11-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Refactor Task.Wait and Task.WaitAny methods and add support for
+	scheduler-less waiting.
+
+	A scheduler-less waiting is useful for instance in case Tasks are
+	waited upon without having being started (like in some
+	continuation chaining case).
+
+2010-11-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Set more state on TaskCompletionSource inner Task<T>
+
+2010-11-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use Task helper methods in TaskCompletionSource instead of manual
+	setting, allow continuation flow to happen smoothly and task
+	status to be set accordingly.
+
+2010-08-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Move the predicate call under launched.TrySet protection in Task's
+	ContinueWithCore
+
+	Sometimes the predicate was also called multiple time generating
+	exception that weren't caught by the general Task handler and thus
+	swallowed by the runtime causing Thread shutdown and ultimately
+	deadlocks.
+
+2010-08-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Change the way continuation delegates are stored and processed in
+	Task. Fix random the random hangs.
+
+2010-08-24  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use Interlocked.Read (long) call directly in CyclicDeque.
+
+	Since the call is also implemented as a simple long load operation
+	in the runtime when on x86-64 there is no need to do the
+	differentiation in managed code.
+
+2010-08-18  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix cancellation tracking and reporting in Task.
+
+2010-08-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Avoid waiting in an endless loop in ThreadWorker.
+
+	In some rare case where a ThreadWorker have taken more than one
+	item (and thus there are items to steal) another ThreadWorker that
+	hadn't seen this extra work would go to sleep indefinitely and
+	cause deadlock if the first Task executed was depending on another
+	Task to be launched.
+
+2010-08-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Move NET_4_0 define checks at the right position under the licence
+	text
+
+2010-08-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use kernel-event in ThreadWorker and Scheduler to sync new arrival
+	of work to do.
+
+	Instead of shutting down the thread when there is no more work to
+	do, each ThreadWorker will now block on an EventWaitHandler and be
+	awoken later by Scheduler.
+
+2010-07-07  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* Parallel.cs: Fix Parallel.Invoke to use all data supplied in
+	ParallelOptions
+	* ParallelOptions.cs: Use CancellationToken.None for initialization
+
+2010-04-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* Future.cs:
+	* Task.cs:
+	* TaskCanceledException.cs:
+	* TaskContinuationOptions.cs:
+	* TaskCreationOptions.cs:
+	* TaskFactory.cs:
+	* TaskScheduler.cs:
+	* TaskStatus.cs: Add BOOTSTRAP_NET_4_0 define
+
+2010-03-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* Task.cs: If we add a continuation when the Task is already finished
+	forces its schedule as a Task instead of executing on the calling thread.
+	* TaskFactory.cs: Add ContinueWhenAny implementation when returning Task
+
+2010-02-24 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TaskContinuationOptions.cs: Use RC values.
+
+	* TaskCreationOptions.cs: Ditto.
+
+2010-02-23  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* Task.cs: Fix for continuation processing not happening
+	in case of Faulted or Canceled.
+
+2010-02-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* Task.cs: Fix autocomplete mistake (s/Exception/exception/).
+	Let continuation processing happens at the right moment when
+	task has child.
+
+2010-02-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* Future.cs:
+	* Parallel.cs:
+	* ParallelLoopState.cs:
+	* Task.cs:
+	* TaskCompletionSource.cs:
+	* TaskContinuationOptions.cs:
+	* TaskCreationOptions.cs:
+	* TaskFactory.cs:
+	* TaskScheduler.cs:
+	* UnobservedTaskExceptionEventArgs.cs: Port to .NET 4 beta 2 API
+	* SimpleConcurrentBag.cs: Add a simpler implementation of ConcurrentBag
+	for use with parallel loops as ConcurrentBag was moved to System
+
 2009-08-19  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	* Task.cs: Refactor Wait methods.

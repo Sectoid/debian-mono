@@ -43,20 +43,16 @@ namespace System.Web.Compilation
 	delegate void ParseErrorHandler (ILocation location, string message);
 	delegate void TextParsedHandler (ILocation location, string text);
 	delegate void TagParsedHandler (ILocation location, TagType tagtype, string id, TagAttributes attributes);
-#if NET_2_0
 	delegate void ParsingCompleteHandler ();
-#endif
 	
 	class AspParser : ILocation
 	{
 		static readonly object errorEvent = new object ();
 		static readonly object tagParsedEvent = new object ();
 		static readonly object textParsedEvent = new object ();
-#if NET_2_0
 		static readonly object parsingCompleteEvent = new object();
 
 		MD5 checksum;
-#endif
 		AspTokenizer tokenizer;
 		int beginLine, endLine;
 		int beginColumn, endColumn;
@@ -87,12 +83,10 @@ namespace System.Web.Compilation
 			remove { events.RemoveHandler (textParsedEvent, value); }
 		}
 
-#if NET_2_0
 		public event ParsingCompleteHandler ParsingComplete {
 			add { events.AddHandler (parsingCompleteEvent, value); }
 			remove { events.RemoveHandler (parsingCompleteEvent, value); }
 		}
-#endif
 		
 		public AspParser (string filename, TextReader input)
 		{
@@ -112,7 +106,6 @@ namespace System.Web.Compilation
 			this.outer = outer;
 		}
 		
-#if NET_2_0
 		public byte[] MD5Checksum {
 			get {
 				if (checksum == null)
@@ -121,8 +114,7 @@ namespace System.Web.Compilation
 				return checksum.Hash;
 			}
 		}
-#endif
-		
+
 		public int BeginPosition {
 			get { return beginPosition; }
 		}
@@ -130,7 +122,7 @@ namespace System.Web.Compilation
 		public int EndPosition {
 			get { return endPosition; }
 		}
-
+		
 		public int BeginLine {
 			get {
 				if (_internal)
@@ -304,15 +296,11 @@ namespace System.Web.Compilation
 					fileReader.Close ();
 					fileReader = null;
 				}
-#if NET_2_0
 				checksum = tokenizer.Checksum;
-#endif
 				tokenizer = null;
 			}
 
-#if NET_2_0
 			OnParsingComplete ();
-#endif
 		}
 
 		bool GetInclude (string str, out string pathType, out string filename)
@@ -432,7 +420,7 @@ namespace System.Web.Compilation
 							break;
 						}
 						tokenizer.Verbatim = true;
-						attributes.Add ("", GetVerbatim (tokenizer.get_token (), ">") + ">");
+						attributes.Add (String.Empty, GetVerbatim (tokenizer.get_token (), ">") + ">");
 						tokenizer.Verbatim = false;
 					}
 				}
@@ -472,7 +460,7 @@ namespace System.Web.Compilation
 			while ((token = tokenizer.get_token ()) != Token.EOF){
 				if (token == '<' && Eat ('%')) {
 					tokenizer.Verbatim = true;
-					attributes.Add ("", "<%" + 
+					attributes.Add (String.Empty, "<%" + 
 							GetVerbatim (tokenizer.get_token (), "%>") + "%>");
 					tokenizer.Verbatim = false;
 					tokenizer.InTag = true;
@@ -609,8 +597,14 @@ namespace System.Web.Compilation
 			tokenizer.ExpectAttrValue = old;
 			bool varname;
 			bool databinding;
+#if NET_4_0
+			bool codeRenderEncode;
+#endif
 			varname = Eat ('=');
 			databinding = !varname && Eat ('#');
+#if NET_4_0
+			codeRenderEncode = !databinding && !varname && Eat (':');
+#endif
 			string odds = tokenizer.Odds;
 			
 			tokenizer.Verbatim = true;
@@ -626,8 +620,16 @@ namespace System.Web.Compilation
 			tokenizer.Verbatim = false;
 			id = inside_tags;
 			attributes = null;
-			tagtype = (databinding ? TagType.DataBinding :
-				  (varname ? TagType.CodeRenderExpression : TagType.CodeRender));
+			if (databinding)
+				tagtype = TagType.DataBinding;
+			else if (varname)
+				tagtype = TagType.CodeRenderExpression;
+#if NET_4_0
+			else if (codeRenderEncode)
+				tagtype = TagType.CodeRenderEncode;
+#endif
+			else
+				tagtype = TagType.CodeRender;
 		}
 
 		public override string ToString ()
@@ -661,14 +663,12 @@ namespace System.Web.Compilation
 				eh (this, text);
 		}
 
-#if NET_2_0
 		void OnParsingComplete ()
 		{
 			ParsingCompleteHandler eh = events [parsingCompleteEvent] as ParsingCompleteHandler;
 			if (eh != null)
 				eh ();
 		}
-#endif
 	}
 }
 

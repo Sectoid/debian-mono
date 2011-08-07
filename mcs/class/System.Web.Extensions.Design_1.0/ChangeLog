@@ -1,3 +1,11 @@
+2010-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	Another missing System.Windows.Forms reference
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Switch to single mcs compiler for all managed code build
+
 2008-09-30  Marek Habersack  <mhabersack@novell.com>
 
 	* System.Web.Extensions.Design_1.0.dll.sources: added

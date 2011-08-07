@@ -44,12 +44,10 @@ namespace Mono.Security.X509 {
 	// b.	ITU ASN.1 standards (free download)
 	//	http://www.itu.int/ITU-T/studygroups/com17/languages/
 
-#if INSIDE_CORLIB
+#if INSIDE_CORLIB && !MOONLIGHT
 	internal class X509Certificate : ISerializable {
-#elif NET_2_0
-	public class X509Certificate : ISerializable {
 #else
-	public class X509Certificate {
+	public class X509Certificate : ISerializable {
 #endif
 
 		private ASN1 decoder;
@@ -269,7 +267,7 @@ namespace Mono.Security.X509 {
 					// BUG: MS BCL 1.0 can't import a key which 
 					// isn't the same size as the one present in
 					// the container.
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 					_dsa = new DSAManaged (dsaParams.Y.Length << 3);
 #else
 					_dsa = (DSA) new DSACryptoServiceProvider (dsaParams.Y.Length << 3);
@@ -278,13 +276,12 @@ namespace Mono.Security.X509 {
 				}
 				return _dsa; 
 			}
-#if NET_2_0
+
 			set {
 				_dsa = value;
 				if (value != null)
 					_rsa = null;
 			}
-#endif
 		}
 
 		public X509ExtensionCollection Extensions {
@@ -370,7 +367,7 @@ namespace Mono.Security.X509 {
 					// isn't the same size as the one present in
 					// the container.
 					int keySize = (rsaParams.Modulus.Length << 3);
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 					_rsa = new RSAManaged (keySize);
 #else
 					_rsa = (RSA) new RSACryptoServiceProvider (keySize);
@@ -379,13 +376,12 @@ namespace Mono.Security.X509 {
 				}
 				return _rsa; 
 			}
-#if NET_2_0
+
 			set {
 				if (value != null)
 					_dsa = null;
 				_rsa = value;
 			}
-#endif
 		}
 	        
 		public virtual byte[] RawData {
@@ -548,7 +544,7 @@ namespace Mono.Security.X509 {
 
 		public bool CheckSignature (byte[] hash, string hashAlgorithm, byte[] signature) 
 		{
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 			string hashName = GetHashNameFromOID (hashAlgorithm);
 			HashAlgorithm algo = HashAlgorithm.Create (hashName);
 			return PKCS1.Verify_v15 (RSA, algo, hash, signature);
@@ -567,7 +563,6 @@ namespace Mono.Security.X509 {
 			}
 		}
 
-#if INSIDE_CORLIB || NET_2_0
 		public ASN1 GetIssuerName ()
 		{
 			return issuer;
@@ -589,7 +584,6 @@ namespace Mono.Security.X509 {
 			info.AddValue ("raw", m_encodedcert);
 			// note: we NEVER serialize the private key
 		}
-#endif
 
 		static byte[] PEM (string type, byte[] data) 
 		{

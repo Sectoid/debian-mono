@@ -9,7 +9,7 @@
 //
 // Copyright (C) 2001, 2002 Phillip Pearson and Ximian, Inc.
 //    http://www.myelin.co.nz
-// (c) 2004-2006 Novell, Inc. (http://www.novell.com)
+// (c) 2004-2011 Novell, Inc. (http://www.novell.com)
 //
 
 //
@@ -36,6 +36,7 @@
 using System;
 using System.Net;
 using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -45,18 +46,716 @@ using System.Text;
 
 #if !NET_2_1
 using System.Net.Configuration;
-#endif
-
-#if NET_2_0
-using System.Collections.Generic;
-#if !NET_2_1
 using System.Net.NetworkInformation;
 #endif
+#if MOONLIGHT && !INSIDE_SYSTEM
+using System.Net.Policy;
 #endif
 
 namespace System.Net.Sockets {
 
 	public partial class Socket : IDisposable {
+		[StructLayout (LayoutKind.Sequential)]
+		struct WSABUF {
+			public int len;
+			public IntPtr buf;
+		}
+
+		// Used by the runtime
+		internal enum SocketOperation {
+			Accept,
+			Connect,
+			Receive,
+			ReceiveFrom,
+			Send,
+			SendTo,
+			RecvJustCallback,
+			SendJustCallback,
+			UsedInProcess,
+			UsedInConsole2,
+			Disconnect,
+			AcceptReceive,
+			ReceiveGeneric,
+			SendGeneric
+		}
+
+		[StructLayout (LayoutKind.Sequential)]
+		internal sealed class SocketAsyncResult: IAsyncResult
+		{
+			/* Same structure in the runtime */
+			/*
+			  Keep this in sync with MonoSocketAsyncResult in
+			  metadata/socket-io.h and ProcessAsyncReader
+			  in System.Diagnostics/Process.cs.
+			*/
+
+			public Socket Sock;
+			public IntPtr handle;
+			object state;
+			AsyncCallback callback;
+			WaitHandle waithandle;
+
+			Exception delayedException;
+
+			public EndPoint EndPoint;	// Connect,ReceiveFrom,SendTo
+			public byte [] Buffer;		// Receive,ReceiveFrom,Send,SendTo
+			public int Offset;		// Receive,ReceiveFrom,Send,SendTo
+			public int Size;		// Receive,ReceiveFrom,Send,SendTo
+			public SocketFlags SockFlags;	// Receive,ReceiveFrom,Send,SendTo
+			public Socket AcceptSocket;	// AcceptReceive
+			public IPAddress[] Addresses;	// Connect
+			public int Port;		// Connect
+			public IList<ArraySegment<byte>> Buffers;	// Receive, Send
+			public bool ReuseSocket;	// Disconnect
+
+			// Return values
+			Socket acc_socket;
+			int total;
+
+			bool completed_sync;
+			bool completed;
+			public bool blocking;
+			internal int error;
+			public SocketOperation operation;
+			public object ares;
+			public int EndCalled;
+
+			// These fields are not in MonoSocketAsyncResult
+			public Worker Worker;
+			public int CurrentAddress; // Connect
+
+			public SocketAsyncResult ()
+			{
+			}
+
+			public void Init (Socket sock, object state, AsyncCallback callback, SocketOperation operation)
+			{
+				this.Sock = sock;
+				if (sock != null) {
+					this.blocking = sock.blocking;
+					this.handle = sock.socket;
+				} else {
+					this.blocking = true;
+					this.handle = IntPtr.Zero;
+				}
+				this.state = state;
+				this.callback = callback;
+				GC.KeepAlive (this.callback);
+				this.operation = operation;
+				SockFlags = SocketFlags.None;
+				if (waithandle != null)
+					((ManualResetEvent) waithandle).Reset ();
+
+				delayedException = null;
+
+				EndPoint = null;
+				Buffer = null;
+				Offset = 0;
+				Size = 0;
+				SockFlags = 0;
+				AcceptSocket = null;
+				Addresses = null;
+				Port = 0;
+				Buffers = null;
+				ReuseSocket = false;
+				acc_socket = null;
+				total = 0;
+
+				completed_sync = false;
+				completed = false;
+				blocking = false;
+				error = 0;
+				ares = null;
+				EndCalled = 0;
+				Worker = null;
+			}
+
+			public void DoMConnectCallback ()
+			{
+				if (callback == null)
+					return;
+#if MOONLIGHT
+				ThreadPool.QueueUserWorkItem (_ => { callback (this); }, null);
+#else
+				ThreadPool.UnsafeQueueUserWorkItem (_ => { callback (this); }, null);
+#endif
+			}
+
+			public void Dispose ()
+			{
+				Init (null, null, null, 0);
+				if (waithandle != null) {
+					waithandle.Close ();
+					waithandle = null;
+				}
+			}
+
+			public SocketAsyncResult (Socket sock, object state, AsyncCallback callback, SocketOperation operation)
+			{
+				this.Sock = sock;
+				this.blocking = sock.blocking;
+				this.handle = sock.socket;
+				this.state = state;
+				this.callback = callback;
+				GC.KeepAlive (this.callback);
+				this.operation = operation;
+				SockFlags = SocketFlags.None;
+				Worker = new Worker (this);
+			}
+
+			public void CheckIfThrowDelayedException ()
+			{
+				if (delayedException != null) {
+					Sock.connected = false;
+					throw delayedException;
+				}
+
+				if (error != 0) {
+					Sock.connected = false;
+					throw new SocketException (error);
+				}
+			}
+
+			void CompleteAllOnDispose (Queue queue)
+			{
+				object [] pending = queue.ToArray ();
+				queue.Clear ();
+
+				WaitCallback cb;
+				for (int i = 0; i < pending.Length; i++) {
+					Worker worker = (Worker) pending [i];
+					SocketAsyncResult ares = worker.result;
+					cb = new WaitCallback (ares.CompleteDisposed);
+					ThreadPool.UnsafeQueueUserWorkItem (cb, null);
+				}
+			}
+
+			void CompleteDisposed (object unused)
+			{
+				Complete ();
+			}
+
+			public void Complete ()
+			{
+				if (operation != SocketOperation.Receive && Sock.disposed)
+					delayedException = new ObjectDisposedException (Sock.GetType ().ToString ());
+
+				IsCompleted = true;
+
+				Queue queue = null;
+				if (operation == SocketOperation.Receive ||
+				    operation == SocketOperation.ReceiveFrom ||
+				    operation == SocketOperation.ReceiveGeneric) {
+					queue = Sock.readQ;
+				} else if (operation == SocketOperation.Send ||
+					   operation == SocketOperation.SendTo ||
+					   operation == SocketOperation.SendGeneric) {
+
+					queue = Sock.writeQ;
+				}
+
+				if (queue != null) {
+					Worker worker = null;
+					SocketAsyncCall sac = null;
+					lock (queue) {
+						// queue.Count will only be 0 if the socket is closed while receive/send
+						// operation(s) are pending and at least one call to this method is
+						// waiting on the lock while another one calls CompleteAllOnDispose()
+						if (queue.Count > 0)
+							queue.Dequeue (); // remove ourselves
+						if (queue.Count > 0) {
+							worker = (Worker) queue.Peek ();
+							if (!Sock.disposed) {
+								sac = Worker.Dispatcher;
+							} else {
+								CompleteAllOnDispose (queue);
+							}
+						}
+					}
+
+					if (sac != null)
+						Socket.socket_pool_queue (sac, worker.result);
+				}
+				// IMPORTANT: 'callback', if any is scheduled from unmanaged code
+			}
+
+			public void Complete (bool synch)
+			{
+				completed_sync = synch;
+				Complete ();
+			}
+
+			public void Complete (int total)
+			{
+				this.total = total;
+				Complete ();
+			}
+
+			public void Complete (Exception e, bool synch)
+			{
+				completed_sync = synch;
+				delayedException = e;
+				Complete ();
+			}
+
+			public void Complete (Exception e)
+			{
+				delayedException = e;
+				Complete ();
+			}
+
+			public void Complete (Socket s)
+			{
+				acc_socket = s;
+				Complete ();
+			}
+
+			public void Complete (Socket s, int total)
+			{
+				acc_socket = s;
+				this.total = total;
+				Complete ();
+			}
+
+			public object AsyncState {
+				get {
+					return state;
+				}
+			}
+
+			public WaitHandle AsyncWaitHandle {
+				get {
+					lock (this) {
+						if (waithandle == null)
+							waithandle = new ManualResetEvent (completed);
+					}
+
+					return waithandle;
+				}
+				set {
+					waithandle=value;
+				}
+			}
+
+			public bool CompletedSynchronously {
+				get {
+					return(completed_sync);
+				}
+			}
+
+			public bool IsCompleted {
+				get {
+					return(completed);
+				}
+				set {
+					completed=value;
+					lock (this) {
+						if (waithandle != null && value) {
+							((ManualResetEvent) waithandle).Set ();
+						}
+					}
+				}
+			}
+
+			public Socket Socket {
+				get {
+					return acc_socket;
+				}
+			}
+
+			public int Total {
+				get { return total; }
+				set { total = value; }
+			}
+
+			public SocketError ErrorCode {
+				get {
+					SocketException ex = delayedException as SocketException;
+					if (ex != null)
+						return(ex.SocketErrorCode);
+
+					if (error != 0)
+						return((SocketError)error);
+
+					return(SocketError.Success);
+				}
+			}
+		}
+
+		internal sealed class Worker
+		{
+			public SocketAsyncResult result;
+			SocketAsyncEventArgs args;
+
+			public Worker (SocketAsyncEventArgs args)
+			{
+				this.args = args;
+				result = new SocketAsyncResult ();
+				result.Worker = this;
+			}
+
+			public Worker (SocketAsyncResult ares)
+			{
+				this.result = ares;
+			}
+
+			public void Dispose ()
+			{
+				if (result != null) {
+					result.Dispose ();
+					result = null;
+					args = null;
+				}
+			}
+
+			public static SocketAsyncCall Dispatcher = new SocketAsyncCall (DispatcherCB);
+
+			static void DispatcherCB (SocketAsyncResult sar)
+			{
+				SocketOperation op = sar.operation;
+				if (op == Socket.SocketOperation.Receive || op == Socket.SocketOperation.ReceiveGeneric ||
+					op == Socket.SocketOperation.RecvJustCallback)
+					sar.Worker.Receive ();
+				else if (op == Socket.SocketOperation.Send || op == Socket.SocketOperation.SendGeneric ||
+					op == Socket.SocketOperation.SendJustCallback)
+					sar.Worker.Send ();
+#if !MOONLIGHT
+				else if (op == Socket.SocketOperation.ReceiveFrom)
+					sar.Worker.ReceiveFrom ();
+				else if (op == Socket.SocketOperation.SendTo)
+					sar.Worker.SendTo ();
+#endif
+				else if (op == Socket.SocketOperation.Connect)
+					sar.Worker.Connect ();
+#if !MOONLIGHT
+				else if (op == Socket.SocketOperation.Accept)
+					sar.Worker.Accept ();
+				else if (op == Socket.SocketOperation.AcceptReceive)
+					sar.Worker.AcceptReceive ();
+				else if (op == Socket.SocketOperation.Disconnect)
+					sar.Worker.Disconnect ();
+
+				// SendPackets and ReceiveMessageFrom are not implemented yet
+				/*
+				else if (op == Socket.SocketOperation.ReceiveMessageFrom)
+					async_op = SocketAsyncOperation.ReceiveMessageFrom;
+				else if (op == Socket.SocketOperation.SendPackets)
+					async_op = SocketAsyncOperation.SendPackets;
+				*/
+#endif
+				else
+					throw new NotImplementedException (String.Format ("Operation {0} is not implemented", op));
+			}
+
+			/* This is called when reusing a SocketAsyncEventArgs */
+			public void Init (Socket sock, SocketAsyncEventArgs args, SocketOperation op)
+			{
+				result.Init (sock, args, SocketAsyncEventArgs.Dispatcher, op);
+				result.Worker = this;
+				SocketAsyncOperation async_op;
+
+				// Notes;
+				// 	-SocketOperation.AcceptReceive not used in SocketAsyncEventArgs
+				//	-SendPackets and ReceiveMessageFrom are not implemented yet
+				if (op == Socket.SocketOperation.Connect)
+					async_op = SocketAsyncOperation.Connect;
+#if !MOONLIGHT
+				else if (op == Socket.SocketOperation.Accept)
+					async_op = SocketAsyncOperation.Accept;
+				else if (op == Socket.SocketOperation.Disconnect)
+					async_op = SocketAsyncOperation.Disconnect;
+#endif
+				else if (op == Socket.SocketOperation.Receive || op == Socket.SocketOperation.ReceiveGeneric)
+					async_op = SocketAsyncOperation.Receive;
+#if !MOONLIGHT
+				else if (op == Socket.SocketOperation.ReceiveFrom)
+					async_op = SocketAsyncOperation.ReceiveFrom;
+#endif
+				/*
+				else if (op == Socket.SocketOperation.ReceiveMessageFrom)
+					async_op = SocketAsyncOperation.ReceiveMessageFrom;
+				*/
+				else if (op == Socket.SocketOperation.Send || op == Socket.SocketOperation.SendGeneric)
+					async_op = SocketAsyncOperation.Send;
+#if !MOONLIGHT
+				/*
+				else if (op == Socket.SocketOperation.SendPackets)
+					async_op = SocketAsyncOperation.SendPackets;
+				*/
+				else if (op == Socket.SocketOperation.SendTo)
+					async_op = SocketAsyncOperation.SendTo;
+#endif
+				else
+					throw new NotImplementedException (String.Format ("Operation {0} is not implemented", op));
+
+				args.SetLastOperation (async_op);
+				args.SocketError = SocketError.Success;
+				args.BytesTransferred = 0;
+			}
+
+			public void Accept ()
+			{
+#if !MOONLIGHT
+				Socket acc_socket = null;
+				try {
+					if (args != null && args.AcceptSocket != null) {
+						result.Sock.Accept (args.AcceptSocket);
+						acc_socket = args.AcceptSocket;
+					} else {
+						acc_socket = result.Sock.Accept ();
+						if (args != null)
+							args.AcceptSocket = acc_socket;
+					}
+				} catch (Exception e) {
+					result.Complete (e);
+					return;
+				}
+
+				result.Complete (acc_socket);
+#endif
+			}
+
+			/* only used in 2.0 profile and newer, but
+			 * leave in older profiles to keep interface
+			 * to runtime consistent
+			 */
+			public void AcceptReceive ()
+			{
+#if !MOONLIGHT
+				Socket acc_socket = null;
+				try {
+					if (result.AcceptSocket == null) {
+						acc_socket = result.Sock.Accept ();
+					} else {
+						acc_socket = result.AcceptSocket;
+						result.Sock.Accept (acc_socket);
+					}
+				} catch (Exception e) {
+					result.Complete (e);
+					return;
+				}
+
+				/* It seems the MS runtime
+				 * special-cases 0-length requested
+				 * receive data.  See bug 464201.
+				 */
+				int total = 0;
+				if (result.Size > 0) {
+					try {
+						SocketError error;
+						total = acc_socket.Receive_nochecks (result.Buffer,
+										     result.Offset,
+										     result.Size,
+										     result.SockFlags,
+										     out error);
+						if (error != 0) {
+							result.Complete (new SocketException ((int) error));
+							return;
+						}
+					} catch (Exception e) {
+						result.Complete (e);
+						return;
+					}
+				}
+
+				result.Complete (acc_socket, total);
+#endif
+			}
+
+			public void Connect ()
+			{
+				if (result.EndPoint == null) {
+					result.Complete (new SocketException ((int)SocketError.AddressNotAvailable));
+					return;
+				}
+
+				SocketAsyncResult mconnect = result.AsyncState as SocketAsyncResult;
+#if !MOONLIGHT
+				bool is_mconnect = (mconnect != null && mconnect.Addresses != null);
+#else
+				if (result.ErrorCode == SocketError.AccessDenied) {
+					result.Complete ();
+					result.DoMConnectCallback ();
+					return;
+				}
+				bool is_mconnect = false;
+#endif
+				try {
+					int error_code;
+					EndPoint ep = result.EndPoint;
+					error_code = (int) result.Sock.GetSocketOption (SocketOptionLevel.Socket, SocketOptionName.Error);
+					if (error_code == 0) {
+						if (is_mconnect)
+							result = mconnect;
+						result.Sock.seed_endpoint = ep;
+						result.Sock.connected = true;
+						result.Sock.isbound = true;
+						result.Sock.connect_in_progress = false;
+						result.error = 0;
+						result.Complete ();
+						if (is_mconnect)
+							result.DoMConnectCallback ();
+						return;
+					}
+
+					if (!is_mconnect) {
+						result.Sock.connect_in_progress = false;
+						result.Complete (new SocketException (error_code));
+						return;
+					}
+
+					if (mconnect.CurrentAddress >= mconnect.Addresses.Length) {
+						mconnect.Complete (new SocketException (error_code));
+						if (is_mconnect)
+							mconnect.DoMConnectCallback ();
+						return;
+					}
+					mconnect.Sock.BeginMConnect (mconnect);
+				} catch (Exception e) {
+					result.Sock.connect_in_progress = false;
+					if (is_mconnect)
+						result = mconnect;
+					result.Complete (e);
+					if (is_mconnect)
+						result.DoMConnectCallback ();
+					return;
+				}
+			}
+
+			/* Also only used in 2.0 profile and newer */
+			public void Disconnect ()
+			{
+#if !MOONLIGHT
+				try {
+					if (args != null)
+						result.ReuseSocket = args.DisconnectReuseSocket;
+					result.Sock.Disconnect (result.ReuseSocket);
+				} catch (Exception e) {
+					result.Complete (e);
+					return;
+				}
+				result.Complete ();
+#endif
+			}
+
+			public void Receive ()
+			{
+				if (result.operation == SocketOperation.ReceiveGeneric) {
+					ReceiveGeneric ();
+					return;
+				}
+				// Actual recv() done in the runtime
+				result.Complete ();
+			}
+
+			public void ReceiveFrom ()
+			{
+#if !MOONLIGHT
+				int total = 0;
+				try {
+					total = result.Sock.ReceiveFrom_nochecks (result.Buffer,
+									 result.Offset,
+									 result.Size,
+									 result.SockFlags,
+									 ref result.EndPoint);
+				} catch (Exception e) {
+					result.Complete (e);
+					return;
+				}
+
+				result.Complete (total);
+#endif
+			}
+
+			public void ReceiveGeneric ()
+			{
+				int total = 0;
+				try {
+					total = result.Sock.Receive (result.Buffers, result.SockFlags);
+				} catch (Exception e) {
+					result.Complete (e);
+					return;
+				}
+				result.Complete (total);
+			}
+
+			int send_so_far;
+
+			void UpdateSendValues (int last_sent)
+			{
+				if (result.error == 0) {
+					send_so_far += last_sent;
+					result.Offset += last_sent;
+					result.Size -= last_sent;
+				}
+			}
+
+			public void Send ()
+			{
+				if (result.operation == SocketOperation.SendGeneric) {
+					SendGeneric ();
+					return;
+				}
+				// Actual send() done in the runtime
+				if (result.error == 0) {
+					UpdateSendValues (result.Total);
+					if (result.Sock.disposed) {
+						result.Complete ();
+						return;
+					}
+
+					if (result.Size > 0) {
+						Socket.socket_pool_queue (Worker.Dispatcher, result);
+						return; // Have to finish writing everything. See bug #74475.
+					}
+					result.Total = send_so_far;
+				}
+				result.Complete ();
+			}
+
+			public void SendTo ()
+			{
+#if !MOONLIGHT
+				int total = 0;
+				try {
+					total = result.Sock.SendTo_nochecks (result.Buffer,
+								    result.Offset,
+								    result.Size,
+								    result.SockFlags,
+								    result.EndPoint);
+
+					UpdateSendValues (total);
+					if (result.Size > 0) {
+						Socket.socket_pool_queue (Worker.Dispatcher, result);
+						return; // Have to finish writing everything. See bug #74475.
+					}
+					result.Total = send_so_far;
+				} catch (Exception e) {
+					result.Complete (e);
+					return;
+				}
+
+				result.Complete ();
+#endif
+			}
+
+			public void SendGeneric ()
+			{
+				int total = 0;
+				try {
+					total = result.Sock.Send (result.Buffers, result.SockFlags);
+				} catch (Exception e) {
+					result.Complete (e);
+					return;
+				}
+				result.Complete (total);
+			}
+		}
+
+		private Queue readQ = new Queue (2);
+		private Queue writeQ = new Queue (2);
+
+		internal delegate void SocketAsyncCall (SocketAsyncResult sar);
 
 		/*
 		 *	These two fields are looked up by name by the runtime, don't change
@@ -86,7 +785,7 @@ namespace System.Net.Sockets {
 
 			if (ipv6Supported == -1) {
 #if !NET_2_1
-#if NET_2_0 && CONFIGURATION_DEP
+#if CONFIGURATION_DEP
 				SettingsSection config;
 				config = (SettingsSection) System.Configuration.ConfigurationManager.GetSection ("system.net/settings");
 				if (config != null)
@@ -117,9 +816,7 @@ namespace System.Net.Sockets {
 			}
 		}
 
-#if NET_2_0
 		[ObsoleteAttribute ("Use OSSupportsIPv6 instead")]
-#endif
 		public static bool SupportsIPv6 {
 			get {
 				CheckProtocolSupport();
@@ -141,7 +838,7 @@ namespace System.Net.Sockets {
 				return ipv6Supported == 1;
 			}
 		}
-#elif NET_2_0
+#else
 		public static bool OSSupportsIPv6 {
 			get {
 				NetworkInterface[] nics = NetworkInterface.GetAllNetworkInterfaces ();
@@ -162,9 +859,7 @@ namespace System.Net.Sockets {
 		private ProtocolType protocol_type;
 		internal bool blocking=true;
 		Thread blocking_thread;
-#if NET_2_0
 		private bool isbound;
-#endif
 		/* When true, the socket was connected at the time of
 		 * the last IO operation
 		 */
@@ -172,6 +867,7 @@ namespace System.Net.Sockets {
 		/* true if we called Close_internal */
 		private bool closed;
 		internal bool disposed;
+		bool connect_in_progress;
 
 		/*
 		 * This EndPoint is used when creating new endpoints. Because
@@ -193,9 +889,33 @@ namespace System.Net.Sockets {
 		
 		public Socket(AddressFamily family, SocketType type, ProtocolType proto)
 		{
-#if NET_2_1
-			if (family == AddressFamily.Unspecified)
+#if NET_2_1 && !MOBILE
+			switch (family) {
+			case AddressFamily.InterNetwork:	// ok
+			case AddressFamily.InterNetworkV6:	// ok
+			case AddressFamily.Unknown:		// SocketException will be thrown later (with right error #)
+				break;
+			// case AddressFamily.Unspecified:
+			default:
 				throw new ArgumentException ("family");
+			}
+
+			switch (type) {
+			case SocketType.Stream:			// ok
+			case SocketType.Unknown:		// SocketException will be thrown later (with right error #)
+				break;
+			default:
+				throw new ArgumentException ("type");
+			}
+
+			switch (proto) {
+			case ProtocolType.Tcp:			// ok
+			case ProtocolType.Unspecified:		// ok
+			case ProtocolType.Unknown:		// SocketException will be thrown later (with right error #)
+				break;
+			default:
+				throw new ArgumentException ("proto");
+			}
 #endif
 			address_family=family;
 			socket_type=type;
@@ -206,7 +926,7 @@ namespace System.Net.Sockets {
 			socket = Socket_internal (family, type, proto, out error);
 			if (error != 0)
 				throw new SocketException (error);
-#if !NET_2_1
+#if !NET_2_1 || MOBILE
 			SocketDefaults ();
 #endif
 		}
@@ -227,7 +947,7 @@ namespace System.Net.Sockets {
 							     bool block,
 							     out int error);
 #endif
-#if !NET_2_1 || MONOTOUCH
+
 		public bool Blocking {
 			get {
 				return(blocking);
@@ -246,7 +966,7 @@ namespace System.Net.Sockets {
 				blocking=value;
 			}
 		}
-#endif
+
 		public bool Connected {
 			get { return connected; }
 			internal set { connected = value; }
@@ -255,7 +975,7 @@ namespace System.Net.Sockets {
 		public ProtocolType ProtocolType {
 			get { return protocol_type; }
 		}
-#if NET_2_0
+
 		public bool NoDelay {
 			get {
 				if (disposed && closed)
@@ -342,6 +1062,9 @@ namespace System.Net.Sockets {
 				if (disposed && closed) {
 					throw new ObjectDisposedException (GetType ().ToString ());
 				}
+				if (value < 0) {
+					throw new ArgumentOutOfRangeException ("value", "The value specified for a set operation is less than zero");
+				}
 				
 				if (address_family == AddressFamily.InterNetwork) {
 					SetSocketOption (SocketOptionLevel.IP, SocketOptionName.IpTimeToLive, value);
@@ -352,28 +1075,32 @@ namespace System.Net.Sockets {
 				}
 			}
 		}
-#endif
+
 		// Returns the remote endpoint details in addr and port
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		private extern static SocketAddress RemoteEndPoint_internal(IntPtr socket, out int error);
+		private extern static SocketAddress RemoteEndPoint_internal(IntPtr socket, int family, out int error);
 
 		public EndPoint RemoteEndPoint {
 			get {
 				if (disposed && closed)
 					throw new ObjectDisposedException (GetType ().ToString ());
 				
+#if MOONLIGHT
+				if (!connected)
+					return seed_endpoint;
+#else
 				/*
 				 * If the seed EndPoint is null, Connect, Bind,
 				 * etc has not yet been called. MS returns null
 				 * in this case.
 				 */
-				if (seed_endpoint == null)
+				if (!connected || seed_endpoint == null)
 					return null;
-				
+#endif			
 				SocketAddress sa;
 				int error;
 				
-				sa=RemoteEndPoint_internal(socket, out error);
+				sa=RemoteEndPoint_internal(socket, (int) address_family, out error);
 
 				if (error != 0)
 					throw new SocketException (error);
@@ -440,7 +1167,7 @@ namespace System.Net.Sockets {
 			}
 		}
 
-#if NET_2_1
+#if NET_2_1 || NET_4_0
 		public void Dispose ()
 #else
 		void IDisposable.Dispose ()
@@ -460,13 +1187,11 @@ namespace System.Net.Sockets {
 			((IDisposable) this).Dispose ();
 		}
 
-#if NET_2_0
 		public void Close (int timeout) 
 		{
 			linger_timeout = timeout;
 			((IDisposable) this).Dispose ();
 		}
-#endif
 
 		// Connects to the remote address
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
@@ -485,15 +1210,18 @@ namespace System.Net.Sockets {
 				throw new ArgumentNullException ("remoteEP");
 
 			IPEndPoint ep = remoteEP as IPEndPoint;
+#if !MOONLIGHT
+			if (ep != null && socket_type != SocketType.Dgram) /* Dgram uses Any to 'disconnect' */
+#else
 			if (ep != null)
+#endif
 				if (ep.Address.Equals (IPAddress.Any) || ep.Address.Equals (IPAddress.IPv6Any))
 					throw new SocketException ((int) SocketError.AddressNotAvailable);
 
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 			if (protocol_type != ProtocolType.Tcp)
 				throw new SocketException ((int) SocketError.AccessDenied);
-#elif NET_2_0
-			/* TODO: check this for the 1.1 profile too */
+#else
 			if (islistening)
 				throw new InvalidOperationException ();
 #endif
@@ -513,94 +1241,95 @@ namespace System.Net.Sockets {
 				blocking_thread = null;
 			}
 
+			if (error == 0 || error == 10035)
+				seed_endpoint = remoteEP; // Keep the ep around for non-blocking sockets
+
 			if (error != 0)
 				throw new SocketException (error);
 
-			connected=true;
-
-#if NET_2_0
-			isbound = true;
+#if !MOONLIGHT
+			if (socket_type == SocketType.Dgram && (ep.Address.Equals (IPAddress.Any) || ep.Address.Equals (IPAddress.IPv6Any)))
+				connected = false;
+			else
+				connected = true;
+#else
+			connected = true;
 #endif
-
-			seed_endpoint = remoteEP;
+			isbound = true;
 		}
 
-#if NET_2_0
 		public bool ReceiveAsync (SocketAsyncEventArgs e)
 		{
 			// NO check is made whether e != null in MS.NET (NRE is thrown in such case)
-			//
-			// LAME SPEC: the ArgumentException is never thrown, instead an NRE is
-			// thrown when e.Buffer and e.BufferList are null (works fine when one is
-			// set to a valid object)
 			if (disposed && closed)
 				throw new ObjectDisposedException (GetType ().ToString ());
 
-			// We do not support recv into multiple buffers yet
-			if (e.BufferList != null)
-				throw new NotSupportedException ("Mono doesn't support using BufferList at this point.");
-			
-			e.DoOperation (SocketAsyncOperation.Receive, this);
+			// LAME SPEC: the ArgumentException is never thrown, instead an NRE is
+			// thrown when e.Buffer and e.BufferList are null (works fine when one is
+			// set to a valid object)
+			if (e.Buffer == null && e.BufferList == null)
+				throw new NullReferenceException ("Either e.Buffer or e.BufferList must be valid buffers.");
 
-			// We always return true for now
+			e.curSocket = this;
+			SocketOperation op = (e.Buffer != null) ? SocketOperation.Receive : SocketOperation.ReceiveGeneric;
+			e.Worker.Init (this, e, op);
+			SocketAsyncResult res = e.Worker.result;
+			if (e.Buffer != null) {
+				res.Buffer = e.Buffer;
+				res.Offset = e.Offset;
+				res.Size = e.Count;
+			} else {
+				res.Buffers = e.BufferList;
+			}
+			res.SockFlags = e.SocketFlags;
+			int count;
+			lock (readQ) {
+				readQ.Enqueue (e.Worker);
+				count = readQ.Count;
+			}
+			if (count == 1) {
+				// Receive takes care of ReceiveGeneric
+				socket_pool_queue (Worker.Dispatcher, res);
+			}
+
 			return true;
 		}
 
 		public bool SendAsync (SocketAsyncEventArgs e)
 		{
 			// NO check is made whether e != null in MS.NET (NRE is thrown in such case)
-			
 			if (disposed && closed)
 				throw new ObjectDisposedException (GetType ().ToString ());
 			if (e.Buffer == null && e.BufferList == null)
-				throw new ArgumentException ("Either e.Buffer or e.BufferList must be valid buffers.");
+				throw new NullReferenceException ("Either e.Buffer or e.BufferList must be valid buffers.");
 
-			e.DoOperation (SocketAsyncOperation.Send, this);
-
-			// We always return true for now
+			e.curSocket = this;
+			SocketOperation op = (e.Buffer != null) ? SocketOperation.Send : SocketOperation.SendGeneric;
+			e.Worker.Init (this, e, op);
+			SocketAsyncResult res = e.Worker.result;
+			if (e.Buffer != null) {
+				res.Buffer = e.Buffer;
+				res.Offset = e.Offset;
+				res.Size = e.Count;
+			} else {
+				res.Buffers = e.BufferList;
+			}
+			res.SockFlags = e.SocketFlags;
+			int count;
+			lock (writeQ) {
+				writeQ.Enqueue (e.Worker);
+				count = writeQ.Count;
+			}
+			if (count == 1) {
+				// Send takes care of SendGeneric
+				socket_pool_queue (Worker.Dispatcher, res);
+			}
 			return true;
 		}
-#endif
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		extern static bool Poll_internal (IntPtr socket, SelectMode mode, int timeout, out int error);
 
-#if !NET_2_1 || MONOTOUCH
-		/* This overload is needed as the async Connect method
-		 * also needs to check the socket error status, but
-		 * getsockopt(..., SO_ERROR) clears the error.
-		 */
-		internal bool Poll (int time_us, SelectMode mode, out int socket_error)
-		{
-			if (disposed && closed)
-				throw new ObjectDisposedException (GetType ().ToString ());
-
-			if (mode != SelectMode.SelectRead &&
-			    mode != SelectMode.SelectWrite &&
-			    mode != SelectMode.SelectError)
-				throw new NotSupportedException ("'mode' parameter is not valid.");
-
-			int error;
-			bool result = Poll_internal (socket, mode, time_us, out error);
-			if (error != 0)
-				throw new SocketException (error);
-
-			socket_error = (int)GetSocketOption (SocketOptionLevel.Socket, SocketOptionName.Error);
-			
-			if (mode == SelectMode.SelectWrite && result) {
-				/* Update the connected state; for
-				 * non-blocking Connect()s this is
-				 * when we can find out that the
-				 * connect succeeded.
-				 */
-				if (socket_error == 0) {
-					connected = true;
-				}
-			}
-			
-			return result;
-		}
-#endif
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private extern static int Receive_internal(IntPtr sock,
 							   byte[] buffer,
@@ -614,10 +1343,12 @@ namespace System.Net.Sockets {
 			int nativeError;
 			int ret = Receive_internal (socket, buf, offset, size, flags, out nativeError);
 			error = (SocketError) nativeError;
-			if (error != SocketError.Success && error != SocketError.WouldBlock && error != SocketError.InProgress)
+			if (error != SocketError.Success && error != SocketError.WouldBlock && error != SocketError.InProgress) {
 				connected = false;
-			else
+				isbound = false;
+			} else {
 				connected = true;
+			}
 			
 			return ret;
 		}
@@ -647,10 +1378,12 @@ namespace System.Net.Sockets {
 
 			error = (SocketError)nativeError;
 
-			if (error != SocketError.Success && error != SocketError.WouldBlock && error != SocketError.InProgress)
+			if (error != SocketError.Success && error != SocketError.WouldBlock && error != SocketError.InProgress) {
 				connected = false;
-			else
+				isbound = false;
+			} else {
 				connected = true;
+			}
 
 			return ret;
 		}
@@ -720,13 +1453,252 @@ namespace System.Net.Sockets {
 
 		private void ThrowIfUpd ()
 		{
-#if !NET_2_1
+#if !NET_2_1 || MOBILE
 			if (protocol_type == ProtocolType.Udp)
 				throw new SocketException ((int)SocketError.ProtocolOption);
 #endif
 		}
 
-#if NET_2_1 && !MONOTOUCH
+#if !MOONLIGHT
+		public
+#endif
+		IAsyncResult BeginConnect(EndPoint end_point, AsyncCallback callback, object state)
+		{
+			if (disposed && closed)
+				throw new ObjectDisposedException (GetType ().ToString ());
+
+			if (end_point == null)
+				throw new ArgumentNullException ("end_point");
+
+			SocketAsyncResult req = new SocketAsyncResult (this, state, callback, SocketOperation.Connect);
+			req.EndPoint = end_point;
+
+			// Bug #75154: Connect() should not succeed for .Any addresses.
+			if (end_point is IPEndPoint) {
+				IPEndPoint ep = (IPEndPoint) end_point;
+				if (ep.Address.Equals (IPAddress.Any) || ep.Address.Equals (IPAddress.IPv6Any)) {
+					req.Complete (new SocketException ((int) SocketError.AddressNotAvailable), true);
+					return req;
+				}
+			}
+
+			int error = 0;
+			if (connect_in_progress) {
+				// This could happen when multiple IPs are used
+				// Calling connect() again will reset the connection attempt and cause
+				// an error. Better to just close the socket and move on.
+				connect_in_progress = false;
+				Close_internal (socket, out error);
+				socket = Socket_internal (address_family, socket_type, protocol_type, out error);
+				if (error != 0)
+					throw new SocketException (error);
+			}
+			bool blk = blocking;
+			if (blk)
+				Blocking = false;
+			SocketAddress serial = end_point.Serialize ();
+			Connect_internal (socket, serial, out error);
+			if (blk)
+				Blocking = true;
+			if (error == 0) {
+				// succeeded synch
+				connected = true;
+				isbound = true;
+				req.Complete (true);
+				return req;
+			}
+
+			if (error != (int) SocketError.InProgress && error != (int) SocketError.WouldBlock) {
+				// error synch
+				connected = false;
+				isbound = false;
+				req.Complete (new SocketException (error), true);
+				return req;
+			}
+
+			// continue asynch
+			connected = false;
+			isbound = false;
+			connect_in_progress = true;
+			socket_pool_queue (Worker.Dispatcher, req);
+			return req;
+		}
+
+#if !MOONLIGHT
+		public
+#else
+		internal
+#endif
+		IAsyncResult BeginConnect (IPAddress[] addresses, int port, AsyncCallback callback, object state)
+
+		{
+			if (disposed && closed)
+				throw new ObjectDisposedException (GetType ().ToString ());
+
+			if (addresses == null)
+				throw new ArgumentNullException ("addresses");
+
+			if (addresses.Length == 0)
+				throw new ArgumentException ("Empty addresses list");
+
+			if (this.AddressFamily != AddressFamily.InterNetwork &&
+				this.AddressFamily != AddressFamily.InterNetworkV6)
+				throw new NotSupportedException ("This method is only valid for addresses in the InterNetwork or InterNetworkV6 families");
+
+			if (port <= 0 || port > 65535)
+				throw new ArgumentOutOfRangeException ("port", "Must be > 0 and < 65536");
+#if !MOONLIGHT
+			if (islistening)
+				throw new InvalidOperationException ();
+#endif
+
+			SocketAsyncResult req = new SocketAsyncResult (this, state, callback, SocketOperation.Connect);
+			req.Addresses = addresses;
+			req.Port = port;
+			connected = false;
+			return BeginMConnect (req);
+		}
+
+		IAsyncResult BeginMConnect (SocketAsyncResult req)
+		{
+			IAsyncResult ares = null;
+			Exception exc = null;
+			for (int i = req.CurrentAddress; i < req.Addresses.Length; i++) {
+				IPAddress addr = req.Addresses [i];
+				IPEndPoint ep = new IPEndPoint (addr, req.Port);
+				try {
+					req.CurrentAddress++;
+					ares = BeginConnect (ep, null, req);
+					if (ares.IsCompleted && ares.CompletedSynchronously) {
+						((SocketAsyncResult) ares).CheckIfThrowDelayedException ();
+						req.DoMConnectCallback ();
+					}
+					break;
+				} catch (Exception e) {
+					exc = e;
+					ares = null;
+				}
+			}
+
+			if (ares == null)
+				throw exc;
+
+			return req;
+		}
+
+		// Returns false when it is ok to use RemoteEndPoint
+		//         true when addresses must be used (and addresses could be null/empty)
+		bool GetCheckedIPs (SocketAsyncEventArgs e, out IPAddress [] addresses)
+		{
+			addresses = null;
+#if MOONLIGHT || NET_4_0
+			// Connect to the first address that match the host name, like:
+			// http://blogs.msdn.com/ncl/archive/2009/07/20/new-ncl-features-in-net-4-0-beta-2.aspx
+			// while skipping entries that do not match the address family
+			DnsEndPoint dep = (e.RemoteEndPoint as DnsEndPoint);
+			if (dep != null) {
+				addresses = Dns.GetHostAddresses (dep.Host);
+				IPEndPoint endpoint;
+#if MOONLIGHT && !INSIDE_SYSTEM
+				if (!e.PolicyRestricted && !SecurityManager.HasElevatedPermissions) {
+					List<IPAddress> valid = new List<IPAddress> ();
+					foreach (IPAddress a in addresses) {
+						// if we're not downloading a socket policy then check the policy
+						// and if we're not running with elevated permissions (SL4 OoB option)
+						endpoint = new IPEndPoint (a, dep.Port);
+						if (!CrossDomainPolicyManager.CheckEndPoint (endpoint, e.SocketClientAccessPolicyProtocol))
+							continue;
+						valid.Add (a);
+					}
+					if (valid.Count == 0)
+		 				e.SocketError = SocketError.AccessDenied;
+					addresses = valid.ToArray ();
+				}
+#endif
+				return true;
+			} else {
+				e.ConnectByNameError = null;
+#if MOONLIGHT && !INSIDE_SYSTEM
+				if (!e.PolicyRestricted && !SecurityManager.HasElevatedPermissions) {
+					if (CrossDomainPolicyManager.CheckEndPoint (e.RemoteEndPoint, e.SocketClientAccessPolicyProtocol))
+						return false;
+		 			else
+						e.SocketError = SocketError.AccessDenied;
+				} else
+#endif
+					return false;
+			}
+			return true; // do not use remote endpoint
+#else
+			return false; // < NET_4_0 -> use remote endpoint
+#endif
+		}
+
+		bool ConnectAsyncReal (SocketAsyncEventArgs e)
+		{
+			IPAddress [] addresses = null;
+			bool use_remoteep = true;
+#if MOONLIGHT || NET_4_0
+			use_remoteep = !GetCheckedIPs (e, out addresses);
+			bool policy_failed = (e.SocketError == SocketError.AccessDenied);
+#endif
+			e.curSocket = this;
+			Worker w = e.Worker;
+			w.Init (this, e, SocketOperation.Connect);
+			SocketAsyncResult result = w.result;
+#if MOONLIGHT
+			if (policy_failed) {
+				// SocketAsyncEventArgs.Completed must be called
+				connected = false;
+				result.EndPoint = e.RemoteEndPoint;
+				result.error = (int) SocketError.AccessDenied;
+				result.Complete ();
+				socket_pool_queue (Worker.Dispatcher, result);
+				return true;
+			}
+#endif
+			IAsyncResult ares = null;
+			try {
+				if (use_remoteep) {
+					result.EndPoint = e.RemoteEndPoint;
+					ares = BeginConnect (e.RemoteEndPoint, SocketAsyncEventArgs.Dispatcher, e);
+				}
+#if MOONLIGHT || NET_4_0
+				else {
+
+					DnsEndPoint dep = (e.RemoteEndPoint as DnsEndPoint);
+					result.Addresses = addresses;
+					result.Port = dep.Port;
+
+					ares = BeginConnect (addresses, dep.Port, SocketAsyncEventArgs.Dispatcher, e);
+				}
+#endif
+				if (ares.IsCompleted && ares.CompletedSynchronously) {
+					((SocketAsyncResult) ares).CheckIfThrowDelayedException ();
+					return false;
+				}
+			} catch (Exception exc) {
+				result.Complete (exc, true);
+				return false;
+			}
+			return true;
+		}
+
+#if !MOONLIGHT
+		public bool ConnectAsync (SocketAsyncEventArgs e)
+		{
+			// NO check is made whether e != null in MS.NET (NRE is thrown in such case)
+			if (disposed && closed)
+				throw new ObjectDisposedException (GetType ().ToString ());
+			if (islistening)
+				throw new InvalidOperationException ("You may not perform this operation after calling the Listen method.");
+			if (e.RemoteEndPoint == null)
+				throw new ArgumentNullException ("remoteEP");
+
+			return ConnectAsyncReal (e);
+		}
+#endif
+#if MOONLIGHT
 		static void CheckConnect (SocketAsyncEventArgs e)
 		{
 			// NO check is made whether e != null in MS.NET (NRE is thrown in such case)
@@ -743,11 +1715,15 @@ namespace System.Net.Sockets {
 				throw new ObjectDisposedException (GetType ().ToString ());
 
 			CheckConnect (e);
+			// if an address family is specified then they must match
+			AddressFamily raf = e.RemoteEndPoint.AddressFamily;
+			if ((raf != AddressFamily.Unspecified) && (raf != AddressFamily))
+				throw new NotSupportedException ("AddressFamily mismatch between socket and endpoint");
 
-			e.DoOperation (SocketAsyncOperation.Connect, this);
-
-			// We always return true for now
-			return true;
+			// connected, not yet connected or even policy denied, the Socket.RemoteEndPoint is always 
+			// available after the ConnectAsync call
+			seed_endpoint = e.RemoteEndPoint;
+			return ConnectAsyncReal (e);
 		}
 
 		public static bool ConnectAsync (SocketType socketType, ProtocolType protocolType, SocketAsyncEventArgs e)
@@ -755,11 +1731,12 @@ namespace System.Net.Sockets {
 			// exception ordering requires to check before creating the socket (good thing resource wise too)
 			CheckConnect (e);
 
-			Socket s = new Socket (AddressFamily.InterNetwork, socketType, protocolType);
-			e.DoOperation (SocketAsyncOperation.Connect, s);
-
-			// We always return true for now
-			return true;
+			// create socket based on the endpoint address family (if specified), otherwise default fo IPv4
+			AddressFamily raf = e.RemoteEndPoint.AddressFamily;
+			if (raf == AddressFamily.Unspecified)
+				raf = AddressFamily.InterNetwork;
+			Socket s = new Socket (raf, socketType, protocolType);
+			return s.ConnectAsyncReal (e);
 		}
 
 		public static void CancelConnectAsync (SocketAsyncEventArgs e)
@@ -767,11 +1744,316 @@ namespace System.Net.Sockets {
 			if (e == null)
 				throw new ArgumentNullException ("e");
 
+			// FIXME: this is canceling a synchronous connect, not an async one
 			Socket s = e.ConnectSocket;
 			if ((s != null) && (s.blocking_thread != null))
 				s.blocking_thread.Abort ();
 		}
 #endif
+		[MethodImplAttribute (MethodImplOptions.InternalCall)]
+		private extern static int Receive_internal (IntPtr sock, WSABUF[] bufarray, SocketFlags flags, out int error);
+#if !MOONLIGHT
+		public
+#else
+		internal
+#endif
+		int Receive (IList<ArraySegment<byte>> buffers)
+		{
+			int ret;
+			SocketError error;
+			ret = Receive (buffers, SocketFlags.None, out error);
+			if (error != SocketError.Success) {
+				throw new SocketException ((int)error);
+			}
+			return(ret);
+		}
+
+		[CLSCompliant (false)]
+#if !MOONLIGHT
+		public
+#else
+		internal
+#endif
+		int Receive (IList<ArraySegment<byte>> buffers, SocketFlags socketFlags)
+		{
+			int ret;
+			SocketError error;
+			ret = Receive (buffers, socketFlags, out error);
+			if (error != SocketError.Success) {
+				throw new SocketException ((int)error);
+			}
+			return(ret);
+		}
+
+		[CLSCompliant (false)]
+#if !MOONLIGHT
+		public
+#else
+		internal
+#endif
+		int Receive (IList<ArraySegment<byte>> buffers, SocketFlags socketFlags, out SocketError errorCode)
+		{
+			if (disposed && closed)
+				throw new ObjectDisposedException (GetType ().ToString ());
+
+			if (buffers == null ||
+			    buffers.Count == 0) {
+				throw new ArgumentNullException ("buffers");
+			}
+
+			int numsegments = buffers.Count;
+			int nativeError;
+			int ret;
+
+			/* Only example I can find of sending a byte
+			 * array reference directly into an internal
+			 * call is in
+			 * System.Runtime.Remoting/System.Runtime.Remoting.Channels.Ipc.Win32/NamedPipeSocket.cs,
+			 * so taking a lead from that...
+			 */
+			WSABUF[] bufarray = new WSABUF[numsegments];
+			GCHandle[] gch = new GCHandle[numsegments];
+
+			for(int i = 0; i < numsegments; i++) {
+				ArraySegment<byte> segment = buffers[i];
+
+				if (segment.Offset < 0 || segment.Count < 0 ||
+				    segment.Count > segment.Array.Length - segment.Offset)
+					throw new ArgumentOutOfRangeException ("segment");
+
+				gch[i] = GCHandle.Alloc (segment.Array, GCHandleType.Pinned);
+				bufarray[i].len = segment.Count;
+				bufarray[i].buf = Marshal.UnsafeAddrOfPinnedArrayElement (segment.Array, segment.Offset);
+			}
+
+			try {
+				ret = Receive_internal (socket, bufarray,
+							socketFlags,
+							out nativeError);
+			} finally {
+				for(int i = 0; i < numsegments; i++) {
+					if (gch[i].IsAllocated) {
+						gch[i].Free ();
+					}
+				}
+			}
+
+			errorCode = (SocketError)nativeError;
+			return(ret);
+		}
+
+		[MethodImplAttribute (MethodImplOptions.InternalCall)]
+		private extern static int Send_internal (IntPtr sock, WSABUF[] bufarray, SocketFlags flags, out int error);
+#if !MOONLIGHT
+		public
+#else
+		internal
+#endif
+		int Send (IList<ArraySegment<byte>> buffers)
+		{
+			int ret;
+			SocketError error;
+			ret = Send (buffers, SocketFlags.None, out error);
+			if (error != SocketError.Success) {
+				throw new SocketException ((int)error);
+			}
+			return(ret);
+		}
+
+#if !MOONLIGHT
+		public
+#else
+		internal
+#endif
+		int Send (IList<ArraySegment<byte>> buffers, SocketFlags socketFlags)
+		{
+			int ret;
+			SocketError error;
+			ret = Send (buffers, socketFlags, out error);
+			if (error != SocketError.Success) {
+				throw new SocketException ((int)error);
+			}
+			return(ret);
+		}
+
+		[CLSCompliant (false)]
+#if !MOONLIGHT
+		public
+#else
+		internal
+#endif
+		int Send (IList<ArraySegment<byte>> buffers, SocketFlags socketFlags, out SocketError errorCode)
+		{
+			if (disposed && closed)
+				throw new ObjectDisposedException (GetType ().ToString ());
+			if (buffers == null)
+				throw new ArgumentNullException ("buffers");
+			if (buffers.Count == 0)
+				throw new ArgumentException ("Buffer is empty", "buffers");
+			int numsegments = buffers.Count;
+			int nativeError;
+			int ret;
+
+			WSABUF[] bufarray = new WSABUF[numsegments];
+			GCHandle[] gch = new GCHandle[numsegments];
+			for(int i = 0; i < numsegments; i++) {
+				ArraySegment<byte> segment = buffers[i];
+
+				if (segment.Offset < 0 || segment.Count < 0 ||
+				    segment.Count > segment.Array.Length - segment.Offset)
+					throw new ArgumentOutOfRangeException ("segment");
+
+				gch[i] = GCHandle.Alloc (segment.Array, GCHandleType.Pinned);
+				bufarray[i].len = segment.Count;
+				bufarray[i].buf = Marshal.UnsafeAddrOfPinnedArrayElement (segment.Array, segment.Offset);
+			}
+
+			try {
+				ret = Send_internal (socket, bufarray, socketFlags, out nativeError);
+			} finally {
+				for(int i = 0; i < numsegments; i++) {
+					if (gch[i].IsAllocated) {
+						gch[i].Free ();
+					}
+				}
+			}
+			errorCode = (SocketError)nativeError;
+			return(ret);
+		}
+
+		Exception InvalidAsyncOp (string method)
+		{
+			return new InvalidOperationException (method + " can only be called once per asynchronous operation");
+		}
+
+#if !MOONLIGHT
+		public
+#else
+		internal
+#endif
+		int EndReceive (IAsyncResult result)
+		{
+			SocketError error;
+			int bytesReceived = EndReceive (result, out error);
+			if (error != SocketError.Success) {
+				if (error != SocketError.WouldBlock && error != SocketError.InProgress)
+					connected = false;
+				throw new SocketException ((int)error);
+			}
+			return bytesReceived;
+		}
+
+#if !MOONLIGHT
+		public
+#else
+		internal
+#endif
+		int EndReceive (IAsyncResult asyncResult, out SocketError errorCode)
+		{
+			if (disposed && closed)
+				throw new ObjectDisposedException (GetType ().ToString ());
+
+			if (asyncResult == null)
+				throw new ArgumentNullException ("asyncResult");
+
+			SocketAsyncResult req = asyncResult as SocketAsyncResult;
+			if (req == null)
+				throw new ArgumentException ("Invalid IAsyncResult", "asyncResult");
+
+			if (Interlocked.CompareExchange (ref req.EndCalled, 1, 0) == 1)
+				throw InvalidAsyncOp ("EndReceive");
+			if (!asyncResult.IsCompleted)
+				asyncResult.AsyncWaitHandle.WaitOne ();
+
+			errorCode = req.ErrorCode;
+			// If no socket error occurred, call CheckIfThrowDelayedException in case there are other
+			// kinds of exceptions that should be thrown.
+			if (errorCode == SocketError.Success)
+				req.CheckIfThrowDelayedException();
+
+			return(req.Total);
+		}
+
+#if !MOONLIGHT
+		public
+#else
+		internal
+#endif
+		int EndSend (IAsyncResult result)
+		{
+			SocketError error;
+			int bytesSent = EndSend (result, out error);
+			if (error != SocketError.Success) {
+				if (error != SocketError.WouldBlock && error != SocketError.InProgress)
+					connected = false;
+				throw new SocketException ((int)error);
+			}
+			return bytesSent;
+		}
+
+#if !MOONLIGHT
+		public
+#else
+		internal
+#endif
+		int EndSend (IAsyncResult asyncResult, out SocketError errorCode)
+		{
+			if (disposed && closed)
+				throw new ObjectDisposedException (GetType ().ToString ());
+			if (asyncResult == null)
+				throw new ArgumentNullException ("asyncResult");
+
+			SocketAsyncResult req = asyncResult as SocketAsyncResult;
+			if (req == null)
+				throw new ArgumentException ("Invalid IAsyncResult", "result");
+
+			if (Interlocked.CompareExchange (ref req.EndCalled, 1, 0) == 1)
+				throw InvalidAsyncOp ("EndSend");
+			if (!asyncResult.IsCompleted)
+				asyncResult.AsyncWaitHandle.WaitOne ();
+
+			errorCode = req.ErrorCode;
+			// If no socket error occurred, call CheckIfThrowDelayedException in case there are other
+			// kinds of exceptions that should be thrown.
+			if (errorCode == SocketError.Success)
+				req.CheckIfThrowDelayedException ();
+
+			return(req.Total);
+		}
+
+		// Used by Udpclient
+#if !MOONLIGHT
+		public
+#else
+		internal
+#endif
+		int EndReceiveFrom(IAsyncResult result, ref EndPoint end_point)
+		{
+			if (disposed && closed)
+				throw new ObjectDisposedException (GetType ().ToString ());
+
+			if (result == null)
+				throw new ArgumentNullException ("result");
+
+			if (end_point == null)
+				throw new ArgumentNullException ("remote_end");
+
+			SocketAsyncResult req = result as SocketAsyncResult;
+			if (req == null)
+				throw new ArgumentException ("Invalid IAsyncResult", "result");
+
+			if (Interlocked.CompareExchange (ref req.EndCalled, 1, 0) == 1)
+				throw InvalidAsyncOp ("EndReceiveFrom");
+			if (!result.IsCompleted)
+				result.AsyncWaitHandle.WaitOne();
+
+ 			req.CheckIfThrowDelayedException();
+			end_point = req.EndPoint;
+			return req.Total;
+		}
+
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		static extern void socket_pool_queue (SocketAsyncCall d, SocketAsyncResult r);
 	}
 }
 

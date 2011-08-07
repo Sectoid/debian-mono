@@ -6,7 +6,7 @@
 //	Miguel de Icaza (miguel@novell.com)
 //
 //
-// Copyright (C) 2005 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2005-2009 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -30,20 +30,42 @@
 
 using System.IO;
 using System.Text;
+using System.Threading;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Security.Permissions;
 	
-namespace System.Web {
-	
+namespace System.Web
+{	
 	// CAS - no InheritanceDemand here as the class is sealed
 	[AspNetHostingPermission (SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
-	public sealed class HttpWriter : TextWriter {
+	public sealed class HttpWriter : TextWriter
+	{
+		const long MAX_TOTAL_BUFFERS_SIZE = 4 * 1024 * 1024;
+		const uint SINGLE_BUFFER_SIZE = 128 * 1024;
+		const uint MIN_SINGLE_BUFFER_SIZE = 32 * 1024;
+		
 		HttpResponseStream output_stream;
 		HttpResponse response;
 		Encoding encoding;
-		byte [] _bytebuffer = new byte [1024];
 
+		[ThreadStatic]
+		static byte [] _bytebuffer;
+		static readonly uint byteBufferSize;
+		
+		static HttpWriter ()
+		{
+			int workerThreads, completionPortThreads;
+
+			ThreadPool.GetMinThreads (out workerThreads, out completionPortThreads);
+			workerThreads *= 3;
+
+			uint bufferSize = (uint)(MAX_TOTAL_BUFFERS_SIZE / workerThreads);
+			byteBufferSize = Math.Min (SINGLE_BUFFER_SIZE, bufferSize);
+			if (byteBufferSize < MIN_SINGLE_BUFFER_SIZE)
+				byteBufferSize = MIN_SINGLE_BUFFER_SIZE;
+		}
+		
 		internal HttpWriter (HttpResponse response)
 		{
 			this.response = response;
@@ -53,15 +75,14 @@ namespace System.Web {
 
 		byte [] GetByteBuffer (int length)
 		{
+			if (_bytebuffer == null)
+				_bytebuffer = new byte [byteBufferSize];
+			
 			// We will reuse the buffer if its size is < 32K
-			if (_bytebuffer.Length >= length)
+			if (byteBufferSize >= length)
 				return _bytebuffer;
-
-			if (length > 32 * 1024)
+			else
 				return new byte [length];
-
-			_bytebuffer = new byte [length];
-			return _bytebuffer;
 		}
 
 		public override Encoding Encoding {

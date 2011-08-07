@@ -160,21 +160,25 @@ namespace System.Xml {
 		static XmlConvert ()
 		{
 			int l = defaultDateTimeFormats.Length;
-			roundtripDateTimeFormats = new string [l];
-			localDateTimeFormats = new string [l];
+			roundtripDateTimeFormats = new string [l * 2];
+			localDateTimeFormats = new string [l * 2];
 			utcDateTimeFormats = new string [l * 3];
-			unspecifiedDateTimeFormats = new string [l * 4];
+			unspecifiedDateTimeFormats = new string [l * 5];
 			for (int i = 0; i < l; i++) {
 				string s = defaultDateTimeFormats [i];
-				localDateTimeFormats [i] = s + "zzz";
-				roundtripDateTimeFormats [i] = s + 'K';
+				var z = s + 'Z';
+				localDateTimeFormats [i * 2] = s + (s [s.Length - 1] == 's' || s [s.Length - 1] == 'F' ? "zzz" : String.Empty);
+				localDateTimeFormats [i * 2 + 1] = z;
+				roundtripDateTimeFormats [i * 2] = s + 'K';
+				roundtripDateTimeFormats [i * 2 + 1] = z;
 				utcDateTimeFormats [i * 3] = s;
-				utcDateTimeFormats [i * 3 + 1] = s + 'Z';
+				utcDateTimeFormats [i * 3 + 1] = z;
 				utcDateTimeFormats [i * 3 + 2] = s + "zzz";
-				unspecifiedDateTimeFormats [i * 4] = s;
-				unspecifiedDateTimeFormats [i * 4 + 1] = localDateTimeFormats [i];
-				unspecifiedDateTimeFormats [i * 4 + 2] = roundtripDateTimeFormats [i];
-				unspecifiedDateTimeFormats [i * 4 + 3] = utcDateTimeFormats [i];
+				unspecifiedDateTimeFormats [i * 5] = s;
+				unspecifiedDateTimeFormats [i * 5 + 1] = z;
+				unspecifiedDateTimeFormats [i * 5 + 2] = localDateTimeFormats [i];
+				unspecifiedDateTimeFormats [i * 5 + 3] = roundtripDateTimeFormats [i];
+				unspecifiedDateTimeFormats [i * 5 + 4] = utcDateTimeFormats [i];
 			}
 		}
 #endif
@@ -369,12 +373,12 @@ namespace System.Xml {
 			switch (mode) {
 			case XmlDateTimeSerializationMode.Local:
 				dt = ToDateTime (value, localDateTimeFormats);
-				return dt == DateTime.MinValue || dt == DateTime.MaxValue ? dt : dt.ToLocalTime ();
+				return new DateTime (dt.Ticks, DateTimeKind.Local);
 			case XmlDateTimeSerializationMode.RoundtripKind:
 				return ToDateTime (value, roundtripDateTimeFormats, _defaultStyle | DateTimeStyles.RoundtripKind);
 			case XmlDateTimeSerializationMode.Utc:
 				dt = ToDateTime (value, utcDateTimeFormats);
-				return dt == DateTime.MinValue || dt == DateTime.MaxValue ? dt : dt.ToUniversalTime ();
+				return new DateTime (dt.Ticks, DateTimeKind.Utc);
 			case XmlDateTimeSerializationMode.Unspecified:
 				return ToDateTime (value, unspecifiedDateTimeFormats);
 			default:
@@ -399,7 +403,11 @@ namespace System.Xml {
 
 		private static DateTime ToDateTime (string s, string [] formats, DateTimeStyles style) 
 		{
-			return DateTime.ParseExact (s, formats, DateTimeFormatInfo.InvariantInfo, style);
+			try {
+				return DateTime.ParseExact (s, formats, DateTimeFormatInfo.InvariantInfo, style);
+			} catch (ArgumentOutOfRangeException) {
+				return DateTime.MinValue;
+			}
 		}
 		
 		public static Decimal ToDecimal(string s)

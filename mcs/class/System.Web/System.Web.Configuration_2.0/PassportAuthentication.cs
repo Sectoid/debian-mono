@@ -5,7 +5,7 @@
 //	Lluis Sanchez Gual (lluis@novell.com)
 //	Chris Toshok (toshok@ximian.com)
 //
-// (C) 2004,2005 Novell, Inc (http://www.novell.com)
+// (C) 2004-2010 Novell, Inc (http://www.novell.com)
 //
 
 //
@@ -32,10 +32,11 @@
 using System;
 using System.Configuration;
 
-#if NET_2_0
-
-namespace System.Web.Configuration {
-
+namespace System.Web.Configuration
+{
+#if NET_4_0
+	[Obsolete ("This type is obsolete. The Passport authentication product is no longer supported and has been superseded by Live ID.")]
+#endif
 	public sealed class PassportAuthentication : ConfigurationElement
 	{
 		static ConfigurationProperty redirectUrlProp;
@@ -58,7 +59,7 @@ namespace System.Web.Configuration {
 			/* XXX do some sort of element validation here? */
 		}
 
-		protected override ConfigurationElementProperty ElementProperty {
+		protected internal override ConfigurationElementProperty ElementProperty {
 			get { return elementProperty; }
 		}
 
@@ -69,10 +70,9 @@ namespace System.Web.Configuration {
 			set { base[redirectUrlProp] = value; }
 		}
 
-		protected override ConfigurationPropertyCollection Properties {
+		protected internal override ConfigurationPropertyCollection Properties {
 			get { return properties; }
 		}
 	}
 }
 
-#endif

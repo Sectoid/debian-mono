@@ -29,6 +29,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Net.Security;
 using System.Reflection;
 using System.Runtime.Serialization;
@@ -38,26 +39,43 @@ using System.ServiceModel.Dispatcher;
 
 namespace System.ServiceModel.Description
 {
+	internal static class Extensions
+	{
+		public static T GetCustomAttribute<T> (this MemberInfo mi, bool inherit) where T : Attribute
+		{
+			foreach (T att in mi.GetCustomAttributes (typeof (T), inherit))
+				return att;
+			return null;
+		}
+	}
+
 	public class ContractDescription
 	{		
-		[MonoTODO]
 		public static ContractDescription GetContract (
 			Type contractType)
 		{
+			if (contractType == null)
+				throw new ArgumentNullException ("contractType");
 			return ContractDescriptionGenerator.GetContract (contractType);
 		}
 
-		[MonoTODO]
 		public static ContractDescription GetContract (
 			Type contractType, object serviceImplementation)
 		{
+			if (contractType == null)
+				throw new ArgumentNullException ("contractType");
+			if (serviceImplementation == null)
+				throw new ArgumentNullException ("serviceImplementation");
 			return ContractDescriptionGenerator.GetContract (contractType, serviceImplementation);
 		}
 
-		[MonoTODO]
 		public static ContractDescription GetContract (
 			Type contractType, Type serviceType)
 		{
+			if (contractType == null)
+				throw new ArgumentNullException ("contractType");
+			if (serviceType == null)
+				throw new ArgumentNullException ("serviceType");
 			return ContractDescriptionGenerator.GetContract (contractType, serviceType);
 		}
 
@@ -139,34 +157,43 @@ namespace System.ServiceModel.Description
 			set { session = value; }
 		}
 
-		[MonoTODO]
 		public Collection<ContractDescription> GetInheritedContracts ()
 		{
-			throw new NotImplementedException ();
+			var ret = new Collection<ContractDescription> ();
+			foreach (var it in ContractType.GetInterfaces ()) {
+				var icd = ContractDescriptionGenerator.GetContractInternal (it, null, null);
+				if (icd != null)
+					ret.Add (icd);
+			}
+			return ret;
 		}
 
-		internal ClientRuntime CreateClientRuntime ()
+		internal ClientRuntime CreateClientRuntime (object callbackDispatchRuntime)
 		{
-			ClientRuntime proxy = new ClientRuntime (Name, Namespace) { ContractClientType = ContractType, CallbackClientType = CallbackContractType };
-			//proxy.ContractClientType = typeof (TChannel);
-
-			foreach (OperationDescription od in Operations) {
-				if (!proxy.Operations.Contains (od.Name))
-					PopulateClientOperation (proxy, od);
-#if !NET_2_1 || MONOTOUCH
-				foreach (IOperationBehavior ob in od.Behaviors)
-					ob.ApplyClientBehavior (od, proxy.Operations [od.Name]);
-#endif
-			}
-
+			ClientRuntime proxy = new ClientRuntime (Name, Namespace, callbackDispatchRuntime) {ContractClientType = ContractType, CallbackClientType = CallbackContractType};
+			FillClientOperations (proxy, false);
 			return proxy;
 		}
 
-		void PopulateClientOperation (ClientRuntime proxy, OperationDescription od)
+		internal void FillClientOperations (ClientRuntime proxy, bool isCallback)
+		{
+			foreach (OperationDescription od in Operations) {
+				if (!(isCallback && od.InCallbackContract || !isCallback && od.InOrdinalContract))
+					continue; // not in the contract in use.
+
+				if (!proxy.Operations.Contains (od.Name))
+					PopulateClientOperation (proxy, od, isCallback);
+				foreach (IOperationBehavior ob in od.Behaviors)
+					ob.ApplyClientBehavior (od, proxy.Operations [od.Name]);
+			}
+		}
+
+		void PopulateClientOperation (ClientRuntime proxy, OperationDescription od, bool isCallback)
 		{
 			string reqA = null, resA = null;
 			foreach (MessageDescription m in od.Messages) {
-				if (m.Direction == MessageDirection.Input)
+				bool isReq = m.Direction == MessageDirection.Input ^ isCallback;
+				if (isReq)
 					reqA = m.Action;
 				else
 					resA = m.Action;
@@ -176,15 +203,29 @@ namespace System.ServiceModel.Description
 				new ClientOperation (proxy, od.Name, reqA) :
 				new ClientOperation (proxy, od.Name, reqA, resA);
 			foreach (MessageDescription md in od.Messages) {
-				if (md.Direction == MessageDirection.Input &&
+				bool isReq = md.Direction == MessageDirection.Input ^ isCallback;
+				if (isReq &&
 				    md.Body.Parts.Count == 1 &&
 				    md.Body.Parts [0].Type == typeof (Message))
 					o.SerializeRequest = false;
-				if (md.Direction == MessageDirection.Output &&
+				if (!isReq &&
 				    md.Body.ReturnValue != null &&
 				    md.Body.ReturnValue.Type == typeof (Message))
 					o.DeserializeReply = false;
 			}
+#if !NET_2_1
+			foreach (var fd in od.Faults)
+				o.FaultContractInfos.Add (new FaultContractInfo (fd.Action, fd.DetailType));
+#endif
+
+			// FIXME: at initialization time it does not seem to 
+			// fill default formatter. It should be filled after
+			// applying all behaviors. (Tthat causes regression, so
+			// I don't care little compatibility difference so far)
+			//
+			// FIXME: pass correct isRpc, isEncoded
+			o.Formatter = new OperationFormatter (od, false, false);
+
 			proxy.Operations.Add (o);
 		}
 	}

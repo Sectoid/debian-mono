@@ -1,4 +1,30 @@
-2009-06-23  Marek Habersack  <mhabersack@novell.com>
+2011-03-28  Marek Habersack  <grendel@twistedcode.net>
+
+	[DataAnnotations] Implemented the Validator and
+	CustomValidationAttribute 4.0 classes
+
+2011-01-26  Antoine Cailliau  <antoine.cailliau@uclouvain.be>
+
+	Implements
+	System.ComponentModel.DataAnnotations.RegularExpressionAttribute
+
+2010-08-21  Marek Habersack  <grendel@twistedcode.net>
+
+	Implemented the StringLengthAttribute
+
+2010-08-20  Marek Habersack  <grendel@twistedcode.net>
+
+	All ValidationAttribute and RangeAttribute 3.5 and 4.0 tests run
+	without errors now.
+
+2010-08-20  Marek Habersack  <grendel@twistedcode.net>
+
+	Implemented the RangeAttribute class.
+
+2010-08-29  David Stone      <david@gixug.com>
+	* Added DisplayAttribute
+
+2009-06-23  Marek Habersack  <mhabersack@novell.com
 
 	* System.ComponentModel.DataAnnotations.dll.sources: added
 	System.ComponentModel.DataAnnotations/AssociatedMetadataTypePropertyDescriptor.cs

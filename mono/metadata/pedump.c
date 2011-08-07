@@ -39,6 +39,10 @@ gboolean verify_metadata = FALSE;
 gboolean verify_code = FALSE;
 gboolean verify_partial_md = FALSE;
 
+static MonoAssembly *pedump_preload (MonoAssemblyName *aname, gchar **assemblies_path, gpointer user_data);
+static void pedump_assembly_load_hook (MonoAssembly *assembly, gpointer user_data);
+static MonoAssembly *pedump_assembly_search_hook (MonoAssemblyName *aname, gpointer user_data);
+
 /* unused
 static void
 hex_dump (const char *buffer, int base, int count)
@@ -349,18 +353,6 @@ dump_verify_info (MonoImage *image, int flags)
 		"Ok", "Error", "Warning", NULL, "CLS", NULL, NULL, NULL, "Not Verifiable"
 	};
 
-	if (verify_metadata) {
-		errors = mono_image_verify_tables (image, flags);
-	
-		for (tmp = errors; tmp; tmp = tmp->next) {
-			MonoVerifyInfo *info = tmp->data;
-			g_print ("%s: %s\n", desc [info->status], info->message);
-			if (info->status == MONO_VERIFY_ERROR)
-				count++;
-		}
-		mono_free_verify_list (errors);
-	}
-
 	if (verify_code) { /* verify code */
 		int i;
 		MonoTableInfo *m = &image->tables [MONO_TABLE_METHOD];
@@ -457,14 +449,26 @@ verify_image_file (const char *fname)
 
 	mono_image_load_names (image);
 
-	if (!verify_partial_md && !mono_verifier_verify_full_table_data (image, &errors))
-		goto invalid_image;
-
 	/*fake an assembly for class loading to work*/
 	assembly = g_new0 (MonoAssembly, 1);
 	assembly->in_gac = FALSE;
 	assembly->image = image;
 	image->assembly = assembly;
+
+	/*Finish initializing the runtime*/
+	mono_install_assembly_load_hook (pedump_assembly_load_hook, NULL);
+	mono_install_assembly_search_hook (pedump_assembly_search_hook, NULL);
+
+	mono_init_version ("pedump", image->version);
+
+	mono_install_assembly_preload_hook (pedump_preload, GUINT_TO_POINTER (FALSE));
+
+	mono_marshal_init ();
+
+
+	if (!verify_partial_md && !mono_verifier_verify_full_table_data (image, &errors))
+		goto invalid_image;
+
 
 	table = &image->tables [MONO_TABLE_TYPEDEF];
 	for (i = 1; i <= table->rows; ++i) {
@@ -475,6 +479,13 @@ verify_image_file (const char *fname)
 			continue;
 		}
 		mono_class_init (class);
+		if (class->exception_type != MONO_EXCEPTION_NONE || mono_loader_get_last_error ()) {
+			printf ("Error verifying class(0x%08x) %s.%s a type load error happened\n", token, class->name_space, class->name);
+			mono_loader_clear_error ();
+			++count;
+		}
+
+		mono_class_setup_vtable (class);
 		if (class->exception_type != MONO_EXCEPTION_NONE || mono_loader_get_last_error ()) {
 			printf ("Error verifying class(0x%08x) %s.%s a type load error happened\n", token, class->name_space, class->name);
 			mono_loader_clear_error ();
@@ -680,14 +691,6 @@ main (int argc, char *argv [])
 	}
 
 	if (verify_pe || run_new_metadata_verifier) {
-		mono_install_assembly_load_hook (pedump_assembly_load_hook, NULL);
-		mono_install_assembly_search_hook (pedump_assembly_search_hook, NULL);
-
-		mono_init_version ("pedump", "v2.0.50727");
-
-		mono_install_assembly_preload_hook (pedump_preload, GUINT_TO_POINTER (FALSE));
-
-		mono_marshal_init ();
 		run_new_metadata_verifier = 1;
 	}
 	

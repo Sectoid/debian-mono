@@ -1,31 +1,13 @@
-// cs0173-3.cs: Type of conditional expression cannot be determined because there is no implicit conversion between `ClassA' and `ClassB'
-// Line: 29
+// CS0173: Type of conditional expression cannot be determined because there is no implicit conversion between `anonymous method' and `anonymous method'
+// Line: 11
 
-class ClassA {
-        public static implicit operator ClassB (ClassA value) {
-                return null;
-        }
-        
-        public static implicit operator ClassA (ClassB value) {
-                return null;
-        }
-}
+using System;
 
-class ClassB {
-        public static implicit operator ClassA (ClassB value) {
-                return null;
-        }
-        
-        public static implicit operator ClassB (ClassA value) {
-                return null;
-        }
-}
-
-public class MainClass {
-        public static void Main() {
-                ClassA a = new ClassA();
-                ClassB b = new ClassB();
-            
-                System.Console.WriteLine(true ? a : b);
-   }
+class Test
+{
+	public static void Main ()
+	{
+		bool descending = false;
+		Comparison<int> comp = descending ? ((e1, e2) => e2 < e1) : ((e1, e2) => e1 < e2);
+	}
 }

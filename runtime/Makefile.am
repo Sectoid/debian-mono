@@ -12,7 +12,6 @@ if INSTALL_4_0
 symlinks += etc/mono/4.0/machine.config etc/mono/4.0/web.config
 endif
 
-etc/mono/1.0/machine.config: $(top_srcdir)/data/net_1_1/machine.config
 etc/mono/2.0/machine.config: $(top_srcdir)/data/net_2_0/machine.config
 etc/mono/2.0/web.config: $(top_srcdir)/data/net_2_0/web.config
 etc/mono/browscap.ini: $(top_srcdir)/data/browscap.ini
@@ -25,12 +24,41 @@ $(symlinks):
 
 SUPPORT_FILES = $(symlinks) mono-wrapper etc/mono/config
 
-build_profiles = net_1_1
+if MOONLIGHT
+moon-do-basic: Makefile $(SUPPORT_FILES)
+	cd $(mcs_topdir)/class/Mono.Cecil && $(MAKE) PROFILE=basic
+	cd $(mcs_topdir)/class/Mono.Cecil.Mdb && $(MAKE) PROFILE=basic
+	cd $(mcs_topdir)/tools/linker && $(MAKE) PROFILE=basic
+	cd $(mcs_topdir)/tools/tuner && $(MAKE) PROFILE=basic
+
+moon-do-basic-clean:
+	cd $(mcs_topdir)/class/Mono.Cecil && $(MAKE) PROFILE=basic clean
+	cd $(mcs_topdir)/class/Mono.Cecil.Mdb && $(MAKE) PROFILE=basic clean
+	cd $(mcs_topdir)/tools/linker && $(MAKE) PROFILE=basic clean
+	cd $(mcs_topdir)/tools/tuner && $(MAKE) PROFILE=basic clean
+endif
+
+if ONLY_MOONLIGHT
+build_profiles = moonlight_raw
+test_profiles = moonlight_raw
+else
+
+build_profiles = net_2_0 net_3_5
 test_profiles = $(build_profiles)
 
-if INSTALL_2_0
-build_profiles += net_2_0 net_3_5
-test_profiles += net_2_0 net_3_5
+if MOONLIGHT
+build_profiles += moonlight_raw
+test_profiles += moonlight_raw
+
+moon-do-moonlight-raw: Makefile $(SUPPORT_FILES)
+	cd $(mcs_topdir) && $(MAKE) NO_DIR_CHECK=1 PROFILES='moonlight_raw' CC='$(CC)' all-profiles
+
+moon-do-moonlight-raw-clean:
+	cd $(mcs_topdir) && $(MAKE) NO_DIR_CHECK=1 PROFILES='moonlight_raw' CC='$(CC)' clean-profiles
+
+moon-do-build: moon-do-moonlight-raw moon-do-basic
+moon-do-clean: moon-do-moonlight-raw-clean moon-do-basic-clean
+
 endif
 
 if INSTALL_4_0
@@ -38,13 +66,14 @@ build_profiles += net_4_0
 #test_profiles += net_4_0
 endif
 
-if INSTALL_2_1
-build_profiles += net_2_1_raw
-test_profiles += net_2_1_raw
+if INSTALL_MONODROID
+build_profiles += monodroid
 endif
 
 if INSTALL_MONOTOUCH
 build_profiles += monotouch
+endif
+
 endif
 
 if BUILD_MCS
@@ -77,7 +106,7 @@ clean-local:
 
 endif BUILD_MCS
 
-TEST_SUPPORT_FILES = $(tmpinst)/bin/mono $(tmpinst)/bin/mcs $(tmpinst)/bin/ilasm $(tmpinst)/bin/gmcs $(tmpinst)/bin/al2
+TEST_SUPPORT_FILES = $(tmpinst)/bin/mono $(tmpinst)/bin/ilasm $(tmpinst)/bin/gmcs $(tmpinst)/bin/dmcs $(tmpinst)/bin/al2 $(tmpinst)/bin/al
 
 # now a misnomer, but it'll go away soon enough.
 if ENABLE_NUNIT_TESTS
@@ -86,21 +115,13 @@ else
 test_select = ONLY_CENTUM_TESTS=yes
 endif
 
-if INSTALL_2_1
-moon-do-build: test-support-files
-	cd $(top_builddir)/../moon/class && $(MAKE) all
-else
-moon-do-build:
-	@:
-endif
-
 mcs-do-test-profiles:
 	cd $(mcs_topdir) && $(MAKE) NO_DIR_CHECK=1 PROFILES='$(test_profiles)' test-profiles
 
 mcs-do-run-test-profiles: test-support-files
 	cd $(mcs_topdir) && $(MAKE) NO_DIR_CHECK=1 PROFILES='$(test_profiles)' run-test-profiles
 
-if PLATFORM_WIN32
+if HOST_WIN32
 if CROSS_COMPILING
 cur_dir_cmd = pwd
 PLATFORM_PATH_SEPARATOR = :
@@ -119,7 +140,7 @@ endif
 mcs-compileall: mono-wrapper etc/mono/config
 	save_MONO_PATH=$$MONO_PATH; mcs_topdir=`cd $(mcs_topdir) && $(cur_dir_cmd)`; ok=:; \
 	for profile in $(test_profiles); do \
-	  if [ "net_2_1" = "$$profile" ]; then \
+	  if [ "moonlight" = "$$profile" ]; then \
           break; \
       fi; \
 	  if [ "net_3_5" = "$$profile" ]; then \
@@ -157,16 +178,16 @@ $(tmpinst)/bin/mono: mono-wrapper etc/mono/config
 	$(mkinstalldirs) $(tmpinst)/bin
 	cp mono-wrapper $@
 
-$(tmpinst)/bin/mcs: $(tmpinst)/bin/mono Makefile
-	echo '#! /bin/sh' > $@ ; \
-	r=`pwd`; m=`cd $(mcs_topdir) && pwd`; \
-	echo 'exec "'"$$r/$(tmpinst)/bin/mono"'" "'"$$m/class/lib/net_1_1/mcs.exe"'" "$$@"' >> $@ ; \
-	chmod +x $@
-
 $(tmpinst)/bin/gmcs: $(tmpinst)/bin/mono Makefile
 	echo '#! /bin/sh' > $@ ; \
 	r=`pwd`; m=`cd $(mcs_topdir) && pwd`; \
 	echo 'exec "'"$$r/$(tmpinst)/bin/mono"'" "'"$$m/class/lib/net_2_0/gmcs.exe"'" "$$@"' >> $@ ; \
+	chmod +x $@
+
+$(tmpinst)/bin/dmcs: $(tmpinst)/bin/mono Makefile
+	echo '#! /bin/sh' > $@ ; \
+	r=`pwd`; m=`cd $(mcs_topdir) && pwd`; \
+	echo 'exec "'"$$r/$(tmpinst)/bin/mono"'" "'"$$m/class/lib/net_4_0/dmcs.exe"'" "$$@"' >> $@ ; \
 	chmod +x $@
 
 $(tmpinst)/bin/ilasm: $(tmpinst)/bin/mono Makefile
@@ -179,6 +200,12 @@ $(tmpinst)/bin/al2: $(tmpinst)/bin/mono Makefile
 	echo '#! /bin/sh' > $@ ; \
 	r=`pwd`; m=`cd $(mcs_topdir) && pwd`; \
 	echo 'exec "'"$$r/$(tmpinst)/bin/mono"'" "'"$$m/class/lib/net_2_0/al.exe"'" "$$@"' >> $@ ; \
+	chmod +x $@
+
+$(tmpinst)/bin/al: $(tmpinst)/bin/mono Makefile
+	echo '#! /bin/sh' > $@ ; \
+	r=`pwd`; m=`cd $(mcs_topdir) && pwd`; \
+	echo 'exec "'"$$r/$(tmpinst)/bin/mono"'" "'"$$m/class/lib/net_4_0/al.exe"'" "$$@"' >> $@ ; \
 	chmod +x $@
 
 test-support-files: $(TEST_SUPPORT_FILES)

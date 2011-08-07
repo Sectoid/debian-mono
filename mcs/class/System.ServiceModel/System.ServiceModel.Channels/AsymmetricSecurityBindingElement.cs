@@ -30,6 +30,7 @@ using System.Collections.ObjectModel;
 using System.Net.Security;
 using System.IdentityModel.Selectors;
 using System.ServiceModel.Channels;
+using System.ServiceModel.Channels.Security;
 using System.ServiceModel.Description;
 using System.ServiceModel.Dispatcher;
 using System.ServiceModel.Security;
@@ -182,7 +183,7 @@ namespace System.ServiceModel.Channels
 				return (T) (object) GetCapabilities ();
 			if (typeof (T) == typeof (IdentityVerifier))
 				throw new NotImplementedException ();
-			return context.GetInnerProperty<T> ();
+			return base.GetProperty<T> (context);
 		}
 
 		AsymmetricSecurityCapabilities GetCapabilities ()

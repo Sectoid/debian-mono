@@ -28,18 +28,14 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System.Runtime.InteropServices;
 
 namespace System.IO {
-
 	[ComVisible (true)]
 	[Serializable]
-	public enum SearchOption {
+	public
+	enum SearchOption {
 		TopDirectoryOnly = 0,
 		AllDirectories = 1
 	}
 }
-
-#endif

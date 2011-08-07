@@ -31,8 +31,6 @@ using System;
 using System.Globalization;
 using System.Reflection;
 
-#if NET_2_0 || BOOTSTRAP_NET_2_0
-
 namespace System.Reflection.Emit
 {
 	/*
@@ -42,10 +40,10 @@ namespace System.Reflection.Emit
 	{
 		#region Keep in sync with object-internals.h
 		internal MonoGenericClass instantiation;
-		internal FieldBuilder fb;
+		internal FieldInfo fb;
 		#endregion
 
-		public FieldOnTypeBuilderInst (MonoGenericClass instantiation, FieldBuilder fb) {
+		public FieldOnTypeBuilderInst (MonoGenericClass instantiation, FieldInfo fb) {
 			this.instantiation = instantiation;
 			this.fb = fb;
 		}
@@ -72,21 +70,30 @@ namespace System.Reflection.Emit
 			}
 		}
 
-		public override bool IsDefined (Type attributeType, bool inherit) {
-			throw new NotSupportedException ();
+		public override bool IsDefined (Type attributeType, bool inherit)
+		{
+			if (!instantiation.IsCompilerContext)
+				throw new NotSupportedException ();
+			return fb.IsDefined (attributeType, inherit);
 		}
 
-		public override object [] GetCustomAttributes (bool inherit) {
-			throw new NotSupportedException ();
+		public override object [] GetCustomAttributes (bool inherit)
+		{
+			if (!instantiation.IsCompilerContext)
+				throw new NotSupportedException ();
+			return fb.GetCustomAttributes (inherit);
 		}
 
-		public override object [] GetCustomAttributes (Type attributeType, bool inherit) {
-			throw new NotSupportedException ();
+		public override object [] GetCustomAttributes (Type attributeType, bool inherit)
+		{
+			if (!instantiation.IsCompilerContext)
+				throw new NotSupportedException ();
+			return fb.GetCustomAttributes (attributeType, inherit);
 		}
 
 		public override string ToString ()
 		{
-			if (!((ModuleBuilder)instantiation.generic_type.Module).assemblyb.IsCompilerContext)
+			if (!instantiation.IsCompilerContext)
 				return fb.FieldType.ToString () + " " + Name;
 			return FieldType.ToString () + " " + Name;
 		}
@@ -108,7 +115,7 @@ namespace System.Reflection.Emit
 
 		public override int MetadataToken {
 			get {
-				if (!((ModuleBuilder)instantiation.generic_type.Module).assemblyb.IsCompilerContext)
+				if (!instantiation.IsCompilerContext)
 					throw new InvalidOperationException ();
 				return fb.MetadataToken;
 			} 
@@ -116,7 +123,7 @@ namespace System.Reflection.Emit
 
 		public override Type FieldType {
 			get {
-				if (!((ModuleBuilder)instantiation.generic_type.Module).assemblyb.IsCompilerContext)
+				if (!instantiation.IsCompilerContext)
 					throw new NotSupportedException ();
 				return instantiation.InflateType (fb.FieldType);
 			}
@@ -131,5 +138,3 @@ namespace System.Reflection.Emit
 		}
 	}
 }
-
-#endif

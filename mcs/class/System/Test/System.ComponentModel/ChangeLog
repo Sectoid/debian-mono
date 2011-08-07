@@ -1,3 +1,47 @@
+2010-09-14  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* TypeDescriptorTests.cs: New test for InterfaceType.
+
+2010-09-14  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* TypeDescriptorTests.cs: Remove the NET_2_0 and ONLY_1_1
+	directives, as we don't need them anymore.
+
+2010-09-13  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* TypeDescriptionProviderTest.cs: New test file.
+
+2010-09-10  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* DateTimeOffsetConverterTests.cs: New test for conversions to
+	InstanceDescriptor.
+
+2010-09-07  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* DateTimeOffsetConverterTests.cs: New file.
+
+2010-09-05  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* CultureInfoConverterTest.cs: New test for GetCultureName.
+
+2010-09-03  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* AttributeCollectionTest.cs: New test file.
+
+2010-08-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove some hash code tests which can fail.
+
+2010-05-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* DefaultValueAttributeTest.cs: Change test case to compare the 
+	hash code of two DVA created with null (instead of comparing to 0)
+
+2010-02-05  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* MaskedTextProviderTest.cs: New tests for ToString and
+	ToDisplayString, specifically when IsPassword is true. 
+
 2010-01-15  Alexandre Gomes  <alexmipego@gmail.com>
 
 	* ByteConverterTests.cs:

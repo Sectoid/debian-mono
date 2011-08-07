@@ -42,24 +42,21 @@ namespace System.Runtime.Remoting.Messaging
 {
 	
 	[Serializable]
-#if NET_2_0
 	[System.Runtime.InteropServices.ComVisible (true)]
-#endif
 	public sealed class CallContext 
 	{
 		[ThreadStatic] static Header [] Headers;
 		[ThreadStatic] static Hashtable datastore;
+		[ThreadStatic] static object hostContext;
 		
 		private CallContext ()
 		{
 		}
 
-#if NET_2_0
 		public static object HostContext {
-			get { throw new NotImplementedException (); }
-			set { throw new NotImplementedException (); }
+			get { return hostContext; }
+			set { hostContext = value; }
 		}
-#endif
 
 		// public methods
 		public static void FreeNamedDataSlot (string name) 
@@ -77,7 +74,6 @@ namespace System.Runtime.Remoting.Messaging
 			Datastore [name] = data;
 		}
 
-#if NET_2_0
 		[MonoTODO]
 		public static object LogicalGetData (string name) 
 		{
@@ -89,7 +85,6 @@ namespace System.Runtime.Remoting.Messaging
 		{
 			throw new NotImplementedException ();
 		}
-#endif
 
 		public static Header[] GetHeaders () 
 		{
@@ -153,9 +148,7 @@ namespace System.Runtime.Remoting.Messaging
 		}
 	}
 
-#if NET_2_0
 	[System.Runtime.InteropServices.ComVisible (true)]
-#endif
 	public interface ILogicalThreadAffinative
 	{
 	}

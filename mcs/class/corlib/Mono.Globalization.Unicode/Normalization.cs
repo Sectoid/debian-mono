@@ -38,15 +38,6 @@ namespace Mono.Globalization.Unicode
 			return charMapIndex [NUtil.MapIdx (cp)];
 		}
 
-		static int GetNormalizedStringLength (int ch)
-		{
-			int start = charMapIndex [NUtil.MapIdx (ch)];
-			int i = start;
-			while (mappedChars [i] != 0)
-				i++;
-			return i - start;
-		}
-
 		static byte GetCombiningClass (int c)
 		{
 			return combiningClass [NUtil.Combining.ToIndex (c)];
@@ -62,70 +53,11 @@ namespace Mono.Globalization.Unicode
 			return helperIndex [NUtil.Helper.ToIndex (cp)];
 		}
 
-		static int GetPrimaryCompositeCharIndex (object chars, int start)
-		{
-			string s = chars as string;
-			StringBuilder sb = chars as StringBuilder;
-			char startCh = s != null ? s [start] : sb [start];
-			int charsLength = sb != null ? sb.Length : s.Length;
-
-			int idx = GetPrimaryCompositeHelperIndex ((int) startCh);
-			if (idx == 0)
-				return 0;
-			while (mappedChars [idx] == startCh) {
-				int prevCB = 0;
-				int combiningClass = 0;
-				for (int i = 1, j = 1; ; i++, j++) {
-					prevCB = combiningClass;
-
-					if (mappedChars [idx + i] == 0)
-						// matched
-						return idx;
-					if (start + i >= charsLength)
-						return 0; // didn't match
-
-					// handle blocked characters here.
-					char curCh;
-					bool match = false;
-					do {
-						curCh = s != null ?
-							s [start + j] :
-							sb [start + j];
-						combiningClass = GetCombiningClass (curCh);
-						if (mappedChars [idx + i] == curCh) {
-							match = true;
-							break;
-						}
-						if (combiningClass < prevCB) // blocked. Give up this map entry.
-							break;
-						if (++j + start >= charsLength || combiningClass == 0)
-							break;
-					} while (true);
-
-					if (match)
-						continue; // check next character in the current map entry string.
-					if (prevCB < combiningClass) {
-						j--;
-						if (mappedChars [idx + i] == curCh)
-							continue;
-						//if (mappedChars [idx + i] > curCh)
-						//	return 0; // no match
-					}
-					// otherwise move idx to next item
-					while (mappedChars [i] != 0)
-						i++;
-					idx += i + 1;
-					break;
-				}
-			}
-			// reached to end of entries
-			return 0;
-		}
-
 		private static string Compose (string source, int checkType)
 		{
 			StringBuilder sb = null;
-			Decompose (source, ref sb, checkType);
+			// Decompose to NFD or NKFD depending on our target
+			Decompose (source, ref sb, checkType == 2 ? 3 : 1);
 			if (sb == null)
 				sb = Combine (source, 0, checkType);
 			else
@@ -147,64 +79,164 @@ namespace Mono.Globalization.Unicode
 			return null;
 		}
 
+/*
 		private static bool CanBePrimaryComposite (int i)
 		{
 			if (i >= 0x3400 && i <= 0x9FBB)
 				return GetPrimaryCompositeHelperIndex (i) != 0;
 			return (PropValue (i) & IsUnsafe) != 0;
 		}
-
-		private static void Combine (StringBuilder sb, int start, int checkType)
+*/
+		private static void Combine (StringBuilder sb, int i, int checkType)
 		{
-			for (int i = start; i < sb.Length; i++) {
-				if (QuickCheck (sb [i], checkType) == NormalizationCheck.Yes)
-					continue;
+			// Back off one character as we may be looking at a V or T jamo.
+			CombineHangul (sb, null, i > 0 ? i - 1 : i);
 
-				int cur = i;
-				// FIXME: It should check "blocked" too
-				for (;i > 0; i--) // this loop does not check sb[0], but regardless of the condition below it should not go under 0.
-					if (GetCombiningClass ((int) sb [i]) == 0)
-						break;
-
-				int idx = 0; // index to mappedChars
-				for (; i < cur; i++) {
-					idx = GetPrimaryCompositeMapIndex (sb, (int) sb [i], i);
-					if (idx > 0)
-						break;
-				}
-				if (idx == 0) {
-					i = cur;
+			while (i < sb.Length) {
+				if (QuickCheck (sb [i], checkType) == NormalizationCheck.Yes) {
+					i++;
 					continue;
 				}
 
-				int prim = GetPrimaryCompositeFromMapIndex (idx);
-				int len = GetNormalizedStringLength (prim);
-				if (prim == 0 || len == 0)
-					throw new SystemException ("Internal error: should not happen. Input: " + sb);
-				int removed = 0;
-				sb.Insert (i++, (char) prim); // always single character
-
-				// handle blocked characters here.
-				while (removed < len) {
-					if (sb [i] == mappedChars [idx + removed]) {
-						sb.Remove (i, 1);
-						removed++;
-						// otherwise, skip it.
-					}
-					else
-						i++;
-				}
-				i = cur - 1;
+				i = TryComposeWithPreviousStarter (sb, null, i);
 			}
 		}
 
-		static int GetPrimaryCompositeMapIndex (object o, int cur, int bufferPos)
+		private static int CombineHangul (StringBuilder sb, string s, int current)
 		{
-			if ((PropValue (cur) & FullCompositionExclusion) != 0)
-				return 0;
-			if (GetCombiningClass (cur) != 0)
-				return 0; // not a starter
-			return GetPrimaryCompositeCharIndex (o, bufferPos);
+			int length = sb != null ? sb.Length : s.Length;
+			int last = Fetch (sb, s, current);
+
+			for (int i = current + 1; i < length; ++i) {
+				int ch = Fetch (sb, s, i);
+
+				// 1. check to see if two current characters are L and V
+
+				int LIndex = last - HangulLBase;
+				if (0 <= LIndex && LIndex < HangulLCount) {
+					int VIndex = ch - HangulVBase;
+					if (0 <= VIndex && VIndex < HangulVCount) {
+						if (sb == null)
+							return -1;
+
+						// make syllable of form LV
+
+						last = HangulSBase + (LIndex * HangulVCount + VIndex) * HangulTCount;
+
+						sb [i - 1] = (char) last; // reset last
+						sb.Remove (i, 1);
+						i--; length--;
+						continue; // discard ch
+					}
+				}
+
+
+				// 2. check to see if two current characters are LV and T
+
+				int SIndex = last - HangulSBase;
+				if (0 <= SIndex && SIndex < HangulSCount && (SIndex % HangulTCount) == 0) {
+					int TIndex = ch - HangulTBase;
+					if (0 < TIndex && TIndex < HangulTCount) {
+						if (sb == null)
+							return -1;
+
+						// make syllable of form LVT
+
+						last += TIndex;
+
+						sb [i - 1] = (char) last; // reset last
+						sb.Remove (i, 1);
+						i--; length--;
+						continue; // discard ch
+					}
+				}
+				// if neither case was true, just add the character
+				last = ch;
+			}
+
+			return length;
+		}
+
+		static int Fetch (StringBuilder sb, string s, int i)
+		{
+			return (int) (sb != null ? sb [i] : s [i]);
+		}
+
+		// Cf. figure 7, section 1.3 of http://unicode.org/reports/tr15/.
+		static int TryComposeWithPreviousStarter (StringBuilder sb, string s, int current)
+		{
+			// Backtrack to previous starter.
+			int i = current - 1;
+			if (GetCombiningClass (Fetch (sb, s, current)) == 0) {
+				if (i < 0 || GetCombiningClass (Fetch (sb, s, i)) != 0)
+					return current + 1;
+			} else {
+				while (i >= 0 && GetCombiningClass (Fetch (sb, s, i)) != 0)
+					i--;
+				if (i < 0)
+					return current + 1;
+			}
+
+			int starter = Fetch (sb, s, i);
+
+			// The various decompositions involving starter follow this index.
+			int comp_idx = GetPrimaryCompositeHelperIndex (starter);
+			if (comp_idx == 0)
+				return current + 1;
+
+			int length = (sb != null ? sb.Length : s.Length);
+			int prevCombiningClass = -1;
+			for (int j = i + 1; j < length; j++) {
+				int candidate = Fetch (sb, s, j);
+
+				int combiningClass = GetCombiningClass (candidate);
+				if (combiningClass == prevCombiningClass)
+					// We skipped over a guy with the same class, without
+					// combining.  Skip this one, too.
+					continue;
+
+				int composed = TryCompose (comp_idx, starter, candidate);
+				if (composed != 0) {
+					if (sb == null)
+						// Not normalized, and we are only checking.
+						return -1;
+
+					// Full Unicode warning: This will break when the underlying
+					// tables are extended.
+					sb [i] = (char) composed;
+					sb.Remove (j, 1);
+
+					return current;
+				}
+
+				// Gray box.  We're done.
+				if (combiningClass == 0)
+					return j + 1;
+
+				prevCombiningClass = combiningClass;
+			}
+
+			return length;
+		}
+
+		static int TryCompose (int i, int starter, int candidate)
+		{
+			while (mappedChars [i] == starter) {
+				if (mappedChars [i + 1] == candidate &&
+				    mappedChars [i + 2] == 0) {
+					int composed = GetPrimaryCompositeFromMapIndex (i);
+
+					if ((PropValue (composed) & FullCompositionExclusion) == 0)
+						return composed;
+				}
+
+				// Skip this entry.
+				while (mappedChars [i] != 0)
+					i++;
+				i++;
+			}
+
+			return 0;
 		}
 
 		static string Decompose (string source, int checkType)
@@ -222,7 +254,7 @@ namespace Mono.Globalization.Unicode
 			for (int i = 0; i < source.Length; i++)
 				if (QuickCheck (source [i], checkType) == NormalizationCheck.No)
 					DecomposeChar (ref sb, ref buf, source,
-						i, ref start);
+						i, checkType, ref start);
 			if (sb != null)
 				sb.Append (source, start, source.Length - start);
 			ReorderCanonical (source, ref sb, 1);
@@ -246,31 +278,32 @@ namespace Mono.Globalization.Unicode
 				return;
 			}
 			// check only with sb
-			for (int i = start; i < sb.Length; i++) {
+			for (int i = start; i < sb.Length; ) {
 				int level = GetCombiningClass (sb [i]);
-				if (level == 0)
+				if (level == 0 || GetCombiningClass (sb [i - 1]) <= level) {
+					i++;
 					continue;
-				if (GetCombiningClass (sb [i - 1]) > level) {
-					char c = sb [i - 1];
-					sb [i - 1] = sb [i];
-					sb [i] = c;
-					i--; // apply recursively
 				}
+
+				char c = sb [i - 1];
+				sb [i - 1] = sb [i];
+				sb [i] = c;
+				// Apply recursively.
+				if (i > 1)
+					i--;
 			}
 		}
 
 		static void DecomposeChar (ref StringBuilder sb,
-			ref int [] buf, string s, int i, ref int start)
+			ref int [] buf, string s, int i, int checkType, ref int start)
 		{
 			if (sb == null)
 				sb = new StringBuilder (s.Length + 100);
 			sb.Append (s, start, i - start);
 			if (buf == null)
 				buf = new int [19];
-			GetCanonical (s [i], buf, 0);
-			for (int x = 0; ; x++) {
-				if (buf [x] == 0)
-					break;
+			int n = GetCanonical (s [i], buf, 0, checkType);
+			for (int x = 0; x < n; x++) {
 				if (buf [x] < char.MaxValue)
 					sb.Append ((char) buf [x]);
 				else { // surrogate
@@ -344,11 +377,11 @@ namespace Mono.Globalization.Unicode
 				  HangulNCount = HangulVCount * HangulTCount,   // 588
 				  HangulSCount = HangulLCount * HangulNCount;   // 11172
 
-		private static bool GetCanonicalHangul (int s, int [] buf, int bufIdx)
+		private static int GetCanonicalHangul (int s, int [] buf, int bufIdx)
 		{
 			int idx = s - HangulSBase;
 			if (idx < 0 || idx >= HangulSCount) {
-				return false;
+				return bufIdx;
 			}
 
 			int L = HangulLBase + idx / HangulNCount;
@@ -361,28 +394,49 @@ namespace Mono.Globalization.Unicode
 				buf [bufIdx++] = T;
 			}
 			buf [bufIdx] = (char) 0;
-			return true;
+			return bufIdx;
 		}
 
-		public static void GetCanonical (int c, int [] buf, int bufIdx)
+		static int GetCanonical (int c, int [] buf, int bufIdx, int checkType)
 		{
-			if (!GetCanonicalHangul (c, buf, bufIdx)) {
-				for (int i = CharMapIdx (c); mappedChars [i] != 0; i++)
-					buf [bufIdx++] = mappedChars [i];
-				buf [bufIdx] = (char) 0;
+			int newBufIdx = GetCanonicalHangul (c, buf, bufIdx);
+			if (newBufIdx > bufIdx)
+				return newBufIdx;
+ 
+			int i = CharMapIdx (c);
+			if (i == 0 || mappedChars [i] == c)
+				buf [bufIdx++] = c;
+			else {
+				// Character c maps to one or more decomposed chars.
+				for (; mappedChars [i] != 0; i++) {
+					int nth = mappedChars [i];
+
+					// http://www.unicode.org/reports/tr15/tr15-31.html, 1.3:
+					// Full decomposition involves recursive application of the
+					// Decomposition_Mapping values.  Note that QuickCheck does
+					// not currently support astral plane codepoints.
+					if (nth <= 0xffff && QuickCheck ((char)nth, checkType) == NormalizationCheck.Yes)
+						buf [bufIdx++] = nth;
+					else
+						bufIdx = GetCanonical (nth, buf, bufIdx, checkType);
+				}
 			}
+
+			return bufIdx;
 		}
 
 		public static bool IsNormalized (string source, int type)
 		{
 			int prevCC = -1;
-			for (int i = 0; i < source.Length; i++) {
+			for (int i = 0; i < source.Length; ) {
 				int cc = GetCombiningClass (source [i]);
 				if (cc != 0 && cc < prevCC)
 					return false;
 				prevCC = cc;
+
 				switch (QuickCheck (source [i], type)) {
 				case NormalizationCheck.Yes:
+					i++;
 					break;
 				case NormalizationCheck.No:
 					return false;
@@ -394,18 +448,14 @@ namespace Mono.Globalization.Unicode
 						return source == Normalize (source, type);
 					}
 					// go on...
-					
-					// partly copied from Combine()
-					int cur = i;
-					for (;i > 0; i--) // this loop does not check sb[0], but regardless of the condition below it should not go under 0.
-						if (GetCombiningClass ((int) source [i]) == 0)
-							break;
-					//i++;
-					// Now i is the "starter"
-					for (; i < cur; i++) {
-						if (GetPrimaryCompositeCharIndex (source, i) != 0)
-							return false;
-					}
+
+					i = CombineHangul (null, source, i > 0 ? i - 1 : i);
+					if (i < 0)
+						return false;
+
+					i = TryComposeWithPreviousStarter (null, source, i);
+					if (i < 0)
+						return false;
 					break;
 				}
 			}

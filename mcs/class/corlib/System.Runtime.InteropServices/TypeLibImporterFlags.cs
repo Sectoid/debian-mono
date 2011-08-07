@@ -32,9 +32,7 @@ using System;
 
 namespace System.Runtime.InteropServices
 {
-#if NET_2_0
 	[ComVisible(true)]
-#endif
 	[Serializable,Flags]
 	public enum TypeLibImporterFlags
 	{
@@ -42,7 +40,6 @@ namespace System.Runtime.InteropServices
 		UnsafeInterfaces = 2,
 		SafeArrayAsSystemArray = 4,
 		TransformDispRetVals = 8,
-#if NET_2_0
 		None = 0,
 		PreventClassMembers = 16,
 		ImportAsAgnostic = 2048,
@@ -51,6 +48,8 @@ namespace System.Runtime.InteropServices
 		ImportAsX86 = 256,
 		ReflectionOnlyLoading = 4096,
 		SerializableValueClasses = 32,
+#if NET_4_0
+		NoDefineVersionResource = 8192
 #endif
 	}
 }

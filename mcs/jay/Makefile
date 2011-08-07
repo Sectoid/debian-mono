@@ -10,7 +10,7 @@ sources = closure.c error.c lalr.c lr0.c main.c mkpar.c output.c reader.c \
 datafiles = ACKNOWLEDGEMENTS NEW_FEATURES NOTES README README.jay skeleton \
             skeleton.cs
 
-DISTFILES = $(datafiles) $(sources) jay.1 $(wildcard *.h)
+DISTFILES = $(datafiles) $(sources) jay.1 $(wildcard *.h) jay.vcxproj
 
 all-local: jay
 
@@ -35,6 +35,8 @@ uninstall-local:
 	done
 	-rm -f $(DESTDIR)$(prefix)/share/man/man1/jay.1
 endif
+
+csproj-local:
 
 clean-local:
 	rm -f jay *.o *.exe *.pdb

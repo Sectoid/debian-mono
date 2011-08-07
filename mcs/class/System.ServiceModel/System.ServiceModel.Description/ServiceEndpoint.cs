@@ -66,6 +66,13 @@ namespace System.ServiceModel.Description
 
 		public ContractDescription Contract {
 			get { return contract; }
+#if NET_4_0
+			set {
+				if (value == null)
+					throw new ArgumentNullException ("value");
+				contract = value;
+			}
+#endif
 		}
 
 		public EndpointAddress Address {
@@ -77,6 +84,13 @@ namespace System.ServiceModel.Description
 			get { return binding; }
 			set { binding = value; }
 		}
+
+#if NET_4_0
+		public
+#else
+		internal
+#endif
+		bool IsSystemEndpoint { get; set; }
 
 		public Uri ListenUri {
 			get { return listen_uri ?? (Address != null ? Address.Uri : null); }
@@ -90,15 +104,20 @@ namespace System.ServiceModel.Description
 
 		public string Name {
 			get {
-				if (name == null)
-					name = Binding.Name + "_" + Contract.Name;
+				if (name == null) {
+					// do not create cache when either of Binding or Contract is null.
+					if (Binding == null)
+						return Contract != null ? Contract.Name : null;
+					else if (Contract != null)
+						name = Binding.Name + "_" + Contract.Name;
+				}
 				return name;
 			}
 			set { name = value; }
 		}
 
-		internal void Validate () {
-#if !NET_2_1
+		internal void Validate ()
+		{
 			foreach (IContractBehavior b in Contract.Behaviors)
 				b.Validate (Contract, this);
 			foreach (IEndpointBehavior b in Behaviors)
@@ -107,22 +126,20 @@ namespace System.ServiceModel.Description
 				foreach (IOperationBehavior b in operation.Behaviors)
 					b.Validate (operation);
 			}
-#endif
 		}
 
 
-		internal ClientRuntime CreateRuntime ()
+		internal ClientRuntime CreateClientRuntime (object callbackDispatchRuntime)
 		{
 			ServiceEndpoint se = this;
 
-			var proxy = se.Contract.CreateClientRuntime ();
+			var proxy = se.Contract.CreateClientRuntime (callbackDispatchRuntime);
 
-#if !NET_2_1
 			foreach (IEndpointBehavior b in se.Behaviors)
 				b.ApplyClientBehavior (se, proxy);
 			foreach (IContractBehavior b in se.Contract.Behaviors)
 				b.ApplyClientBehavior (se.Contract, se, proxy);
-#endif
+
 			return proxy;
 		}
 	}

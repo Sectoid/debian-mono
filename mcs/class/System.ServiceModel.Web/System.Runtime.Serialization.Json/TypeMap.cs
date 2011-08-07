@@ -66,6 +66,10 @@ namespace System.Runtime.Serialization.Json
 			if (IsPrimitiveType (type))
 				return null;
 
+#if MOONLIGHT
+			if (ExternalTypeMap.HasType (type))
+				return new ExternalTypeMap (type);
+#endif
 			return CreateDefaultTypeMap (type);
 		}
 
@@ -82,21 +86,29 @@ namespace System.Runtime.Serialization.Json
 		{
 			var l = new List<TypeMapMember> ();
 			foreach (var fi in type.GetFields ())
-				l.Add (new TypeMapField (fi, null));
+				if (!fi.IsStatic)
+					l.Add (new TypeMapField (fi, null));
 			foreach (var pi in type.GetProperties ())
-				if (pi.CanRead && pi.CanWrite)
+				if (pi.CanRead && pi.CanWrite && !pi.GetGetMethod ().IsStatic && pi.GetIndexParameters ().Length == 0)
 					l.Add (new TypeMapProperty (pi, null));
 			l.Sort ((x, y) => x.Order != y.Order ? x.Order - y.Order : String.Compare (x.Name, y.Name, StringComparison.Ordinal));
 			return new TypeMap (type, null, l.ToArray ());
 		}
 
-		static bool IsCollection (Type type)
+		internal static bool IsDictionary (Type type)
 		{
-			if (type.GetInterface ("System.Collections.IList", false) != null)
+			if (type.GetInterface ("System.Collections.IDictionary", false) != null)
 				return true;
-			if (type.GetInterface ("System.Collections.Generic.IList`1", false) != null)
+			if (type.GetInterface ("System.Collections.Generic.IDictionary`2", false) != null)
 				return true;
-			if (type.GetInterface ("System.Collections.Generic.ICollection`1", false) != null)
+			return false;
+		}
+
+		internal static bool IsCollection (Type type)
+		{
+			if (IsPrimitiveType (type) || IsDictionary (type))
+				return false;
+			if (type.GetInterface ("System.Collections.IEnumerable", false) != null)
 				return true;
 			return false;
 		}
@@ -148,15 +160,29 @@ namespace System.Runtime.Serialization.Json
 		string element;
 		TypeMapMember [] members;
 
+		static readonly Type [] deser_methods_args = new Type [] { typeof (StreamingContext) };
+		const BindingFlags binding_flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+
 		public TypeMap (Type type, string element, TypeMapMember [] orderedMembers)
 		{
 			this.type = type;
 			this.element = element;
 			this.members = orderedMembers;
+
+			foreach (var mi in type.GetMethods (binding_flags)) {
+				if (mi.GetCustomAttributes (typeof (OnDeserializingAttribute), false).Length > 0)
+					OnDeserializing = mi;
+				else if (mi.GetCustomAttributes (typeof (OnDeserializedAttribute), false).Length > 0)
+					OnDeserialized = mi;
+			}
 		}
 
-		public void Serialize (JsonSerializationWriter outputter, object graph)
+		public MethodInfo OnDeserializing { get; set; }
+		public MethodInfo OnDeserialized { get; set; }
+
+		public virtual void Serialize (JsonSerializationWriter outputter, object graph, string type)
 		{
+			outputter.Writer.WriteAttributeString ("type", type);
 			foreach (TypeMapMember member in members) {
 				object memberObj = member.GetMemberOf (graph);
 				// FIXME: consider EmitDefaultValue
@@ -166,10 +192,31 @@ namespace System.Runtime.Serialization.Json
 			}
 		}
 
-		public object Deserialize (JsonSerializationReader jsr)
+		internal static object CreateInstance (Type type)
+		{
+			if (TypeMap.IsDictionary (type)) {
+				if (type.IsGenericType)
+					return Activator.CreateInstance (typeof (Dictionary<,>).MakeGenericType (type.GetGenericArguments ()));
+				else
+					return new Hashtable ();
+			} else if (TypeMap.IsCollection (type)) {
+				if (type.IsGenericType)
+					return Activator.CreateInstance (typeof (List<>).MakeGenericType (type.GetGenericArguments ()));
+				else
+					return new ArrayList ();
+			}
+			else
+				return FormatterServices.GetUninitializedObject (type);
+		}
+
+		public virtual object Deserialize (JsonSerializationReader jsr)
 		{
 			XmlReader reader = jsr.Reader;
-			object ret = FormatterServices.GetUninitializedObject (type);
+			bool isNull = reader.GetAttribute ("type") == "null";
+
+			object ret = isNull ? null : CreateInstance (type);
+			if (ret != null && OnDeserializing != null)
+				OnDeserializing.Invoke (ret, new object [] {new StreamingContext (StreamingContextStates.All)});
 			Dictionary<TypeMapMember,bool> filled = new Dictionary<TypeMapMember,bool> ();
 
 			reader.ReadStartElement ();
@@ -190,6 +237,8 @@ namespace System.Runtime.Serialization.Json
 					reader.Skip ();
 			}
 			reader.ReadEndElement ();
+			if (ret != null && OnDeserialized != null)
+				OnDeserialized.Invoke (ret, new object [] {new StreamingContext (StreamingContextStates.All)});
 			return ret;
 		}
 	}

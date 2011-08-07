@@ -1,0 +1,134 @@
+2011-02-16  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Create PLinq query tasks attached to their eventual task parent by
+	default
+
+2011-02-16  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	When choosing the number of Task to create for a PLinq query,
+	check if we are already in a running Task
+
+2010-12-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Wrap PLinq processing task body in a try/finally so that
+	endAction is always called no matter what happen.
+
+2010-12-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Cleanup and prettify code from earlier commit
+
+2010-11-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Remove debugging spew wrongly introduced by earlier commit
+
+2010-11-24  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Remove layer of unneeded indirections in
+	OrderingEnumerator
+
+2010-11-19  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use a custom-wrapper for Aggregate operation invocation
+
+2010-11-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Use a custom loop for iterating in ProcessAndAggregate to
+	avoid the if cost at each round.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
+2010-09-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Check ExecutionMode before executing sequentially
+
+2010-09-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Add automatic sequential processing of query
+
+2010-09-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Add the plumbery for checking source data size when
+	possible and setting ShouldBeSequential appropriately
+
+2010-09-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Sanitize QueryOptions to use property everywhere and add
+	ShouldBeSequential option.
+
+2010-09-01  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Revert "[PLinq] Honor WithDegreeOfParallelism if present"
+
+	This reverts commit 59260b1df7d7ddfeb38cd616b883755d49e150c2.
+
+	The degree of parallelism value was actually already registered
+	somewhere else.
+
+2010-09-01  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Honor WithDegreeOfParallelism if present
+
+2010-08-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Add Cancellation checks even deeper. Introduce merge
+	token.
+
+	Merge token are simply the combined cancellation source of user
+	(i.e. token supplied with PLinq operator WithCancellation) and
+	internal tokens (supplied with WithImplementerToken).
+
+2010-08-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Add a more specialized visitor object for checking query
+	ordering.
+
+2010-08-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Refactor underlying enumerator management in
+	OrderingEnumerator
+
+2010-08-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Include Cancellation checks deeper in the pipeline
+	processing
+
+2010-08-20  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Make QueryCheckerVisitor aware of Take query node.
+
+	QueryCheckerVisitor can then eventually decide if it's pertinent
+	to run the query in parallel and set accordingly a boolean value
+	(though not used by the engine at the moment).
+
+2010-08-19  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Remove unnecessary iteration of the internal dictionary in
+	OrderedEnumerator and use deep sleeping
+
+2010-08-18  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Reflect directory hierarchy change on namespace names
+
+2010-08-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Move NET_4_0 define check under licence text
+
+2010-04-29  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* OrderingEnumerator.cs: Use new non-blocking collection
+	for storing indexed elements.
+
+2010-04-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* AggregationList.cs:
+	* ConcurrentGrouping.cs:
+	* ConcurrentLookup.cs:
+	* OrderingEnumerator.cs:
+	* ParallelQuickSort.cs:
+	* RangeList.cs:
+	* RepeatList.cs:
+	* ReverseList.cs:
+	* StripPartitioner.cs: Initial check-in of PLinq
+

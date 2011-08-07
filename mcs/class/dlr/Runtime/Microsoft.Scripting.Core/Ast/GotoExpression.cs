@@ -2,34 +2,29 @@
  *
  * Copyright (c) Microsoft Corporation. 
  *
- * This source code is subject to terms and conditions of the Microsoft Public License. A 
+ * This source code is subject to terms and conditions of the Apache License, Version 2.0. A 
  * copy of the license can be found in the License.html file at the root of this distribution. If 
- * you cannot locate the  Microsoft Public License, please send an email to 
+ * you cannot locate the  Apache License, Version 2.0, please send an email to 
  * dlr@microsoft.com. By using this source code in any fashion, you are agreeing to be bound 
- * by the terms of the Microsoft Public License.
+ * by the terms of the Apache License, Version 2.0.
  *
  * You must not remove this notice, or any other, from this software.
  *
  *
  * ***************************************************************************/
-using System; using Microsoft;
 
-
+using System;
 using System.Diagnostics;
-#if CODEPLEX_40
 using System.Dynamic.Utils;
-#else
-using Microsoft.Scripting.Utils;
-#endif
 
 #if SILVERLIGHT
 using System.Core;
 #endif
 
-#if CODEPLEX_40
-namespace System.Linq.Expressions {
+#if CLR2
+namespace Microsoft.Scripting.Ast {
 #else
-namespace Microsoft.Linq.Expressions {
+namespace System.Linq.Expressions {
 #endif
     /// <summary>
     /// Specifies what kind of jump this <see cref="GotoExpression"/> represents.
@@ -359,7 +354,7 @@ namespace Microsoft.Linq.Expressions {
         private static void ValidateGoto(LabelTarget target, ref Expression value, string targetParameter, string valueParameter) {
             ContractUtils.RequiresNotNull(target, targetParameter);
             if (value == null) {
-                ContractUtils.Requires(target.Type == typeof(void), Strings.LabelMustBeVoidOrHaveExpression);
+                if (target.Type != typeof(void)) throw Error.LabelMustBeVoidOrHaveExpression();
             } else {
                 ValidateGotoType(target.Type, ref value, valueParameter);
             }
@@ -371,11 +366,9 @@ namespace Microsoft.Linq.Expressions {
             if (expectedType != typeof(void)) {
                 if (!TypeUtils.AreReferenceAssignable(expectedType, value.Type)) {
                     // C# autoquotes return values, so we'll do that here
-                    if (TypeUtils.IsSameOrSubclass(typeof(LambdaExpression), expectedType) &&
-                        expectedType.IsAssignableFrom(value.GetType())) {
-                        value = Expression.Quote(value);
+                    if (!TryQuote(expectedType, ref value)) {
+                        throw Error.ExpressionTypeDoesNotMatchLabel(value.Type, expectedType);
                     }
-                    throw Error.ExpressionTypeDoesNotMatchLabel(value.Type, expectedType);
                 }
             }
         }

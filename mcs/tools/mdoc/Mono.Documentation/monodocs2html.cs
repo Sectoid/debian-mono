@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Xml;
 using System.Xml.Xsl;
 using System.Xml.XPath;
@@ -107,16 +108,16 @@ class MDocToHtmlConverter : MDocCommand {
 
 		// Load the stylesheets, overview.xml, and resolver
 		
-		XslTransform overviewxsl = LoadTransform("overview.xsl", sourceDirectories);
-		XslTransform stylesheet = LoadTransform("stylesheet.xsl", sourceDirectories);
-		XslTransform template;
+		XslCompiledTransform overviewxsl = LoadTransform("overview.xsl", sourceDirectories);
+		XslCompiledTransform stylesheet = LoadTransform("stylesheet.xsl", sourceDirectories);
+		XslCompiledTransform template;
 		if (opts.template == null) {
 			template = LoadTransform("defaulttemplate.xsl", sourceDirectories);
 		} else {
 			try {
 				XmlDocument templatexsl = new XmlDocument();
 				templatexsl.Load(opts.template);
-				template = new XslTransform();
+				template = new XslCompiledTransform (DebugOutput);
 				template.Load(templatexsl);
 			} catch (Exception e) {
 				throw new ApplicationException("There was an error loading " + opts.template, e);
@@ -124,15 +125,14 @@ class MDocToHtmlConverter : MDocCommand {
 		}
 		
 		XmlDocument overview = GetOverview (sourceDirectories);
-		string overviewDest   = opts.dest + "/index." + opts.ext;
 
 		ArrayList extensions = GetExtensionMethods (overview);
 		
 		// Create the master page
 		XsltArgumentList overviewargs = new XsltArgumentList();
+		overviewargs.AddParam("Index", "", overview.CreateNavigator ());
 
-		var regenIndex = sourceDirectories.Any (
-					d => !DestinationIsNewer (Path.Combine (d, "index.xml"), overviewDest));
+		var regenIndex = ShouldRegenIndexes (opts, overview, sourceDirectories);
 		if (regenIndex) {
 			overviewargs.AddParam("ext", "", opts.ext);
 			overviewargs.AddParam("basepath", "", "./");
@@ -140,7 +140,6 @@ class MDocToHtmlConverter : MDocCommand {
 			overviewargs.RemoveParam("basepath", "");
 		}
 		overviewargs.AddParam("basepath", "", "../");
-		overviewargs.AddParam("Index", "", overview.CreateNavigator ());
 		
 		// Create the namespace & type pages
 		
@@ -167,20 +166,8 @@ class MDocToHtmlConverter : MDocCommand {
 			}
 			
 			foreach (XmlElement ty in ns.SelectNodes("Type")) {
-				string typefilebase = ty.GetAttribute("Name");
-				string sourceDir    = ty.GetAttribute("SourceDirectory");
-				string typename = ty.GetAttribute("DisplayName");
-				if (typename.Length == 0)
-					typename = typefilebase;
-				
-				if (opts.onlytype != null && !(nsname + "." + typename).StartsWith(opts.onlytype))
-					continue;
-
-				string typefile = CombinePath (sourceDir, nsname, typefilebase + ".xml");
-				if (typefile == null)
-					continue;
-
-				string destfile = opts.dest + "/" + nsname + "/" + typefilebase + "." + opts.ext;
+				string typename, typefile, destfile;
+				GetTypePaths (opts, ty, out typename, out typefile, out destfile);
 
 				if (DestinationIsNewer (typefile, destfile))
 					// target already exists, and is newer.  why regenerate?
@@ -211,6 +198,48 @@ class MDocToHtmlConverter : MDocCommand {
 			r.Add (n);
 		return r;
 	}
+
+	static bool ShouldRegenIndexes (MDocToHtmlConverterOptions opts, XmlDocument overview, List<string> sourceDirectories)
+	{
+		string overviewDest   = opts.dest + "/index." + opts.ext;
+		if (sourceDirectories.Any (
+					d => !DestinationIsNewer (Path.Combine (d, "index.xml"), overviewDest)))
+			return true;
+
+		foreach (XmlElement type in overview.SelectNodes("Overview/Types/Namespace/Type")) {
+			string _, srcfile, destfile;
+			GetTypePaths (opts, type, out _, out srcfile, out destfile);
+
+			if (srcfile == null || destfile == null)
+				continue;
+			if (DestinationIsNewer (srcfile, destfile))
+				return true;
+		}
+
+		return false;
+	}
+
+	static void GetTypePaths (MDocToHtmlConverterOptions opts, XmlElement type, out string typename, out string srcfile, out string destfile)
+	{
+		srcfile   = null;
+		destfile  = null;
+
+		string nsname       = type.ParentNode.Attributes ["Name"].Value;
+		string typefilebase = type.GetAttribute("Name");
+		string sourceDir    = type.GetAttribute("SourceDirectory");
+		typename            = type.GetAttribute("DisplayName");
+		if (typename.Length == 0)
+			typename = typefilebase;
+		
+		if (opts.onlytype != null && !(nsname + "." + typename).StartsWith(opts.onlytype))
+			return;
+
+		srcfile = CombinePath (sourceDir, nsname, typefilebase + ".xml");
+		if (srcfile == null)
+			return;
+
+		destfile = CombinePath (opts.dest, nsname, typefilebase + "." + opts.ext);
+	}
 	
 	private static void DumpTemplate() {
 		Stream s = Assembly.GetExecutingAssembly().GetManifestResourceStream("defaulttemplate.xsl");
@@ -222,7 +251,7 @@ class MDocToHtmlConverter : MDocCommand {
 		}
 	}
 	
-	private static void Generate(XmlDocument source, XslTransform transform, XsltArgumentList args, string output, XslTransform template, List<string> sourceDirectories) {
+	private static void Generate(XmlDocument source, XslCompiledTransform transform, XsltArgumentList args, string output, XslCompiledTransform template, List<string> sourceDirectories) {
 		using (TextWriter textwriter = new StreamWriter(new FileStream(output, FileMode.Create))) {
 			XmlTextWriter writer = new XmlTextWriter(textwriter);
 			writer.Formatting = Formatting.Indented;
@@ -230,17 +259,24 @@ class MDocToHtmlConverter : MDocCommand {
 			writer.IndentChar = ' ';
 			
 			try {
-				XmlDocument intermediate = new XmlDocument();
-				intermediate.PreserveWhitespace = true;
-				intermediate.Load(transform.Transform(source, args, new ManifestResourceResolver(sourceDirectories.ToArray ()))); // FIXME?
-				template.Transform(intermediate, new XsltArgumentList(), new XhtmlWriter (writer), null);
+				var intermediate = new StringBuilder ();
+				transform.Transform (
+						new XmlNodeReader (source), 
+						args, 
+						XmlWriter.Create (intermediate, transform.OutputSettings),
+						new ManifestResourceResolver(sourceDirectories.ToArray ()));
+				template.Transform (
+						XmlReader.Create (new StringReader (intermediate.ToString ())),
+						new XsltArgumentList (),
+						new XhtmlWriter (writer),
+						null);
 			} catch (Exception e) {
 				throw new ApplicationException("An error occured while generating " + output, e);
 			}
 		}
 	}
 	
-	private static XslTransform LoadTransform(string name, List<string> sourceDirectories) {
+	private XslCompiledTransform LoadTransform(string name, List<string> sourceDirectories) {
 		try {
 			XmlDocument xsl = new XmlDocument();
 			xsl.Load(Assembly.GetExecutingAssembly().GetManifestResourceStream(name));
@@ -259,8 +295,11 @@ class MDocToHtmlConverter : MDocCommand {
 					xsl.DocumentElement.AppendChild(xsl.ImportNode(node, true));
 			}
 			
-			XslTransform t = new XslTransform();
-			t.Load (xsl, new ManifestResourceResolver (sourceDirectories.ToArray ())); // FIXME?
+			XslCompiledTransform t = new XslCompiledTransform (DebugOutput);
+			t.Load (
+					xsl, 
+					XsltSettings.TrustedXslt,
+					new ManifestResourceResolver (sourceDirectories.ToArray ()));
 			
 			return t;
 		} catch (Exception e) {

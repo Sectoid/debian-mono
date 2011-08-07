@@ -86,9 +86,12 @@ namespace System.Web.Routing
 			var app = (HttpApplication) o;
 			PostResolveRequestCache (new HttpContextWrapper (app.Context));
 		}
-
+#if NET_4_0
+		[Obsolete]
+#endif
 		public virtual void PostMapRequestHandler (HttpContextBase context)
 		{
+#if !NET_4_0
 			if (context == null)
 				throw new ArgumentNullException ("context");
 
@@ -100,6 +103,7 @@ namespace System.Web.Routing
 			string original_path = context.Items [original_path_key] as string;
 			if (!String.IsNullOrEmpty (original_path))
 				context.RewritePath (original_path);
+#endif
 		}
 
 		[MonoTODO]
@@ -115,12 +119,18 @@ namespace System.Web.Routing
 			if (rd.RouteHandler == null)
 				throw new InvalidOperationException ("No  IRouteHandler is assigned to the selected route");
 
+			if (rd.RouteHandler is StopRoutingHandler)
+				return; //stop further processing
+			
 			var rc = new RequestContext (context, rd);
 
 			IHttpHandler http = rd.RouteHandler.GetHttpHandler (rc);
 			if (http == null)
 				throw new InvalidOperationException ("The mapped IRouteHandler did not return an IHttpHandler");
-
+#if NET_4_0
+			context.Request.RequestContext = rc;
+			context.RemapHandler (http);
+#else
 			// note: It does not resolve paths using GetVirtualPath():
 			//var vpd = RouteCollection.GetVirtualPath (rc, rd.Values);
 			//context.RewritePath (vpd.VirtualPath);
@@ -131,6 +141,7 @@ namespace System.Web.Routing
 			context.RewritePath ("~/UrlRouting.axd");
 
 			context.Items [module_identity_key] = http;
+#endif
 		}
 	}
 }

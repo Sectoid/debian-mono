@@ -1,3 +1,7 @@
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System.Web.Services build for monodroid
+
 2007-10-05  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* WebService.cs : Do not always expect HttpContext existence.

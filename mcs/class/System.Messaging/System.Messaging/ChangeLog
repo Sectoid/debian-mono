@@ -1,3 +1,11 @@
+2010-11-12  Marek Safar  <marek.safar@gmail.com>
+
+	Add MessageQueue::GetMessageEnumerator2
+
+2010-11-12  Marek Safar  <marek.safar@gmail.com>
+
+	CRLF->LF conversion
+
 2010-02-09  Chris Toshok  <toshok@ximian.com>
 
 	* MessageQueue.cs: stub out the ctor that takes a QueueAccessMode.

@@ -3,6 +3,7 @@
 //
 // Author:
 //	Sebastien Pouliot  <sebastien@ximian.com>
+//	Kenneth Bell
 //
 // Copyright (C) 2005, 2006 Novell, Inc (http://www.novell.com)
 //
@@ -26,7 +27,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 
 using System.Globalization;
 using System.Runtime.InteropServices;
@@ -44,7 +44,7 @@ namespace System.Security.Principal {
 				throw new ArgumentNullException ("name");
 			if (name.Length == 0)
 				throw new ArgumentException (Locale.GetText ("Empty"), "name");
-			_value = name.ToUpper ();
+			_value = name;
 		}
 
 		public NTAccount (string domainName, string accountName)
@@ -54,9 +54,9 @@ namespace System.Security.Principal {
 			if (accountName.Length == 0)
 				throw new ArgumentException (Locale.GetText ("Empty"), "accountName");
 			if (domainName == null)
-				_value = domainName.ToUpper ();
+				_value = accountName;
 			else
-				_value = domainName.ToUpper () + "\\" + domainName.ToUpper ();
+				_value = domainName + "\\" + accountName;
 		}
 
 
@@ -96,7 +96,16 @@ namespace System.Security.Principal {
 		{
 			if (targetType == typeof (NTAccount))
 				return this; // ? copy
-			return null;
+			
+			if(targetType == typeof(SecurityIdentifier)) {
+				WellKnownAccount acct = WellKnownAccount.LookupByName(this.Value);
+				if (acct == null || acct.Sid == null)
+					throw new IdentityNotMappedException("Cannot map account name: " + this.Value);
+
+				return new SecurityIdentifier(acct.Sid);
+			}
+			
+			throw new ArgumentException("Unknown type", "targetType");
 		}
 
 		public static bool operator == (NTAccount left, NTAccount right)
@@ -119,4 +128,3 @@ namespace System.Security.Principal {
 	}
 }
 
-#endif

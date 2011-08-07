@@ -46,13 +46,13 @@ mono_gc_add_memory_pressure (gint64 value)
 }
 
 /* maybe track the size, not important, though */
-gint64
+int64_t
 mono_gc_get_used_size (void)
 {
 	return 1024*1024;
 }
 
-gint64
+int64_t
 mono_gc_get_heap_size (void)
 {
 	return 2*1024*1024;
@@ -78,6 +78,12 @@ gboolean
 mono_gc_register_thread (void *baseptr)
 {
 	return TRUE;
+}
+
+int
+mono_gc_walk_heap (int flags, MonoGCReferences callback, void *data)
+{
+	return 1;
 }
 
 gboolean
@@ -145,6 +151,12 @@ mono_gc_make_descr_from_bitmap (gsize *bitmap, int numbits)
 }
 
 void*
+mono_gc_make_root_descr_all_refs (int numbits)
+{
+	return NULL;
+}
+
+void*
 mono_gc_alloc_fixed (size_t size, void *descr)
 {
 	return g_malloc0 (size);
@@ -169,9 +181,9 @@ mono_gc_wbarrier_set_arrayref (MonoArray *arr, gpointer slot_ptr, MonoObject* va
 }
 
 void
-mono_gc_wbarrier_arrayref_copy (MonoArray *arr, gpointer slot_ptr, int count)
+mono_gc_wbarrier_arrayref_copy (gpointer dest_ptr, gpointer src_ptr, int count)
 {
-	/* no need to do anything */
+	memmove (dest_ptr, src_ptr, count * sizeof (gpointer));
 }
 
 void
@@ -188,11 +200,15 @@ mono_gc_wbarrier_generic_nostore (gpointer ptr)
 void
 mono_gc_wbarrier_value_copy (gpointer dest, gpointer src, int count, MonoClass *klass)
 {
+	memmove (dest, src, count * mono_class_value_size (klass, NULL));
 }
 
 void
-mono_gc_wbarrier_object (MonoObject* obj)
+mono_gc_wbarrier_object_copy (MonoObject* obj, MonoObject *src)
 {
+	/* do not copy the sync state */
+	memcpy ((char*)obj + sizeof (MonoObject), (char*)src + sizeof (MonoObject),
+			mono_object_class (obj)->instance_size - sizeof (MonoObject));
 }
 
 MonoMethod*
@@ -201,10 +217,10 @@ mono_gc_get_managed_allocator (MonoVTable *vtable, gboolean for_box)
 	return NULL;
 }
 
-int
-mono_gc_get_managed_allocator_type (MonoMethod *managed_alloc)
+MonoMethod*
+mono_gc_get_managed_array_allocator (MonoVTable *vtable, int rank)
 {
-	return -1;
+	return NULL;
 }
 
 MonoMethod*
@@ -217,6 +233,12 @@ guint32
 mono_gc_get_managed_allocator_types (void)
 {
 	return 0;
+}
+
+const char *
+mono_gc_get_gc_name (void)
+{
+	return "null";
 }
 
 void
@@ -245,5 +267,87 @@ mono_gc_clear_domain (MonoDomain *domain)
 {
 }
 
+int
+mono_gc_get_suspend_signal (void)
+{
+	return -1;
+}
+
+MonoMethod*
+mono_gc_get_write_barrier (void)
+{
+	g_assert_not_reached ();
+	return NULL;
+}
+
+void*
+mono_gc_invoke_with_gc_lock (MonoGCLockedCallbackFunc func, void *data)
+{
+	return func (data);
+}
+
+char*
+mono_gc_get_description (void)
+{
+	return g_strdup (DEFAULT_GC_NAME);
+}
+
+void
+mono_gc_set_desktop_mode (void)
+{
+}
+
+gboolean
+mono_gc_is_moving (void)
+{
+	return FALSE;
+}
+
+gboolean
+mono_gc_is_disabled (void)
+{
+	return FALSE;
+}
+
+void
+mono_gc_wbarrier_value_copy_bitmap (gpointer _dest, gpointer _src, int size, unsigned bitmap)
+{
+	g_assert_not_reached ();
+}
+
+guint8*
+mono_gc_get_card_table (int *shift_bits, gpointer *card_mask)
+{
+	g_assert_not_reached ();
+	return NULL;
+}
+
+void*
+mono_gc_get_nursery (int *shift_bits, size_t *size)
+{
+	return NULL;
+}
+
+#ifndef HOST_WIN32
+
+int
+mono_gc_pthread_create (pthread_t *new_thread, const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg)
+{
+	return pthread_create (new_thread, attr, start_routine, arg);
+}
+
+int
+mono_gc_pthread_join (pthread_t thread, void **retval)
+{
+	return pthread_join (thread, retval);
+}
+
+int
+mono_gc_pthread_detach (pthread_t thread)
+{
+	return pthread_detach (thread);
+}
+
 #endif
 
+#endif

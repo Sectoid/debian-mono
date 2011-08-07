@@ -1,3 +1,7 @@
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
 2009-10-09  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* ISO2022JP.cs : simply output wrong escape sequence bytes to the

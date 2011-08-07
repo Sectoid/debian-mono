@@ -1232,7 +1232,7 @@ namespace Mono.Data.Tds.Protocol
 					val = ~(val - 1);
 				return new Decimal (val, 0, 0, negative, 4);
 			}
-			case 8:
+			case 8:	{
 				int hi = Comm.GetTdsInt ();
 				int lo = Comm.GetTdsInt ();
 				bool negative = hi < 0;
@@ -1242,6 +1242,7 @@ namespace Mono.Data.Tds.Protocol
 					lo = ~(lo - 1);
 				}
 				return new Decimal (lo, hi, 0, negative, 4);
+			}
 			default:
 				return DBNull.Value;
 			}
@@ -1647,17 +1648,18 @@ namespace Mono.Data.Tds.Protocol
 				comm.Skip (1);
 				srvVersion = (uint)comm.GetTdsInt ();
 
+				//Console.WriteLine ("srvVersion: {0}", srvVersion);
 				switch (srvVersion) {
-				case 0x07000000: 
+				case 0x00000007: 
 					tdsVersion = TdsVersion.tds70;
 					break;
-				case 0x07010000:
+				case 0x00000107:
 					tdsVersion = TdsVersion.tds80;
 					break;
-				case 0x71000001:
+				case 0x01000071:
 					tdsVersion = TdsVersion.tds81;
 					break;
-				case 0x72090002:
+				case 0x02000972:
 					tdsVersion = TdsVersion.tds90;
 					break;
 				}
@@ -1687,6 +1689,7 @@ namespace Mono.Data.Tds.Protocol
 			}
 
 			connected = true;
+			//Console.WriteLine ("databaseProductVersion:{0}", databaseProductVersion);
 		}
 
 		protected void OnTdsErrorMessage (TdsInternalErrorMessageEventArgs e)

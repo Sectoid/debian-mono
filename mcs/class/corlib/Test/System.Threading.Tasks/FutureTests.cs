@@ -29,7 +29,7 @@ using System.Threading.Tasks;
 
 using NUnit.Framework;
 
-namespace ParallelFxTests
+namespace MonoTests.System.Threading.Tasks
 {
 	[TestFixture]
 	public class FutureTests
@@ -62,31 +62,58 @@ namespace ParallelFxTests
 			Assert.IsTrue (result, "#2");
 			Assert.AreEqual (10, cont.Result);
 		}
-		
-		/* Not pertinent anymore
-		 * [Test]
-		public void EmptyTaskTestCase()
+
+		static Task<int> CreateNestedFuture(int level)
 		{
-			Task<int> f = Task.Factory.StartNew<int>(delegate {});
-			f.Value = 3;
-			
-			Assert.AreEqual(3, f.Value, "#1");
+			if (level == 0)
+				return Task.Factory.StartNew(() => { Thread.Sleep (10); return 1; });
+
+			var t = CreateNestedFuture(level - 1);
+			return Task.Factory.StartNew(() => t.Result + 1);
 		}
-			
-		/*[Test, ExpectedExceptionAttribute()]
-		public void ManualSetWhenFunctionProvidedTestCase()
+
+		[Test]
+		public void NestedFutureTest ()
 		{
-			Task<int> f = InitTestTask();
-			f.Value = 2;
+			var t = CreateNestedFuture(10);
+			var t2 = CreateNestedFuture(100);
+			var t3 = CreateNestedFuture(100);
+			var t4 = CreateNestedFuture(100);
+			Assert.AreEqual (11, t.Result);
+			Assert.AreEqual (101, t2.Result);
+			Assert.AreEqual (101, t3.Result);
+			Assert.AreEqual (101, t4.Result);
 		}
-		
-		/*[Test, ExpectedExceptionAttribute()]
-		public void ManualSetTwoTimesTestCase()
+
+		[Test]
+		public void FaultedFutureTest ()
 		{
-			Task<int> f = Task.Factory.StartNew<int>();
-			f.Value = 2;
-			f.Value = 3;
-		}*/
+			var thrown = new ApplicationException ();
+			var f = Task<int>.Factory.StartNew (() => { throw thrown; return 42; });
+			AggregateException ex = null;
+			try {
+				f.Wait ();
+			} catch (AggregateException e) {
+				ex = e;
+			}
+
+			Assert.IsNotNull (ex);
+			Assert.AreEqual (thrown, ex.InnerException);
+			Assert.AreEqual (thrown, f.Exception.InnerException);
+			Assert.AreEqual (TaskStatus.Faulted, f.Status);
+
+			ex = null;
+			try {
+				var result = f.Result;
+			} catch (AggregateException e) {
+				ex = e;
+			}
+
+			Assert.IsNotNull (ex);
+			Assert.AreEqual (TaskStatus.Faulted, f.Status);
+			Assert.AreEqual (thrown, f.Exception.InnerException);
+			Assert.AreEqual (thrown, ex.InnerException);
+		}
 	}
 }
 #endif

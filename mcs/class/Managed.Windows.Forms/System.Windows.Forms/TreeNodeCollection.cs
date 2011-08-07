@@ -113,6 +113,13 @@ namespace System.Windows.Forms {
 		}
 #endif
 
+		bool UsingSorting {
+			get {
+				TreeView tv = owner == null ? null : owner.TreeView;
+				return tv != null && (tv.Sorted || tv.TreeViewNodeSorter != null);
+			}
+		}
+
 		public virtual TreeNode Add (string text)
 		{
 			TreeNode res = new TreeNode (text);
@@ -125,20 +132,20 @@ namespace System.Windows.Forms {
 			if (node == null)
 				throw new ArgumentNullException("node");
 
-			int res;
+			int index;
 			TreeView tree_view = null;
 
 			if (owner != null)
 				tree_view = owner.TreeView;
 				
-			if (tree_view != null && tree_view.Sorted) {
-				res = AddSorted (node);
+			if (tree_view != null && UsingSorting) {
+				index = AddSorted (node);
 			} else {
 				if (count >= nodes.Length)
 					Grow ();
-				nodes[count] = node;
-				res = count;
+				index = count;
 				count++;
+				nodes[index] = node;
 			}
 
 			SetupNode (node);
@@ -147,7 +154,7 @@ namespace System.Windows.Forms {
 			if (tree_view != null)
 				tree_view.OnUIACollectionChanged (owner, new CollectionChangeEventArgs (CollectionChangeAction.Add, node));
 #endif
-			return res;
+			return index;
 		}
 
 #if NET_2_0
@@ -279,6 +286,10 @@ namespace System.Windows.Forms {
 			Array.Copy (nodes, index, nodes, index + 1, count - index);
 			nodes [index] = node;
 			count++;
+
+			// If we can use sorting, it means we have an owner *and* a TreeView
+			if (UsingSorting)
+				Sort (owner.TreeView.TreeViewNodeSorter);
 
 			SetupNode (node);
 		}
@@ -424,8 +435,9 @@ namespace System.Windows.Forms {
 
 		private void SetupNode (TreeNode node)
 		{
-			// Remove it from any old parents
-			node.Remove ();
+			// We used to remove this from the previous parent, but .Net
+			// skips this step (even if setting the owner field).
+			//node.Remove ();
 
 			node.parent = owner;
 
@@ -434,17 +446,14 @@ namespace System.Windows.Forms {
 				tree_view = owner.TreeView;
 
 			if (tree_view != null) {
-				TreeNode prev = GetPrevNode (node);
+				// We may need to invalidate this entire node collection if sorted.
+				TreeNode prev = UsingSorting ? owner : GetPrevNode (node);
 
 				if (tree_view.IsHandleCreated && node.ArePreviousNodesExpanded)
 					tree_view.RecalculateVisibleOrder (prev);
 				if (owner == tree_view.root_node || node.Parent.IsVisible && node.Parent.IsExpanded)
 					tree_view.UpdateScrollBars (false);
-			}
 
-			if (owner != null && tree_view != null && (owner.IsExpanded || owner.IsRoot)) {
-				 tree_view.UpdateBelow (owner);
-			} else if (owner != null && tree_view != null) {
 				tree_view.UpdateBelow (owner);
 			}
 		}
@@ -479,11 +488,18 @@ namespace System.Windows.Forms {
 			if (count >= nodes.Length)
 				Grow ();
 
+			TreeView tree_view = owner.TreeView;
+			if (tree_view.TreeViewNodeSorter != null) { // Custom sorting
+				nodes [count++] = node;
+				Sort (tree_view.TreeViewNodeSorter);
+				return count - 1;
+			}
+
 			CompareInfo compare = Application.CurrentCulture.CompareInfo;
-			int pos = 0;
+			int index = 0;
 			bool found = false;
 			for (int i = 0; i < count; i++) {
-				pos = i;
+				index = i;
 				int comp = compare.Compare (node.Text, nodes [i].Text);
 				if (comp < 0) {
 					found = true;
@@ -493,16 +509,16 @@ namespace System.Windows.Forms {
 
 			// Stick it at the end
 			if (!found)
-				pos = count;
+				index = count;
 
 			// Move the nodes up and adjust their indices
-			for (int i = count - 1; i >= pos; i--) {
+			for (int i = count - 1; i >= index; i--) {
 				nodes [i + 1] = nodes [i];
 			}
 			count++;
-			nodes [pos] = node;
+			nodes [index] = node;
 
-			return count;
+			return index;
 		}
 
 		// Would be nice to do this without running through the collection twice
@@ -512,6 +528,11 @@ namespace System.Windows.Forms {
 			for (int i = 0; i < count; i++) {
 				nodes [i].Nodes.Sort (sorter);
 			}
+
+			// Sorted may have been set to false even if TreeViewNodeSorter is being used.
+			TreeView tv = owner == null ? null : owner.TreeView;
+			if (tv != null)
+				tv.sorted = true;
 		}
 
 		private void Grow ()

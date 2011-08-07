@@ -4,7 +4,7 @@
 // Authors:
 //	Ben Maurer (bmaurer@novell.com)
 //
-// (C) 2005 Novell, Inc (http://www.novell.com)
+// (C) 2005-2010 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -29,8 +29,8 @@
 using System.ComponentModel;
 using System.Security.Permissions;
 
-namespace System.Web.UI.WebControls {
-
+namespace System.Web.UI.WebControls
+{
 	// CAS
 	[AspNetHostingPermissionAttribute (SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
 	[AspNetHostingPermissionAttribute (SecurityAction.InheritanceDemand, Level = AspNetHostingPermissionLevel.Minimal)]
@@ -41,29 +41,22 @@ namespace System.Web.UI.WebControls {
 	[DefaultProperty("Text")]
 	[Designer("System.Web.UI.Design.WebControls.LinkButtonDesigner, " + Consts.AssemblySystem_Design, "System.ComponentModel.Design.IDesigner")]
 	[ParseChildren(false)]
-#if NET_2_0
 	[SupportsEventValidation]
 	[ToolboxData("<{0}:LinkButton runat=\"server\">LinkButton</{0}:LinkButton>")]
-#else		
-	[ToolboxData("<{0}:LinkButton runat=server>LinkButton</{0}:LinkButton>")]
-#endif		
-	public class LinkButton : WebControl, IPostBackEventHandler
-#if NET_2_0
-	, IButtonControl
-#endif
+	public class LinkButton : WebControl, IPostBackEventHandler, IButtonControl
 	{
-	
 		public LinkButton () : base (HtmlTextWriterTag.A) 
 		{
 		}
 	
-	
 		protected override void AddAttributesToRender (HtmlTextWriter w)
 		{
-			if (Page != null)
-				Page.VerifyRenderingInServerForm (this);
+			Page page = Page;
+			if (page != null)
+				page.VerifyRenderingInServerForm (this);
 
-#if NET_2_0
+			base.AddAttributesToRender (w);
+			bool enabled = IsEnabled;
 			string onclick = OnClientClick;
 			onclick = ClientScriptManager.EnsureEndsWithSemicolon (onclick);
 			if (HasAttributes && Attributes ["onclick"] != null) {
@@ -73,44 +66,24 @@ namespace System.Web.UI.WebControls {
 
 			if (onclick.Length > 0)
 				w.AddAttribute (HtmlTextWriterAttribute.Onclick, onclick);
-
-			if (Enabled && Page != null) {
+			
+			if (enabled && page != null) {
 				PostBackOptions options = GetPostBackOptions ();
-				string href = Page.ClientScript.GetPostBackEventReference (options, true);
+				string href = page.ClientScript.GetPostBackEventReference (options, true);
 				w.AddAttribute (HtmlTextWriterAttribute.Href, href);
 			}
-			base.AddAttributesToRender (w);
-			AddDisplayStyleAttribute (w);
-#else
-			base.AddAttributesToRender (w);
-			if (Page == null || !Enabled)
-				return;
 			
-			if (CausesValidation && Page.AreValidatorsUplevel ()) {
-				ClientScriptManager csm = new ClientScriptManager (Page);
-				w.AddAttribute (HtmlTextWriterAttribute.Href,
-						String.Concat ("javascript:{if (typeof(Page_ClientValidate) == 'function') Page_ClientValidate(); ",
-							       csm.GetPostBackEventReference (this, String.Empty), ";}"));
-			} else {
-				w.AddAttribute (HtmlTextWriterAttribute.Href, Page.ClientScript.GetPostBackClientHyperlink (this, ""));
-			}
-#endif
+			AddDisplayStyleAttribute (w);
 		}
 
-#if NET_2_0
-		protected virtual 
-#endif		
-		void RaisePostBackEvent (string eventArgument)
+		protected virtual void RaisePostBackEvent (string eventArgument)
 		{
-#if NET_2_0
 			ValidateEvent (UniqueID, eventArgument);
-#endif
-			if (CausesValidation)
-#if NET_2_0
-				Page.Validate (ValidationGroup);
-#else
-				Page.Validate ();
-#endif
+			if (CausesValidation) {
+				Page page = Page;
+				if (page != null)
+					page.Validate (ValidationGroup);
+			}
 			
 			OnClick (EventArgs.Empty);
 			OnCommand (new CommandEventArgs (CommandName, CommandArgument));
@@ -137,33 +110,32 @@ namespace System.Web.UI.WebControls {
 					Controls.Add (new LiteralControl (s));
 				}
 				base.AddParsedSubObject (obj);
-			} else {
+			} else
 				Text = lc.Text;
-			}
 		}
 
-#if NET_2_0
 		protected virtual PostBackOptions GetPostBackOptions ()
 		{
 			PostBackOptions options = new PostBackOptions (this);
+			Page page = Page;
+			
 			options.ActionUrl = (PostBackUrl.Length > 0 ?
 #if TARGET_J2EE
-				CreateActionUrl (PostBackUrl)
+					     CreateActionUrl (PostBackUrl)
 #else
-				Page.ResolveClientUrl (PostBackUrl) 
+					     page != null ? page.ResolveClientUrl (PostBackUrl) : PostBackUrl
 #endif
-				: null);
+					     : null);
 			options.ValidationGroup = null;
 			options.Argument = String.Empty;
 			options.ClientSubmit = true;
 			options.RequiresJavaScriptProtocol = true;
-			options.PerformValidation = CausesValidation && Page != null && Page.AreValidatorsUplevel (ValidationGroup);
+			options.PerformValidation = CausesValidation && page != null && page.AreValidatorsUplevel (ValidationGroup);
 			if (options.PerformValidation)
 				options.ValidationGroup = ValidationGroup;
 
 			return options;
 		}
-#endif		
 
 		protected override void LoadViewState (object savedState)
 		{
@@ -175,49 +147,26 @@ namespace System.Web.UI.WebControls {
 		}
 
 		[MonoTODO ("Why override?")]
-#if NET_2_0
-		protected internal
-#else		
-		protected
-#endif		
-		override void OnPreRender (EventArgs e)
+		protected internal override void OnPreRender (EventArgs e)
 		{
 			base.OnPreRender (e);
 		}
 	
-#if NET_2_0
-		protected internal
-#else		
-		protected
-#endif		
-		override void RenderContents (HtmlTextWriter writer)
+		protected internal override void RenderContents (HtmlTextWriter writer)
 		{
 			if (HasControls () || HasRenderMethodDelegate ())
 				base.RenderContents (writer);
 			else
 				writer.Write (Text);
 		}
-	
-	
-#if ONLY_1_1
-		[Bindable(false)]
-#endif		
+
 		[DefaultValue(true)]
 		[WebSysDescription ("")]
 		[WebCategory ("Behavior")]
-#if NET_2_0
 		[Themeable (false)]
-		public virtual
-#else
-		public
-#endif		
-		bool CausesValidation {
-			get {
-				return ViewState.GetBool ("CausesValidation", true);
-			}
-			set {
-				ViewState ["CausesValidation"] = value;
-			}
+		public virtual bool CausesValidation {
+			get { return ViewState.GetBool ("CausesValidation", true); }
+			set { ViewState ["CausesValidation"] = value; }
 		
 		}
 
@@ -225,66 +174,42 @@ namespace System.Web.UI.WebControls {
 		[DefaultValue("")]
 		[WebSysDescription ("")]
 		[WebCategory ("Behavior")]
-#if NET_2_0
 		[Themeable (false)]
-#endif		
 		public string CommandArgument {
-			get {
-				return ViewState.GetString ("CommandArgument", "");
-			}
-			set {
-				ViewState ["CommandArgument"] = value;
-			}
+			get { return ViewState.GetString ("CommandArgument", String.Empty); }
+			set { ViewState ["CommandArgument"] = value; }
 		}
 
 		[DefaultValue("")]
 		[WebSysDescription ("")]
 		[WebCategory ("Behavior")]
-#if NET_2_0
 		[Themeable (false)]
-#endif		
 		public string CommandName {
-			get {
-				return ViewState.GetString ("CommandName", "");	
-			}
-		
-			set {
-				ViewState ["CommandName"] = value;
-			}
+			get { return ViewState.GetString ("CommandName", String.Empty); }
+			set { ViewState ["CommandName"] = value; }
 		
 		}
 
-#if NET_2_0
 		[DefaultValue ("")]
 		[Themeable (false)]
 		[WebSysDescription ("")]
 		[WebCategoryAttribute ("Behavior")]
 		public virtual string OnClientClick
 		{
-			get {
-				return ViewState.GetString ("OnClientClick", "");
-			}
-			set {
-				ViewState ["OnClientClick"] = value;
-			}
+			get { return ViewState.GetString ("OnClientClick", String.Empty); }
+			set { ViewState ["OnClientClick"] = value; }
 		}
-
-#endif		
 
 		[Bindable(true)]
 		[DefaultValue("")]
 		[PersistenceMode(PersistenceMode.InnerDefaultProperty)]
-#if NET_2_0
 		[Localizable (true)]
-#endif
 		[WebSysDescription ("")]
 		[WebCategory ("Appearance")]
 		public virtual string Text {
-			get {
-				return ViewState.GetString ("Text", "");	
-			}
+			get { return ViewState.GetString ("Text", String.Empty); }
 			set {
-				ViewState ["Text"] = value;	
+				ViewState ["Text"] = value;
 				if (HasControls ())
 					Controls.Clear ();
 			}
@@ -321,18 +246,14 @@ namespace System.Web.UI.WebControls {
 			add { Events.AddHandler (CommandEvent, value); }
 			remove { Events.RemoveHandler (CommandEvent, value); }
 		}
-#if NET_2_0
+
 		[Editor ("System.Web.UI.Design.UrlEditor, " + Consts.AssemblySystem_Design, "System.Drawing.Design.UITypeEditor, " + Consts.AssemblySystem_Drawing)]
 		[Themeable (false)]
 		[UrlProperty ("*.aspx")]
 		[DefaultValue ("")]
 		public virtual string PostBackUrl {
-			get {
-				return ViewState.GetString ("PostBackUrl", String.Empty);
-			}
-			set {
-				ViewState["PostBackUrl"] = value;
-			}
+			get { return ViewState.GetString ("PostBackUrl", String.Empty); }
+			set { ViewState["PostBackUrl"] = value; }
 		}
 
 		[DefaultValue ("")]
@@ -340,13 +261,13 @@ namespace System.Web.UI.WebControls {
 		[WebSysDescription ("")]
 		[WebCategoryAttribute ("Behavior")]
 		public virtual string ValidationGroup {
-			get {
-				return ViewState.GetString ("ValidationGroup", "");	
-			}
-			set {
-				ViewState ["ValidationGroup"] = value;	
-			}
-		}	
+			get { return ViewState.GetString ("ValidationGroup", String.Empty); }
+			set { ViewState ["ValidationGroup"] = value; }
+		}
+#if NET_4_0
+		public override bool SupportsDisabledAttribute {
+			get { return RenderingCompatibilityLessThan40; }
+		}
 #endif
 	}
 }

@@ -1,3 +1,70 @@
+2011-04-19  Miguel de Icaza  <miguel@gnome.org>
+
+	Prevent crash on scripts that do not contain the #! line
+
+2011-01-30  Miguel de Icaza  <miguel@gnome.org>
+
+	[repl] Fix running specified scripts from command line, allow #!
+	syntax, add print command
+
+	We were calling the Reset () method after we had initialized the
+	driver with the new command line arguments, clearing the list of
+	files to execute before we executed them.
+
+	Added support for #! in the csharp repl, and added the print()
+	command to the InteractiveBase
+
+	Add a better way of dealing with -e, without adding hacks to the
+	core that wont work in the future
+
+2011-01-30  Miguel de Icaza  <miguel@gnome.org>
+
+	[repl] Add support for -e EXPRESSION to the csharp command
+
+2011-01-30  Miguel de Icaza  <miguel@gnome.org>
+
+	[repl] Fix running specified scripts from command line, allow #!
+	syntax, add print command
+
+	We were calling the Reset () method after we had initialized the
+	driver with the new command line arguments, clearing the list of
+	files to execute before we executed them.
+
+	Added support for #! in the csharp repl, and added the print()
+	command to the InteractiveBase
+
+2011-01-21  Miguel de Icaza  <miguel@gnome.org>
+
+	[getline] Fix history search in the cmdline editor
+
+2010-05-08  Daniel Nauck <dna@mono-project.de>
+
+	* csharp.sln: enable build for jay project in Debug|Win32 configuration.
+
+2010-05-08  Daniel Nauck <dna@mono-project.de>
+
+	* csharp.sln: add jay project as build dependency to Mono.CSharp project.
+
+2010-04-27  Miguel de Icaza  <miguel@novell.com>
+
+	* repl.cs: Improvements to run better on Windows. 
+
+2010-05-27  Marek Safar  <marek.safar@gmail.com>
+
+	* repl.cs: Sync with the latest gmcs
+
+2010-02-08  Miguel de Icaza  <miguel@novell.com>
+
+	* getline.cs: Add support for ESC-letter to become Alt-letter.
+
+2010-02-05  Miguel de Icaza  <miguel@novell.com>
+
+	* getline.cs (NextAvailable): Fix off-by-one error
+
+2010-02-04  Miguel de Icaza  <miguel@novell.com>
+
+	* Take advantage of the Describe feature.
+
 2009-12-16  Miguel de Icaza  <miguel@novell.com>
 
 	* repl.cs: Avoid crash, fixes 554898

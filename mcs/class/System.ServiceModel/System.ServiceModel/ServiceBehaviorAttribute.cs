@@ -46,7 +46,6 @@ namespace System.ServiceModel
 			ConcurrencyMode = ConcurrencyMode.Single;
 			InstanceContextMode = InstanceContextMode.PerSession;
 			MaxItemsInObjectGraph = 0x10000;
-			SessionMode = SessionMode.Allowed;
 			ReleaseServiceInstanceOnTransactionComplete = true;
 			TransactionIsolationLevel = IsolationLevel.Unspecified;
 			UseSynchronizationContext = true;
@@ -84,9 +83,6 @@ namespace System.ServiceModel
 
 		[MonoTODO]
 		public bool ReleaseServiceInstanceOnTransactionComplete { get; set; }
-
-		[MonoTODO]
-		public SessionMode SessionMode { get; set; }
 
 		public bool UseSynchronizationContext { get; set; }
 
@@ -145,9 +141,11 @@ namespace System.ServiceModel
 				if (IncludeExceptionDetailInFaults) // may be set also in ServiceDebugBehaviorAttribute
 					cd.IncludeExceptionDetailInFaults = true;
 				foreach (EndpointDispatcher ed in cd.Endpoints) {
-					if (InstanceContextMode == InstanceContextMode.Single)
-						ed.DispatchRuntime.SingletonInstanceContext = CreateSingletonInstanceContext (serviceHostBase);
-					ed.DispatchRuntime.InstanceContextProvider = CreateInstanceContextProvider (serviceHostBase, ed.DispatchRuntime);
+					var dr = ed.DispatchRuntime;
+					if (dr.SingletonInstanceContext == null && InstanceContextMode == InstanceContextMode.Single)
+						dr.SingletonInstanceContext = CreateSingletonInstanceContext (serviceHostBase);
+					if (dr.InstanceContextProvider == null)
+						dr.InstanceContextProvider = CreateInstanceContextProvider (serviceHostBase, dr);
 				}
 			}
 		}

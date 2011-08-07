@@ -27,16 +27,12 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
-#endif
 
 namespace System.Security.Cryptography {
 
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public sealed class CspParameters {
 
 		private CspProviderFlags _Flags;
@@ -65,7 +61,7 @@ namespace System.Security.Cryptography {
 			// not defined in specs, only tested from M$ impl
 			KeyNumber = -1;
 		}
-		
+
 		public string KeyContainerName;
 		
 		public int KeyNumber;
@@ -79,7 +75,6 @@ namespace System.Security.Cryptography {
 			set { _Flags = value; }
 		}
 
-#if NET_2_0
 		private SecureString _password;
 		private IntPtr _windowHandle;
 
@@ -101,6 +96,18 @@ namespace System.Security.Cryptography {
 			_password = keyPassword;
 		}
 
+		internal CspParameters(CspParameters parameters)
+			: this(parameters.ProviderType, parameters.ProviderName, parameters.KeyContainerName)
+		{
+			if (parameters.CryptoKeySecurity != null)
+				CryptoKeySecurity = parameters.CryptoKeySecurity;
+
+			_Flags = parameters.Flags;
+			KeyNumber = parameters.KeyNumber;
+			_password = parameters.KeyPassword;
+			_windowHandle = parameters.ParentWindowHandle;
+		}
+
 		[MonoTODO ("access control isn't implemented")]
 		public CryptoKeySecurity CryptoKeySecurity {
 			get { throw new NotImplementedException (); }
@@ -116,6 +123,5 @@ namespace System.Security.Cryptography {
 			get { return _windowHandle; }
 			set { _windowHandle = value; }
 		}
-#endif
 	}
 }

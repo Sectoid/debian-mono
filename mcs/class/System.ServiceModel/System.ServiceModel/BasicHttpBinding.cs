@@ -251,11 +251,26 @@ namespace System.ServiceModel
 			h.ProxyAddress = ProxyAddress;
 			h.UseDefaultWebProxy = UseDefaultWebProxy;
 			h.TransferMode = TransferMode;
+#if NET_4_0
+			h.ExtendedProtectionPolicy = Security.Transport.ExtendedProtectionPolicy;
+#endif
 
 #if !NET_2_1
 			switch (Security.Mode) {
 			case BasicHttpSecurityMode.Transport:
 				switch (Security.Transport.ClientCredentialType) {
+				case HttpClientCredentialType.Basic:
+					h.AuthenticationScheme = AuthenticationSchemes.Basic;
+					break;
+				case HttpClientCredentialType.Ntlm:
+					h.AuthenticationScheme = AuthenticationSchemes.Ntlm;
+					break;
+				case HttpClientCredentialType.Windows:
+					h.AuthenticationScheme = AuthenticationSchemes.Negotiate;
+					break;
+				case HttpClientCredentialType.Digest:
+					h.AuthenticationScheme = AuthenticationSchemes.Digest;
+					break;
 				case HttpClientCredentialType.Certificate:
 					var https = (HttpsTransportBindingElement) h;
 					https.RequireClientCertificate = true;

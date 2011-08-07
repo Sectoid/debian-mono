@@ -27,7 +27,7 @@
 //
 #if NET_2_0
 using System;
-using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -43,14 +43,16 @@ namespace System.Runtime.Serialization
 	{
 		KnownTypeCollection types;
 		IDataContractSurrogate surrogate;
+		DataContractResolver resolver, default_resolver; // new in 4.0.
 		// 3.5 SP1 supports deserialization by reference (id->obj).
 		// Though unlike XmlSerializer, it does not support forward-
 		// reference resolution i.e. a referenced object must appear
 		// before any references to it.
-		Hashtable references = new Hashtable ();
+		Dictionary<string,object> references = new Dictionary<string,object> ();
+		Dictionary<QName,Type> resolved_qnames = new Dictionary<QName,Type> ();
 
-		public static object Deserialize (XmlReader reader, Type type,
-			KnownTypeCollection knownTypes, IDataContractSurrogate surrogate,
+		public static object Deserialize (XmlReader reader, Type declaredType,
+			KnownTypeCollection knownTypes, IDataContractSurrogate surrogate, DataContractResolver resolver, DataContractResolver defaultResolver,
 			string name, string ns, bool verifyObjectName)
 		{
 			reader.MoveToContent ();
@@ -59,14 +61,14 @@ namespace System.Runtime.Serialization
 				    reader.LocalName != name ||
 				    reader.NamespaceURI != ns)
 					throw new SerializationException (String.Format ("Expected element '{0}' in namespace '{1}', but found {2} node '{3}' in namespace '{4}'", name, ns, reader.NodeType, reader.LocalName, reader.NamespaceURI));
-//				Verify (knownTypes, type, name, ns, reader);
-			return new XmlFormatterDeserializer (knownTypes, surrogate).Deserialize (type, reader);
+//				Verify (knownTypes, declaredType, name, ns, reader);
+			return new XmlFormatterDeserializer (knownTypes, surrogate, resolver, defaultResolver).Deserialize (declaredType, reader);
 		}
 
 		// Verify the top element name and namespace.
 		private static void Verify (KnownTypeCollection knownTypes, Type type, string name, string Namespace, XmlReader reader)
 		{
-			QName graph_qname = new QName (reader.Name, reader.NamespaceURI);
+			QName graph_qname = new QName (reader.LocalName, reader.NamespaceURI);
 			if (graph_qname.Name == name && graph_qname.Namespace == Namespace)
 				return;
 
@@ -88,45 +90,59 @@ namespace System.Runtime.Serialization
 
 		private XmlFormatterDeserializer (
 			KnownTypeCollection knownTypes,
-			IDataContractSurrogate surrogate)
+			IDataContractSurrogate surrogate,
+			DataContractResolver resolver,
+			DataContractResolver defaultResolver)
 		{
 			this.types = knownTypes;
 			this.surrogate = surrogate;
+			this.resolver = resolver;
+			this.default_resolver = defaultResolver;
 		}
 
-		public Hashtable References {
+		public Dictionary<string,object> References {
 			get { return references; }
 		}
 
-		// At the beginning phase, we still have to instantiate a new
-		// target object even if fromContent is true.
+#if !MOONLIGHT
+		XmlDocument document;
+		
+		XmlDocument XmlDocument {
+			get { return (document = document ?? new XmlDocument ()); }
+		}
+#endif
+
+		// This method handles z:Ref, xsi:nil and primitive types, and then delegates to DeserializeByMap() for anything else.
+
 		public object Deserialize (Type type, XmlReader reader)
 		{
-			string label = reader.GetAttribute ("Id", KnownTypeCollection.MSSimpleNamespace);
-			object o = DeserializeCore (type, reader);
+#if !MOONLIGHT
+			if (type == typeof (XmlElement))
+				return XmlDocument.ReadNode (reader);
+			else if (type == typeof (XmlNode [])) {
+				reader.ReadStartElement ();
+				var l = new List<XmlNode> ();
+				for(; !reader.EOF && reader.NodeType != XmlNodeType.EndElement; reader.MoveToContent ())
+					l.Add (XmlDocument.ReadNode (reader));
+				reader.ReadEndElement ();
+				return l.ToArray ();
+			}
+#endif
 
-			if (label != null)
-				references.Add (label, o);
-
-			return o;
-		}
-
-		public object DeserializeCore (Type type, XmlReader reader)
-		{
 			QName graph_qname = types.GetQName (type);
 			string itype = reader.GetAttribute ("type", XmlSchema.InstanceNamespace);
 			if (itype != null) {
-				string[] parts = itype.Split (':');
+				string [] parts = itype.Split (':');
 				if (parts.Length > 1)
-					graph_qname = new QName (parts [1], reader.LookupNamespace (reader.NameTable.Get (parts[0])));
+					graph_qname = new QName (parts [1], reader.LookupNamespace (reader.NameTable.Get (parts [0])));
 				else
-					graph_qname = new QName (itype, reader.NamespaceURI);
+					graph_qname = new QName (itype, reader.LookupNamespace (String.Empty));
 			}
 
 			string label = reader.GetAttribute ("Ref", KnownTypeCollection.MSSimpleNamespace);
 			if (label != null) {
-				object o = references [label];
-				if (o == null)
+				object o;
+				if (!references.TryGetValue (label, out o))
 					throw new SerializationException (String.Format ("Deserialized object with reference Id '{0}' was not found", label));
 				reader.Skip ();
 				return o;
@@ -136,7 +152,7 @@ namespace System.Runtime.Serialization
 
 			if (isNil) {
 				reader.Skip ();
-				if (!type.IsValueType)
+				if (!type.IsValueType || type == typeof (void))
 					return null;
 				else if (type.IsGenericType && type.GetGenericTypeDefinition () == typeof (Nullable<>))
 					return null;
@@ -144,31 +160,72 @@ namespace System.Runtime.Serialization
 					throw new SerializationException (String.Format ("Value type {0} cannot be null.", type));
 			}
 
-			if (KnownTypeCollection.GetPrimitiveTypeFromName (graph_qname.Name) != null) {
-				string value;
-				if (reader.IsEmptyElement) {
-					reader.Read (); // advance
-					if (type.IsValueType)
-						return Activator.CreateInstance (type);
-					else
-						// FIXME: Workaround for creating empty objects of the correct type.
-						value = String.Empty;
+			if (resolver != null) {
+				Type t;
+				if (resolved_qnames.TryGetValue (graph_qname, out t))
+					type = t;
+				else { // i.e. resolve name only once.
+					type = resolver.ResolveName (graph_qname.Name, graph_qname.Namespace, type, default_resolver) ?? type;
+					resolved_qnames.Add (graph_qname, type);
+					types.Add (type);
 				}
-				else
-					value = reader.ReadElementContentAsString ();
-				return KnownTypeCollection.PredefinedTypeStringToObject (value, graph_qname.Name, reader);
+			}
+
+			if (KnownTypeCollection.GetPrimitiveTypeFromName (graph_qname) != null) {
+				string id = reader.GetAttribute ("Id", KnownTypeCollection.MSSimpleNamespace);
+
+				object ret = DeserializePrimitive (type, reader, graph_qname);
+
+				if (id != null) {
+					if (references.ContainsKey (id))
+						throw new InvalidOperationException (String.Format ("Object with Id '{0}' already exists as '{1}'", id, references [id]));
+					references.Add (id, ret);
+				}
+				return ret;
 			}
 
 			return DeserializeByMap (graph_qname, type, reader);
 		}
 
+		object DeserializePrimitive (Type type, XmlReader reader, QName qname)
+		{
+			// It is the only exceptional type that does not serialize to string but serializes into complex element.
+			if (type == typeof (DateTimeOffset)) {
+				if (reader.IsEmptyElement) {
+					reader.Read ();
+					return default (DateTimeOffset);
+				}
+				reader.ReadStartElement ();
+				reader.MoveToContent ();
+				var date = reader.ReadElementContentAsDateTime ("DateTime", KnownTypeCollection.DefaultClrNamespaceSystem);
+				var off = TimeSpan.FromMinutes (reader.ReadElementContentAsInt ("OffsetMinutes", KnownTypeCollection.DefaultClrNamespaceSystem));
+				reader.MoveToContent ();
+				reader.ReadEndElement ();
+				return new DateTimeOffset (DateTime.SpecifyKind (date.ToUniversalTime () + off, DateTimeKind.Unspecified), off);
+			}
+
+			string value;
+			if (reader.IsEmptyElement) {
+				reader.Read (); // advance
+				if (type.IsValueType)
+					return Activator.CreateInstance (type);
+				else
+					// FIXME: Workaround for creating empty objects of the correct type.
+					value = String.Empty;
+			}
+			else
+				value = reader.ReadElementContentAsString ();
+			return KnownTypeCollection.PredefinedTypeStringToObject (value, qname.Name, reader);
+		}
+
 		object DeserializeByMap (QName name, Type type, XmlReader reader)
 		{
-			SerializationMap map = types.FindUserMap (name);
-			if (map == null && (name.Namespace == KnownTypeCollection.MSArraysNamespace ||
+			SerializationMap map = resolved_qnames.ContainsKey (name) ? types.FindUserMap (type) : types.FindUserMap (name); // use type when the name is "resolved" one. Otherwise use name (there are cases that type cannot be resolved by type).
+			if (map == null && (name.Name.StartsWith ("ArrayOf", StringComparison.Ordinal) ||
+			    name.Namespace == KnownTypeCollection.MSArraysNamespace ||
 			    name.Namespace.StartsWith (KnownTypeCollection.DefaultClrNamespaceBase, StringComparison.Ordinal))) {
 				var it = GetTypeFromNamePair (name.Name, name.Namespace);
-				types.TryRegister (it);
+				types.Add (it);
 				map = types.FindUserMap (name);
 			}
 			if (map == null)
@@ -179,22 +236,57 @@ namespace System.Runtime.Serialization
 
 		Type GetTypeFromNamePair (string name, string ns)
 		{
-			Type p = KnownTypeCollection.GetPrimitiveTypeFromName (name); // FIXME: namespace?
+			Type p = KnownTypeCollection.GetPrimitiveTypeFromName (new QName (name, ns));
 			if (p != null)
 				return p;
-			if (name.StartsWith ("ArrayOf", StringComparison.Ordinal) && ns == KnownTypeCollection.MSArraysNamespace)
-				return GetTypeFromNamePair (name.Substring (7), String.Empty).MakeArrayType ();
+			bool makeArray = false;
+			if (name.StartsWith ("ArrayOf", StringComparison.Ordinal)) {
+				name = name.Substring (7); // strip "ArrayOf"
+				if (ns == KnownTypeCollection.MSArraysNamespace)
+					return GetTypeFromNamePair (name, String.Empty).MakeArrayType ();
+				makeArray = true;
+			}
 
-			int xlen = KnownTypeCollection.DefaultClrNamespaceBase.Length;
-			string clrns = ns.Length > xlen ?  ns.Substring (xlen) : null;
+			string dnsb = KnownTypeCollection.DefaultClrNamespaceBase;
+			string clrns = ns.StartsWith (dnsb, StringComparison.Ordinal) ?  ns.Substring (dnsb.Length) : ns;
 
 			foreach (var ass in AppDomain.CurrentDomain.GetAssemblies ()) {
-				foreach (var t in ass.GetTypes ()) {
-					var dca = t.GetCustomAttribute<DataContractAttribute> (true);
-					if (dca != null && dca.Name == name && dca.Namespace == ns)
-						return t;
+				Type [] types;
+
+#if MOONLIGHT
+				try  {
+					types = ass.GetTypes ();
+				} catch (System.Reflection.ReflectionTypeLoadException rtle) {
+					types = rtle.Types;
+				}
+#else
+				types = ass.GetTypes ();
+#endif
+				if (types == null)
+					continue;
+
+				foreach (var t in types) {
+					// there can be null entries or exception throw to access the attribute - 
+					// at least when some referenced assemblies could not be loaded (affects moonlight)
+					if (t == null)
+						continue;
+
+					try {
+						var dca = t.GetCustomAttribute<DataContractAttribute> (true);
+						if (dca != null && dca.Name == name && dca.Namespace == ns)
+							return makeArray ? t.MakeArrayType () : t;
+					}
+					catch (TypeLoadException tle) {
+						Console.Error.WriteLine (tle);
+						continue;
+					}
+					catch (FileNotFoundException fnfe) {
+						Console.Error.WriteLine (fnfe);
+						continue;
+					}
+
 					if (clrns != null && t.Name == name && t.Namespace == clrns)
-						return t;
+						return makeArray ? t.MakeArrayType () : t;
 				}
 			}
 			throw new XmlException (String.Format ("Type not found; name: {0}, namespace: {1}", name, ns));

@@ -32,43 +32,68 @@ using System.Xml.Linq;
 
 namespace System.Xml.Schema
 {
-	[MonoTODO]
 	public static class Extensions
 	{
-		[MonoTODO]
 		public static IXmlSchemaInfo GetSchemaInfo (this XAttribute attribute)
 		{
-			throw new NotImplementedException ();
+			return attribute.Annotation<IXmlSchemaInfo> ();
 		}
 
-		[MonoTODO]
 		public static IXmlSchemaInfo GetSchemaInfo (this XElement element)
 		{
-			throw new NotImplementedException ();
+			return element.Annotation<IXmlSchemaInfo> ();
 		}
 
-		[MonoTODO]
 		public static void Validate (this XAttribute attribute, XmlSchemaObject partialValidationType, XmlSchemaSet schemas, ValidationEventHandler handler)
 		{
-			throw new NotImplementedException ();
+			Validate (attribute, partialValidationType, schemas, handler, false);
 		}
 
-		[MonoTODO]
 		public static void Validate (this XAttribute attribute, XmlSchemaObject partialValidationType, XmlSchemaSet schemas, ValidationEventHandler handler, bool addSchemaInfo)
 		{
-			throw new NotImplementedException ();
+			if (attribute == null)
+				throw new ArgumentNullException ("attribute");
+			if (schemas == null)
+				throw new ArgumentNullException ("schemas");
+			var nsmgr = new XmlNamespaceManager (new NameTable ());
+			var v = new XmlSchemaValidator (nsmgr.NameTable, schemas, nsmgr, XmlSchemaValidationFlags.None);
+			if (handler != null)
+				v.ValidationEventHandler += handler;
+			if (partialValidationType != null)
+				v.Initialize (partialValidationType);
+			else
+				v.Initialize ();
+			var xi = addSchemaInfo ? new XmlSchemaInfo () : null;
+			v.ValidateAttribute (attribute.Name.LocalName, attribute.Name.NamespaceName, attribute.Value, xi);
 		}
 
-		[MonoTODO]
 		public static void Validate (this XDocument document, XmlSchemaSet schemas, ValidationEventHandler handler)
 		{
-			throw new NotImplementedException ();
+			Validate (document, schemas, handler, false);
 		}
 
-		[MonoTODO]
 		public static void Validate (this XDocument document, XmlSchemaSet schemas, ValidationEventHandler handler, bool addSchemaInfo)
 		{
-			throw new NotImplementedException ();
+			if (document == null)
+				throw new ArgumentNullException ("document");
+			if (schemas == null)
+				throw new ArgumentNullException ("schemas");
+			var xrs = new XmlReaderSettings () { ValidationType = ValidationType.Schema };
+			xrs.Schemas = schemas;
+			xrs.ValidationEventHandler += handler;
+			var source = new XNodeReader (document);
+			var xr = XmlReader.Create (source, xrs);
+			while (xr.Read ()) {
+				if (addSchemaInfo) {
+					if (xr.NodeType == XmlNodeType.Element) {
+						source.CurrentNode.AddAnnotation (xr.SchemaInfo);
+						while (xr.MoveToNextAttribute ())
+							if (xr.NamespaceURI != XUtil.XmlnsNamespace)
+								source.GetCurrentAttribute ().AddAnnotation (xr.SchemaInfo);
+						xr.MoveToElement ();
+					}
+				}
+			}
 		}
 
 		[MonoTODO]

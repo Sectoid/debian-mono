@@ -1,3 +1,16 @@
+2010-11-08  Marek Safar  <marek.safar@gmail.com>
+
+	API compatibility work
+
+
+Fri Feb 12 19:09:44 CET 2010 Paolo Molaro <lupus@ximian.com>
+
+	* TargetedPatchingOptOutAttribute.cs: new attribute in 4.0.
+
+2010-02-12  Marek Habersack  <mhabersack@novell.com>
+
+	* AssemblyTargetedPatchBandAttribute.cs: added
+
 2008-07-06  Andreas Nahr  <ClassDevelopment@A-SoftTech.com>
 
 	* GCLatencyMode.cs: Add missing attribute

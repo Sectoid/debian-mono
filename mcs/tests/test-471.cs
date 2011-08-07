@@ -1,14 +1,26 @@
-// Compiler options: /doc:test-471.xml
-
 using System;
 
-/// <summary><see cref="AAttribute" /></summary>
-[Obsolete("whatever", true)]
-public class AAttribute : Attribute {
-}
-
-class Demo {
-	static void Main ()
+class AAttribute : Attribute
+{
+	public string Value;
+	
+	public AAttribute (string s)
 	{
+		Value = s;
 	}
 }
+
+[A (value)]
+class MainClass
+{
+	const string value = null;
+	
+	public static int Main ()
+	{
+		var attr = typeof (MainClass).GetCustomAttributes (false) [0] as AAttribute;
+		if (attr.Value != null)
+			return 1;
+		
+		return 0;
+	}
+} 

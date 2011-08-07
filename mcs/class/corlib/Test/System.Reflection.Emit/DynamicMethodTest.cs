@@ -10,6 +10,7 @@
 using System;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Text;
 
 using NUnit.Framework;
 
@@ -356,6 +357,61 @@ namespace MonoTests.System.Reflection.Emit
 
 			IntInvoker hi = (IntInvoker) dm.CreateDelegate (typeof (IntInvoker));
 			Assert.AreEqual (99, hi (), "#1");	
+		}
+
+		// #575955
+		[Test]
+		public void Module_GetMethod () {
+			AssemblyName assemblyName = new AssemblyName ();
+			assemblyName.Name = "foo";
+
+			AssemblyBuilder assembly =
+				AppDomain.CurrentDomain.DefineDynamicAssembly (
+															   assemblyName, AssemblyBuilderAccess.RunAndSave);
+
+			ModuleBuilder module = assembly.DefineDynamicModule ("foo.dll");
+
+			var d = new DynamicMethod ("foo", typeof (int), new Type [] { typeof (int[,]) }, module);
+			var ig = d.GetILGenerator ();
+			ig.Emit (OpCodes.Ldarg_0);
+			ig.Emit (OpCodes.Ldc_I4, 1);
+			ig.Emit (OpCodes.Ldc_I4, 1);
+			ig.Emit (OpCodes.Call, module.GetArrayMethod (typeof (int[,]), "Get", CallingConventions.Standard, typeof (int), new Type [] { typeof (int), typeof (int) }));
+			ig.Emit (OpCodes.Ret);
+		
+			var del = (Func<int[,], int>)d.CreateDelegate (typeof (Func<int[,], int>));
+			int[,] arr = new int [10, 10];
+			arr [1, 1] = 5;
+			Assert.AreEqual (5, del (arr));
+		}
+
+		[Test]
+		[Category ("NotWorking")]
+		public void InvalidUnicodeName ()
+		{
+			var name = new StringBuilder ().Append ('\udf45').Append ('\ud808');
+			var method = new DynamicMethod (name.ToString (), typeof (bool), new Type [0]);
+			var il = method.GetILGenerator ();
+			il.Emit (OpCodes.Ldc_I4_1);
+			il.Emit (OpCodes.Ret);
+
+			var function = (Func<bool>) method.CreateDelegate (typeof (Func<bool>));
+
+			Assert.IsTrue (function ());
+		}
+
+	public delegate object RetObj();
+		[Test] //#640702
+		public void GetCurrentMethodWorksWithDynamicMethods ()
+		{
+	        DynamicMethod dm = new DynamicMethod("Foo", typeof(object), null);
+	        ILGenerator ilgen = dm.GetILGenerator();
+	        ilgen.Emit(OpCodes.Call, typeof(MethodBase).GetMethod("GetCurrentMethod"));
+	        ilgen.Emit(OpCodes.Ret);
+	        RetObj del = (RetObj)dm.CreateDelegate(typeof(RetObj));
+		    MethodInfo res = (MethodInfo)del();
+			Assert.AreEqual (dm.Name, res.Name, "#1");
+
 		}
 	}
 }

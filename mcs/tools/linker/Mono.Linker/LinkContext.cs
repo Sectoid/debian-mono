@@ -26,6 +26,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+using System;
 using System.Collections;
 using System.IO;
 using Mono.Cecil;
@@ -43,8 +44,16 @@ namespace Mono.Linker {
 
 		AssemblyResolver _resolver;
 
+		ReaderParameters _readerParameters;
+
+		AnnotationStore _annotations;
+
 		public Pipeline Pipeline {
 			get { return _pipeline; }
+		}
+
+		public AnnotationStore Annotations {
+			get { return _annotations; }
 		}
 
 		public string OutputDirectory {
@@ -81,70 +90,67 @@ namespace Mono.Linker {
 			_resolver = resolver;
 			_actions = new Hashtable ();
 			_parameters = new Hashtable ();
+			_annotations = new AnnotationStore ();
+			_readerParameters = new ReaderParameters {
+				AssemblyResolver = _resolver,
+			};
 		}
 
-		public TypeDefinition GetType (string type)
+		public TypeDefinition GetType (string fullName)
 		{
-			int pos = type.IndexOf (",");
-			type = type.Replace ("+", "/");
+			int pos = fullName.IndexOf (",");
+			fullName = fullName.Replace ("+", "/");
 			if (pos == -1) {
-				foreach (AssemblyDefinition asm in GetAssemblies ())
-					if (asm.MainModule.Types.Contains (type))
-						return asm.MainModule.Types [type];
+				foreach (AssemblyDefinition asm in GetAssemblies ()) {
+					var type = asm.MainModule.GetType (fullName);
+					if (type != null)
+						return type;
+				}
 
 				return null;
 			}
 
-			string asmname = type.Substring (pos + 1);
-			type = type.Substring (0, pos);
+			string asmname = fullName.Substring (pos + 1);
+			fullName = fullName.Substring (0, pos);
 			AssemblyDefinition assembly = Resolve (AssemblyNameReference.Parse (asmname));
-			return assembly.MainModule.Types [type];
+			return assembly.MainModule.GetType (fullName);
 		}
 
 		public AssemblyDefinition Resolve (string name)
 		{
 			if (File.Exists (name)) {
-				AssemblyDefinition assembly = AssemblyFactory.GetAssembly (name);
+				AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly (name, _readerParameters);
 				_resolver.CacheAssembly (assembly);
-				SafeLoadSymbols (assembly);
 				return assembly;
-			} else {
-				AssemblyNameReference reference = new AssemblyNameReference ();
-				reference.Name = name;
-				return Resolve (reference);
 			}
+
+			return Resolve (new AssemblyNameReference (name, new Version ()));
 		}
 
 		public AssemblyDefinition Resolve (IMetadataScope scope)
 		{
 			AssemblyNameReference reference = GetReference (scope);
 
-			AssemblyDefinition assembly = _resolver.Resolve (reference);
+			AssemblyDefinition assembly = _resolver.Resolve (reference, _readerParameters);
 
 			if (SeenFirstTime (assembly)) {
+				SafeReadSymbols (assembly);
 				SetAction (assembly);
-				SafeLoadSymbols (assembly);
 			}
 
 			return assembly;
 		}
 
-		public void SafeLoadSymbols (AssemblyDefinition assembly)
+		bool SeenFirstTime (AssemblyDefinition assembly)
 		{
-			if (!_linkSymbols)
-				return;
-
-			try {
-				assembly.MainModule.LoadSymbols ();
-				Annotations.SetHasSymbols (assembly);
-			} catch {
-				return; // resharper loves this
-			}
+			return !_annotations.HasAction (assembly);
 		}
 
-		static bool SeenFirstTime (AssemblyDefinition assembly)
+		void SafeReadSymbols (AssemblyDefinition assembly)
 		{
-			return !Annotations.HasAction (assembly);
+			try {
+				assembly.MainModule.ReadSymbols ();
+			} catch {}
 		}
 
 		static AssemblyNameReference GetReference (IMetadataScope scope)
@@ -170,7 +176,7 @@ namespace Mono.Linker {
 			else if (IsCore (name))
 				action = _coreAction;
 
-			Annotations.SetAction (assembly, action);
+			_annotations.SetAction (assembly, action);
 		}
 
 		static bool IsCore (AssemblyNameReference name)

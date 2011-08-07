@@ -1,3 +1,24 @@
+2010-08-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix the build
+
+2010-08-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Add more info for -z parameter
+
+	Mention that zlib development package is needed for that option to
+	work.
+
+2010-08-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Free allocated unmanaged memory.
+
+	Ditto.
+
+2010-03-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* mkbundle.cs: Update after the mono.pc and libmono version bump.
+
 2009-05-29  Steven Munroe  <munroesj@us.ibm.com>
 
 	This patch is contributed under the terms of the MIT/X11 license

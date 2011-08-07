@@ -1,4 +1,3 @@
-#if NET_4_0 || BOOTSTRAP_NET_4_0
 // 
 // CancellationTokenSource.cs
 //  
@@ -25,16 +24,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+#if NET_4_0 || MOBILE
 using System;
 using System.Collections.Generic;
 
 namespace System.Threading
 {
 	
-	public class CancellationTokenSource : IDisposable, ICancelableOperation
+	public sealed class CancellationTokenSource : IDisposable
 	{
-		volatile bool canceled;
-		volatile bool processed;
+		bool canceled;
+		bool processed;
 		
 		int currId = int.MinValue;
 		
@@ -43,9 +43,16 @@ namespace System.Threading
 		
 		ManualResetEvent handle = new ManualResetEvent (false);
 		
-//#if USE_MONITOR
 		object syncRoot = new object ();
-//#endif
+		
+		internal static readonly CancellationTokenSource NoneSource = new CancellationTokenSource ();
+		internal static readonly CancellationTokenSource CanceledSource = new CancellationTokenSource ();
+
+		static CancellationTokenSource ()
+		{
+			CanceledSource.processed = true;
+			CanceledSource.canceled = true;
+		}
 		
 		public void Cancel ()
 		{
@@ -53,18 +60,18 @@ namespace System.Threading
 		}
 		
 		// If parameter is true we throw exception as soon as they appear otherwise we aggregate them
-		public void Cancel (bool throwOnFirst)
+		public void Cancel (bool throwOnFirstException)
 		{
 			canceled = true;
 			handle.Set ();
 			
 			List<Exception> exceptions = null;
-			if (!throwOnFirst)
+			if (!throwOnFirstException)
 				exceptions = new List<Exception> ();
 			
 			lock (callbacks) {
 				foreach (KeyValuePair<CancellationTokenRegistration, Action> item in callbacks) {
-					if (throwOnFirst) {
+					if (throwOnFirstException) {
 						item.Value ();
 					} else {
 						try {
@@ -76,6 +83,7 @@ namespace System.Threading
 				}
 			}
 			
+			Thread.MemoryBarrier ();
 			processed = true;
 			
 			if (exceptions != null && exceptions.Count > 0)
@@ -105,10 +113,7 @@ namespace System.Threading
 		
 		public CancellationToken Token {
 			get {
-				CancellationToken token = new CancellationToken (canceled);
-				token.Source = this;
-				
-				return token;
+				return CreateToken ();
 			}
 		}
 		
@@ -158,13 +163,21 @@ namespace System.Threading
 				sw.SpinOnce ();
 			
 		}
-		
+
 		CancellationTokenRegistration GetTokenReg ()
 		{
 			CancellationTokenRegistration registration
 				= new CancellationTokenRegistration (Interlocked.Increment (ref currId), this);
 			
 			return registration;
+		}
+		
+		CancellationToken CreateToken ()
+		{
+			CancellationToken tk = new CancellationToken (true);
+			tk.Source = this;
+			
+			return tk;
 		}
 	}
 }

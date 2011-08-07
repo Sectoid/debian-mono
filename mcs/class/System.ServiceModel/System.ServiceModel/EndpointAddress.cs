@@ -37,6 +37,9 @@ using System.Xml.Schema;
 using System.Xml.Serialization;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Description;
+#if !NET_2_1
+using System.Security.Cryptography.Xml;
+#endif
 
 namespace System.ServiceModel
 {
@@ -185,17 +188,15 @@ namespace System.ServiceModel
 		}
 
 //#if !NET_2_1
-		[MonoTODO]
 		public static EndpointAddress ReadFrom (
 			XmlDictionaryReader reader)
 		{
 			if (reader == null)
 				throw new ArgumentNullException ("reader");
 
-			return ReadFromInternal (null, reader);
+			return ReadFromInternal (null, reader, null, null, null, null);
 		}
 
-		[MonoTODO]
 		public static EndpointAddress ReadFrom (
 			AddressingVersion addressingVersion,
 			XmlDictionaryReader reader)
@@ -203,7 +204,6 @@ namespace System.ServiceModel
 			return ReadFrom (addressingVersion, (XmlReader) reader);
 		}
 
-		[MonoTODO]
 		public static EndpointAddress ReadFrom (
 			AddressingVersion addressingVersion,
 			XmlReader reader)
@@ -213,10 +213,9 @@ namespace System.ServiceModel
 			if (reader == null)
 				throw new ArgumentNullException ("reader");
 
-			return ReadFromInternal (addressingVersion, reader);
+			return ReadFromInternal (addressingVersion, reader, null, null, null, null);
 		}
 
-		[MonoTODO]
 		public static EndpointAddress ReadFrom (
 			XmlDictionaryReader reader,
 			XmlDictionaryString localName,
@@ -226,35 +225,41 @@ namespace System.ServiceModel
 					 reader, localName, ns);
 		}
 
-
-		[MonoTODO]
 		public static EndpointAddress ReadFrom (
 			AddressingVersion addressingVersion,
 			XmlDictionaryReader reader,
 			XmlDictionaryString localName,
 			XmlDictionaryString ns)
 		{
-			throw new NotImplementedException ();
+			// Empty localName and ns will be rejected by ReadStartElement() by feeding empty strings.
+			return ReadFromInternal (addressingVersion, reader, null, null, localName ?? XmlDictionaryString.Empty, ns ?? XmlDictionaryString.Empty);
 		}
 
-		[MonoTODO]
 		public static EndpointAddress ReadFrom (
 			AddressingVersion addressingVersion,
-			XmlReader reader, string localname, string ns)
+			XmlReader reader, string localName, string ns)
 		{
-			throw new NotImplementedException ();
+			// Empty localName and ns will be rejected by ReadStartElement() by feeding empty strings.
+			return ReadFromInternal (addressingVersion, reader, localName ?? String.Empty, ns ?? String.Empty, null, null);
 		}
 
 		private static EndpointAddress ReadFromInternal (
 			AddressingVersion addressingVersion,
-			XmlReader reader)
+			XmlReader reader, string localName, string ns,
+			XmlDictionaryString dictLocalName,
+			XmlDictionaryString dictNS)
 		{
 			reader.MoveToContent ();
 			if (reader.NodeType != XmlNodeType.Element ||
 			    reader.IsEmptyElement)
 				throw new ArgumentException ("Cannot detect appropriate WS-Addressing Address element.");
 
-			reader.Read ();
+			if (localName != null)
+				reader.ReadStartElement (localName, ns);
+			else if (dictLocalName != null)
+				((XmlDictionaryReader) reader).ReadStartElement (dictLocalName, dictNS);
+			else
+				reader.ReadStartElement ();
 			reader.MoveToContent ();
 
 			if (addressingVersion == null) {
@@ -327,18 +332,45 @@ namespace System.ServiceModel
 			return address.ToString (); 
 		}
 
-		[MonoTODO]
 		public void WriteContentsTo (
 			AddressingVersion addressingVersion,
 			XmlDictionaryWriter writer)
 		{
+			if (writer == null)
+				throw new ArgumentNullException ("writer");
 #if NET_2_1
 			writer.WriteString (Uri.AbsoluteUri);
 #else
-			if (addressingVersion == AddressingVersion.WSAddressing10) {
-				((IXmlSerializable) EndpointAddress10.FromEndpointAddress (this)).WriteXml (writer);
-			} else {
+			if (addressingVersion == AddressingVersion.None)
 				writer.WriteString (Uri.AbsoluteUri);
+			else {
+				writer.WriteStartElement ("Address", addressingVersion.Namespace);
+				writer.WriteString (Uri.AbsoluteUri);
+				writer.WriteEndElement ();
+
+				if (Identity == null)
+					return;
+
+				if (Headers != null)
+					foreach (AddressHeader ah in Headers)
+						ah.WriteAddressHeader (writer);
+
+				writer.WriteStartElement ("Identity", Constants.WsaIdentityUri);
+
+				X509CertificateEndpointIdentity x509 =
+					Identity as X509CertificateEndpointIdentity;
+				if (x509 != null) {
+					KeyInfo ki = new KeyInfo ();
+					KeyInfoX509Data x = new KeyInfoX509Data ();
+					foreach (X509Certificate2 cert in x509.Certificates)
+						x.AddCertificate (cert);
+					ki.AddClause (x);
+					ki.GetXml ().WriteTo (writer);
+				} else {
+					DataContractSerializer ds = new DataContractSerializer (Identity.IdentityClaim.GetType ());
+					ds.WriteObject (writer, Identity.IdentityClaim);
+				}
+				writer.WriteEndElement ();
 			}
 #endif
 		}

@@ -1,3 +1,4 @@
+#if DISABLE_REAL_PROXY
 //
 // ClientProxyGenerator.cs
 //
@@ -25,6 +26,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
+#if !MONOTOUCH
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -33,13 +35,48 @@ using System.ServiceModel.Channels;
 using System.ServiceModel.Description;
 using System.ServiceModel.Dispatcher;
 using Mono.CodeGeneration;
+using System.ServiceModel.MonoInternal;
 
 namespace System.ServiceModel
 {
+	internal class ClientProxyKey {
+		Type contractInterface;
+		ContractDescription cd;
+		bool duplex;
+
+		public ClientProxyKey (Type contractInterface, ContractDescription cd, bool duplex) {
+			this.contractInterface = contractInterface;
+			this.cd = cd;
+			this.duplex = duplex;
+		}
+
+
+		public override int GetHashCode () {
+			return contractInterface.GetHashCode () ^ cd.GetHashCode ();
+		}
+
+		public override bool Equals (object o) {
+			ClientProxyKey key = o as ClientProxyKey;
+			if (key == null)
+				return false;
+			return contractInterface == key.contractInterface && cd == key.cd && duplex == key.duplex;
+		}
+	}
+
 	internal class ClientProxyGenerator : ProxyGeneratorBase
 	{
-		public static Type CreateProxyType (Type contractInterface, ContractDescription cd, bool duplex)
+		static Dictionary<ClientProxyKey, Type> proxy_cache = new Dictionary<ClientProxyKey, Type> ();
+
+
+		public static Type CreateProxyType (Type requestedType, ContractDescription cd, bool duplex)
 		{
+			ClientProxyKey key = new ClientProxyKey (requestedType, cd, duplex);
+			Type res;
+			lock (proxy_cache) {
+				if (proxy_cache.TryGetValue (key, out res))
+					return res;
+			}
+
 			string modname = "dummy";
 			Type crtype =
 #if !NET_2_1
@@ -47,11 +84,14 @@ namespace System.ServiceModel
 #endif
 				typeof (ClientRuntimeChannel);
 
-			// public class __clientproxy_MyContract : ClientRuntimeChannel, [ContractType]
-			CodeClass c = new CodeModule (modname).CreateClass (
-				"__clientproxy_" + cd.Name,
-				crtype,
-				new Type [] {contractInterface});
+			// public class __clientproxy_MyContract : (Duplex)ClientRuntimeChannel, [ContractType]
+			var types = new List<Type> ();
+			types.Add (requestedType);
+			if (!cd.ContractType.IsAssignableFrom (requestedType))
+				types.Add (cd.ContractType);
+			if (cd.CallbackContractType != null && !cd.CallbackContractType.IsAssignableFrom (requestedType))
+				types.Add (cd.CallbackContractType);
+			CodeClass c = new CodeModule (modname).CreateClass ("__clientproxy_" + cd.Name, crtype, types.ToArray ());
 
 			//
 			// public __clientproxy_MyContract (
@@ -74,7 +114,12 @@ namespace System.ServiceModel
 				new CodeArgumentReference (typeof (ChannelFactory), 2, "arg1"),
 				new CodeArgumentReference (typeof (EndpointAddress), 3, "arg2"),
 				new CodeArgumentReference (typeof (Uri), 4, "arg3"));
-			return CreateProxyTypeOperations (crtype, c, cd);
+			res = CreateProxyTypeOperations (crtype, c, cd);
+
+			lock (proxy_cache) {
+				proxy_cache [key] = res;
+			}
+			return res;
 		}
 	}
 
@@ -96,10 +141,8 @@ namespace System.ServiceModel
 					GenerateEndMethodImpl (c, crtype.GetMethod ("EndProcess", bf), od.Name, od.EndMethod);
 			}
 
-			//Type zzz = c.CreateType ();
-			//((System.Reflection.Emit.AssemblyBuilder) zzz.Assembly).Save (modname + ".dll");
-			//return zzz;
-			return c.CreateType ();
+			Type ret = c.CreateType ();
+			return ret;
 		}
 
 		static void GenerateMethodImpl (CodeClass c, MethodInfo processMethod, string name, MethodInfo mi)
@@ -110,7 +153,7 @@ namespace System.ServiceModel
 			// parameters [0] = arg1;
 			// parameters [1] = arg2;
 			// ...
-			// (return) Process (MethodBase.GetCurrentMethod(), operName, parameters);
+			// (return) Process (Contract.Operations [operName].SyncMethod, operName, parameters);
 			ParameterInfo [] pinfos = mi.GetParameters ();
 			CodeVariableDeclaration paramsDecl = new CodeVariableDeclaration (typeof (object []), "parameters");
 			b.CurrentBlock.Add (paramsDecl);
@@ -125,7 +168,11 @@ namespace System.ServiceModel
 						new CodeCast (typeof (object),
 							new CodeArgumentReference (par.ParameterType, par.Position + 1, "arg" + i)));
 			}
+#if USE_OD_REFERENCE_IN_PROXY
+			CodePropertyReference argMethodInfo = GetOperationMethod (m, b, name, "SyncMethod");
+#else
 			CodeMethodCall argMethodInfo = new CodeMethodCall (typeof (MethodBase), "GetCurrentMethod");
+#endif
 			CodeLiteral argOperName = new CodeLiteral (name);
 			CodeVariableReference retValue = null;
 			if (mi.ReturnType == typeof (void))
@@ -150,6 +197,23 @@ namespace System.ServiceModel
 				b.Return (retValue);
 		}
 
+		static CodePropertyReference GetOperationMethod (CodeMethod m, CodeBuilder b, string name, string methodPropertyName)
+		{
+			return new CodePropertyReference (
+				b.CallFunc (
+					// this.Contract.Operations
+					new CodePropertyReference (
+						new CodePropertyReference (
+							m.GetThis (),
+							typeof (ClientRuntimeChannel).GetProperty ("Contract")),
+						typeof (ContractDescription).GetProperty ("Operations")),
+					// .Find (name)
+					typeof (OperationDescriptionCollection).GetMethod ("Find"),
+					new CodeLiteral (name)),
+				// .SyncMethod
+				typeof (OperationDescription).GetProperty (methodPropertyName));
+		}
+
 		static void GenerateBeginMethodImpl (CodeClass c, MethodInfo beginProcessMethod, string name, MethodInfo mi)
 		{
 			CodeMethod m = c.ImplementMethod (mi);
@@ -158,7 +222,7 @@ namespace System.ServiceModel
 			// parameters [0] = arg1;
 			// parameters [1] = arg2;
 			// ...
-			// (return) BeginProcess (MethodBase.GetCurrentMethod(), operName, parameters, asyncCallback, userState);
+			// (return) BeginProcess (Contract.Operations [operName].BeginMethod, operName, parameters, asyncCallback, userState);
 			ParameterInfo [] pinfos = mi.GetParameters ();
 			CodeVariableDeclaration paramsDecl = new CodeVariableDeclaration (typeof (object []), "parameters");
 			b.CurrentBlock.Add (paramsDecl);
@@ -172,7 +236,11 @@ namespace System.ServiceModel
 						new CodeArrayItem (paramsRef, new CodeLiteral (i)),
 						new CodeCast (typeof (object), m.GetArg (i)));
 			}
+#if USE_OD_REFERENCE_IN_PROXY
+			CodePropertyReference argMethodInfo = GetOperationMethod (m, b, name, "BeginMethod");
+#else
 			CodeMethodCall argMethodInfo = new CodeMethodCall (typeof (MethodBase), "GetCurrentMethod");
+#endif
 			CodeLiteral argOperName = new CodeLiteral (name);
 
 			ParameterInfo p = pinfos [pinfos.Length - 2];
@@ -214,7 +282,11 @@ namespace System.ServiceModel
 							new CodeArgumentReference (par.ParameterType, par.Position + 1, "arg" + i)));
 			}
 			*/
+#if USE_OD_REFERENCE_IN_PROXY
+			CodePropertyReference argMethodInfo = GetOperationMethod (m, b, name, "EndMethod");
+#else
 			CodeMethodCall argMethodInfo = new CodeMethodCall (typeof (MethodBase), "GetCurrentMethod");
+#endif
 			CodeLiteral argOperName = new CodeLiteral (name);
 			
 			CodeVariableReference retValue = null;
@@ -234,3 +306,6 @@ namespace System.ServiceModel
 		}
 	}
 }
+#endif
+
+#endif

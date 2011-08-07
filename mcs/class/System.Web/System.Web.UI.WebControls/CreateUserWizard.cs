@@ -24,8 +24,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System;
 using System.Web;
 using System.Web.UI;
@@ -38,7 +36,10 @@ using System.Net.Mail;
 
 namespace System.Web.UI.WebControls
 {
-	[BindableAttribute (false)]
+	[DefaultEvent ("CreatedUser")]
+	[Designer ("System.Web.UI.Design.WebControls.CreateUserWizardDesigner, " + Consts.AssemblySystem_Design, "System.ComponentModel.Design.IDesigner")]
+	[ToolboxData ("   ")]
+	[Bindable (false)]
 	public class CreateUserWizard : Wizard
 	{
 		public static readonly string ContinueButtonCommandName = "Continue";
@@ -77,23 +78,21 @@ namespace System.Web.UI.WebControls
 
 		#region Public Properties
 
-		public override int ActiveStepIndex
-		{
+		[DefaultValue (0)]
+		public override int ActiveStepIndex {
 			get { return base.ActiveStepIndex; }
 			set { base.ActiveStepIndex = value; }
 		}
 
+		[DefaultValue ("")]
 		[LocalizableAttribute (true)]
 		[ThemeableAttribute (false)]
-		public virtual string Answer
-		{
-			get
-			{
+		public virtual string Answer {
+			get {
 				object o = ViewState ["Answer"];
 				return (o == null) ? String.Empty : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("Answer");
 				else
@@ -102,15 +101,12 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string AnswerLabelText
-		{
-			get
-			{
+		public virtual string AnswerLabelText {
+			get {
 				object o = ViewState ["AnswerLabelText"];
 				return (o == null) ? Locale.GetText ("Security Answer:") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("AnswerLabelText");
 				else
@@ -119,15 +115,12 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string AnswerRequiredErrorMessage
-		{
-			get
-			{
+		public virtual string AnswerRequiredErrorMessage {
+			get {
 				object o = ViewState ["AnswerRequiredErrorMessage"];
 				return (o == null) ? Locale.GetText ("Security answer is required.") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("AnswerRequiredErrorMessage");
 				else
@@ -135,24 +128,20 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
+		[DefaultValue (false)]
 		[ThemeableAttribute (false)]
-		public virtual bool AutoGeneratePassword
-		{
-			get
-			{
+		public virtual bool AutoGeneratePassword {
+			get {
 				object o = ViewState ["AutoGeneratePassword"];
 				return (o == null) ? false : (bool) o;
 			}
-			set
-			{
-				ViewState ["AutoGeneratePassword"] = value;
-			}
+			set { ViewState ["AutoGeneratePassword"] = value; }
 		}
 
-		public CompleteWizardStep CompleteStep
-		{
-			get
-			{
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
+		[Browsable (false)]
+		public CompleteWizardStep CompleteStep {
+			get {
 				if (_completeWizardStep == null) {
 					for (int i = 0; i < WizardSteps.Count; i++)
 						if (WizardSteps [i] is CompleteWizardStep) {
@@ -167,15 +156,12 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string CompleteSuccessText
-		{
-			get
-			{
+		public virtual string CompleteSuccessText {
+			get {
 				object o = ViewState ["CompleteSuccessText"];
 				return (o == null) ? Locale.GetText ("Your account has been successfully created.") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("CompleteSuccessText");
 				else
@@ -183,10 +169,12 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public TableItemStyle CompleteSuccessTextStyle
-		{
-			get
-			{
+		[DefaultValue (null)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Content)]
+		[NotifyParentProperty (true)]
+		[PersistenceMode (PersistenceMode.InnerProperty)]
+		public TableItemStyle CompleteSuccessTextStyle {
+			get {
 				if (_completeSuccessTextStyle == null) {
 					_completeSuccessTextStyle = new TableItemStyle ();
 					if (IsTrackingViewState)
@@ -196,21 +184,19 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public virtual string ConfirmPassword
-		{
+		[Browsable (false)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
+		public virtual string ConfirmPassword {
 			get { return _confirmPassword; }
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string ConfirmPasswordCompareErrorMessage
-		{
-			get
-			{
+		public virtual string ConfirmPasswordCompareErrorMessage {
+			get {
 				object o = ViewState ["ConfirmPasswordCompareErrorMessage"];
 				return (o == null) ? Locale.GetText ("The Password and Confirmation Password must match.") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("ConfirmPasswordCompareErrorMessage");
 				else
@@ -219,15 +205,12 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string ConfirmPasswordLabelText
-		{
-			get
-			{
+		public virtual string ConfirmPasswordLabelText {
+			get {
 				object o = ViewState ["ConfirmPasswordLabelText"];
 				return (o == null) ? Locale.GetText ("Confirm Password:") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("ConfirmPasswordLabelText");
 				else
@@ -236,15 +219,12 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string ConfirmPasswordRequiredErrorMessage
-		{
-			get
-			{
+		public virtual string ConfirmPasswordRequiredErrorMessage {
+			get {
 				object o = ViewState ["ConfirmPasswordRequiredErrorMessage"];
 				return (o == null) ? Locale.GetText ("Confirm Password is required.") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("ConfirmPasswordRequiredErrorMessage");
 				else
@@ -252,14 +232,19 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public virtual string ContinueButtonImageUrl
-		{
+		[DefaultValue ("")]
+		[UrlProperty]
+		[Editor ("System.Web.UI.Design.ImageUrlEditor, " + Consts.AssemblySystem_Design, "System.Drawing.Design.UITypeEditor, " + Consts.AssemblySystem_Drawing)]
+		public virtual string ContinueButtonImageUrl {
 			get { return ViewState.GetString ("ContinueButtonImageUrl", String.Empty); }
 			set { ViewState ["ContinueButtonImageUrl"] = value; }
 		}
 
-		public Style ContinueButtonStyle
-		{
+		[DefaultValue (null)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Content)]
+		[NotifyParentProperty (true)]
+		[PersistenceMode (PersistenceMode.InnerProperty)]
+		public Style ContinueButtonStyle {
 			get {
 				if (_continueButtonStyle == null) {
 					_continueButtonStyle = new Style ();
@@ -271,14 +256,13 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string ContinueButtonText
-		{
+		public virtual string ContinueButtonText {
 			get { return ViewState.GetString ("ContinueButtonText", "Continue"); }
 			set { ViewState ["ContinueButtonText"] = value; }
 		}
 
-		public virtual ButtonType ContinueButtonType
-		{
+		[DefaultValue (ButtonType.Button)]
+		public virtual ButtonType ContinueButtonType {
 			get {
 				object v = ViewState ["ContinueButtonType"];
 				return v != null ? (ButtonType) v : ButtonType.Button;
@@ -288,16 +272,16 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
+		[DefaultValue ("")]
+		[UrlProperty]
+		[Editor ("System.Web.UI.Design.UrlEditor, " + Consts.AssemblySystem_Design, "System.Drawing.Design.UITypeEditor, " + Consts.AssemblySystem_Drawing)]
 		[ThemeableAttribute (false)]
-		public virtual string ContinueDestinationPageUrl
-		{
-			get
-			{
+		public virtual string ContinueDestinationPageUrl {
+			get {
 				object o = ViewState ["ContinueDestinationPageUrl"];
 				return (o == null) ? "" : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("ContinueDestinationPageUrl");
 				else
@@ -305,14 +289,19 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public virtual string CreateUserButtonImageUrl
-		{
+		[DefaultValue ("")]
+		[UrlProperty]
+		[Editor ("System.Web.UI.Design.ImageUrlEditor, " + Consts.AssemblySystem_Design, "System.Drawing.Design.UITypeEditor, " + Consts.AssemblySystem_Drawing)]
+		public virtual string CreateUserButtonImageUrl {
 			get { return ViewState.GetString ("CreateUserButtonImageUrl", String.Empty); }
 			set { ViewState ["CreateUserButtonImageUrl"] = value; }
 		}
 
-		public Style CreateUserButtonStyle
-		{
+		[DefaultValue (null)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Content)]
+		[NotifyParentProperty (true)]
+		[PersistenceMode (PersistenceMode.InnerProperty)]
+		public Style CreateUserButtonStyle {
 			get {
 				if (_createUserButtonStyle == null) {
 					_createUserButtonStyle = new Style ();
@@ -324,27 +313,24 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string CreateUserButtonText
-		{
+		public virtual string CreateUserButtonText {
 			get { return ViewState.GetString ("CreateUserButtonText", "Create User"); }
 			set { ViewState ["CreateUserButtonText"] = value; }
 		}
 
-		public virtual ButtonType CreateUserButtonType
-		{
+		[DefaultValue (ButtonType.Button)]
+		public virtual ButtonType CreateUserButtonType {
 			get {
 				object v = ViewState ["CreateUserButtonType"];
 				return v != null ? (ButtonType) v : ButtonType.Button;
 			}
-			set {
-				ViewState ["CreateUserButtonType"] = value;
-			}
+			set { ViewState ["CreateUserButtonType"] = value; }
 		}
 
-		public CreateUserWizardStep CreateUserStep
-		{
-			get
-			{
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
+		[Browsable (false)]
+		public CreateUserWizardStep CreateUserStep {
+			get {
 				if (_createUserWizardStep == null) {
 					for (int i = 0; i < WizardSteps.Count; i++)
 						if (WizardSteps [i] is CreateUserWizardStep) {
@@ -358,25 +344,19 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
+		[DefaultValue (false)]
 		[ThemeableAttribute (false)]
-		public virtual bool DisableCreatedUser
-		{
-			get
-			{
+		public virtual bool DisableCreatedUser {
+			get {
 				object o = ViewState ["DisableCreatedUser"];
 				return (o == null) ? false : (bool) o;
 			}
-			set
-			{
-				ViewState ["DisableCreatedUser"] = value;
-			}
+			set { ViewState ["DisableCreatedUser"] = value; }
 		}
 
-		public override bool DisplaySideBar
-		{
-			get {
-				return ViewState.GetBool ("DisplaySideBar", false);
-			}
+		[DefaultValue (false)]
+		public override bool DisplaySideBar {
+			get { return ViewState.GetBool ("DisplaySideBar", false); }
 			set {
 				ViewState ["DisplaySideBar"] = value;
 				ChildControlsCreated = false;
@@ -384,15 +364,12 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string DuplicateEmailErrorMessage
-		{
-			get
-			{
+		public virtual string DuplicateEmailErrorMessage {
+			get {
 				object o = ViewState ["DuplicateEmailErrorMessage"];
 				return (o == null) ? Locale.GetText ("The e-mail address that you entered is already in use. Please enter a different e-mail address.") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("DuplicateEmailErrorMessage");
 				else
@@ -401,15 +378,12 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string DuplicateUserNameErrorMessage
-		{
-			get
-			{
+		public virtual string DuplicateUserNameErrorMessage {
+			get {
 				object o = ViewState ["DuplicateUserNameErrorMessage"];
 				return (o == null) ? Locale.GetText ("Please enter a different user name.") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("DuplicateUserNameErrorMessage");
 				else
@@ -417,15 +391,15 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public virtual string EditProfileIconUrl
-		{
-			get
-			{
+		[DefaultValue ("")]
+		[UrlProperty]
+		[Editor ("System.Web.UI.Design.ImageUrlEditor, " + Consts.AssemblySystem_Design, "System.Drawing.Design.UITypeEditor, " + Consts.AssemblySystem_Drawing)]
+		public virtual string EditProfileIconUrl {
+			get {
 				object o = ViewState ["EditProfileIconUrl"];
-				return (o == null) ? "" : (string) o;
+				return (o == null) ? String.Empty : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("EditProfileIconUrl");
 				else
@@ -433,16 +407,14 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
+		[DefaultValue ("")]
 		[LocalizableAttribute (true)]
-		public virtual string EditProfileText
-		{
-			get
-			{
+		public virtual string EditProfileText {
+			get {
 				object o = ViewState ["EditProfileText"];
-				return (o == null) ? "" : (string) o;
+				return (o == null) ? String.Empty : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("EditProfileText");
 				else
@@ -450,15 +422,15 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public virtual string EditProfileUrl
-		{
-			get
-			{
+		[DefaultValue ("")]
+		[UrlProperty]
+		[Editor ("System.Web.UI.Design.UrlEditor, " + Consts.AssemblySystem_Design, "System.Drawing.Design.UITypeEditor, " + Consts.AssemblySystem_Drawing)]
+		public virtual string EditProfileUrl {
+			get {
 				object o = ViewState ["EditProfileUrl"];
-				return (o == null) ? "" : (string) o;
+				return (o == null) ? String.Empty : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("EditProfileUrl");
 				else
@@ -466,15 +438,13 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public virtual string Email
-		{
-			get
-			{
+		[DefaultValue ("")]
+		public virtual string Email {
+			get {
 				object o = ViewState ["Email"];
 				return (o == null) ? String.Empty : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("Email");
 				else
@@ -483,15 +453,12 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string EmailLabelText
-		{
-			get
-			{
+		public virtual string EmailLabelText {
+			get {
 				object o = ViewState ["EmailLabelText"];
 				return (o == null) ? Locale.GetText ("E-mail:") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("EmailLabelText");
 				else
@@ -499,15 +466,12 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public virtual string EmailRegularExpression
-		{
-			get
-			{
+		public virtual string EmailRegularExpression {
+			get {
 				object o = ViewState ["EmailRegularExpression"];
-				return (o == null) ? "" : (string) o;
+				return (o == null) ? String.Empty : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("EmailRegularExpression");
 				else
@@ -515,15 +479,12 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public virtual string EmailRegularExpressionErrorMessage
-		{
-			get
-			{
+		public virtual string EmailRegularExpressionErrorMessage {
+			get {
 				object o = ViewState ["EmailRegularExpressionErrorMessage"];
 				return (o == null) ? Locale.GetText ("Please enter a different e-mail.") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("EmailRegularExpressionErrorMessage");
 				else
@@ -532,15 +493,12 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string EmailRequiredErrorMessage
-		{
-			get
-			{
+		public virtual string EmailRequiredErrorMessage {
+			get {
 				object o = ViewState ["EmailRequiredErrorMessage"];
 				return (o == null) ? Locale.GetText ("E-mail is required.") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("EmailRequiredErrorMessage");
 				else
@@ -548,10 +506,12 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public TableItemStyle ErrorMessageStyle
-		{
-			get
-			{
+		[DefaultValue (null)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Content)]
+		[NotifyParentProperty (true)]
+		[PersistenceMode (PersistenceMode.InnerProperty)]
+		public TableItemStyle ErrorMessageStyle {
+			get {
 				if (_errorMessageStyle == null) {
 					_errorMessageStyle = new TableItemStyle ();
 					if (IsTrackingViewState)
@@ -561,15 +521,15 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public virtual string HelpPageIconUrl
-		{
-			get
-			{
+		[DefaultValue ("")]
+		[UrlProperty]
+		[Editor ("System.Web.UI.Design.ImageUrlEditor, " + Consts.AssemblySystem_Design, "System.Drawing.Design.UITypeEditor, " + Consts.AssemblySystem_Drawing)]
+		public virtual string HelpPageIconUrl {
+			get {
 				object o = ViewState ["HelpPageIconUrl"];
-				return (o == null) ? "" : (string) o;
+				return (o == null) ? String.Empty : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("HelpPageIconUrl");
 				else
@@ -577,16 +537,14 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
+		[DefaultValue ("")]
 		[LocalizableAttribute (true)]
-		public virtual string HelpPageText
-		{
-			get
-			{
+		public virtual string HelpPageText {
+			get {
 				object o = ViewState ["HelpPageText"];
-				return (o == null) ? "" : (string) o;
+				return (o == null) ? String.Empty : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("HelpPageText");
 				else
@@ -594,15 +552,15 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public virtual string HelpPageUrl
-		{
-			get
-			{
+		[DefaultValue ("")]
+		[UrlProperty]
+		[Editor ("System.Web.UI.Design.UrlEditor, " + Consts.AssemblySystem_Design, "System.Drawing.Design.UITypeEditor, " + Consts.AssemblySystem_Drawing)]
+		public virtual string HelpPageUrl {
+			get {
 				object o = ViewState ["HelpPageUrl"];
-				return (o == null) ? "" : (string) o;
+				return (o == null) ? String.Empty : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("HelpPageUrl");
 				else
@@ -610,10 +568,12 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public TableItemStyle HyperLinkStyle
-		{
-			get
-			{
+		[DefaultValue (null)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Content)]
+		[NotifyParentProperty (true)]
+		[PersistenceMode (PersistenceMode.InnerProperty)]
+		public TableItemStyle HyperLinkStyle {
+			get {
 				if (_hyperLinkStyle == null) {
 					_hyperLinkStyle = new TableItemStyle ();
 					if (IsTrackingViewState)
@@ -623,16 +583,14 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
+		[DefaultValue ("")]
 		[LocalizableAttribute (true)]
-		public virtual string InstructionText
-		{
-			get
-			{
+		public virtual string InstructionText {
+			get {
 				object o = ViewState ["InstructionText"];
-				return (o == null) ? "" : (string) o;
+				return (o == null) ? String.Empty : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("InstructionText");
 				else
@@ -640,10 +598,12 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public TableItemStyle InstructionTextStyle
-		{
-			get
-			{
+		[DefaultValue (null)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Content)]
+		[NotifyParentProperty (true)]
+		[PersistenceMode (PersistenceMode.InnerProperty)]
+		public TableItemStyle InstructionTextStyle {
+			get {
 				if (_instructionTextStyle == null) {
 					_instructionTextStyle = new TableItemStyle ();
 					if (IsTrackingViewState)
@@ -654,15 +614,12 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string InvalidAnswerErrorMessage
-		{
-			get
-			{
+		public virtual string InvalidAnswerErrorMessage {
+			get {
 				object o = ViewState ["InvalidAnswerErrorMessage"];
 				return (o == null) ? Locale.GetText ("Please enter a different security answer.") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("InvalidAnswerErrorMessage");
 				else
@@ -671,15 +628,12 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string InvalidEmailErrorMessage
-		{
-			get
-			{
+		public virtual string InvalidEmailErrorMessage {
+			get {
 				object o = ViewState ["InvalidEmailErrorMessage"];
 				return (o == null) ? Locale.GetText ("Please enter a valid e-mail address.") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("InvalidEmailErrorMessage");
 				else
@@ -689,15 +643,12 @@ namespace System.Web.UI.WebControls
 
 		[MonoTODO ("take the values from membership provider")]
 		[LocalizableAttribute (true)]
-		public virtual string InvalidPasswordErrorMessage
-		{
-			get
-			{
+		public virtual string InvalidPasswordErrorMessage {
+			get {
 				object o = ViewState ["InvalidPasswordErrorMessage"];
 				return (o == null) ? Locale.GetText ("Password length minimum: {0}. Non-alphanumeric characters required: {1}.") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("InvalidPasswordErrorMessage");
 				else
@@ -706,15 +657,12 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string InvalidQuestionErrorMessage
-		{
-			get
-			{
+		public virtual string InvalidQuestionErrorMessage {
+			get {
 				object o = ViewState ["InvalidQuestionErrorMessage"];
 				return (o == null) ? Locale.GetText ("Please enter a different security question.") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("InvalidQuestionErrorMessage");
 				else
@@ -722,10 +670,12 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public TableItemStyle LabelStyle
-		{
-			get
-			{
+		[DefaultValue (null)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Content)]
+		[NotifyParentProperty (true)]
+		[PersistenceMode (PersistenceMode.InnerProperty)]
+		public TableItemStyle LabelStyle {
+			get {
 				if (_labelStyle == null) {
 					_labelStyle = new TableItemStyle ();
 					if (IsTrackingViewState)
@@ -735,20 +685,21 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
+		[DefaultValue (true)]
 		[ThemeableAttribute (false)]
-		public virtual bool LoginCreatedUser
-		{
-			get
-			{
+		public virtual bool LoginCreatedUser {
+			get {
 				object o = ViewState ["LoginCreatedUser"];
 				return (o == null) ? true : (bool) o;
 			}
-			set
-			{
+			set {
 				ViewState ["LoginCreatedUser"] = value;
 			}
 		}
 
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Content)]
+		[NotifyParentProperty (true)]
+		[PersistenceMode (PersistenceMode.InnerProperty)]
 		[ThemeableAttribute (false)]
 		public MailDefinition MailDefinition {
 			get {
@@ -761,16 +712,14 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
+		[DefaultValue ("")]
 		[ThemeableAttribute (false)]
-		public virtual string MembershipProvider
-		{
-			get
-			{
+		public virtual string MembershipProvider {
+			get {
 				object o = ViewState ["MembershipProvider"];
-				return (o == null) ? "" : (string) o;
+				return (o == null) ? String.Empty : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("MembershipProvider");
 				else
@@ -780,10 +729,8 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		internal virtual MembershipProvider MembershipProviderInternal
-		{
-			get
-			{
+		internal virtual MembershipProvider MembershipProviderInternal {
+			get {
 				if (_provider == null)
 					InitMemberShipProvider ();
 
@@ -791,15 +738,18 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public virtual string Password
-		{
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
+		[Browsable (false)]
+		public virtual string Password {
 			get { return _password; }
 		}
 
-		public TableItemStyle PasswordHintStyle
-		{
-			get
-			{
+		[DefaultValue (null)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Content)]
+		[NotifyParentProperty (true)]
+		[PersistenceMode (PersistenceMode.InnerProperty)]
+		public TableItemStyle PasswordHintStyle {
+			get {
 				if (_passwordHintStyle == null) {
 					_passwordHintStyle = new TableItemStyle ();
 					if (IsTrackingViewState)
@@ -810,15 +760,12 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string PasswordHintText
-		{
-			get
-			{
+		public virtual string PasswordHintText {
+			get {
 				object o = ViewState ["PasswordHintText"];
-				return (o == null) ? "" : (string) o;
+				return (o == null) ? String.Empty : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("PasswordHintText");
 				else
@@ -827,15 +774,12 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string PasswordLabelText
-		{
-			get
-			{
+		public virtual string PasswordLabelText {
+			get {
 				object o = ViewState ["PasswordLabelText"];
 				return (o == null) ? Locale.GetText ("Password:") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("PasswordLabelText");
 				else
@@ -843,15 +787,12 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public virtual string PasswordRegularExpression
-		{
-			get
-			{
+		public virtual string PasswordRegularExpression {
+			get {
 				object o = ViewState ["PasswordRegularExpression"];
-				return (o == null) ? "" : (string) o;
+				return (o == null) ? String.Empty : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("PasswordRegularExpression");
 				else
@@ -859,15 +800,12 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public virtual string PasswordRegularExpressionErrorMessage
-		{
-			get
-			{
+		public virtual string PasswordRegularExpressionErrorMessage {
+			get {
 				object o = ViewState ["PasswordRegularExpressionErrorMessage"];
 				return (o == null) ? Locale.GetText ("Please enter a different password.") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("PasswordRegularExpressionErrorMessage");
 				else
@@ -876,15 +814,12 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string PasswordRequiredErrorMessage
-		{
-			get
-			{
+		public virtual string PasswordRequiredErrorMessage {
+			get {
 				object o = ViewState ["PasswordRequiredErrorMessage"];
 				return (o == null) ? Locale.GetText ("Password is required.") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("PasswordRequiredErrorMessage");
 				else
@@ -892,17 +827,15 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
+		[DefaultValue ("")]
 		[LocalizableAttribute (true)]
 		[ThemeableAttribute (false)]
-		public virtual string Question
-		{
-			get
-			{
+		public virtual string Question {
+			get {
 				object o = ViewState ["Question"];
 				return (o == null) ? String.Empty : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("Question");
 				else
@@ -911,15 +844,12 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string QuestionLabelText
-		{
-			get
-			{
+		public virtual string QuestionLabelText {
+			get {
 				object o = ViewState ["QuestionLabelText"];
 				return (o == null) ? Locale.GetText ("Security Question:") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("QuestionLabelText");
 				else
@@ -928,15 +858,12 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string QuestionRequiredErrorMessage
-		{
-			get
-			{
+		public virtual string QuestionRequiredErrorMessage {
+			get {
 				object o = ViewState ["QuestionRequiredErrorMessage"];
 				return (o == null) ? Locale.GetText ("Security question is required.") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("QuestionRequiredErrorMessage");
 				else
@@ -944,30 +871,26 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
+		[DefaultValue (true)]
 		[ThemeableAttribute (false)]
-		public virtual bool RequireEmail
-		{
-			get
-			{
+		public virtual bool RequireEmail {
+			get {
 				object o = ViewState ["RequireEmail"];
 				return (o == null) ? true : (bool) o;
 			}
-			set
-			{
+			set {
 				ViewState ["RequireEmail"] = value;
 			}
 		}
 
+		[DefaultValue ("")]
 		[MonoTODO ("doesnt work")]
-		public override string SkipLinkText
-		{
-			get
-			{
+		public override string SkipLinkText {
+			get {
 				object o = ViewState ["SkipLinkText"];
-				return (o == null) ? "" : (string) o;
+				return (o == null) ? String.Empty : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("SkipLinkText");
 				else
@@ -975,10 +898,12 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public Style TextBoxStyle
-		{
-			get
-			{
+		[DefaultValue (null)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Content)]
+		[NotifyParentProperty (true)]
+		[PersistenceMode (PersistenceMode.InnerProperty)]
+		public Style TextBoxStyle {
+			get {
 				if (_textBoxStyle == null) {
 					_textBoxStyle = new Style ();
 					if (IsTrackingViewState)
@@ -988,10 +913,12 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public TableItemStyle TitleTextStyle
-		{
-			get
-			{
+		[DefaultValue (null)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Content)]
+		[NotifyParentProperty (true)]
+		[PersistenceMode (PersistenceMode.InnerProperty)]
+		public TableItemStyle TitleTextStyle {
+			get {
 				if (_titleTextStyle == null) {
 					_titleTextStyle = new TableItemStyle ();
 					if (IsTrackingViewState)
@@ -1002,15 +929,12 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string UnknownErrorMessage
-		{
-			get
-			{
+		public virtual string UnknownErrorMessage {
+			get {
 				object o = ViewState ["UnknownErrorMessage"];
 				return (o == null) ? Locale.GetText ("Your account was not created. Please try again.") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("UnknownErrorMessage");
 				else
@@ -1018,15 +942,13 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public virtual string UserName
-		{
-			get
-			{
+		[DefaultValue ("")]
+		public virtual string UserName {
+			get {
 				object o = ViewState ["UserName"];
 				return (o == null) ? String.Empty : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("UserName");
 				else
@@ -1035,15 +957,12 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string UserNameLabelText
-		{
-			get
-			{
+		public virtual string UserNameLabelText {
+			get {
 				object o = ViewState ["UserNameLabelText"];
 				return (o == null) ? Locale.GetText ("User Name:") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("UserNameLabelText");
 				else
@@ -1052,15 +971,12 @@ namespace System.Web.UI.WebControls
 		}
 
 		[LocalizableAttribute (true)]
-		public virtual string UserNameRequiredErrorMessage
-		{
-			get
-			{
+		public virtual string UserNameRequiredErrorMessage {
+			get {
 				object o = ViewState ["UserNameRequiredErrorMessage"];
 				return (o == null) ? Locale.GetText ("User Name is required.") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("UserNameRequiredErrorMessage");
 				else
@@ -1068,10 +984,12 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		public Style ValidatorTextStyle
-		{
-			get
-			{
+		[DefaultValue (null)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Content)]
+		[NotifyParentProperty (true)]
+		[PersistenceMode (PersistenceMode.InnerProperty)]
+		public Style ValidatorTextStyle {
+			get {
 				if (_validatorTextStyle == null) {
 					_validatorTextStyle = new Style ();
 					if (IsTrackingViewState)
@@ -1080,10 +998,9 @@ namespace System.Web.UI.WebControls
 				return _validatorTextStyle;
 			}
 		}
-
-		[ThemeableAttribute (false)]
-		public override WizardStepCollection WizardSteps
-		{
+		
+		[Editor ("System.Web.UI.Design.WebControls.CreateUserWizardStepCollectionEditor, " + Consts.AssemblySystem_Design, "System.Drawing.Design.UITypeEditor, " + Consts.AssemblySystem_Drawing)]
+		public override WizardStepCollection WizardSteps {
 			get { return base.WizardSteps; }
 		}
 
@@ -1091,43 +1008,37 @@ namespace System.Web.UI.WebControls
 
 		#region Protected Properties
 
-		protected internal bool QuestionAndAnswerRequired
-		{
+		[DefaultValue (true)]
+		protected internal bool QuestionAndAnswerRequired {
 			get { return MembershipProviderInternal.RequiresQuestionAndAnswer; }
 		}
 
-		public event EventHandler ContinueButtonClick
-		{
+		public event EventHandler ContinueButtonClick {
 			add { Events.AddHandler (ContinueButtonClickEvent, value); }
 			remove { Events.RemoveHandler (ContinueButtonClickEvent, value); }
 		}
 
-		public event EventHandler CreatedUser
-		{
+		public event EventHandler CreatedUser {
 			add { Events.AddHandler (CreatedUserEvent, value); }
 			remove { Events.RemoveHandler (CreatedUserEvent, value); }
 		}
 
-		public event CreateUserErrorEventHandler CreateUserError
-		{
+		public event CreateUserErrorEventHandler CreateUserError {
 			add { Events.AddHandler (CreateUserErrorEvent, value); }
 			remove { Events.RemoveHandler (CreateUserErrorEvent, value); }
 		}
 
-		public event LoginCancelEventHandler CreatingUser
-		{
+		public event LoginCancelEventHandler CreatingUser {
 			add { Events.AddHandler (CreatingUserEvent, value); }
 			remove { Events.RemoveHandler (CreatingUserEvent, value); }
 		}
 
-		public event MailMessageEventHandler SendingMail
-		{
+		public event MailMessageEventHandler SendingMail {
 			add { Events.AddHandler (SendingMailEvent, value); }
 			remove { Events.RemoveHandler (SendingMailEvent, value); }
 		}
 
-		public event SendMailErrorEventHandler SendMailError
-		{
+		public event SendMailErrorEventHandler SendMailError {
 			add { Events.AddHandler (SendMailErrorEvent, value); }
 			remove { Events.RemoveHandler (SendMailErrorEvent, value); }
 		}
@@ -1139,23 +1050,19 @@ namespace System.Web.UI.WebControls
 
 		internal override void InstantiateTemplateStep (TemplatedWizardStep step)
 		{
-			if (step is CreateUserWizardStep) {
+			if (step is CreateUserWizardStep)
 				InstantiateCreateUserWizardStep ((CreateUserWizardStep) step);
-			}
-			else if (step is CompleteWizardStep) {
+			else if (step is CompleteWizardStep)
 				InstantiateCompleteWizardStep ((CompleteWizardStep) step);
-			}
-			else {
+			else
 				base.InstantiateTemplateStep (step);
-			}
 		}
 
 		void InstantiateCompleteWizardStep (CompleteWizardStep step)
 		{
 			CompleteStepContainer contentTemplateContainer = new CompleteStepContainer (this);
-			if (step.ContentTemplate != null) {
+			if (step.ContentTemplate != null)
 				step.ContentTemplate.InstantiateIn (contentTemplateContainer.InnerCell);
-			}
 			else {
 				new CompleteStepTemplate (this).InstantiateIn (contentTemplateContainer.InnerCell);
 				contentTemplateContainer.ConfirmDefaultTemplate ();
@@ -1176,9 +1083,8 @@ namespace System.Web.UI.WebControls
 		void InstantiateCreateUserWizardStep (CreateUserWizardStep step)
 		{
 			CreateUserStepContainer contentTemplateContainer = new CreateUserStepContainer (this);
-			if (step.ContentTemplate != null) {
+			if (step.ContentTemplate != null)
 				step.ContentTemplate.InstantiateIn (contentTemplateContainer.InnerCell);
-			}
 			else {
 				new CreateUserStepTemplate (this).InstantiateIn (contentTemplateContainer.InnerCell);
 				contentTemplateContainer.ConfirmDefaultTemplate ();
@@ -1190,9 +1096,8 @@ namespace System.Web.UI.WebControls
 			step.Controls.Add (contentTemplateContainer);
 
 			CreateUserNavigationContainer customNavigationTemplateContainer = new CreateUserNavigationContainer (this);
-			if (step.CustomNavigationTemplate != null) {
+			if (step.CustomNavigationTemplate != null)
 				step.CustomNavigationTemplate.InstantiateIn (customNavigationTemplateContainer);
-			}
 			else {
 				new CreateUserStepNavigationTemplate (this).InstantiateIn (customNavigationTemplateContainer);
 				customNavigationTemplateContainer.ConfirmDefaultTemplate ();
@@ -1202,8 +1107,7 @@ namespace System.Web.UI.WebControls
 			step.CustomNavigationTemplateContainer = customNavigationTemplateContainer;
 		}
 		
-		internal override ITemplate SideBarItemTemplate
-		{
+		internal override ITemplate SideBarItemTemplate {
 			get { return new SideBarLabelTemplate (this); }
 		}
 
@@ -1218,7 +1122,7 @@ namespace System.Web.UI.WebControls
 
 			if (CompleteStep == null)
 				WizardSteps.AddAt (WizardSteps.Count, new CompleteWizardStep ());
-
+			
 			base.CreateChildControls ();
 		}
 
@@ -1286,19 +1190,20 @@ namespace System.Web.UI.WebControls
 			return base.OnBubbleEvent (source, e);
 		}
 
-		void ProcessContinueEvent () {
+		void ProcessContinueEvent ()
+		{
 			OnContinueButtonClick (EventArgs.Empty);
 
-			if (ContinueDestinationPageUrl.Length > 0) {
+			if (ContinueDestinationPageUrl.Length > 0)
 				Context.Response.Redirect (ContinueDestinationPageUrl);
-			}
 		}
 
 		protected virtual void OnContinueButtonClick (EventArgs e)
 		{
 			if (Events != null) {
 				EventHandler eh = (EventHandler) Events [ContinueButtonClickEvent];
-				if (eh != null) eh (this, e);
+				if (eh != null)
+					eh (this, e);
 			}
 		}
 
@@ -1306,7 +1211,8 @@ namespace System.Web.UI.WebControls
 		{
 			if (Events != null) {
 				EventHandler eh = (EventHandler) Events [CreatedUserEvent];
-				if (eh != null) eh (this, e);
+				if (eh != null)
+					eh (this, e);
 			}
 		}
 
@@ -1314,7 +1220,8 @@ namespace System.Web.UI.WebControls
 		{
 			if (Events != null) {
 				CreateUserErrorEventHandler eh = (CreateUserErrorEventHandler) Events [CreateUserErrorEvent];
-				if (eh != null) eh (this, e);
+				if (eh != null)
+					eh (this, e);
 			}
 		}
 
@@ -1322,7 +1229,8 @@ namespace System.Web.UI.WebControls
 		{
 			if (Events != null) {
 				LoginCancelEventHandler eh = (LoginCancelEventHandler) Events [CreatingUserEvent];
-				if (eh != null) eh (this, e);
+				if (eh != null)
+					eh (this, e);
 			}
 		}
 
@@ -1348,7 +1256,8 @@ namespace System.Web.UI.WebControls
 		{
 			if (Events != null) {
 				MailMessageEventHandler eh = (MailMessageEventHandler) Events [SendingMailEvent];
-				if (eh != null) eh (this, e);
+				if (eh != null)
+					eh (this, e);
 			}
 		}
 
@@ -1680,23 +1589,20 @@ namespace System.Web.UI.WebControls
 			protected override void UpdateState ()
 			{
 				// previous
-				if (_createUserWizard.AllowNavigationToStep (_createUserWizard.ActiveStepIndex - 1)) {
+				int previous = _createUserWizard.ActiveStepIndex - 1;
+				if (previous >= 0 && _createUserWizard.AllowNavigationToStep (previous))
 					UpdateNavButtonState (Wizard.StepPreviousButtonID + Wizard.StepPreviousButtonType, Wizard.StepPreviousButtonText, Wizard.StepPreviousButtonImageUrl, Wizard.StepPreviousButtonStyle);
-				}
-				else {
+				else
 					((Table) Controls [0]).Rows [0].Cells [0].Visible = false;
-				}
 
 				// create user
 				UpdateNavButtonState (Wizard.StepNextButtonID + _createUserWizard.CreateUserButtonType, _createUserWizard.CreateUserButtonText, _createUserWizard.CreateUserButtonImageUrl, _createUserWizard.CreateUserButtonStyle);
 
 				// cancel
-				if (Wizard.DisplayCancelButton) {
+				if (Wizard.DisplayCancelButton)
 					UpdateNavButtonState (Wizard.CancelButtonID + Wizard.CancelButtonType, Wizard.CancelButtonText, Wizard.CancelButtonImageUrl, Wizard.CancelButtonStyle);
-				}
-				else {
+				else
 					((Table) Controls [0]).Rows [0].Cells [2].Visible = false;
-				}
 			}
 		}
 
@@ -1710,7 +1616,8 @@ namespace System.Web.UI.WebControls
 
 			#region ITemplate Members
 
-			public void InstantiateIn (Control container) {
+			public void InstantiateIn (Control container)
+			{
 				Table t = new Table ();
 				t.CellPadding = 5;
 				t.CellSpacing = 5;
@@ -1803,22 +1710,19 @@ namespace System.Web.UI.WebControls
 				get { return FindControl ("ErrorMessage") as ITextControl; }
 			}
 
-			protected override void UpdateState () {
+			protected override void UpdateState ()
+			{
 				// Row #0 - title
-				if (String.IsNullOrEmpty (_createUserWizard.CreateUserStep.Title)) {
+				if (String.IsNullOrEmpty (_createUserWizard.CreateUserStep.Title))
 					((Table) InnerCell.Controls [0]).Rows [0].Visible = false;
-				}
-				else {
+				else
 					((Table) InnerCell.Controls [0]).Rows [0].Cells [0].Text = _createUserWizard.CreateUserStep.Title;
-				}
 
 				// Row #1 - InstructionText
-				if (String.IsNullOrEmpty (_createUserWizard.InstructionText)) {
+				if (String.IsNullOrEmpty (_createUserWizard.InstructionText))
 					((Table) InnerCell.Controls [0]).Rows [1].Visible = false;
-				}
-				else {
+				else
 					((Table) InnerCell.Controls [0]).Rows [1].Cells [0].Text = _createUserWizard.InstructionText;
-				}
 
 				// Row #2
 				Label UserNameLabel = (Label) ((Table) InnerCell.Controls [0]).Rows [2].Cells [0].Controls [0];
@@ -1832,8 +1736,7 @@ namespace System.Web.UI.WebControls
 					((Table) InnerCell.Controls [0]).Rows [3].Visible = false;
 					((Table) InnerCell.Controls [0]).Rows [4].Visible = false;
 					((Table) InnerCell.Controls [0]).Rows [5].Visible = false;
-				}
-				else {
+				} else {
 					// Row #3
 					Label PasswordLabel = (Label) ((Table) InnerCell.Controls [0]).Rows [3].Cells [0].Controls [0];
 					PasswordLabel.Text = _createUserWizard.PasswordLabelText;
@@ -1843,12 +1746,10 @@ namespace System.Web.UI.WebControls
 					PasswordRequired.ToolTip = _createUserWizard.PasswordRequiredErrorMessage;
 
 					// Row #4
-					if (String.IsNullOrEmpty (_createUserWizard.PasswordHintText)) {
+					if (String.IsNullOrEmpty (_createUserWizard.PasswordHintText))
 						((Table) InnerCell.Controls [0]).Rows [4].Visible = false;
-					}
-					else {
+					else
 						((Table) InnerCell.Controls [0]).Rows [4].Cells [1].Text = _createUserWizard.PasswordHintText;
-					}
 
 					// Row #5
 					Label ConfirmPasswordLabel = (Label) ((Table) InnerCell.Controls [0]).Rows [5].Cells [0].Controls [0];
@@ -1867,10 +1768,8 @@ namespace System.Web.UI.WebControls
 					RequiredFieldValidator EmailRequired = (RequiredFieldValidator) FindControl ("EmailRequired");
 					EmailRequired.ErrorMessage = _createUserWizard.EmailRequiredErrorMessage;
 					EmailRequired.ToolTip = _createUserWizard.EmailRequiredErrorMessage;
-				}
-				else {
+				} else
 					((Table) InnerCell.Controls [0]).Rows [6].Visible = false;
-				}
 
 				if (_createUserWizard.QuestionAndAnswerRequired) {
 					// Row #7
@@ -1888,25 +1787,22 @@ namespace System.Web.UI.WebControls
 					RequiredFieldValidator AnswerRequired = (RequiredFieldValidator) FindControl ("AnswerRequired");
 					AnswerRequired.ErrorMessage = _createUserWizard.AnswerRequiredErrorMessage;
 					AnswerRequired.ToolTip = _createUserWizard.AnswerRequiredErrorMessage;
-				}
-				else {
+				} else {
 					((Table) InnerCell.Controls [0]).Rows [7].Visible = false;
 					((Table) InnerCell.Controls [0]).Rows [8].Visible = false;
 				}
 
 				// Row #9
-				if (_createUserWizard.AutoGeneratePassword) {
+				if (_createUserWizard.AutoGeneratePassword)
 					((Table) InnerCell.Controls [0]).Rows [9].Visible = false;
-				}
 				else {
 					CompareValidator PasswordCompare = (CompareValidator) FindControl ("PasswordCompare");
 					PasswordCompare.ErrorMessage = _createUserWizard.ConfirmPasswordCompareErrorMessage;
 				}
 
 				// Row #10
-				if (_createUserWizard.AutoGeneratePassword || String.IsNullOrEmpty (_createUserWizard.PasswordRegularExpression)) {
+				if (_createUserWizard.AutoGeneratePassword || String.IsNullOrEmpty (_createUserWizard.PasswordRegularExpression))
 					((Table) InnerCell.Controls [0]).Rows [10].Visible = false;
-				}
 				else {
 					RegularExpressionValidator PasswordRegEx = (RegularExpressionValidator) FindControl ("PasswordRegEx");
 					PasswordRegEx.ValidationExpression = _createUserWizard.PasswordRegularExpression;
@@ -1914,9 +1810,8 @@ namespace System.Web.UI.WebControls
 				}
 
 				// Row #11
-				if (!_createUserWizard.RequireEmail || String.IsNullOrEmpty (_createUserWizard.EmailRegularExpression)) {
+				if (!_createUserWizard.RequireEmail || String.IsNullOrEmpty (_createUserWizard.EmailRegularExpression))
 					((Table) InnerCell.Controls [0]).Rows [11].Visible = false;
-				}
 				else {
 					RegularExpressionValidator EmailRegEx = (RegularExpressionValidator) FindControl ("EmailRegEx");
 					EmailRegEx.ErrorMessage = _createUserWizard.EmailRegularExpressionErrorMessage;
@@ -1924,16 +1819,14 @@ namespace System.Web.UI.WebControls
 				}
 
 				// Row #12
-				if (String.IsNullOrEmpty (ErrorMessageLabel.Text)) {
+				if (String.IsNullOrEmpty (ErrorMessageLabel.Text))
 					((Table) InnerCell.Controls [0]).Rows [12].Visible = false;
-				}
 
 				// Row #13
 				// HelpPageIconUrl
 				Image img = (Image) ((Table) InnerCell.Controls [0]).Rows [13].Cells [0].Controls [0];
-				if (String.IsNullOrEmpty (_createUserWizard.HelpPageIconUrl)) {
+				if (String.IsNullOrEmpty (_createUserWizard.HelpPageIconUrl))
 					img.Visible = false;
-				}
 				else {
 					img.ImageUrl = _createUserWizard.HelpPageIconUrl;
 					img.AlternateText = _createUserWizard.HelpPageText;
@@ -1941,9 +1834,8 @@ namespace System.Web.UI.WebControls
 
 				// HelpPageText
 				HyperLink link = (HyperLink) ((Table) InnerCell.Controls [0]).Rows [13].Cells [0].Controls [1];
-				if (String.IsNullOrEmpty (_createUserWizard.HelpPageText)) {
+				if (String.IsNullOrEmpty (_createUserWizard.HelpPageText))
 					link.Visible = false;
-				}
 				else {
 					link.Text = _createUserWizard.HelpPageText;
 					link.NavigateUrl = _createUserWizard.HelpPageUrl;
@@ -1986,7 +1878,8 @@ namespace System.Web.UI.WebControls
 
 			#region ITemplate Members
 
-			TableRow CreateRow (Control c0, Control c1, Control c2, Style s0, Style s1) {
+			TableRow CreateRow (Control c0, Control c1, Control c2, Style s0, Style s1)
+			{
 				TableRow row = new TableRow ();
 				TableCell cell0 = new TableCell ();
 				TableCell cell1 = new TableCell ();
@@ -2006,8 +1899,7 @@ namespace System.Web.UI.WebControls
 						_createUserWizard.RegisterApplyStyle (cell1, s1);
 
 					row.Controls.Add (cell1);
-				}
-				else {
+				} else {
 					cell0.ColumnSpan = 2;
 					cell0.HorizontalAlign = HorizontalAlign.Center;
 					if (s0 != null)
@@ -2016,7 +1908,8 @@ namespace System.Web.UI.WebControls
 				return row;
 			}
 
-			public void InstantiateIn (Control container) {
+			public void InstantiateIn (Control container)
+			{
 				Table table = new Table ();
 				table.ControlStyle.Width = Unit.Percentage (100);
 				table.ControlStyle.Height = Unit.Percentage (100);
@@ -2068,7 +1961,7 @@ namespace System.Web.UI.WebControls
 				table.Controls.Add (CreateRow (PasswordLabel, Password, PasswordRequired, _createUserWizard.LabelStyle, null));
 
 				// Row #4
-				table.Controls.Add (CreateRow (new LiteralControl (""), new LiteralControl (""), new LiteralControl (""), null, _createUserWizard.PasswordHintStyle));
+				table.Controls.Add (CreateRow (new LiteralControl (String.Empty), new LiteralControl (String.Empty), new LiteralControl (String.Empty), null, _createUserWizard.PasswordHintStyle));
 
 				// Row #5
 				TextBox ConfirmPassword = new TextBox ();
@@ -2219,29 +2112,24 @@ namespace System.Web.UI.WebControls
 			protected override void UpdateState ()
 			{
 				// title
-				if (String.IsNullOrEmpty (_createUserWizard.CompleteStep.Title)) {
+				if (String.IsNullOrEmpty (_createUserWizard.CompleteStep.Title))
 					((Table) InnerCell.Controls [0]).Rows [0].Visible = false;
-				}
-				else {
+				else
 					((Table) InnerCell.Controls [0]).Rows [0].Cells [0].Text = _createUserWizard.CompleteStep.Title;
-				}
 
 				// CompleteSuccessText
-				if (String.IsNullOrEmpty (_createUserWizard.CompleteSuccessText)) {
+				if (String.IsNullOrEmpty (_createUserWizard.CompleteSuccessText))
 					((Table) InnerCell.Controls [0]).Rows [1].Visible = false;
-				}
-				else {
+				else
 					((Table) InnerCell.Controls [0]).Rows [1].Cells [0].Text = _createUserWizard.CompleteSuccessText;
-				}
 
 				// ContinueButton
 				UpdateNavButtonState ("ContinueButton" + _createUserWizard.ContinueButtonType, _createUserWizard.ContinueButtonText, _createUserWizard.ContinueButtonImageUrl, _createUserWizard.ContinueButtonStyle);
 
 				// EditProfileIconUrl
 				Image img = (Image) ((Table) InnerCell.Controls [0]).Rows [3].Cells [0].Controls [0];
-				if (String.IsNullOrEmpty (_createUserWizard.EditProfileIconUrl)) {
+				if (String.IsNullOrEmpty (_createUserWizard.EditProfileIconUrl))
 					img.Visible = false;
-				}
 				else {
 					img.ImageUrl = _createUserWizard.EditProfileIconUrl;
 					img.AlternateText = _createUserWizard.EditProfileText;
@@ -2249,9 +2137,8 @@ namespace System.Web.UI.WebControls
 
 				// EditProfileText
 				HyperLink link = (HyperLink) ((Table) InnerCell.Controls [0]).Rows [3].Cells [0].Controls [1];
-				if (String.IsNullOrEmpty (_createUserWizard.EditProfileText)) {
+				if (String.IsNullOrEmpty (_createUserWizard.EditProfileText))
 					link.Visible = false;
-				}
 				else {
 					link.Text = _createUserWizard.EditProfileText;
 					link.NavigateUrl = _createUserWizard.EditProfileUrl;
@@ -2343,5 +2230,3 @@ namespace System.Web.UI.WebControls
 		}
 	}
 }
-
-#endif

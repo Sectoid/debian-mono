@@ -1,12 +1,372 @@
+2011-06-20  XTZGZoReX  <xtzgzorex@gmail.com>
+
+	Socket: Fixed a security issue when default-initialized
+	ArraySegment structs are passed in.
+
+	This is the same security issue that was recently addressed in
+	MS.NET.
+
+2011-04-28  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net.Sockets/Socket_2_1.cs: Ensure RemoteEndPoint is
+	always available after ConnectAsync (connected or not, allowed or
+	not). Ensure the Connect event is fired even if denied by policy.
+
+2011-04-28  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net.Sockets/Socket_2_1.cs: Fix some moved code (from
+	SocketAsyncEventArgs.cs) so should the references to
+	RemoteEndPoint still point to the SocketAsyncEventArgs instance.
+	Fix some moon-unit test failures
+
+2011-04-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Missed this in the backport
+
+2011-04-28  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[socket] More BeginConnect (IPAddress []) work
+
+	When trying multiple addresses, the second and sucessive calls to
+	BeginConnect(IPAddress) will cause an error which we would have to
+	ignore and then retry. Since this behavior is not documented, we
+	just close the socket and open a new one for retries is there is
+	already a pending connect attempt.
+
+2011-04-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Socket] Improved ConnectAsync
+
+	ConnectAsync() now uses the improved BeginConnect.
+
+2011-04-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	If there's a delayed exception, clear 'ares'
+
+2011-04-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Worked on linux, failed on OSX
+
+2011-04-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Reset the blocking flag as soon as possible.
+
+2011-04-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[socket] Fixed other BeginConnect overloads
+
+	The BeginConnect overload taking an IPAddress[] was not really
+	asynchronous.
+
+2011-04-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Socket] Fix BeginConnect
+
+	Windows/Linux flagged the socket as writable even when connect()
+	has not been called. On *BSD and OSX, this was not the case and we
+	waited forever.
+
+	Now, for blocking sockets, we make them blocking and call
+	connect() before adding the socket to the wait pool.
+
+2011-03-29  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Reset BytesTransferred on every reuse.
+
+2011-03-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Socket] Remove more auto-delegates
+
+2011-03-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Socket] Minimize allocations of delegates
+
+2011-03-08  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	No need to create an extra instance of Worker.
+
+2011-02-23  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Enable UDP Sockets on MOBILE platforms.
+
+	Fixes runtime part of #666736.
+
+2011-02-11  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Socket] Fix invalid cast
+
+	Fix invalid cast when canceling pending operations due to
+	socket.Close.
+
+2011-01-20  Miguel de Icaza  <miguel@gnome.org>
+
+	Do not build the Socket passing on Mobile systems
+
+2011-01-20  Miguel de Icaza  <miguel@gnome.org>
+
+	[sockets] Implement DuplicateAndClose and Socket
+	(SocketInformation) constructor for in-process socket passing
+	(AppDomains)
+
+2011-01-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Change some usages of ArrayList to List<T> to avoid calls to the
+	slow ArrayList.ToArray(Type) method.
+
+2011-01-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Socket is not connected after error
+
+2010-12-13  Michael Hutchinson  <mhutchinson@novell.com>
+
+	Socket.Dispose is public in 4.0.
+
+2010-12-13  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Don't throw in EndReceive/EndSend + out error
+
+	The overloads of EndReceive and EndSend that have an out
+	SocketError parameter do not throw.
+
+	Patch by Sven Groot that fixes bug #659056.
+
+2010-12-04  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Handle closed sockets in the callbacks
+
+	Accept returns a Socket in AcceptSocket even when the listener is
+	closed. Handle ObjectDisposedException for the other callbacks.
+
+	Fixes bug #657593.
+
+2010-11-24  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Sockets] Support Remote/LocalEndPoint for AF_UNIX
+
+	We were not handling correctly the AF_UNIX family when getting the
+	socket name or the peer name.
+
+	Fixes bug #655637.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
+2010-10-13  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SocketAsyncEventArgs.cs: Remove TODO on SocketClientAccessPolicy
+	Protocol property
+
+2010-10-12  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Handle special case when disposing a socket.
+
+	When disposing a socket that has more than one asynchronous
+	read/write pending, one of the callbacks could call
+	DisposeAllOnClose() while another one is waiting on the lock. Once
+	the lock is acquired, queue.Count will be 0 and Dequeue would
+	fail. This if fixed now.
+
+	Fixes bug #645675.
+
+2010-10-02  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	The EndPoint cannot be null
+
+	The EndPoint argument in Begin/EndSendTo cannot be null.
+
+2010-09-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Handle error in BeginAcceptReceive
+
+	We were ignore possible errors when reading after a socket has
+	been accepted.
+
+2010-09-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Schedule the user callback from unmanaged code
+
+	When possible, schedule the user callback from unmanaged code. We
+	pass it from the IO pool to the regular pool after our internal
+	callback is finished.
+
+2010-09-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Invoke the callback in separate threads
+
+	The callbacks need to be invoked in different threads to avoid
+	clogging the IO pool.
+
+	Fixes bug #639656.
+
+2010-09-29  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net.Sockets/Socket_2_1.cs: Fix, by explicitely throwing
+	an NRE, the checks in [Receive|Send]Async methods - otherwise an
+	exception would occur later, on another thread and close the
+	socket (leading to other, unexpected, exceptions)
+
+2010-09-29  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net.Sockets/SocketAsyncEventArgs.cs: Move policy
+	restriction and elevated trust check outside of loop since its
+	value won't change based on the ipaddress
+
+2010-09-28  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net.Sockets/Socket_2_1.cs: Do not #id-def out
+	[Receive|Send] Generic from moonlight build
+
+2010-09-24  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net.Sockets/SocketAsyncEventArgs.cs: Set the Socket
+	RemoteEndPoint to our RemoteEndPoint on Connect operation. *
+	System.Net.Sockets/Socket_2_1.cs: Return the 'candidate' EndPoint
+	provided by SocketAsyncEventArgs in ConnectAsync (intead of null)
+	until the connection is completed.
+
+2010-09-27  Jb Evain  <jbevain@gmail.com>
+
+	Fix the moonlight build
+
+2010-09-27  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Set LastOperation properly
+
+	SocketAsyncEventArgs.LastOperation is set when the operation is
+	invoked. Reset the error status before each new *Async() call.
+
+2010-09-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Bypass BeginInvoke for asynch. operations
+
+	The code involved in a delegate BeginInvoke is too heavy and of no
+	use for socket asynchronous operations. With these changes, we
+	bypass all that and send the work items directly to the
+	asynchronous IO queue, improving performance and lowering memory
+	use.
+
+2010-09-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	ConnectAsync() security checks
+
+	-ConnectAsync() changed to make security checks for all endpoints
+	before trying to connect for the first time. -Use the socket
+	Connect() call instead of repeating the same stuff. Connect should
+	be splitted in 2 pieces (DNS + Connection attempts).
+
+2010-09-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Added support for ArraySegment
+
+	-Removed NET_2_0 -Implemented support for the Receive/Send
+	overloads that take a list of ArraySegments.
+
+2010-09-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Made the moonlight profile happy.
+
+	Disabled operations not allowed under moonlight.
+
+2010-09-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Move async IO code to Socket_2_1
+
+	Moved internal classes to Socket_2_1.
+
+2010-09-24  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Rework SocketAsyncEventArgs internals
+
+	-Removed #if NET_2_0 -All the *Async() calls but ConnectAsync()
+	are routed through the asynch IO threadpool instead of creating a
+	new short-lived thread for every operation. -When reusing a
+	SocketAsyncEventArgs only 1 new object, a delegate, is created.
+
+2010-09-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net.Sockets/Socket_2_1.cs: Add checks for invalid
+	AddressFamily, SocketType and ProtocolType (to throw
+	ArgumentException). Add negative check for Ttl property. Add
+	AddressFamily mismatch checks to ConnectAsync methods
+
+2010-09-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	LocalEndPoint works now for non-blocking connects
+
+	We didn't keep the endpoint around for non-blocking connects and
+	later, when Poll() was called, we didn't have the information.
+	Also 'isbound' wasn't being set in a few places and UDP sockets
+	needed to be marked as not connected after a call to Connect()
+	with an Any address.
+
+	Removed an old test for Connect(Any) with UDP sockets, since this
+	is used to disconnect them now.
+
+	Fixes bug #640749.
+
+2010-09-10  Jb Evain  <jbevain@gmail.com>
+
+	Fix the moonlight build
+
+2010-09-09  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	UDP sockets allow connections to Any
+
+	UDP sockets that call Connect() to set a default address for
+	datagrams sent, can call Connect() again with IPv6Any or Any to
+	'disconnect'.
+
+	Fixes bug #639098.
+
+2010-04-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SocketAsyncEventArgs.cs: Add check for elevated permissions on
+	sockets (unrestricted). Add handling of new (SL4) 
+	SocketClientAccessPolicyProtocol and pass this option to the
+	CrossDomainPolicyManager
+
+2010-03-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Socket.cs: error handling was totally broken in the synchronous
+	Connect() call.  Fixes bug #590488.
+
+2010-03-19  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Socket.cs: Remove some NET_2_0 defines (using) and add a few
+	MOONLIGHT defines needed to reuse Socket in the client http stack
+	* Socket_2_1.cs: Remove some MOONLIGHT defines
+	* SocketAsyncEventArgs.cs: For Moonlight check policy if outside
+	System.dll (the client stack use sockets with it's own web 
+	xdomain policy)
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* Socket_2_1.cs, SocketAsyncEventArgs.cs: use MOONLIGHT symbol to
+	disambiguate MonoTouch and Moonlight code.
+
+2010-03-10  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SocketAsyncEventArgs.cs: Remove the use of reflection to check
+	xdomain poilicy on sockets (since the policy code now resides in
+	System.Net.dll)
+
+2010-01-29  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* NetworkStream.cs: Our explicit impl of IDisposable.Dispose belongs
+	to 1.0/1.1 only. Also move the call to GC.SupressFinalize to
+	Dispose(bool), as expected and as done by other Stream children
+	implementing a destructor.
+	Fixes #564637.
+
 2010-01-21  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* SocketAsyncEventArgs.cs: Apply Gendarme's ProtectCallToEventDelegatesRule
-	[Backport r150033]
 
 2009-12-04  Sebastien Pouliot  <sebastien@ximian.com>
 
-	* SocketAsyncEventArgs.cs: Implement ConnectByNameError for 
-	Moonlight 3
+	* System.Net.Sockets/SocketAsyncEventArgs.cs: Implement 
+	ConnectByNameError property for Moonlight 3 (and fx 4.0)
 
 2009-11-10 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -22,7 +382,6 @@
 	* SocketAsyncEventArgs.cs: Set error back to SocketError.Success
 	once CheckEndPoint succeed.
 	[Fix bug #549586]
-	[Backport r145329]
 
 2009-10-21 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -33,7 +392,6 @@
 	* SocketAsyncEventArgs.cs: Default SocketError.AccessDenied on 
 	Connect in case none of the DnsEndPoint provides an adequate 
 	address (family).
-	[Backport r142746]
 
 2009-09-27 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -50,13 +408,11 @@
 	defines since the file is not used by Moonlight
 	* Socket_2_1.cs: Add Close(int) from Socket. Define out Poll
 	and Blocking.
-	[Backport r142722]
 
 2009-09-26  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* SocketAsyncEventArgs.cs: Fix paramater validations and default 
 	values
-	[Backport r142675]
 
 2009-09-23  Sebastien Pouliot  <sebastien@ximian.com>
 

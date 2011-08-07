@@ -1,9 +1,30 @@
+2010-08-10  Atsushi Eno  <atsushi@ximian.com>
+
+	EncoderFallback support in UTF8Encoding. Fixed bug #565129 and
+	regression in d961246.
+
+	Patch mostly by JB Evain.
+
+2010-08-05  Marek Habersack  <grendel@twistedcode.net>
+
+	Revert "EncoderFallback support in UTF8Encoding. Fixed bug
+	#565129."
+
+	This reverts commit d961246014394a19ce813de43f9719ae63af4842
+	because it breaks 2 tests in System.Web on 2.0 and 4 on 4.0
+	profile.
+
+2010-08-04  atsushieno  <atsushi@ximian.com>
+
+	EncoderFallback support in UTF8Encoding. Fixed bug #565129.
+
+	Patch mostly by JB Evain.
+
 2009-10-27  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* UnicodeEncodingTest.cs: Add test cases with an odd number of 
 	bytes being used in GetString (it does not crash but it does not
 	work like MS FX either).
-	[Backport r144921]
 
 2009-09-12 Gonzalo Paniagua Javier <gonzalo@novell.com>
 

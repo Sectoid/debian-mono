@@ -31,23 +31,64 @@ using System.Configuration;
 
 namespace System.Runtime.Serialization.Configuration
 {
-	[MonoTODO]
-	public sealed class TypeElementCollection
-		: ConfigurationElementCollection
+	[ConfigurationCollection (typeof (TypeElement), CollectionType = ConfigurationElementCollectionType.BasicMap)]
+	public sealed class TypeElementCollection : ConfigurationElementCollection
 	{
 		public TypeElementCollection ()
 		{
 		}
 
+		public override ConfigurationElementCollectionType CollectionType {
+			get { return ConfigurationElementCollectionType.BasicMap; }
+		}
+
+		// It is undocumented.
+		protected override string ElementName {
+			get { return "knownType"; }
+		}
+
+		public TypeElement this [int index] {
+			get { return (TypeElement) BaseGet (index); }
+			set {
+				BaseRemoveAt (index);
+				Add (value);
+			}
+		}
+
+		public void Add (TypeElement element)
+		{
+			BaseAdd (element);
+		}
+
+		public void Clear ()
+		{
+			BaseClear ();
+		}
+
+		public int IndexOf (TypeElement element)
+		{
+			return BaseIndexOf (element);
+		}
+
+		public void Remove (TypeElement element)
+		{
+			BaseRemove ((string) GetElementKey (element));
+		}
+
+		public void RemoveAt (int index)
+		{
+			BaseRemoveAt (index);
+		}
+
 		protected override ConfigurationElement CreateNewElement ()
 		{
-			throw new NotImplementedException ();
+			return new TypeElement ();
 		}
 
 		protected override Object GetElementKey (
 			ConfigurationElement element)
 		{
-			throw new NotImplementedException ();
+			return ((TypeElement) element).Type;
 		}
 	}
 }

@@ -1,25 +1,23 @@
-// CS0120: An object reference is required to access non-static member `C.Enum()'
+// CS0120: An object reference is required to access non-static member `MainClass.Test'
 // Line: 20
 
-using System;
-
-enum Enum
+public class Test
 {
-	Test
-}
-
-class A : Attribute
-{
-	public A (object e)
+	public void Foo ()
 	{
 	}
 }
 
-class C
+public class MainClass
 {
-	[A (Enum.Test)]
-	int Enum ()
+	public Test Test
 	{
-		return 0;
+		get;
+		set;
+	}
+
+	public static void Main (string[] args)
+	{
+		Test.Foo ();
 	}
 }

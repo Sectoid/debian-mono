@@ -4,7 +4,7 @@
 // Authors:
 //  Lluis Sanchez Gual (lluis@novell.com)
 //
-// (C) 2005 Novell, Inc. (http://www.novell.com)
+// (C) 2005-2010 Novell, Inc. (http://www.novell.com)
 //
 
 //
@@ -28,51 +28,50 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 using System.Web.UI;
 using System.ComponentModel;
 
 namespace System.Web.UI.WebControls
 {
+	[DefaultEvent ("ValueChanged")]
+	[DefaultProperty ("Value")]
+	[Designer ("System.Web.UI.Design.WebControls.HiddenFieldDesigner, " + Consts.AssemblySystem_Design, "System.ComponentModel.Design.IDesigner")]
+	[ControlValueProperty ("Value")]
+	[NonVisualControl]
+	[ParseChildren]
+	[PersistChildren (false)]
+	[SupportsEventValidation]
 	public class HiddenField : Control, IPostBackDataHandler
 	{
-
 		static readonly object ValueChangedEvent = new object ();
 
-		public event EventHandler ValueChanged
-		{
+		public event EventHandler ValueChanged {
 			add { Events.AddHandler (ValueChangedEvent, value); }
 			remove { Events.RemoveHandler (ValueChangedEvent, value); }
 		}
 
+		[DefaultValue ("")]
 		[Bindable (true)]
 		public virtual string Value {
-			get {
-				return ViewState.GetString ("Value", "");
-			}
-			set {
-				ViewState ["Value"] = value;
-			}
+			get { return ViewState.GetString ("Value", String.Empty); }
+			set { ViewState ["Value"] = value; }
 		}
 
+		[DefaultValue (false)]
+		[EditorBrowsable (EditorBrowsableState.Never)]
 		public override bool EnableTheming {
-			get {
-				return false;
-			}
-			set {
-				throw new NotSupportedException ();
-			}
+			get { return false; }
+			set { throw new NotSupportedException (); }
 		}
 
+		[DefaultValue ("")]
+		[EditorBrowsable (EditorBrowsableState.Never)]
 		public override string SkinID {
-			get {
-				return String.Empty;
-			}
-			set {
-				throw new NotSupportedException ();
-			}
+			get { return String.Empty; }
+			set { throw new NotSupportedException (); }
 		}
 
+		[EditorBrowsable (EditorBrowsableState.Never)]
 		public override void Focus ()
 		{
 			throw new NotSupportedException ();
@@ -147,4 +146,4 @@ namespace System.Web.UI.WebControls
 		#endregion
 	}
 }
-#endif
+

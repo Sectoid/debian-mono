@@ -570,7 +570,7 @@ dump_table_method (MonoImage *m)
 	last_m = first_m = 1;
 	for (i = 1; i <= t->rows; i++){
 		guint32 cols [MONO_METHOD_SIZE];
-		char *sig;
+		char *sig, *impl_flags;
 		const char *sigblob;
 		MonoMethodSignature *method;
 
@@ -598,8 +598,10 @@ dump_table_method (MonoImage *m)
 		mono_metadata_decode_blob_size (sigblob, &sigblob);
 		method = mono_metadata_parse_method_signature_full (m, method_container ? method_container : type_container, i, sigblob, &sigblob);
 		sig = dis_stringify_method_signature (m, method, i, method_container ? method_container : type_container, FALSE);
-		fprintf (output, "%d: %s (param: %d)\n", i, sig, cols [MONO_METHOD_PARAMLIST]);
+                impl_flags = get_method_impl_flags (cols [MONO_METHOD_IMPLFLAGS]);
+		fprintf (output, "%d: %s (param: %d impl_flags: %s)\n", i, sig, cols [MONO_METHOD_PARAMLIST], impl_flags);
 		g_free (sig);
+		g_free (impl_flags);
 		mono_metadata_free_method_signature (method);
 	}
 	
@@ -1001,7 +1003,7 @@ dump_table_exported (MonoImage *m)
 	int i;
 	const char *name, *nspace;
 	char *impl;
-	guint32 index;
+	guint32 index, flags;
 	fprintf (output, "ExportedType Table (1..%d)\n", t->rows);
 
 	for (i = 1; i <= t->rows; i++) {
@@ -1010,7 +1012,8 @@ dump_table_exported (MonoImage *m)
 		nspace = mono_metadata_string_heap (m, cols [MONO_EXP_TYPE_NAMESPACE]);
 		impl = get_manifest_implementation (m, cols [MONO_EXP_TYPE_IMPLEMENTATION]);
 		index = cols [MONO_EXP_TYPE_TYPEDEF];
-		fprintf (output, "%d: %s%s%s is in %s, token %x\n", i, nspace, *nspace ? "." : "", name, impl, index);
+		flags = cols [MONO_EXP_TYPE_FLAGS];
+		fprintf (output, "%d: %s%s%s is in %s, index=%x, flags=0x%x\n", i, nspace, *nspace ? "." : "", name, impl, index, flags);
 		g_free (impl);
 	}
 	

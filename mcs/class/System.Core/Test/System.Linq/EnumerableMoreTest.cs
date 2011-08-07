@@ -1720,7 +1720,6 @@ namespace MonoTests.System.Linq {
 		}
 
 		[Test]
-		[Category ("NotWorking")]
 		public void GroupByArgumentNullTest ()
 		{
 			string [] data = { "2", "1", "5", "3", "4" };
@@ -1768,7 +1767,6 @@ namespace MonoTests.System.Linq {
 		}
 
 		[Test]
-		[Category ("NotWorking")]
 		public void GroupByTest ()
 		{
 			string [] data = { "2", "1", "5", "3", "4", "3" };
@@ -1812,6 +1810,35 @@ namespace MonoTests.System.Linq {
 
 			// GroupBy<int,int,int,int> (Func<int, int>, Func<int, int>, Func<int, IEnumerable<int>, int>, IEqualityComparer<int>)
 			AssertAreSame (expected3, data.GroupBy (x => x, x => x, (x, y) => { foreach (var s in y) x += s; return x; }, EqualityComparer<string>.Default));
+		}
+
+
+		class Data {
+
+			public int Number;
+			public string String;
+
+			public Data (int number, string str)
+			{
+				Number = number;
+				String = str;
+			}
+		}
+
+		[Test]
+		public void GroupByLastNullGroup ()
+		{
+			var values = new List<Data> ();
+
+			values.Add (new Data (0, "a"));
+			values.Add (new Data (1, "a"));
+			values.Add (new Data (2, "b"));
+			values.Add (new Data (3, "b"));
+			values.Add (new Data (4, null));
+
+			var groups = values.GroupBy (d => d.String);
+
+			Assert.AreEqual (3, groups.Count ());
 		}
 
 		[Test]
@@ -2286,6 +2313,15 @@ namespace MonoTests.System.Linq {
 			AssertException<ArgumentOutOfRangeException> (delegate () { Enumerable.Range (2, -3); });
 			AssertException<ArgumentOutOfRangeException> (delegate () { Enumerable.Range (int.MaxValue - 5, 7); });
 			Enumerable.Range (int.MaxValue - 5, 6);
+		}
+
+		[Test]
+		public void ExceptMultipleItems ()
+		{
+			var data = new [] { 1, 2, 2, 2, 3, 4, 5, 5, 6, 7, 8, 8, 9, 10 };
+			var expected = new [] { 2, 4, 6, 8, 10 };
+
+			AssertAreSame (expected, data.Except (new [] { 1, 3, 5, 7, 9 }));
 		}
 	}
 }

@@ -1,3 +1,26 @@
+2010-12-22  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix incorrect internal node cleanup in MoveToRoot(). Fixed bug
+	#654433.
+
+2010-12-22  Atsushi Eno  <atsushi@ximian.com>
+
+	Add tests from XPathNavigatorEvaluateTests.
+
+2010-12-22  Atsushi Eno  <atsushi@ximian.com>
+
+	Add another bunch of tests from XPathNavigatorTests.
+
+2010-12-22  Atsushi Eno  <atsushi@ximian.com>
+
+	Several fixes in XNodeNavigator to pass XPath tests from
+	System.Xml.
+
+2010-05-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* System.Xml.Linq_test.dll.sources :
+	  add System.Xml.Schema/ExtensionsTest.cs.
+
 2009-07-20  Jb Evain  <jbevain@novell.com>
 
 	* net_2_1_raw_System.Xml.Linq.dll: delete, and use ifdefs

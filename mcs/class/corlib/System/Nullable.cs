@@ -30,8 +30,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System.Reflection;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -45,30 +43,30 @@ namespace System
 #if NET_2_1
 		[ComVisible (false)]
 #endif
-		public static int Compare<T> (T? value1, T? value2) where T: struct
+		public static int Compare<T> (T? n1, T? n2) where T: struct
 		{
-			if (value1.has_value) {
-				if (!value2.has_value)
+			if (n1.has_value) {
+				if (!n2.has_value)
 					return 1;
 
-				return Comparer<T>.Default.Compare (value1.value, value2.value);
+				return Comparer<T>.Default.Compare (n1.value, n2.value);
 			}
 			
-			return value2.has_value ? -1 : 0;
+			return n2.has_value ? -1 : 0;
 		}
 
 #if NET_2_1
 		[ComVisible (false)]
 #endif
-		public static bool Equals<T> (T? value1, T? value2) where T: struct
+		public static bool Equals<T> (T? n1, T? n2) where T: struct
 		{
-			if (value1.has_value != value2.has_value)
+			if (n1.has_value != n2.has_value)
 				return false;
 
-			if (!value1.has_value)
+			if (!n1.has_value)
 				return true;
 
-			return EqualityComparer<T>.Default.Equals (value1.value, value2.value);
+			return EqualityComparer<T>.Default.Equals (n1.value, n2.value);
 		}
 
 		public static Type GetUnderlyingType (Type nullableType)
@@ -190,4 +188,3 @@ namespace System
 #pragma warning restore 169
 	}
 }
-#endif

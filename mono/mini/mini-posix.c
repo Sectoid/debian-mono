@@ -50,7 +50,7 @@
 #include <mono/utils/mono-math.h>
 #include <mono/utils/mono-compiler.h>
 #include <mono/utils/mono-counters.h>
-#include <mono/utils/mono-logger.h>
+#include <mono/utils/mono-logger-internal.h>
 #include <mono/utils/mono-mmap.h>
 #include <mono/utils/dtrace.h>
 
@@ -62,6 +62,46 @@
 #include "debugger-agent.h"
 
 #include "jit-icalls.h"
+
+#if defined(__native_client__)
+
+void
+mono_runtime_setup_stat_profiler (void)
+{
+	printf("WARNING: mono_runtime_setup_stat_profiler() called!\n");
+}
+
+
+void
+mono_runtime_shutdown_stat_profiler (void)
+{
+}
+
+
+gboolean
+SIG_HANDLER_SIGNATURE (mono_chain_signal)
+{
+	return FALSE;
+}
+
+void
+mono_runtime_install_handlers (void)
+{
+}
+
+void
+mono_runtime_shutdown_handlers (void)
+{
+}
+
+void
+mono_runtime_cleanup_handlers (void)
+{
+}
+
+
+
+#else
 
 static GHashTable *mono_saved_signal_handlers = NULL;
 
@@ -128,7 +168,7 @@ SIG_HANDLER_SIGNATURE (mono_chain_signal)
 
 	GET_CONTEXT;
 
-	if (saved_handler) {
+	if (saved_handler && saved_handler->sa_handler) {
 		if (!(saved_handler->sa_flags & SA_SIGINFO)) {
 			saved_handler->sa_handler (signal);
 		} else {
@@ -147,7 +187,7 @@ SIG_HANDLER_SIGNATURE (sigabrt_signal_handler)
 	MonoJitInfo *ji = NULL;
 	GET_CONTEXT;
 
-	if (mono_thread_current ())
+	if (mono_thread_internal_current ())
 		ji = mono_jit_info_table_find (mono_domain_get (), mono_arch_ip_from_context(ctx));
 	if (!ji) {
         if (mono_chain_signal (SIG_HANDLER_PARAMS))
@@ -159,9 +199,10 @@ SIG_HANDLER_SIGNATURE (sigabrt_signal_handler)
 static void
 SIG_HANDLER_SIGNATURE (sigusr1_signal_handler)
 {
+	MonoContext mctx;
 	gboolean running_managed;
 	MonoException *exc;
-	MonoThread *thread = mono_thread_current ();
+	MonoInternalThread *thread = mono_thread_internal_current ();
 	MonoDomain *domain = mono_domain_get ();
 	void *ji;
 	
@@ -179,17 +220,37 @@ SIG_HANDLER_SIGNATURE (sigusr1_signal_handler)
 	}
 
 	/*
-	 * FIXME:
 	 * This is an async signal, so the code below must not call anything which
 	 * is not async safe. That includes the pthread locking functions. If we
 	 * know that we interrupted managed code, then locking is safe.
 	 */
-	ji = mono_jit_info_table_find (mono_domain_get (), mono_arch_ip_from_context(ctx));
-	running_managed = ji != NULL;
+	/*
+	 * On OpenBSD, ctx can be NULL if we are interrupting poll ().
+	 */
+	if (ctx) {
+		ji = mono_jit_info_table_find (mono_domain_get (), mono_arch_ip_from_context(ctx));
+		running_managed = ji != NULL;
 
-	if (mono_debugger_agent_thread_interrupt (ctx, ji))
-		return;
-	
+		if (mono_debugger_agent_thread_interrupt (ctx, ji))
+			return;
+	} else {
+		running_managed = FALSE;
+	}
+
+	/* We can't do handler block checking from metadata since it requires doing
+	 * a stack walk with context.
+	 *
+	 * FIXME add full-aot support.
+	 */
+#ifdef MONO_ARCH_HAVE_SIGCTX_TO_MONOCTX
+	if (!mono_aot_only && ctx) {
+		mono_arch_sigctx_to_monoctx (ctx, &mctx);
+		if (mono_install_handler_block_guard (thread, &mctx)) {
+			return;
+		}
+	}
+#endif
+
 	exc = mono_thread_request_interruption (running_managed); 
 	if (!exc)
 		return;
@@ -229,6 +290,7 @@ static void
 SIG_HANDLER_SIGNATURE (sigprof_signal_handler)
 {
 	int call_chain_depth = mono_profiler_stat_get_call_chain_depth ();
+	MonoProfilerCallChainStrategy call_chain_strategy = mono_profiler_stat_get_call_chain_strategy ();
 	GET_CONTEXT;
 	
 	if (call_chain_depth == 0) {
@@ -237,20 +299,18 @@ SIG_HANDLER_SIGNATURE (sigprof_signal_handler)
 		MonoJitTlsData *jit_tls = TlsGetValue (mono_jit_tls_id);
 		int current_frame_index = 1;
 		MonoContext mono_context;
-#if FULL_STAT_PROFILER_BACKTRACE
-		guchar *current_frame;
-		guchar *stack_bottom;
-		guchar *stack_top;
-#else
-		MonoDomain *domain;
-#endif
 		guchar *ips [call_chain_depth + 1];
 
 		mono_arch_sigctx_to_monoctx (ctx, &mono_context);
 		ips [0] = MONO_CONTEXT_GET_IP (&mono_context);
 		
 		if (jit_tls != NULL) {
+			if (call_chain_strategy == MONO_PROFILER_CALL_CHAIN_NATIVE) {
 #if FULL_STAT_PROFILER_BACKTRACE
+			guchar *current_frame;
+			guchar *stack_bottom;
+			guchar *stack_top;
+			
 			stack_bottom = jit_tls->end_of_stack;
 			stack_top = MONO_CONTEXT_GET_SP (&mono_context);
 			current_frame = MONO_CONTEXT_GET_BP (&mono_context);
@@ -264,24 +324,37 @@ SIG_HANDLER_SIGNATURE (sigprof_signal_handler)
 				current_frame = CURRENT_FRAME_GET_BASE_POINTER (current_frame);
 			}
 #else
-			domain = mono_domain_get ();
-			if (domain != NULL) {
-				MonoLMF *lmf = NULL;
-				MonoJitInfo *ji;
-				MonoJitInfo res;
-				MonoContext new_mono_context;
-				int native_offset;
-				ji = mono_find_jit_info (domain, jit_tls, &res, NULL, &mono_context,
-						&new_mono_context, NULL, &lmf, &native_offset, NULL);
-				while ((ji != NULL) && (current_frame_index <= call_chain_depth)) {
-					ips [current_frame_index] = MONO_CONTEXT_GET_IP (&new_mono_context);
-					current_frame_index ++;
-					mono_context = new_mono_context;
+				call_chain_strategy = MONO_PROFILER_CALL_CHAIN_GLIBC;
+#endif
+			}
+			
+			if (call_chain_strategy == MONO_PROFILER_CALL_CHAIN_GLIBC) {
+#if GLIBC_PROFILER_BACKTRACE
+				current_frame_index = backtrace ((void**) & ips [1], call_chain_depth);
+#else
+				call_chain_strategy = MONO_PROFILER_CALL_CHAIN_MANAGED;
+#endif
+			}
+
+			if (call_chain_strategy == MONO_PROFILER_CALL_CHAIN_MANAGED) {
+				MonoDomain *domain = mono_domain_get ();
+				if (domain != NULL) {
+					MonoLMF *lmf = NULL;
+					MonoJitInfo *ji;
+					MonoJitInfo res;
+					MonoContext new_mono_context;
+					int native_offset;
 					ji = mono_find_jit_info (domain, jit_tls, &res, NULL, &mono_context,
 							&new_mono_context, NULL, &lmf, &native_offset, NULL);
+					while ((ji != NULL) && (current_frame_index <= call_chain_depth)) {
+						ips [current_frame_index] = MONO_CONTEXT_GET_IP (&new_mono_context);
+						current_frame_index ++;
+						mono_context = new_mono_context;
+						ji = mono_find_jit_info (domain, jit_tls, &res, NULL, &mono_context,
+								&new_mono_context, NULL, &lmf, &native_offset, NULL);
+					}
 				}
 			}
-#endif
 		}
 		
 		mono_profiler_stat_call_chain (current_frame_index, & ips [0], ctx);
@@ -348,8 +421,8 @@ add_signal_handler (int signo, gpointer handler)
 		 * an altstack, so delay the suspend signal after the signal handler has
 		 * executed.
 		 */
-		if (GC_get_suspend_signal () != -1)
-			sigaddset (&sa.sa_mask, GC_get_suspend_signal ());
+		if (mono_gc_get_suspend_signal () != -1)
+			sigaddset (&sa.sa_mask, mono_gc_get_suspend_signal ());
 	}
 #endif
 	if (signo == SIGSEGV) {
@@ -587,3 +660,5 @@ mono_gdb_render_native_backtraces ()
 	return TRUE;
 }
 #endif
+#endif /* __native_client__ */
+

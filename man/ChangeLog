@@ -1,6 +1,310 @@
+2011-04-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Document MONO_WCF_TRACE environment variable.
+
+2011-03-14  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Debug options for disabling minor and/or major collection.
+
+2011-03-08  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Implement FileLogger . Fix #676650 .
+
+2011-03-03  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Update man page with info about FrameworkList.xml
+
+2011-02-28  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Add support for multi-targeting arbitrary frameworks.
+
+	ToolsVersion 4.0 supports targeting arbitrary frameworks defined
+	by FrameworkList.xml files and referenced by
+	$(TargetFrameworkMoniker), which is of the format:
+	Identifier,Version=<version>[,Profile=<profile>]
+
+	built as:
+	$(TargetFrameworkIdentifier),Version=$(TargetFrameworkVersion)[,Profile=$(TargetFrameworkProfile)]
+
+	eg. '.NETFramework,Version=v4.0' .
+
+	Frameworks are searched for in (order):
+
+	1. Paths specified in the environment variable
+	$XBUILD_FRAMEWORK_FOLDERS_PATH 2.
+	/Library/Frameworks/Mono.framework/External/xbuild-frameworks on
+	Mac OSX. 3. MSBuild property $(TargetFrameworkRoot) 4.
+	$prefix/lib/mono/xbuild-frameworks (default location)
+
+	.NET frameworks 2.0/3.0/3.5/4.0 have corresponding
+	FrameworkList.xml files now, which allows projects to target them.
+	Custom frameworks like MonoDroid can install suitable
+	FrameworkList.xml files, and projects can target them using the
+	correct $(TargetFrameworkIdentifier) and
+	$(TargetFrameworkVersion).
+
+	Update man page.
+
+2011-02-22  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Use the env var $MSBuildExtensionsPath before trying
+	other paths.
+
+	Change the order of the "search paths", so that the environment
+	variable can always override it. Update the man page to reflect
+	the change.
+
+2011-01-30  Miguel de Icaza  <miguel@gnome.org>
+
+	[repl] Add support for -e EXPRESSION to the csharp command
+
+2011-01-30  Miguel de Icaza  <miguel@gnome.org>
+
+	Document csharp #! support
+
+2011-01-19  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Document precise marking
+
+2011-01-17  Marek Safar  <marek.safar@gmail.com>
+
+	Add new mcs -sdk option
+
+2011-01-11  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Update man page, new search paths for extensions and .pc
+	files.
+
+2010-10-06  Miguel de Icaza  <miguel@gnome.org>
+
+	Update docs
+
+2010-12-03  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Make concurrent sweep user-selectable.
+
+	It's off by default for now.
+
+2010-11-29  Paolo Molaro  <lupus@oddwiz.org>
+
+	* man/mprof-report.1: updated the documentation. * decode.c: added
+	jit report and sample report. * proflog.h, proflog.c: implemented
+	statistical sampling mode, using either the mono built-in signal
+	based sampling and the Linux perforamnce counters perf subsystem.
+	Unmanaged symbols are currently available for ELF systems
+	implementing dl_iterate_phdr() or systems implementing dladdr().
+
+2010-11-19  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Implement evacuation for parallel mark.
+
+2010-11-19  Miguel de Icaza  <miguel@gnome.org>
+
+	Remove mentions of Logging and Heap Shot profilers from man page
+
+2010-11-12  Paolo Molaro  <lupus@oddwiz.org>
+
+	Log profiler: removed the hsmode option, use heapshot=MODE
+	instead.
+
+2010-11-11  Paolo Molaro  <lupus@oddwiz.org>
+
+	Added the mprof-report manpage.
+
+2010-10-30  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] User-settable evacuation threshold.
+
+	A MONO_GC_PARAMS option for setting the evacuation threshold.
+
+2010-10-20  Pablo Ruiz Garcia  <pablo.ruiz@gmail.com>
+
+	[API] X509 related enhacemnts to allow 1) associating keystore's
+	private keys with their corresponding public certificates found at
+	X509Stores, and 2) importing private keys to X509Stores along with
+	certificates.
+
+	mcs/class/corlib/Mono.Security.X509/X509Store.cs:
+	mcs/class/Mono.Security/Mono.Security.X509/X509Store.cs:
+	mcs/class/corlib/Mono.Security.X509/X509StoreManager.cs:
+	mcs/class/Mono.Security/Mono.Security.X509/X509StoreManager.cs:
+	Modified MSX.X509Store to allow importing privateKeys along
+	certificates (by using RSACryptoServiceProvider and
+	KeyPairPersister). Fixed X509Store to use certificate's hash as
+	CspParameters.KeyContainerName.
+
+	mcs/tools/security/certmgr.cs: Added a new -importKey action to
+	certmgr, which allows importing a PKCS12 contained key into our
+	KeyPair store. Added a more (verbose) output to certmgr's -list
+	action.
+
+	man/certmgr.1: Updated certmgr man page ti reflect -importKey
+	addition.
+
+	mcs/class/corlib/System.Security.Cryptography/CspParameters.cs:
+	mcs/class/corlib/System.Security.Cryptography/RSACryptoServiceProvider.cs:
+	Implemented RSACryptoServiceProvider.CspKeyContainerInfo getter
+	RSACryptoServiceProvider will not take into account
+	CspParameterFlags.UseExistingKey by throwing a
+	CryptographicException if keyset identified by KeyContainerName
+	does not exists.
+
+2010-10-21  Miguel de Icaza  <miguel@gnome.org>
+
+	Document server option to --debugger-agent
+
+2010-09-07  Miguel de Icaza  <miguel@gnome.org>
+
+	Add profile docs
+
+2010-09-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add notes when to use cardtable and remset.
+
+2010-09-02  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Update man page to add "/tv:" option.
+
+	Add option to specify toolsversion from the command line, to the
+	man page.
+
+2010-08-27  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Add env.var. to control revocation mode.
+
+	Added a new environment variable, MONO_X509_REVOCATION_MODE that
+	lets the user choose the default validation mode for X509 chains.
+
+2010-08-20  Mark Probst  <mark.probst@gmail.com>
+
+	[Documentation] Update man page with write barrier setting.
+
+2010-08-23  Andrés G. Aragoneses  <knocte@gmail.com>
+
+	[tools] Merge mono-abi-info tool into a "--abi" flag for
+	mono-api-info
+
+	This commit also includes a brief (help welcome!) man page for
+	mono-api-info that explains its usage.
+
+2010-08-19  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Support extra paths for MSBuildExtensionsPath32/64 .
+
+	Support extra search paths via env variables for
+	MSBuildExtensionsPath32/64 also.
+
+	Update man page.
+
+2010-08-18  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Update man page.
+
+2010-08-18  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Add env var to dump details of reference resolution.
+
+	If xbuild is unable to resolve a reference, then it dumps details
+	of why it failed. This adds a env var
+	XBUILD_LOG_REFERENCE_RESOLVER, which if set, logs those details of
+	why a particular search path was used to resolve the reference.
+
+	Update the man page also.
+
+2010-08-17  Miguel de Icaza  <miguel@gnome.org>
+
+	Copyright fix: the owner is Chris, not Novell
+
+2010-08-13  Chris Bacon  <chrisbacon76@gmail.com>
+
+	Added ccrewrite.1 man page to makefile
+
+2010-08-13  Chris Bacon  <chrisbacon76@gmail.com>
+
+	Added man page for ccrewrite
+
+2010-08-10  Mark Probst  <mark.probst@gmail.com>
+
+	[Documentation] Explain nursery size a bit in man page.
+
+2010-08-08  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Fixed heap for Mark&Sweep.
+
+	This is a new variant of Mark&Sweep which uses a pre-allocated
+	fixed-size heap instead of a dynamically grown, segmented one. The
+	main advantage of this heap organization is that it takes only one
+	pointer comparison to determine whether an object is on the small
+	object heap or in the LOS, instead of inspecting the object's
+	size, which requires three loads. Since that determination is
+	required for every marked object, speeding it up can improve
+	performance significantly.
+
+2010-08-06  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Make parallel vs non-parallel mark&sweep selectable.
+
+	Make the parallel Mark&Sweep collector selectable with the "major"
+	option of the "MONO_GC_PARAMS" variable as "marksweep-par". The
+	serial Mark&Sweep collector remains the default as "marksweep".
+
+2010-08-05  Mark Probst  <mark.probst@gmail.com>
+
+	[Documentation] Document SGen environment variables.
+
+	Document the MONO_GC_PARAMS variable in the man page and the
+	"major" option of this variable in the error message.
+
+2010-08-03  Andrés G. Aragoneses  <andres@lindenlab.com>
+
+	* monolinker.1: Add the name="..." notation to the field examples too
+	(besides the signature="..." one).
+
+2010-07-12  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* mono.1: Document MONO_DEBUG's new reverse-pinvoke-exceptions option.
+
+2010-04-23  Miguel de Icaza  <miguel@novell.com>
+
+	* mono.1: Sort environment variables, update a couple of docs.
+
+2010-04-07  Andrés G. Aragoneses  <andres@lindenlab.com>
+
+	* monolinker.1: Fix typo.
+
+2010-04-01  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* mono.1: Document the new "security" option for logging
+
+2010-03-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono.1: Document the MONO_ENABLE_SHM env variable.
+
+2010-03-03  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* mono.1: Document exception tracing.
+
+2010-02-18  Marek Habersack  <mhabersack@novell.com>
+
+	* mono-configuration-crypto.1: added
+
+	* Makefile.am (man_MANS): added mono-configuration-crypto.1
+
 2010-02-10  Geoff Norton  <gnorton@novell.com>
 
 	* mono.1: Document the aot compiler options.
+
+2010-02-08  Ankit Jain  <jankit@novell.com>
+
+	* lc.1: Fix typos.
+
+2009-12-11  Marek Habersack  <mhabersack@novell.com>
+
+	* mono.1: documented the IOMAP report profiler module
+
+2009-11-23  Marek Habersack  <mhabersack@novell.com>
+
+	* mono.1: documented the 'report' option for MONO_IOMAP
 
 2009-10-11  Ankit Jain  <jankit@novell.com>
 

@@ -51,13 +51,27 @@ namespace System.ServiceModel.Security
 
 		internal IssuedTokenServiceCredential ()
 		{
+			AllowedAudienceUris = new List<string> ();
 		}
+
+		internal IssuedTokenServiceCredential Clone ()
+		{
+			var ret = (IssuedTokenServiceCredential) MemberwiseClone ();
+			ret.known_certs = new List<X509Certificate2> (known_certs);
+			return ret;
+		}
+
+		[MonoTODO]
+		public IList<string> AllowedAudienceUris { get; private set; }
 
 		[MonoTODO]
 		public bool AllowUntrustedRsaIssuers {
 			get { return allow_untrusted_rsa_issuers; }
 			set { allow_untrusted_rsa_issuers = value; }
 		}
+
+		[MonoTODO]
+		public AudienceUriMode AudienceUriMode { get; set; }
 
 		[MonoTODO]
 		public X509CertificateValidationMode CertificateValidationMode {

@@ -77,7 +77,7 @@ namespace System.Linq {
 				StaticCall (
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TSource), typeof (TAccumulate)),
 					source.Expression,
-					Expression.Constant (seed),
+					Expression.Constant (seed, typeof (TAccumulate)),
 					Expression.Quote (func)));
 		}
 
@@ -88,7 +88,7 @@ namespace System.Linq {
 				StaticCall (
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TSource), typeof (TAccumulate), typeof (TResult)),
 					source.Expression,
-					Expression.Constant (seed),
+					Expression.Constant (seed, typeof (TAccumulate)),
 					Expression.Quote (func),
 					Expression.Quote (selector)));
 		}
@@ -158,13 +158,12 @@ namespace System.Linq {
 			if (queryable != null)
 				return queryable;
 
-			var type = source.GetType ();
-
-			if (!type.IsGenericImplementationOf (typeof (IEnumerable<>)))
+			Type ienumerable;
+			if (!source.GetType ().IsGenericImplementationOf (typeof (IEnumerable<>), out ienumerable))
 				throw new ArgumentException ("source is not IEnumerable<>");
 
 			return (IQueryable) Activator.CreateInstance (
-				typeof (QueryableEnumerable<>).MakeGenericType (type.GetFirstGenericArgument ()), source);
+				typeof (QueryableEnumerable<>).MakeGenericType (ienumerable.GetFirstGenericArgument ()), source);
 		}
 
 		#endregion
@@ -406,7 +405,7 @@ namespace System.Linq {
 				StaticCall (
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TSource)),
 					source1.Expression,
-					Expression.Constant (source2)));
+					Expression.Constant (source2, typeof (IEnumerable<TSource>))));
 		}
 
 		#endregion
@@ -421,7 +420,7 @@ namespace System.Linq {
 				StaticCall (
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TSource)),
 					source.Expression,
-					Expression.Constant (item)));
+					Expression.Constant (item, typeof (TSource))));
 		}
 
 		public static bool Contains<TSource> (this IQueryable<TSource> source, TSource item, IEqualityComparer<TSource> comparer)
@@ -432,8 +431,8 @@ namespace System.Linq {
 				StaticCall (
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TSource)),
 					source.Expression,
-					Expression.Constant (item),
-					Expression.Constant (comparer)));
+					Expression.Constant (item, typeof (TSource)),
+					Expression.Constant (comparer, typeof (IEqualityComparer<TSource>))));
 		}
 
 		#endregion
@@ -480,7 +479,7 @@ namespace System.Linq {
 				StaticCall (
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TSource)),
 					source.Expression,
-					Expression.Constant (defaultValue)));
+					Expression.Constant (defaultValue, typeof (TSource))));
 		}
 
 		#endregion
@@ -505,7 +504,7 @@ namespace System.Linq {
 				StaticCall (
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TSource)),
 					source.Expression,
-					Expression.Constant (comparer)));
+					Expression.Constant (comparer, typeof (IEqualityComparer<TSource>))));
 		}
 
 		#endregion
@@ -550,7 +549,7 @@ namespace System.Linq {
 				StaticCall (
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TSource)),
 					source1.Expression,
-					Expression.Constant (source2)));
+					Expression.Constant (source2, typeof (IEnumerable<TSource>))));
 		}
 
 		public static IQueryable<TSource> Except<TSource> (this IQueryable<TSource> source1, IEnumerable<TSource> source2, IEqualityComparer<TSource> comparer)
@@ -561,8 +560,8 @@ namespace System.Linq {
 				StaticCall (
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TSource)),
 					source1.Expression,
-					Expression.Constant (source2),
-					Expression.Constant (comparer)));
+					Expression.Constant (source2, typeof (IEnumerable<TSource>)),
+					Expression.Constant (comparer, typeof (IEqualityComparer<TSource>))));
 		}
 
 		#endregion
@@ -638,7 +637,7 @@ namespace System.Linq {
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TSource), typeof (TKey)),
 					source.Expression,
 					Expression.Quote (keySelector),
-					Expression.Constant (comparer)));
+					Expression.Constant (comparer, typeof (IEqualityComparer<TKey>))));
 		}
 		public static IQueryable<IGrouping<TKey, TElement>> GroupBy<TSource, TKey, TElement> (this IQueryable<TSource> source, Expression<Func<TSource, TKey>> keySelector, Expression<Func<TSource, TElement>> elementSelector)
 		{
@@ -672,7 +671,7 @@ namespace System.Linq {
 					source.Expression,
 					Expression.Quote (keySelector),
 					Expression.Quote (elementSelector),
-					Expression.Constant (comparer)));
+					Expression.Constant (comparer, typeof (IEqualityComparer<TKey>))));
 		}
 		public static IQueryable<TResult> GroupBy<TSource, TKey, TElement, TResult> (this IQueryable<TSource> source, Expression<Func<TSource, TKey>> keySelector, Expression<Func<TSource, TElement>> elementSelector, Expression<Func<TKey, IEnumerable<TElement>, TResult>> resultSelector)
 		{
@@ -697,7 +696,7 @@ namespace System.Linq {
 					source.Expression,
 					Expression.Quote (keySelector),
 					Expression.Quote (resultSelector),
-					Expression.Constant (comparer)));
+					Expression.Constant (comparer, typeof (IEqualityComparer<TKey>))));
 		}
 		public static IQueryable<TResult> GroupBy<TSource, TKey, TElement, TResult> (this IQueryable<TSource> source, Expression<Func<TSource, TKey>> keySelector, Expression<Func<TSource, TElement>> elementSelector, Expression<Func<TKey, IEnumerable<TElement>, TResult>> resultSelector, IEqualityComparer<TKey> comparer)
 		{
@@ -710,7 +709,7 @@ namespace System.Linq {
 					Expression.Quote (keySelector),
 					Expression.Quote (elementSelector),
 					Expression.Quote (resultSelector),
-					Expression.Constant (comparer)));
+					Expression.Constant (comparer, typeof (IEqualityComparer<TKey>))));
 		}
 		#endregion
 
@@ -733,7 +732,7 @@ namespace System.Linq {
 				StaticCall (
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TOuter), typeof (TInner), typeof (TKey), typeof (TResult)),
 					outer.Expression,
-					Expression.Constant (inner),
+					Expression.Constant (inner, typeof (IEnumerable<TInner>)),
 					Expression.Quote (outerKeySelector),
 					Expression.Quote (innerKeySelector),
 					Expression.Quote (resultSelector)));
@@ -756,7 +755,7 @@ namespace System.Linq {
 				StaticCall (
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TOuter), typeof (TInner), typeof (TKey), typeof (TResult)),
 					outer.Expression,
-					Expression.Constant (inner),
+					Expression.Constant (inner, typeof (IEnumerable<TInner>)),
 					Expression.Quote (outerKeySelector),
 					Expression.Quote (innerKeySelector),
 					Expression.Quote (resultSelector),
@@ -775,7 +774,7 @@ namespace System.Linq {
 				StaticCall (
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TSource)),
 					source1.Expression,
-					Expression.Constant (source2)));
+					Expression.Constant (source2, typeof (IEnumerable<TSource>))));
 		}
 
 		public static IQueryable<TSource> Intersect<TSource> (this IQueryable<TSource> source1, IEnumerable<TSource> source2, IEqualityComparer<TSource> comparer)
@@ -786,8 +785,8 @@ namespace System.Linq {
 				StaticCall (
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TSource)),
 					source1.Expression,
-					Expression.Constant (source2),
-					Expression.Constant (comparer)));
+					Expression.Constant (source2, typeof (IEnumerable<TSource>)),
+					Expression.Constant (comparer, typeof (IEqualityComparer<TSource>))));
 		}
 
 		#endregion
@@ -802,7 +801,7 @@ namespace System.Linq {
 				StaticCall (
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TOuter), typeof (TInner), typeof (TKey), typeof (TResult)),
 					outer.Expression,
-					Expression.Constant (inner),
+					Expression.Constant (inner, typeof (IEnumerable<TInner>)),
 					Expression.Quote (outerKeySelector),
 					Expression.Quote (innerKeySelector),
 					Expression.Quote (resultSelector)));
@@ -816,11 +815,11 @@ namespace System.Linq {
 				StaticCall (
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TOuter), typeof (TInner), typeof (TKey), typeof (TResult)),
 					outer.Expression,
-					Expression.Constant (inner),
+					Expression.Constant (inner, typeof (IEnumerable<TInner>)),
 					Expression.Quote (outerKeySelector),
 					Expression.Quote (innerKeySelector),
 					Expression.Quote (resultSelector),
-					Expression.Constant (comparer)));
+					Expression.Constant (comparer, typeof (IEqualityComparer<TKey>))));
 		}
 
 
@@ -986,7 +985,7 @@ namespace System.Linq {
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TSource), typeof (TKey)),
 					source.Expression,
 					Expression.Quote (keySelector),
-					Expression.Constant (comparer)));
+					Expression.Constant (comparer, typeof (IComparer<TKey>))));
 		}
 
 		#endregion
@@ -1013,7 +1012,7 @@ namespace System.Linq {
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TSource), typeof (TKey)),
 					source.Expression,
 					Expression.Quote (keySelector),
-					Expression.Constant (comparer)));
+					Expression.Constant (comparer, typeof (IComparer<TKey>))));
 		}
 
 		#endregion
@@ -1118,7 +1117,7 @@ namespace System.Linq {
 				StaticCall (
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TSource)),
 					source1.Expression,
-					Expression.Constant (source2)));
+					Expression.Constant (source2, typeof (IEnumerable<TSource>))));
 		}
 
 		public static bool SequenceEqual<TSource> (this IQueryable<TSource> source1, IEnumerable<TSource> source2, IEqualityComparer<TSource> comparer)
@@ -1129,8 +1128,8 @@ namespace System.Linq {
 				StaticCall (
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TSource)),
 					source1.Expression,
-					Expression.Constant (source2),
-					Expression.Constant (comparer)));
+					Expression.Constant (source2, typeof (IEnumerable<TSource>)),
+					Expression.Constant (comparer, typeof (IEqualityComparer<TSource>))));
 		}
 
 		#endregion
@@ -1517,7 +1516,7 @@ namespace System.Linq {
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TSource), typeof (TKey)),
 					source.Expression,
 					Expression.Quote (keySelector),
-					Expression.Constant (comparer)));
+					Expression.Constant (comparer, typeof (IComparer<TKey>))));
 		}
 
 		#endregion
@@ -1544,7 +1543,7 @@ namespace System.Linq {
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TSource), typeof (TKey)),
 					source.Expression,
 					Expression.Quote (keySelector),
-					Expression.Constant (comparer)));
+					Expression.Constant (comparer, typeof (IComparer<TKey>))));
 		}
 
 		#endregion
@@ -1559,7 +1558,7 @@ namespace System.Linq {
 				StaticCall (
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TSource)),
 					source1.Expression,
-					Expression.Constant (source2)));
+					Expression.Constant (source2, typeof (IEnumerable<TSource>))));
 		}
 
 		public static IQueryable<TSource> Union<TSource>(this IQueryable<TSource> source1, IEnumerable<TSource> source2, IEqualityComparer<TSource> comparer)
@@ -1570,8 +1569,8 @@ namespace System.Linq {
 				StaticCall (
 					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TSource)),
 					source1.Expression,
-					Expression.Constant (source2),
-					Expression.Constant (comparer)));
+					Expression.Constant (source2, typeof (IEnumerable<TSource>)),
+					Expression.Constant (comparer, typeof (IEqualityComparer<TSource>))));
 		}
 
 
@@ -1604,5 +1603,23 @@ namespace System.Linq {
 
 		#endregion
 
+#if NET_4_0
+		#region Zip
+
+		public static IQueryable<TResult> Zip<TFirst, TSecond, TResult> (this IQueryable<TFirst> source1, IEnumerable<TSecond> source2, Expression<Func<TFirst, TSecond, TResult>> resultSelector)
+		{
+			Check.Source1AndSource2 (source1, source2);
+			if (resultSelector == null)
+				throw new ArgumentNullException ("resultSelector");
+
+			return source1.Provider.CreateQuery<TResult> (
+				StaticCall (
+					MakeGeneric (MethodBase.GetCurrentMethod (), typeof (TFirst), typeof (TSecond), typeof (TResult)),
+					source1.Expression,
+					Expression.Quote (resultSelector)));
+		}
+
+		#endregion
+#endif
 	}
 }

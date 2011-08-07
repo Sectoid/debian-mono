@@ -57,6 +57,7 @@
     !defined(HPUX) && !(defined(LINUX) && defined(__ELF__)) && \
     !defined(RS6000) && !defined(SCO_ELF) && !defined(DGUX) && \
     !(defined(FREEBSD) && defined(__ELF__)) && \
+    !(defined(OPENBSD) && (defined(__ELF__) || defined(M68K))) && \
     !(defined(NETBSD) && defined(__ELF__)) && !defined(HURD) && \
     !defined(DARWIN)
  --> We only know how to find data segments of dynamic libraries for the
@@ -92,9 +93,12 @@
 
 #if defined(LINUX) && defined(__ELF__) || defined(SCO_ELF) || \
     (defined(FREEBSD) && defined(__ELF__)) || defined(DGUX) || \
+    (defined(OPENBSD) && defined(__ELF__)) || \
     (defined(NETBSD) && defined(__ELF__)) || defined(HURD)
 #   include <stddef.h>
+# if !defined(OPENBSD)
 #   include <elf.h>
+# endif
 #   include <link.h>
 #endif
 
@@ -250,7 +254,10 @@ void GC_register_dynamic_libraries()
         char * start;
         register int i;
         
-	e = (ElfW(Ehdr) *) lm->l_addr;
+        e = (ElfW(Ehdr) *) lm->l_addr;
+        if (e == NULL)
+          continue;
+
         p = ((ElfW(Phdr) *)(((char *)(e)) + e->e_phoff));
         offset = ((unsigned long)(lm->l_addr));
         for( i = 0; i < (int)(e->e_phnum); ((i++),(p++)) ) {
@@ -292,6 +299,7 @@ void GC_register_dynamic_libraries()
 
 #if defined(LINUX) && defined(__ELF__) || defined(SCO_ELF) || \
     (defined(FREEBSD) && defined(__ELF__)) || defined(DGUX) || \
+    (defined(OPENBSD) && defined(__ELF__)) || \
     (defined(NETBSD) && defined(__ELF__)) || defined(HURD)
 
 
@@ -470,8 +478,10 @@ GC_bool GC_register_main_static_data()
 /* This doesn't necessarily work in all cases, e.g. with preloaded
  * dynamic libraries.						*/
 
-#if defined(NETBSD)
+#if defined(NETBSD) || defined(OPENBSD)
+# if !defined(OPENBSD)
 #  include <sys/exec_elf.h>
+# endif
 /* for compatibility with 1.4.x */
 #  ifndef DT_DEBUG
 #  define DT_DEBUG     21
@@ -544,7 +554,10 @@ void GC_register_dynamic_libraries()
         char * start;
         register int i;
         
-	e = (ElfW(Ehdr) *) lm->l_addr;
+        e = (ElfW(Ehdr) *) lm->l_addr;
+        if (e == NULL)
+          continue;
+
         p = ((ElfW(Phdr) *)(((char *)(e)) + e->e_phoff));
         offset = ((unsigned long)(lm->l_addr));
         for( i = 0; i < (int)(e->e_phnum); ((i++),(p++)) ) {

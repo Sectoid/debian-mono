@@ -38,8 +38,6 @@ namespace System.ServiceModel.Channels
 {
 	internal class HttpChannelFactory<TChannel> : TransportChannelFactoryBase<TChannel>
 	{
-		// not sure if they are required.
-		MessageEncoder encoder;
 #if NET_2_1
 		IHttpCookieContainerManager cookie_manager;
 #endif
@@ -48,10 +46,10 @@ namespace System.ServiceModel.Channels
 			: base (source, ctx)
 		{
 			ClientCredentials = ctx.BindingParameters.Find<ClientCredentials> ();
-			foreach (BindingElement be in ctx.RemainingBindingElements) {
+			foreach (BindingElement be in ctx.Binding.Elements) {
 				MessageEncodingBindingElement mbe = be as MessageEncodingBindingElement;
 				if (mbe != null) {
-					encoder = CreateEncoder<TChannel> (mbe);
+					MessageEncoder = CreateEncoder<TChannel> (mbe);
 					break;
 				}
 #if NET_2_1
@@ -60,12 +58,8 @@ namespace System.ServiceModel.Channels
 					cookie_manager = cbe.GetProperty<IHttpCookieContainerManager> (ctx);
 #endif
 			}
-			if (encoder == null)
-				encoder = new TextMessageEncoder (MessageVersion.Default, Encoding.UTF8);
-		}
-
-		public MessageEncoder MessageEncoder {
-			get { return encoder; }
+			if (MessageEncoder == null)
+				MessageEncoder = new TextMessageEncoder (MessageVersion.Default, Encoding.UTF8);
 		}
 
 		public ClientCredentials ClientCredentials { get; private set; }

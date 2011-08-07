@@ -1,3 +1,29 @@
+2011-01-10  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed more missing protected internal modifiers
+
+2010-10-29  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] HttpRequest.MapPath changes to match .NET
+
+	When MapPath is passed a rooted, absolute path which is not in the
+	current application's virtual root, it should throw an exception.
+	If the path is rooted and within the current application, it will
+	be mapped as if it was relative to the root.
+
+2010-08-11  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Partial fix for bug #575600. Convert virtual path to
+	absolute only if necessary in HttpRequest.MapPath
+
+	Also added two tests for HttpRequest.MapPath which check cases
+	when the baseVirtualDir is not rooted.
+
+2010-03-20  Marek Habersack  <mhabersack@novell.com>
+
+	* XmlSiteMapProviderTest.cs: AreEqual should have expected result first
+	and actual next - swapped parameters in RootNode_2_OnLoad
+
 2009-11-16  Marek Habersack  <mhabersack@novell.com>
 
 	* HttpContext.cs: added some tests for RewritePath

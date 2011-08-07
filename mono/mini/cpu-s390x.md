@@ -64,7 +64,7 @@ br: len:6
 br_reg: src1:i len:8
 break: len:22
 call: dest:o clob:c len:26
-call_handler: len:12 
+call_handler: len:12 clob:c
 call_membase: dest:o src1:b len:12 clob:c
 call_reg: dest:o src1:i len:8 clob:c
 ceq: dest:i len:12
@@ -92,7 +92,7 @@ cond_exc_no: len:8
 cond_exc_ov: len:8
 div_imm: dest:i src1:i src2:i len:24
 div_un_imm: dest:i src1:i src2:i len:24
-endfinally: len:28
+endfinally: len:8
 fcall: dest:g len:26 clob:c
 fcall_membase: dest:g src1:b len:14 clob:c
 fcall_reg: dest:g src1:i len:10 clob:c
@@ -262,7 +262,7 @@ int_shr_un: dest:i src1:i src2:i clob:s len:12
 int_shr_un_imm: dest:i src1:i len:10
 int_subcc: dest:i src1:i src2:i len:12
 int_sub: dest:i src1:i src2:i len:12
-int_sub_imm: dest:i src1:i len:18
+int_sub_imm: dest:i src1:i len:20
 int_xor: dest:i src1:i src2:i len:12
 int_xor_imm: dest:i src1:i len:24
 int_conv_to_r4: dest:f src1:i len:16

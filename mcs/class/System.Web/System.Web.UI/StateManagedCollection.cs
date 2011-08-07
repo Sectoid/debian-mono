@@ -29,8 +29,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System.Collections;
 using System.Collections.Generic;
 
@@ -114,7 +112,7 @@ namespace System.Web.UI {
 			
 			saveEverything = indices == null;
 			if (saveEverything) {
-				items.Clear ();
+				Clear ();
 
 				for (int i = 0; i < states.Count; i++) {
 					t = types [i];
@@ -369,5 +367,4 @@ namespace System.Web.UI {
 		#endregion
 	}
 }
-#endif
 

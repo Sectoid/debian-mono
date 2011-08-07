@@ -1,3 +1,101 @@
+2011-02-03  Marek Habersack  <grendel@twistedcode.net>
+
+	[reflection] Default binder's AdjustArguments method treats
+	ParamArray parameters which are already arrays properly
+
+	Such parameters are not adjusted as it would lead to an
+	InvalidCastException whenever an attempt to set an array index's
+	value would be made.
+
+2011-01-05  Marek Safar  <marek.safar@gmail.com>
+
+	Fix invalid test constraint
+
+2010-11-25  Sebastien Pouliot  <sebastien@ximian.com>
+
+	Test case for security issue
+
+2010-11-25  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add regression test for #655847
+
+2010-11-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Add support for the processorArchitecture field in assembly names.
+	Fixes #655096.
+
+2010-10-04  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* MonoGenericClassTest.cs: Add regression test.
+
+2010-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the setting of pointer type fields using reflection. Fixes
+	#641590.
+
+2010-09-20  Jb Evain  <jbevain@gmail.com>
+
+	Ignor test since its fix has been reverted
+
+2010-09-10  Jb Evain  <jbevain@gmail.com>
+
+	Add test for #636939
+
+2010-08-25  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add test for #633671
+
+2010-08-04  Jb Evain  <jbevain@gmail.com>
+
+	Add test ensuring that parameters of constructed array methods
+	define no custom attribute
+
+2010-06-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodInfoTest.cs: Fix test for variant iface.
+
+2010-04-20 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* BinderTest.cs: Add tests for #325306.
+
+2010-04-19  Zoltan Varga  <vargaz@gmail.com>
+
+	* *.cs: Fix warnings.
+
+2010-04-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* FieldInfoTest.cs: Add tests for #594942.
+
+2010-04-01 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* AssemblyTest.cs: Fix one more tests under v4.
+
+2010-03-25 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	*AssemblyTest.cs: Fix one more tests under v4.
+
+2010-03-24 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	*AssemblyTest.cs: Fix some tests under v4.
+
+2010-03-11 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* FieldInfoTest.cs: Remove invalid assert.
+
+2010-02-26 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* AssemblyTest.cs: Fix test under v4.
+
+	* MonoGenericClassTest.cs: Ditto.
+
+2010-02-10 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* PropertyInfoTest.cs: Tests for default value.
+
+2010-02-10 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* PropertyInfoTest.cs: Tests for custom attributes from PropertyInfo::GetIndexParameters.
+
 2010-02-05 Rodrigo Kumpera  <rkumpera@novell.com>
 
 	* PropertyInfoTest.cs: Make tests for GetIndexParameters() work.
@@ -8,11 +106,30 @@
 
 	* PropertyInfoTest.cs: New tests for GetIndexParameters().
 
+2010-01-19 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodInfoTest.cs: Add a test for Invoke with generic variant
+	interfaces.
+
 2010-01-05 Rodrigo Kumpera  <rkumpera@novell.com>
 
-	* DateTimeConstantAttribute.cs: Add internal Ticks property.
+	* ParameterInfoTest.cs: Add a test for default values from custom
+	attributes.
 
-	Backport of r149083.
+2009-12-17 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoGenericClassTest.cs: Test for some corner cases of
+	GetMethod that must work under compiler context.
+
+2009-12-09 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodBaseTest.cs: Remove all NET_2_0 directives. Add test
+	for GetCurrentMethod and generics.
+
+2009-12-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodInfoTest.cs: Add some tests for MS compatible behavior of
+	MakeGenericMethod.
 
 2009-10-18  Sebastien Pouliot  <sebastien@ximian.com>
 
@@ -20,7 +137,6 @@
 	GetMethodFromHandle. Add test case to show generic overload
 	behave exactly the same when no second RuntimeMethodHandle is
 	provided. Remove [Category("NotWorking")] on existing test case.
-	[Backport r144335]
 
 2009-08-07 Rodrigo Kumpera  <rkumpera@novell.com>
 

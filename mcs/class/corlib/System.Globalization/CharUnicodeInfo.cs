@@ -29,15 +29,12 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-#if NET_2_0
 using System;
 
 namespace System.Globalization
 {
-	public sealed class CharUnicodeInfo
+	public static class CharUnicodeInfo
 	{
-		private CharUnicodeInfo () {}
-
 		public static int GetDecimalDigitValue (char ch)
 		{
 			int i = (int) ch;
@@ -309,5 +306,3 @@ namespace System.Globalization
 		}
 	}
 }
-
-#endif

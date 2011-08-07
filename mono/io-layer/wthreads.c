@@ -26,7 +26,6 @@
 #include <mono/io-layer/misc-private.h>
 #include <mono/io-layer/mono-mutex.h>
 #include <mono/io-layer/thread-private.h>
-#include <mono/io-layer/mono-spinlock.h>
 #include <mono/io-layer/mutex-private.h>
 #include <mono/io-layer/atomic.h>
 
@@ -248,7 +247,7 @@ static void *thread_start_routine (gpointer args)
 	struct _WapiHandle_thread *thread = (struct _WapiHandle_thread *)args;
 	int thr_ret;
 	
-	thr_ret = pthread_detach (pthread_self ());
+	thr_ret = mono_gc_pthread_detach (pthread_self ());
 	g_assert (thr_ret == 0);
 
 	thr_ret = pthread_setspecific (thread_hash_key,
@@ -391,6 +390,11 @@ gpointer CreateThread(WapiSecurityAttributes *security G_GNUC_UNUSED, guint32 st
 #endif
 	}
 
+#ifdef PTHREAD_STACK_MIN
+	if (stacksize < PTHREAD_STACK_MIN)
+		stacksize = PTHREAD_STACK_MIN;
+#endif
+
 #ifdef HAVE_PTHREAD_ATTR_SETSTACKSIZE
 	thr_ret = pthread_attr_setstacksize(&attr, stacksize);
 	g_assert (thr_ret == 0);
@@ -400,8 +404,8 @@ gpointer CreateThread(WapiSecurityAttributes *security G_GNUC_UNUSED, guint32 st
 	thread_handle_p->handle = handle;
 	
 
-	ret = pthread_create (&thread_handle_p->id, &attr,
-			      thread_start_routine, (void *)thread_handle_p);
+	ret = mono_gc_pthread_create (&thread_handle_p->id, &attr,
+								  thread_start_routine, (void *)thread_handle_p);
 
 	if (ret != 0) {
 #ifdef DEBUG
@@ -818,7 +822,7 @@ guint32 SuspendThread(gpointer handle)
 
 static pthread_key_t TLS_keys[TLS_MINIMUM_AVAILABLE];
 static gboolean TLS_used[TLS_MINIMUM_AVAILABLE]={FALSE};
-static guint32 TLS_spinlock=0;
+static pthread_mutex_t TLS_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 guint32
 mono_pthread_key_for_tls (guint32 idx)
@@ -841,7 +845,7 @@ guint32 TlsAlloc(void)
 	guint32 i;
 	int thr_ret;
 	
-	MONO_SPIN_LOCK (TLS_spinlock);
+	pthread_mutex_lock (&TLS_mutex);
 	
 	for(i=0; i<TLS_MINIMUM_AVAILABLE; i++) {
 		if(TLS_used[i]==FALSE) {
@@ -849,7 +853,7 @@ guint32 TlsAlloc(void)
 			thr_ret = pthread_key_create(&TLS_keys[i], NULL);
 			g_assert (thr_ret == 0);
 
-			MONO_SPIN_UNLOCK (TLS_spinlock);
+			pthread_mutex_unlock (&TLS_mutex);
 	
 #ifdef TLS_DEBUG
 			g_message ("%s: returning key %d", __func__, i);
@@ -859,7 +863,7 @@ guint32 TlsAlloc(void)
 		}
 	}
 
-	MONO_SPIN_UNLOCK (TLS_spinlock);
+	pthread_mutex_unlock (&TLS_mutex);
 	
 #ifdef TLS_DEBUG
 	g_message ("%s: out of indices", __func__);
@@ -888,11 +892,16 @@ gboolean TlsFree(guint32 idx)
 	g_message ("%s: freeing key %d", __func__, idx);
 #endif
 
-	MONO_SPIN_LOCK (TLS_spinlock);
+	if (idx >= TLS_MINIMUM_AVAILABLE) {
+		SetLastError (ERROR_INVALID_PARAMETER);
+		return FALSE;
+	}
+
+	pthread_mutex_lock (&TLS_mutex);
 	
 	if(TLS_used[idx]==FALSE) {
-		MONO_SPIN_UNLOCK (TLS_spinlock);
-
+		pthread_mutex_unlock (&TLS_mutex);
+		SetLastError (ERROR_INVALID_PARAMETER);
 		return(FALSE);
 	}
 	
@@ -900,7 +909,7 @@ gboolean TlsFree(guint32 idx)
 	thr_ret = pthread_key_delete(TLS_keys[idx]);
 	g_assert (thr_ret == 0);
 	
-	MONO_SPIN_UNLOCK (TLS_spinlock);
+	pthread_mutex_unlock (&TLS_mutex);
 	
 	return(TRUE);
 }
@@ -922,13 +931,17 @@ gpointer TlsGetValue(guint32 idx)
 #ifdef TLS_DEBUG
 	g_message ("%s: looking up key %d", __func__, idx);
 #endif
-	
+	if (idx >= TLS_MINIMUM_AVAILABLE) {
+		SetLastError (ERROR_INVALID_PARAMETER);
+		return NULL;
+	}
 	ret=pthread_getspecific(TLS_keys[idx]);
 
 #ifdef TLS_DEBUG
 	g_message ("%s: returning %p", __func__, ret);
 #endif
-	
+
+	SetLastError (ERROR_SUCCESS);
 	return(ret);
 }
 
@@ -948,34 +961,19 @@ gboolean TlsSetValue(guint32 idx, gpointer value)
 #ifdef TLS_DEBUG
 	g_message ("%s: setting key %d to %p", __func__, idx, value);
 #endif
-	
-	MONO_SPIN_LOCK (TLS_spinlock);
-	
-	if(TLS_used[idx]==FALSE) {
-#ifdef TLS_DEBUG
-		g_message ("%s: key %d unused", __func__, idx);
-#endif
-
-		MONO_SPIN_UNLOCK (TLS_spinlock);
-
-		return(FALSE);
+	if (idx >= TLS_MINIMUM_AVAILABLE) {
+		SetLastError (ERROR_INVALID_PARAMETER);
+		return FALSE;
 	}
 	
 	ret=pthread_setspecific(TLS_keys[idx], value);
-	if(ret!=0) {
 #ifdef TLS_DEBUG
+	if(ret!=0)
 		g_message ("%s: pthread_setspecific error: %s", __func__,
 			   strerror (ret));
 #endif
-
-		MONO_SPIN_UNLOCK (TLS_spinlock);
-
-		return(FALSE);
-	}
 	
-	MONO_SPIN_UNLOCK (TLS_spinlock);
-	
-	return(TRUE);
+	return(ret == 0);
 }
 
 /**
@@ -1199,10 +1197,58 @@ void wapi_interrupt_thread (gpointer thread_handle)
 }
 
 /*
+ * wapi_self_interrupt:
+ *
+ *   This is not part of the WIN32 API.
+ * Set the 'interrupted' state of the calling thread if it's NULL.
+ */
+void wapi_self_interrupt (void)
+{
+	struct _WapiHandle_thread *thread;
+	gboolean ok;
+	gpointer prev_handle, wait_handle;
+	gpointer thread_handle;
+
+
+	thread_handle = OpenThread (0, 0, GetCurrentThreadId ());
+	ok = _wapi_lookup_handle (thread_handle, WAPI_HANDLE_THREAD,
+							  (gpointer *)&thread);
+	g_assert (ok);
+
+	while (TRUE) {
+		wait_handle = thread->wait_handle;
+
+		/*
+		 * Atomically obtain the handle the thread is waiting on, and
+		 * change it to a flag value.
+		 */
+		prev_handle = InterlockedCompareExchangePointer (&thread->wait_handle,
+														 INTERRUPTION_REQUESTED_HANDLE, wait_handle);
+		if (prev_handle == INTERRUPTION_REQUESTED_HANDLE)
+			/* Already interrupted */
+			goto cleanup;
+		/*We did not get interrupted*/
+		if (prev_handle == wait_handle)
+			break;
+
+		/* Try again */
+	}
+
+	if (wait_handle) {
+		/* ref added by set_wait_handle */
+		_wapi_handle_unref (wait_handle);
+	}
+
+cleanup:
+	_wapi_handle_unref (thread_handle);
+}
+
+/*
  * wapi_clear_interruption:
  *
  *   This is not part of the WIN32 API. 
  * Clear the 'interrupted' state of the calling thread.
+ * This function is signal safe
  */
 void wapi_clear_interruption (void)
 {
@@ -1324,7 +1370,8 @@ void wapi_thread_clear_wait_handle (gpointer handle)
 		_wapi_handle_unref (handle);
 		WAIT_DEBUG (printf ("%p: state -> NORMAL.\n", GetCurrentThreadId ()););
 	} else {
-		g_assert (prev_handle == INTERRUPTION_REQUESTED_HANDLE);
+		/*It can be NULL if it was asynchronously cleared*/
+		g_assert (prev_handle == INTERRUPTION_REQUESTED_HANDLE || prev_handle == NULL);
 		WAIT_DEBUG (printf ("%p: finished waiting.\n", GetCurrentThreadId ()););
 	}
 

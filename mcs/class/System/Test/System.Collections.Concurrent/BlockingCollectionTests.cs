@@ -30,7 +30,7 @@ using System.Collections.Generic;
 
 using NUnit.Framework;
 
-namespace ParallelFxTests
+namespace MonoTests.System.Collections.Concurrent
 {
 	[TestFixture()]
 	public class BlockingCollectionTests
@@ -140,6 +140,13 @@ namespace ParallelFxTests
 		}
 		
 		[TestAttribute]
+		public void IsCompletedEmptyTestCase ()
+		{
+			defaultCollection.CompleteAdding ();
+			Assert.IsTrue (defaultCollection.IsCompleted);
+		}
+
+		[TestAttribute]
 		public void ConsumingEnumerableTestCase()
 		{
 			defaultCollection.Add(1);
@@ -158,6 +165,22 @@ namespace ParallelFxTests
 				Assert.AreEqual(temp, j, "#" + temp);
 			}
 			Assert.AreEqual(0, defaultCollection.Count, "#" + i);
+		}
+
+		[TestAttribute]
+		public void TryTakeTestCase ()
+		{
+			defaultCollection.Add (1);
+
+			int value = default (int);
+			bool firstTake = defaultCollection.TryTake (out value);
+			int value2 = default (int);
+			bool secondTake = defaultCollection.TryTake (out value2);
+
+			Assert.AreEqual (1, value);
+			Assert.IsTrue (firstTake);
+			Assert.AreEqual (default (int), value2);
+			Assert.IsFalse (secondTake);
 		}
 	}
 }

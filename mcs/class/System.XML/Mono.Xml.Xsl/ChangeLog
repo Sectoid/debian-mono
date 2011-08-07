@@ -1,3 +1,12 @@
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System.Xml build for monodroid
+
+2010-08-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	* XslFunctions.cs: avoid nullref in simple transformation. Fixes
+	bug #629714.
+
 2009-04-20  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* ScriptCompilerInfo.cs, MSXslScriptManager.cs :

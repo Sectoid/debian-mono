@@ -28,7 +28,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using System.Collections;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -41,9 +41,7 @@ using System.Threading;
 namespace System.Diagnostics {
 
 	[Serializable]
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	[MonoTODO ("Serialized objects are not compatible with .NET")]
 	public class StackTrace {
 
@@ -78,19 +76,19 @@ namespace System.Diagnostics {
 				throw new ArgumentOutOfRangeException ("< 0", "skipFrames");
 
 			StackFrame sf;
-			ArrayList al = new ArrayList ();
+			var l = new List<StackFrame> ();
 
 			skipFrames += 2;
 			
 			while ((sf = new StackFrame (skipFrames, fNeedFileInfo)) != null &&
 			       sf.GetMethod () != null) {
 				
-				al.Add (sf);
+				l.Add (sf);
 				skipFrames++;
 			};
 
 			debug_info = fNeedFileInfo;
-			frames = (StackFrame [])al.ToArray (typeof (StackFrame));	
+			frames = l.ToArray ();
 		}
 		
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
@@ -132,32 +130,31 @@ namespace System.Diagnostics {
 						resize = true;
 
 				if (resize) {
-					ArrayList al = new ArrayList ();
+					var l = new List<StackFrame> ();
 
 					for (int i = 0; i < frames.Length; ++i)
 						if (frames [i].GetMethod () != null)
-							al.Add (frames [i]);
+							l.Add (frames [i]);
 
-					frames = (StackFrame [])al.ToArray (typeof (StackFrame));
+					frames = l.ToArray ();
 				}
 			}
 		}
 
-#if ONLY_1_1
-		[ReflectionPermission (SecurityAction.Demand, TypeInformation = true)]
-#endif
 		public StackTrace (StackFrame frame)
 		{
 			this.frames = new StackFrame [1];
 			this.frames [0] = frame;
 		}
 
-#if ONLY_1_1
-		[ReflectionPermission (SecurityAction.Demand, TypeInformation = true)]
-#endif
-		[MonoTODO ("Not possible to create StackTraces from other threads")]
+		[MonoLimitation ("Not possible to create StackTraces from other threads")]
 		public StackTrace (Thread targetThread, bool needFileInfo)
 		{
+			if (targetThread == Thread.CurrentThread){
+				init_frames (METHODS_TO_SKIP, needFileInfo);
+				return;
+			}
+			
 			throw new NotImplementedException ();
 		}
 
@@ -176,14 +173,8 @@ namespace System.Diagnostics {
 			return frames [index];
 		}
 
-#if NET_2_0
 		[ComVisibleAttribute (false)]
-		public virtual
-#else
-		// used for CAS implementation (before Fx 2.0)
-		internal
-#endif
-		StackFrame[] GetFrames ()
+		public virtual StackFrame[] GetFrames ()
 		{
 			return frames;
 		}

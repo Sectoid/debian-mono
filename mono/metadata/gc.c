@@ -10,6 +10,7 @@
 #include <config.h>
 #include <glib.h>
 #include <string.h>
+#include <errno.h>
 
 #include <mono/metadata/gc-internal.h>
 #include <mono/metadata/mono-gc.h>
@@ -23,13 +24,14 @@
 #include <mono/metadata/mono-mlist.h>
 #include <mono/metadata/threadpool.h>
 #include <mono/metadata/threads-types.h>
-#include <mono/utils/mono-logger.h>
+#include <mono/utils/mono-logger-internal.h>
 #include <mono/metadata/gc-internal.h>
 #include <mono/metadata/marshal.h> /* for mono_delegate_free_ftnptr () */
 #include <mono/metadata/attach.h>
+#include <mono/metadata/console-io.h>
 #include <mono/utils/mono-semaphore.h>
 
-#ifndef PLATFORM_WIN32
+#ifndef HOST_WIN32
 #include <pthread.h>
 #endif
 
@@ -52,27 +54,31 @@ static gboolean finalizing_root_domain = FALSE;
 #define mono_finalizer_lock() EnterCriticalSection (&finalizer_mutex)
 #define mono_finalizer_unlock() LeaveCriticalSection (&finalizer_mutex)
 static CRITICAL_SECTION finalizer_mutex;
+static CRITICAL_SECTION reference_queue_mutex;
 
 static GSList *domains_to_finalize= NULL;
 static MonoMList *threads_to_finalize = NULL;
 
-static MonoThread *gc_thread;
+static MonoInternalThread *gc_thread;
 
 static void object_register_finalizer (MonoObject *obj, void (*callback)(void *, void*));
 
 static void mono_gchandle_set_target (guint32 gchandle, MonoObject *obj);
 
+static void reference_queue_proccess_all (void);
+static void mono_reference_queue_cleanup (void);
+static void reference_queue_clear_for_domain (MonoDomain *domain);
 #ifndef HAVE_NULL_GC
 static HANDLE pending_done_event;
 static HANDLE shutdown_event;
 #endif
 
 static void
-add_thread_to_finalize (MonoThread *thread)
+add_thread_to_finalize (MonoInternalThread *thread)
 {
 	mono_finalizer_lock ();
 	if (!threads_to_finalize)
-		MONO_GC_REGISTER_ROOT (threads_to_finalize);
+		MONO_GC_REGISTER_ROOT_SINGLE (threads_to_finalize);
 	threads_to_finalize = mono_mlist_append (threads_to_finalize, (MonoObject*)thread);
 	mono_finalizer_unlock ();
 }
@@ -137,10 +143,10 @@ mono_gc_run_finalize (void *obj, void *data)
 	/* make sure the finalizer is not called again if the object is resurrected */
 	object_register_finalizer (obj, NULL);
 
-	if (o->vtable->klass == mono_get_thread_class ()) {
-		MonoThread *t = (MonoThread*)o;
+	if (o->vtable->klass == mono_defaults.internal_thread_class) {
+		MonoInternalThread *t = (MonoInternalThread*)o;
 
-		if (mono_gc_is_finalizer_thread (t))
+		if (mono_gc_is_finalizer_internal_thread (t))
 			/* Avoid finalizing ourselves */
 			return;
 
@@ -228,7 +234,7 @@ void
 mono_gc_finalize_threadpool_threads (void)
 {
 	while (threads_to_finalize) {
-		MonoThread *thread = (MonoThread*) mono_mlist_get_data (threads_to_finalize);
+		MonoInternalThread *thread = (MonoInternalThread*) mono_mlist_get_data (threads_to_finalize);
 
 		/* Force finalization of the thread. */
 		thread->threadpool_thread = FALSE;
@@ -335,8 +341,9 @@ mono_domain_finalize (MonoDomain *domain, guint32 timeout)
 	DomainFinalizationReq *req;
 	guint32 res;
 	HANDLE done_event;
+	MonoInternalThread *thread = mono_thread_internal_current ();
 
-	if (mono_thread_current () == gc_thread)
+	if (mono_thread_internal_current () == gc_thread)
 		/* We are called from inside a finalizer, not much we can do here */
 		return FALSE;
 
@@ -375,12 +382,19 @@ mono_domain_finalize (MonoDomain *domain, guint32 timeout)
 	if (timeout == -1)
 		timeout = INFINITE;
 
-	res = WaitForSingleObjectEx (done_event, timeout, TRUE);
+	while (TRUE) {
+		res = WaitForSingleObjectEx (done_event, timeout, TRUE);
+		/* printf ("WAIT RES: %d.\n", res); */
 
-	/* printf ("WAIT RES: %d.\n", res); */
-	if (res == WAIT_TIMEOUT) {
-		/* We leak the handle here */
-		return FALSE;
+		if (res == WAIT_IO_COMPLETION) {
+			if ((thread->state & (ThreadState_StopRequested | ThreadState_SuspendRequested)) != 0)
+				return FALSE;
+		} else if (res == WAIT_TIMEOUT) {
+			/* We leak the handle here */
+			return FALSE;
+		} else {
+			break;
+		}
 	}
 
 	CloseHandle (done_event);
@@ -459,7 +473,7 @@ ves_icall_System_GC_WaitForPendingFinalizers (void)
 	if (!mono_gc_pending_finalizers ())
 		return;
 
-	if (mono_thread_current () == gc_thread)
+	if (mono_thread_internal_current () == gc_thread)
 		/* Avoid deadlocks */
 		return;
 
@@ -469,6 +483,21 @@ ves_icall_System_GC_WaitForPendingFinalizers (void)
 	WaitForSingleObjectEx (pending_done_event, INFINITE, TRUE);
 	/* g_print ("Done pending....\n"); */
 #endif
+}
+
+void
+ves_icall_System_GC_register_ephemeron_array (MonoObject *array)
+{
+#ifdef HAVE_SGEN_GC
+	if (!mono_gc_ephemeron_array_add (array))
+		mono_raise_exception (mono_object_domain (array)->out_of_memory_ex);
+#endif
+}
+
+MonoObject*
+ves_icall_System_GC_get_ephemeron_tombstone (void)
+{
+	return mono_domain_get ()->ephemeron_tombstone;
 }
 
 #define mono_allocator_lock() EnterCriticalSection (&allocator_section)
@@ -586,11 +615,12 @@ static guint32
 alloc_handle (HandleData *handles, MonoObject *obj, gboolean track)
 {
 	gint slot, i;
+	guint32 res;
 	lock_handles (handles);
 	if (!handles->size) {
 		handles->size = 32;
 		if (handles->type > HANDLE_WEAK_TRACK) {
-			handles->entries = mono_gc_alloc_fixed (sizeof (gpointer) * handles->size, NULL);
+			handles->entries = mono_gc_alloc_fixed (sizeof (gpointer) * handles->size, mono_gc_make_root_descr_all_refs (handles->size));
 		} else {
 			handles->entries = g_malloc0 (sizeof (gpointer) * handles->size);
 			handles->domain_ids = g_malloc0 (sizeof (guint16) * handles->size);
@@ -627,8 +657,11 @@ alloc_handle (HandleData *handles, MonoObject *obj, gboolean track)
 		/* resize and copy the entries */
 		if (handles->type > HANDLE_WEAK_TRACK) {
 			gpointer *entries;
-			entries = mono_gc_alloc_fixed (sizeof (gpointer) * new_size, NULL);
+
+			entries = mono_gc_alloc_fixed (sizeof (gpointer) * new_size, mono_gc_make_root_descr_all_refs (new_size));
 			memcpy (entries, handles->entries, sizeof (gpointer) * handles->size);
+
+			mono_gc_free_fixed (handles->entries);
 			handles->entries = entries;
 		} else {
 			gpointer *entries;
@@ -666,6 +699,8 @@ alloc_handle (HandleData *handles, MonoObject *obj, gboolean track)
 	slot = slot * 32 + i;
 	handles->entries [slot] = obj;
 	if (handles->type <= HANDLE_WEAK_TRACK) {
+		/*FIXME, what to use when obj == null?*/
+		handles->domain_ids [slot] = (obj ? mono_object_get_domain (obj) : mono_domain_get ())->domain_id;
 		if (obj)
 			mono_gc_weak_link_add (&(handles->entries [slot]), obj, track);
 	}
@@ -673,7 +708,9 @@ alloc_handle (HandleData *handles, MonoObject *obj, gboolean track)
 	mono_perfcounters->gc_num_handles++;
 	unlock_handles (handles);
 	/*g_print ("allocated entry %d of type %d to object %p (in slot: %p)\n", slot, handles->type, obj, handles->entries [slot]);*/
-	return (slot << 3) | (handles->type + 1);
+	res = (slot << 3) | (handles->type + 1);
+	mono_profiler_gc_handle (MONO_PROFILER_GC_HANDLE_CREATED, handles->type, res, obj);
+	return res;
 }
 
 /**
@@ -791,6 +828,8 @@ mono_gchandle_set_target (guint32 gchandle, MonoObject *obj)
 				mono_gc_weak_link_remove (&handles->entries [slot]);
 			if (obj)
 				mono_gc_weak_link_add (&handles->entries [slot], obj, handles->type == HANDLE_WEAK_TRACK);
+			/*FIXME, what to use when obj == null?*/
+			handles->domain_ids [slot] = (obj ? mono_object_get_domain (obj) : mono_domain_get ())->domain_id;
 		} else {
 			handles->entries [slot] = obj;
 		}
@@ -877,6 +916,7 @@ mono_gchandle_free (guint32 gchandle)
 	mono_perfcounters->gc_num_handles--;
 	/*g_print ("freed entry %d of type %d\n", slot, handles->type);*/
 	unlock_handles (handles);
+	mono_profiler_gc_handle (MONO_PROFILER_GC_HANDLE_DESTROYED, handles->type, gchandle, NULL);
 }
 
 /**
@@ -1001,6 +1041,9 @@ finalize_domain_objects (DomainFinalizationReq *req)
 	/* Process finalizers which are already in the queue */
 	mono_gc_invoke_finalizers ();
 
+	/* cleanup the reference queue */
+	reference_queue_clear_for_domain (domain);
+	
 	/* printf ("DONE.\n"); */
 	SetEvent (req->done_event);
 
@@ -1018,12 +1061,14 @@ finalizer_thread (gpointer unused)
 
 		g_assert (mono_domain_get () == mono_get_root_domain ());
 
+		/* An alertable wait is required so this thread can be suspended on windows */
 #ifdef MONO_HAS_SEMAPHORES
-		MONO_SEM_WAIT (&finalizer_sem);
+		MONO_SEM_WAIT_ALERTABLE (&finalizer_sem, TRUE);
 #else
-		/* Use alertable=FALSE since we will be asked to exit using the event too */
-		WaitForSingleObjectEx (finalizer_event, INFINITE, FALSE);
+		WaitForSingleObjectEx (finalizer_event, INFINITE, TRUE);
 #endif
+
+		mono_console_handle_async_ops ();
 
 #ifndef DISABLE_ATTACH
 		mono_attach_maybe_start ();
@@ -1047,16 +1092,14 @@ finalizer_thread (gpointer unused)
 		 */
 		mono_gc_invoke_finalizers ();
 
+		reference_queue_proccess_all ();
+
 		SetEvent (pending_done_event);
 	}
 
 	SetEvent (shutdown_event);
 	return 0;
 }
-
-#ifdef HAVE_SGEN_GC
-#define GC_dont_gc 0
-#endif
 
 void
 mono_gc_init (void)
@@ -1065,13 +1108,14 @@ mono_gc_init (void)
 	InitializeCriticalSection (&allocator_section);
 
 	InitializeCriticalSection (&finalizer_mutex);
+	InitializeCriticalSection (&reference_queue_mutex);
 
-	MONO_GC_REGISTER_ROOT (gc_handles [HANDLE_NORMAL].entries);
-	MONO_GC_REGISTER_ROOT (gc_handles [HANDLE_PINNED].entries);
+	MONO_GC_REGISTER_ROOT_FIXED (gc_handles [HANDLE_NORMAL].entries);
+	MONO_GC_REGISTER_ROOT_FIXED (gc_handles [HANDLE_PINNED].entries);
 
 	mono_gc_base_init ();
 
-	if (GC_dont_gc || g_getenv ("GC_DONT_GC")) {
+	if (mono_gc_is_disabled ()) {
 		gc_disabled = TRUE;
 		return;
 	}
@@ -1086,7 +1130,8 @@ mono_gc_init (void)
 	MONO_SEM_INIT (&finalizer_sem, 0);
 #endif
 
-	gc_thread = mono_thread_create_internal (mono_domain_get (), finalizer_thread, NULL, FALSE);
+	gc_thread = mono_thread_create_internal (mono_domain_get (), finalizer_thread, NULL, FALSE, 0);
+	ves_icall_System_Threading_Thread_SetName_internal (gc_thread, mono_string_new (mono_domain_get (), "Finalizer"));
 }
 
 void
@@ -1099,7 +1144,7 @@ mono_gc_cleanup (void)
 	if (!gc_disabled) {
 		ResetEvent (shutdown_event);
 		finished = TRUE;
-		if (mono_thread_current () != gc_thread) {
+		if (mono_thread_internal_current () != gc_thread) {
 			mono_gc_finalize_notify ();
 			/* Finishing the finalizer thread, so wait a little bit... */
 			/* MS seems to wait for about 2 seconds */
@@ -1110,7 +1155,7 @@ mono_gc_cleanup (void)
 				suspend_finalizers = TRUE;
 
 				/* Try to abort the thread, in the hope that it is running managed code */
-				mono_thread_stop (gc_thread);
+				mono_thread_internal_stop (gc_thread);
 
 				/* Wait for it to stop */
 				ret = WaitForSingleObjectEx (gc_thread->handle, 100, TRUE);
@@ -1138,9 +1183,12 @@ mono_gc_cleanup (void)
 #endif
 	}
 
+	mono_reference_queue_cleanup ();
+
 	DeleteCriticalSection (&handle_section);
 	DeleteCriticalSection (&allocator_section);
 	DeleteCriticalSection (&finalizer_mutex);
+	DeleteCriticalSection (&reference_queue_mutex);
 }
 
 #else
@@ -1162,6 +1210,12 @@ void mono_gc_cleanup (void)
 
 #endif
 
+gboolean
+mono_gc_is_finalizer_internal_thread (MonoInternalThread *thread)
+{
+	return thread == gc_thread;
+}
+
 /**
  * mono_gc_is_finalizer_thread:
  * @thread: the thread to test.
@@ -1175,5 +1229,262 @@ void mono_gc_cleanup (void)
 gboolean
 mono_gc_is_finalizer_thread (MonoThread *thread)
 {
-	return thread == gc_thread;
+	return mono_gc_is_finalizer_internal_thread (thread->internal_thread);
 }
+
+#if defined(__MACH__)
+static pthread_t mach_exception_thread;
+
+void
+mono_gc_register_mach_exception_thread (pthread_t thread)
+{
+	mach_exception_thread = thread;
+}
+
+pthread_t
+mono_gc_get_mach_exception_thread (void)
+{
+	return mach_exception_thread;
+}
+#endif
+
+/**
+ * mono_gc_parse_environment_string_extract_number:
+ *
+ * @str: points to the first digit of the number
+ * @out: pointer to the variable that will receive the value
+ *
+ * Tries to extract a number from the passed string, taking in to account m, k
+ * and g suffixes
+ *
+ * Returns true if passing was successful
+ */
+gboolean
+mono_gc_parse_environment_string_extract_number (const char *str, glong *out)
+{
+	char *endptr;
+	int len = strlen (str), shift = 0;
+	glong val;
+	gboolean is_suffix = FALSE;
+	char suffix;
+
+	switch (str [len - 1]) {
+		case 'g':
+		case 'G':
+			shift += 10;
+		case 'm':
+		case 'M':
+			shift += 10;
+		case 'k':
+		case 'K':
+			shift += 10;
+			is_suffix = TRUE;
+			suffix = str [len - 1];
+			break;
+	}
+
+	errno = 0;
+	val = strtol (str, &endptr, 10);
+
+	if ((errno == ERANGE && (val == LONG_MAX || val == LONG_MIN))
+			|| (errno != 0 && val == 0) || (endptr == str))
+		return FALSE;
+
+	if (is_suffix) {
+		if (*(endptr + 1)) /* Invalid string. */
+			return FALSE;
+		val <<= shift;
+	}
+
+	*out = val;
+	return TRUE;
+}
+
+#ifndef HAVE_SGEN_GC
+void*
+mono_gc_alloc_mature (MonoVTable *vtable)
+{
+	return mono_object_new_specific (vtable);
+}
+#endif
+
+
+static MonoReferenceQueue *ref_queues;
+
+static void
+ref_list_remove_element (RefQueueEntry **prev, RefQueueEntry *element)
+{
+	do {
+		/* Guard if head is changed concurrently. */
+		while (*prev != element)
+			prev = &(*prev)->next;
+	} while (prev && InterlockedCompareExchangePointer ((void*)prev, element->next, element) != element);
+}
+
+static void
+ref_list_push (RefQueueEntry **head, RefQueueEntry *value)
+{
+	RefQueueEntry *current;
+	do {
+		current = *head;
+		value->next = current;
+	} while (InterlockedCompareExchangePointer ((void*)head, value, current) != current);
+}
+
+static void
+reference_queue_proccess (MonoReferenceQueue *queue)
+{
+	RefQueueEntry **iter = &queue->queue;
+	RefQueueEntry *entry;
+	while ((entry = *iter)) {
+#ifdef HAVE_SGEN_GC
+		if (queue->should_be_deleted || !mono_gc_weak_link_get (&entry->dis_link)) {
+			mono_gc_weak_link_remove (&entry->dis_link);
+#else
+		if (queue->should_be_deleted || !mono_gchandle_get_target (entry->gchandle)) {
+			mono_gchandle_free ((guint32)entry->gchandle);
+#endif
+			ref_list_remove_element (iter, entry);
+			queue->callback (entry->user_data);
+			g_free (entry);
+		} else {
+			iter = &entry->next;
+		}
+	}
+}
+
+static void
+reference_queue_proccess_all (void)
+{
+	MonoReferenceQueue **iter;
+	MonoReferenceQueue *queue = ref_queues;
+	for (; queue; queue = queue->next)
+		reference_queue_proccess (queue);
+
+restart:
+	EnterCriticalSection (&reference_queue_mutex);
+	for (iter = &ref_queues; *iter;) {
+		queue = *iter;
+		if (!queue->should_be_deleted) {
+			iter = &queue->next;
+			continue;
+		}
+		if (queue->queue) {
+			LeaveCriticalSection (&reference_queue_mutex);
+			reference_queue_proccess (queue);
+			goto restart;
+		}
+		*iter = queue->next;
+		g_free (queue);
+	}
+	LeaveCriticalSection (&reference_queue_mutex);
+}
+
+static void
+mono_reference_queue_cleanup (void)
+{
+	MonoReferenceQueue *queue = ref_queues;
+	for (; queue; queue = queue->next)
+		queue->should_be_deleted = TRUE;
+	reference_queue_proccess_all ();
+}
+
+static void
+reference_queue_clear_for_domain (MonoDomain *domain)
+{
+	MonoReferenceQueue *queue = ref_queues;
+	for (; queue; queue = queue->next) {
+		RefQueueEntry **iter = &queue->queue;
+		RefQueueEntry *entry;
+		while ((entry = *iter)) {
+			MonoObject *obj;
+#ifdef HAVE_SGEN_GC
+			obj = mono_gc_weak_link_get (&entry->dis_link);
+			if (obj && mono_object_domain (obj) == domain) {
+				mono_gc_weak_link_remove (&entry->dis_link);
+#else
+			obj = mono_gchandle_get_target (entry->gchandle);
+			if (obj && mono_object_domain (obj) == domain) {
+				mono_gchandle_free ((guint32)entry->gchandle);
+#endif
+				ref_list_remove_element (iter, entry);
+				queue->callback (entry->user_data);
+				g_free (entry);
+			} else {
+				iter = &entry->next;
+			}
+		}
+	}
+}
+/**
+ * mono_gc_reference_queue_new:
+ * @callback callback used when processing dead entries.
+ *
+ * Create a new reference queue used to process collected objects.
+ * A reference queue let you queue the pair (managed object, user data).
+ * Once the managed object is collected @callback will be called
+ * in the finalizer thread with 'user data' as argument.
+ *
+ * The callback is called without any locks held.
+ */
+MonoReferenceQueue*
+mono_gc_reference_queue_new (mono_reference_queue_callback callback)
+{
+	MonoReferenceQueue *res = g_new0 (MonoReferenceQueue, 1);
+	res->callback = callback;
+
+	EnterCriticalSection (&reference_queue_mutex);
+	res->next = ref_queues;
+	ref_queues = res;
+	LeaveCriticalSection (&reference_queue_mutex);
+
+	return res;
+}
+
+/**
+ * mono_gc_reference_queue_add:
+ * @queue the queue to add the reference to.
+ * @obj the object to be watched for collection
+ * @user_data parameter to be passed to the queue callback
+ *
+ * Queue an object to be watched for collection.
+ *
+ * @returns false if the queue is scheduled to be freed.
+ */
+gboolean
+mono_gc_reference_queue_add (MonoReferenceQueue *queue, MonoObject *obj, void *user_data)
+{
+	RefQueueEntry *entry;
+	if (queue->should_be_deleted)
+		return FALSE;
+
+	entry = g_new0 (RefQueueEntry, 1);
+	entry->user_data = user_data;
+
+#ifdef HAVE_SGEN_GC
+	mono_gc_weak_link_add (&entry->dis_link, obj, TRUE);
+#else
+	entry->gchandle = mono_gchandle_new_weakref (obj, TRUE);
+	mono_object_register_finalizer (obj);
+#endif
+
+	ref_list_push (&queue->queue, entry);
+	return TRUE;
+}
+
+/**
+ * mono_gc_reference_queue_free:
+ * @queue the queue that should be deleted.
+ *
+ * This operation signals that @queue should be deleted. This operation is deferred
+ * as it happens on the finalizer thread.
+ *
+ * After this call, no further objects can be queued. It's the responsibility of the
+ * caller to make sure that no further attempt to access queue will be made.
+ */
+void
+mono_gc_reference_queue_free (MonoReferenceQueue *queue)
+{
+	queue->should_be_deleted = TRUE;
+}
+
