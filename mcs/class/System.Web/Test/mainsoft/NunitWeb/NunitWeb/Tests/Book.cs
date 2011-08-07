@@ -1,4 +1,3 @@
-#if NET_2_0
 // Book.cs
 using System;
 using System.ComponentModel;
@@ -124,7 +123,7 @@ namespace Samples.AspNet.CS.Controls
             }
         }
 
-        protected override void RenderContents(HtmlTextWriter writer)
+        protected internal override void RenderContents(HtmlTextWriter writer)
         {
             writer.RenderBeginTag(HtmlTextWriterTag.Table);
 
@@ -193,4 +192,3 @@ namespace Samples.AspNet.CS.Controls
 
     }
 }
-#endif

@@ -1,8 +1,109 @@
-2009-11-04  Rodrigo Kumpera  <rkumpera@novell.com>
+2011-03-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
-	- Add kumpera's mono-error stuff to hopefully fix the build.
+	[msvc] New mono.def
 
-	Backport of r144696 by Jonathan Pobst  <monkey@jpobst.com>
+2011-03-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[windows] Update create-defs.pl
+
+	Library is now mono-2.0, exclude mono_gc_pthread_* from the
+	output.
+
+2011-01-19  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Dist more files needed by MSVC build
+
+2011-01-11  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fix the win32 build
+
+2011-01-13  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Add vcxproj files for msbuild
+
+2011-01-07  Jonathan Pobst  <monkey@jpobst.com>
+
+	Add __default_codegen__ to *all* msvc profiles.
+
+2011-01-07  Jonathan Pobst  <monkey@jpobst.com>
+
+	Add __default_codegen__ define to fix the msvc build.
+
+2010-12-29  Jonathan Pobst  <monkey@jpobst.com>
+
+	Update for moving \mcs to \mono\mcs.
+
+2010-12-29  Jonathan Pobst  <monkey@jpobst.com>
+
+	mono.dll -> mono-2.0.dll
+
+2010-12-29  Jonathan Pobst  <monkey@jpobst.com>
+
+	All the other vcxproj files seem to be build to $(Platform)
+	instead of $(Platform)_$(Configuration), so make this one match.
+
+2010-12-29  Jonathan Pobst  <monkey@jpobst.com>
+
+	Remove obsolete files from MSVC build.
+
+2010-12-29  Jonathan Pobst  <monkey@jpobst.com>
+
+	Build 'eglib' in the Win32|Release profile.
+
+2010-12-22  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add some missing files needed for windows to the tarball
+
+2010-11-17  joncham  <joncham@gmail.com>
+
+	Update vcxproj files.
+
+2010-09-10  joncham  <joncham@gmail.com>
+
+	Update mono.sln for 2010
+
+2010-09-10  joncham  <joncham@gmail.com>
+
+	Add vcxproj files
+
+2010-09-07  joncham  <joncham@gmail.com>
+
+	Migrate vcproj files to VS2010
+
+2010-09-10  unknown  <Michael@.(none)>
+
+	[windows] Update Mono.def
+
+2010-06-28  Robert Jordan  <robertj@gmx.net>
+
+	* mono.def: Add mono_free symbol (exposed by mono-publib.h).
+
+2010-05-31  Robert Jordan  <robertj@gmx.net>
+
+	* mono.def : Remove unimplemented symbols.
+
+	* mono.def: Regenerate with create-windef.pl.
+
+	* create-windef.pl: Track 2.0 API changes.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* scripts/monowrap.cs, scripts/genproj.cs: rename
+	the net_2_1 profile to moonlight.
+
+2010-03-01  Robert Jordan  <robertj@gmx.net>
+
+	* libmono.vcproj: Track changes.
+
+2009-11-02 Jonathan Chambers <joncham@gmail.com>
+
+	* genmdesc.vcproj: Fix amd64 build.
+
+	* libmono.vcproj: Fix amd64 build.
+
+	* mono.vcproj: Fix amd64 build.
+
+	* mono.sln: Fix amd64 build.
 
 2009-09-08  Jonathan Chambers  <joncham@gmail.com>
 

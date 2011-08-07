@@ -1,3 +1,13 @@
+2010-10-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	A few moves/changes following previous patch review
+
+2010-10-08  Sebastien Pouliot  <sebastien@ximian.com>
+
+	*
+	Test/System.Web.Configuration/MachineKeyValidationConverterTest.cs:
+	Add more, mostly 4.0, test cases.
+
 2008-12-23  Marek Habersack  <mhabersack@novell.com>
 
 	* WebConfigurationManagerTest.cs: added new test.

@@ -3,7 +3,15 @@
 
 #include <mono/arch/x86/x86-codegen.h>
 #include <mono/utils/mono-sigcontext.h>
-#ifdef PLATFORM_WIN32
+
+#ifdef __native_client_codegen__
+#define kNaClAlignmentX86 32
+#define kNaClAlignmentMaskX86 (kNaClAlignmentX86 - 1)
+
+#define kNaClLengthOfCallImm kx86NaClLengthOfCallImm
+#endif
+
+#ifdef HOST_WIN32
 #include <windows.h>
 /* use SIG* defines if possible */
 #ifdef HAVE_SIGNAL_H
@@ -23,7 +31,8 @@ struct sigcontext {
 	unsigned int eip;
 };
 
-typedef void (* MonoW32ExceptionHandler) (int _dummy, EXCEPTION_RECORD *info, void *context);
+typedef void (* MonoW32ExceptionHandler) (int _dummy, EXCEPTION_POINTERS *info, void *context);
+
 void win32_seh_init(void);
 void win32_seh_cleanup(void);
 void win32_seh_set_handler(int type, MonoW32ExceptionHandler handler);
@@ -42,13 +51,24 @@ void win32_seh_set_handler(int type, MonoW32ExceptionHandler handler);
 
 LONG CALLBACK seh_handler(EXCEPTION_POINTERS* ep);
 
-#endif /* PLATFORM_WIN32 */
+#endif /* HOST_WIN32 */
 
-#if defined( __linux__) || defined(__sun) || defined(__APPLE__) || defined(__NetBSD__) || defined(__FreeBSD__)
+#ifdef __HAIKU__
+struct sigcontext {
+	vregs regs;
+};
+#endif /* __HAIKU__ */
+
+#if defined( __linux__) || defined(__sun) || defined(__APPLE__) || defined(__NetBSD__) || \
+       defined(__FreeBSD__) || defined(__OpenBSD__)
 #define MONO_ARCH_USE_SIGACTION
 #endif
 
-#ifndef PLATFORM_WIN32
+#if defined(__native_client__)
+#undef MONO_ARCH_USE_SIGACTION
+#endif
+
+#ifndef HOST_WIN32
 
 #ifdef HAVE_WORKING_SIGALTSTACK
 /* 
@@ -58,10 +78,13 @@ LONG CALLBACK seh_handler(EXCEPTION_POINTERS* ep);
 #ifndef __sun
 #define MONO_ARCH_SIGSEGV_ON_ALTSTACK
 #endif
+/* Haiku doesn't have SA_SIGINFO */
+#ifndef __HAIKU__
 #define MONO_ARCH_USE_SIGACTION
+#endif /* __HAIKU__ */
 
 #endif /* HAVE_WORKING_SIGALTSTACK */
-#endif /* !PLATFORM_WIN32 */
+#endif /* !HOST_WIN32 */
 
 #define MONO_ARCH_SUPPORT_SIMD_INTRINSICS 1
 #define MONO_ARCH_SUPPORT_TASKLETS 1
@@ -126,6 +149,11 @@ LONG CALLBACK seh_handler(EXCEPTION_POINTERS* ep);
 /*This is the max size of the locals area of a given frame. I think 1MB is a safe default for now*/
 #define MONO_ARCH_MAX_FRAME_SIZE 0x100000
 
+/*This is how much a try block must be extended when is is preceeded by a Monitor.Enter() call.
+It's 4 bytes as this is how many bytes + 1 that 'add 0x10, %esp' takes. It is used to pop the arguments from
+the monitor.enter call and must be already protected.*/
+#define MONO_ARCH_MONITOR_ENTER_ADJUSTMENT 4
+
 struct MonoLMF {
 	/* 
 	 * If the lowest bit is set to 1, then this is a trampoline LMF frame.
@@ -160,6 +188,16 @@ typedef struct {
 # define SC_ESP sc_esp
 # define SC_EDI sc_edi
 # define SC_ESI sc_esi
+#elif defined(__HAIKU__)
+# define SC_EAX regs.eax
+# define SC_EBX regs._reserved_2[2]
+# define SC_ECX regs.ecx
+# define SC_EDX regs.edx
+# define SC_EBP regs.ebp
+# define SC_EIP regs.eip
+# define SC_ESP regs.esp
+# define SC_EDI regs._reserved_2[0]
+# define SC_ESI regs._reserved_2[1]
 #else
 # define SC_EAX eax
 # define SC_EBX ebx
@@ -192,6 +230,8 @@ typedef struct {
 #define MONO_CONTEXT_GET_BP(ctx) ((gpointer)((ctx)->ebp))
 #define MONO_CONTEXT_GET_SP(ctx) ((gpointer)((ctx)->esp))
 
+#define MONO_CONTEXT_SET_LLVM_EXC_REG(ctx, exc) do { (ctx)->eax = (gsize)exc; } while (0)
+
 #ifdef _MSC_VER
 
 #define MONO_INIT_CONTEXT_FROM_FUNC(ctx, start_func) do { \
@@ -216,14 +256,7 @@ typedef struct {
 
 #endif
 
-/*
- * This structure is an extension of MonoLMF and contains extra information.
- */
-typedef struct {
-	struct MonoLMF lmf;
-	gboolean debugger_invoke;
-	MonoContext ctx; /* if debugger_invoke is TRUE */
-} MonoLMFExt;
+#define MONO_ARCH_INIT_TOP_LMF_ENTRY(lmf) do { (lmf)->ebp = -1; } while (0)
 
 /* Enables OP_LSHL, OP_LSHL_IMM, OP_LSHR, OP_LSHR_IMM, OP_LSHR_UN, OP_LSHR_UN_IMM */
 #define MONO_ARCH_NO_EMULATE_LONG_SHIFT_OPS
@@ -233,14 +266,15 @@ typedef struct {
 #define MONO_ARCH_HAVE_IS_INT_OVERFLOW 1
 #define MONO_ARCH_HAVE_INVALIDATE_METHOD 1
 #define MONO_ARCH_NEED_GOT_VAR 1
-#define MONO_ARCH_HAVE_THROW_CORLIB_EXCEPTION 1
+#if !defined(__APPLE__)
 #define MONO_ARCH_ENABLE_MONO_LMF_VAR 1
+#endif
 #define MONO_ARCH_HAVE_CREATE_DELEGATE_TRAMPOLINE 1
 #define MONO_ARCH_HAVE_ATOMIC_ADD 1
 #define MONO_ARCH_HAVE_ATOMIC_EXCHANGE 1
 #define MONO_ARCH_HAVE_ATOMIC_CAS 1
 #define MONO_ARCH_HAVE_IMT 1
-#define MONO_ARCH_HAVE_TLS_GET 1
+#define MONO_ARCH_HAVE_TLS_GET (mono_x86_have_tls_get ())
 #define MONO_ARCH_IMT_REG X86_EDX
 #define MONO_ARCH_VTABLE_REG X86_EDX
 #define MONO_ARCH_RGCTX_REG X86_EDX
@@ -248,10 +282,15 @@ typedef struct {
 #define MONO_ARCH_HAVE_LIVERANGE_OPS 1
 #define MONO_ARCH_HAVE_XP_UNWIND 1
 #define MONO_ARCH_HAVE_SIGCTX_TO_MONOCTX 1
-#if defined(__linux__) && !defined(HAVE_MOVING_COLLECTOR)
+#if defined(__linux__)
 #define MONO_ARCH_MONITOR_OBJECT_REG X86_EAX
 #endif
 #define MONO_ARCH_HAVE_STATIC_RGCTX_TRAMPOLINE 1
+#if !defined (__APPLE__) || defined(__native_client_codegen__)
+#define MONO_ARCH_HAVE_FULL_AOT_TRAMPOLINES 1
+#endif
+#define MONO_ARCH_GOT_REG X86_EBX
+#define MONO_ARCH_HAVE_GET_TRAMPOLINES 1
 
 #define MONO_ARCH_HAVE_CMOV_OPS 1
 
@@ -261,18 +300,32 @@ typedef struct {
 
 #define MONO_ARCH_HAVE_DECOMPOSE_LONG_OPTS 1
 
-#if !defined(__APPLE__)
 #define MONO_ARCH_AOT_SUPPORTED 1
-#endif
 
 #if defined(__linux__) || defined(__sun)
 #define MONO_ARCH_ENABLE_MONITOR_IL_FASTPATH 1
 #endif
 
 #define MONO_ARCH_GSHARED_SUPPORTED 1
-//#define MONO_ARCH_HAVE_LLVM_IMT_TRAMPOLINE 1
+#define MONO_ARCH_HAVE_LLVM_IMT_TRAMPOLINE 1
+#define MONO_ARCH_LLVM_SUPPORTED 1
+#define MONO_ARCH_THIS_AS_FIRST_ARG 1
+
+#if defined(MONO_ARCH_USE_SIGACTION) || defined(TARGET_WIN32)
 #define MONO_ARCH_SOFT_DEBUG_SUPPORTED 1
-#define MONO_ARCH_HAVE_FIND_JIT_INFO_EXT 1
+#endif
+
+#define MONO_ARCH_HAVE_EXCEPTIONS_INIT 1
+#define MONO_ARCH_HAVE_HANDLER_BLOCK_GUARD 1
+
+#define MONO_ARCH_HAVE_CARD_TABLE_WBARRIER 1
+#define MONO_ARCH_HAVE_SETUP_RESUME_FROM_SIGNAL_HANDLER_CTX 1
+#define MONO_ARCH_GC_MAPS_SUPPORTED 1
+
+gboolean
+mono_x86_tail_call_supported (MonoMethodSignature *caller_sig, MonoMethodSignature *callee_sig) MONO_INTERNAL;
+
+#define MONO_ARCH_USE_OP_TAIL_CALL(caller_sig, callee_sig) mono_x86_tail_call_supported (caller_sig, callee_sig)
 
 /* Used for optimization, not complete */
 #define MONO_ARCH_IS_OP_MEMBASE(opcode) ((opcode) == OP_X86_PUSH_MEMBASE)
@@ -296,6 +349,23 @@ extern MonoBreakpointInfo mono_breakpoint_info [MONO_BREAKPOINT_ARRAY_SIZE];
 
 guint8*
 mono_x86_emit_tls_get (guint8* code, int dreg, int tls_offset) MONO_INTERNAL;
+
+guint32
+mono_x86_get_this_arg_offset (MonoGenericSharingContext *gsctx, MonoMethodSignature *sig) MONO_INTERNAL;
+
+gboolean
+mono_x86_have_tls_get (void) MONO_INTERNAL;
+
+void
+mono_x86_throw_exception (mgreg_t *regs, MonoObject *exc, 
+						  mgreg_t eip, gboolean rethrow) MONO_INTERNAL;
+
+void
+mono_x86_throw_corlib_exception (mgreg_t *regs, guint32 ex_token_index, 
+								 mgreg_t eip, gint32 pc_offset) MONO_INTERNAL;
+
+void 
+mono_x86_patch (unsigned char* code, gpointer target) MONO_INTERNAL;
 
 #endif /* __MONO_MINI_X86_H__ */  
 

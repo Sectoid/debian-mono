@@ -32,16 +32,12 @@ namespace System.Security.Cryptography.X509Certificates {
 
 // Note: Definitions are useful for 1.0 and 1.1 so we declare them internal
 
-#if NET_2_0
 	[ComVisible (true)]
 	public
-#else
-	internal
-#endif
 	enum X509ContentType {
 		Unknown,
 		Cert,
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		// not supported by Silverlight 2.0 (NET_2_1)
 		SerializedCert,
 		Pfx,

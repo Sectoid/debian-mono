@@ -64,10 +64,7 @@ namespace System
 		internal static IntComparer   int_comparer = new IntComparer ();
 		internal static LongComparer  long_comparer = new LongComparer ();
 		
-		internal class SByteComparer : IComparer
-#if NET_2_0
-	, System.Collections.Generic.IComparer<sbyte>
-#endif
+		internal class SByteComparer : IComparer, System.Collections.Generic.IComparer<sbyte>
 		{
 			public int Compare (object x, object y)
 			{
@@ -83,10 +80,7 @@ namespace System
 			}
 		}
 		
-		internal class ShortComparer : IComparer
-#if NET_2_0
-	, System.Collections.Generic.IComparer<short>
-#endif
+		internal class ShortComparer : IComparer, System.Collections.Generic.IComparer<short>
 	  	{
 			public int Compare (object x, object y)
 			{
@@ -102,10 +96,7 @@ namespace System
 			}
 		}
 		
-		internal class IntComparer : IComparer 
-#if NET_2_0
-	, System.Collections.Generic.IComparer<int>
-#endif
+		internal class IntComparer : IComparer, System.Collections.Generic.IComparer<int>
 		  {
 			public int Compare (object x, object y)
 			{
@@ -131,10 +122,7 @@ namespace System
 			}
 		}
 
-		internal class LongComparer : IComparer
-#if NET_2_0
-	, System.Collections.Generic.IComparer<long>
-#endif
+		internal class LongComparer : IComparer, System.Collections.Generic.IComparer<long>
 		{
 			public int Compare (object x, object y)
 			{
@@ -200,13 +188,14 @@ namespace System
 			get_enum_info (enumType, out info);
 
 			IComparer ic = null;
-			if (info.values is int [])
+			Type et = Enum.GetUnderlyingType (enumType);
+			if (et == typeof (int))
 				ic = int_comparer;
-			else if (info.values is short [])
+			else if (et == typeof (short))
 				ic = short_comparer;
-			else if (info.values is sbyte [])
+			else if (et == typeof (sbyte))
 				ic = sbyte_comparer;
-			else if (info.values is long [])
+			else if (et == typeof (long))
 				ic = long_comparer;
 			
 			Array.Sort (info.values, info.names, ic);
@@ -223,9 +212,7 @@ namespace System
 	};
 
 	[Serializable]
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public abstract class Enum : ValueType, IComparable, IConvertible, IFormattable
 	{
 		protected Enum ()
@@ -283,17 +270,10 @@ namespace System
 			return Convert.ToInt64 (Value, provider);
 		}
 
-#if ONLY_1_1
-#pragma warning disable 3019
-		[CLSCompliant (false)]
-#endif
 		sbyte IConvertible.ToSByte (IFormatProvider provider)
 		{
 			return Convert.ToSByte (Value, provider);
 		}
-#if ONLY_1_1
-#pragma warning restore 3019
-#endif
 
 		float IConvertible.ToSingle (IFormatProvider provider)
 		{
@@ -309,41 +289,20 @@ namespace System
 			return Convert.ToType (Value, targetType, provider, false);
 		}
 
-#if ONLY_1_1
-#pragma warning disable 3019
-		[CLSCompliant (false)]
-#endif
 		ushort IConvertible.ToUInt16 (IFormatProvider provider)
 		{
 			return Convert.ToUInt16 (Value, provider);
 		}
-#if ONLY_1_1
-#pragma warning restore 3019
-#endif
 
-#if ONLY_1_1
-#pragma warning disable 3019
-		[CLSCompliant (false)]
-#endif
 		uint IConvertible.ToUInt32 (IFormatProvider provider)
 		{
 			return Convert.ToUInt32 (Value, provider);
 		}
-#if ONLY_1_1
-#pragma warning restore 3019
-#endif
 
-#if ONLY_1_1
-#pragma warning disable 3019
-		[CLSCompliant (false)]
-#endif
 		ulong IConvertible.ToUInt64 (IFormatProvider provider)
 		{
 			return Convert.ToUInt64 (Value, provider);
 		}
-#if ONLY_1_1
-#pragma warning restore 3019
-#endif
 
 		// <-- End IConvertible methods
 
@@ -355,9 +314,7 @@ namespace System
 			get { return get_value (); }
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public static Array GetValues (Type enumType)
 		{
 			if (enumType == null)
@@ -371,9 +328,7 @@ namespace System
 			return (Array) info.values.Clone ();
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public static string[] GetNames (Type enumType)
 		{
 			if (enumType == null)
@@ -387,72 +342,54 @@ namespace System
 			return (string []) info.names.Clone ();
 		}
 
-#if NET_2_0
 		//
 		// The faster, non-boxing version.   It must use the special MonoEnumInfo.xxx_comparers
 		// to ensure that we are perfoming bitwise compares, and not signed compares.
 		//
 		// It also tries to use the non-boxing version of the various Array.BinarySearch methods
 		//
-		static int FindPosition (object value, Array values)
+		static int FindPosition (Type enumType, object value, Array values)
 		{
-			int[] int_array = values as int[];
-			if (int_array != null)
-				return Array.BinarySearch (int_array, (int)value, MonoEnumInfo.int_comparer);
+			switch (Type.GetTypeCode (GetUnderlyingType (enumType))) {
+			case TypeCode.SByte:
+				sbyte [] sbyte_array = values as sbyte [];
+				return Array.BinarySearch (sbyte_array, (sbyte) value,  MonoEnumInfo.sbyte_comparer);
 
-			uint[] uint_array = values as uint [];
-			if (uint_array != null)
-				return Array.BinarySearch (uint_array, (uint)value);
-			
-			short [] short_array = values as short [];
-			if (short_array != null)
+			case TypeCode.Byte:
+				byte [] byte_array = values as byte [];
+				return Array.BinarySearch (byte_array, (byte) value);
+
+			case TypeCode.Int16:
+				short [] short_array = values as short [];
 				return Array.BinarySearch (short_array, (short)value, MonoEnumInfo.short_comparer);
 
-			ushort [] ushort_array = values as ushort [];
-			if (ushort_array != null)
+			case TypeCode.UInt16:
+				ushort [] ushort_array = values as ushort [];
 				return Array.BinarySearch (ushort_array, (ushort)value);
-					
-			sbyte [] sbyte_array = values as sbyte [];
-			if (sbyte_array != null)
-				return Array.BinarySearch (sbyte_array, (sbyte) value,  MonoEnumInfo.sbyte_comparer);
+		
+			case TypeCode.Int32:
+				int[] int_array = values as int[];
+				return Array.BinarySearch (int_array, (int)value, MonoEnumInfo.int_comparer);
+
+			case TypeCode.UInt32:
+				uint[] uint_array = values as uint [];
+				return Array.BinarySearch (uint_array, (uint)value);			
 			
-			byte [] byte_array = values as byte [];
-			if (byte_array != null)
-				return Array.BinarySearch (byte_array, (byte) value);
-			
-			long [] long_array = values as long [];
-			if (long_array != null)
+			case TypeCode.Int64:
+				long [] long_array = values as long [];
 				return Array.BinarySearch (long_array, (long) value,  MonoEnumInfo.long_comparer);
 
-			ulong [] ulong_array = values as ulong [];
-			if (ulong_array != null)
+			case TypeCode.UInt64:
+				ulong [] ulong_array = values as ulong [];
 				return Array.BinarySearch (ulong_array, (ulong) value);
 
-			// This should never happen
-			return Array.BinarySearch (values, value);
+			default:
+				// This should never happen
+				return Array.BinarySearch (values, value);
+			}
 		}
-#else
-		static int FindPosition (object value, Array values)
-		{
-			IComparer ic = null;
-
-			if (values is int[])
-				return Array.BinarySearch (values, value, MonoEnumInfo.int_comparer);
-			if (values is short[])
-				return Array.BinarySearch (values, value, MonoEnumInfo.short_comparer);
-			if (values is sbyte [])
-				return Array.BinarySearch (values, value,  MonoEnumInfo.sbyte_comparer);
-			if (values is long [])
-				return Array.BinarySearch (values, value,  MonoEnumInfo.long_comparer);
-
-			return Array.BinarySearch (values, value);
-
-		}
-#endif
 	
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public static string GetName (Type enumType, object value)
 		{
 			if (enumType == null)
@@ -467,13 +404,11 @@ namespace System
 			value = ToObject (enumType, value);
 			MonoEnumInfo.GetInfo (enumType, out info);
 
-			int i = FindPosition (value, info.values);
+			int i = FindPosition (enumType, value, info.values);
 			return (i >= 0) ? info.names [i] : null;
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public static bool IsDefined (Type enumType, object value)
 		{
 			if (enumType == null)
@@ -494,7 +429,7 @@ namespace System
 				value = ToObject (enumType, value);
 				MonoEnumInfo.GetInfo (enumType, out info);
 
-				return FindPosition (value, info.values) >= 0;
+				return FindPosition (enumType, value, info.values) >= 0;
 			} else {
 				throw new ArgumentException("The value parameter is not the correct type."
 					+ "It must be type String or the same type as the underlying type"
@@ -505,9 +440,7 @@ namespace System
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		private static extern Type get_underlying_type (Type enumType);
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public static Type GetUnderlyingType (Type enumType)
 		{
 			if (enumType == null)
@@ -519,9 +452,7 @@ namespace System
 			return get_underlying_type (enumType);
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public static object Parse (Type enumType, string value)
 		{
 			// Note: Parameters are checked in the other overload
@@ -577,9 +508,7 @@ namespace System
 
 		private static char [] split_char = { ',' };
 
-#if NET_2_0
-		[ComVisible (true)]
-#endif
+		[ComVisible(true)]
 		public static object Parse (Type enumType, string value, bool ignoreCase)
 		{
 			if (enumType == null)
@@ -595,13 +524,26 @@ namespace System
 			if (value.Length == 0)
 				throw new ArgumentException ("An empty string is not considered a valid value.");
 
+			object result;
+			if (!Parse (enumType, value, ignoreCase, out result))
+				throw new ArgumentException (String.Format ("The requested value '{0}' was not found.", value));
+
+			return result;
+		}
+
+		static bool Parse<TEnum> (Type enumType, string value, bool ignoreCase, out TEnum result)
+		{
+			result = default (TEnum);
+
 			MonoEnumInfo info;
 			MonoEnumInfo.GetInfo (enumType, out info);
 
 			// is 'value' a named constant?
 			int loc = FindName (info.name_hash, info.names, value, ignoreCase);
-			if (loc >= 0)
-				return info.values.GetValue (loc);
+			if (loc >= 0) {
+				result = (TEnum) info.values.GetValue (loc);
+				return true;
+			}
 
 			TypeCode typeCode = ((Enum) info.values.GetValue (0)).GetTypeCode ();
 
@@ -612,67 +554,91 @@ namespace System
 				for (int i = 0; i < names.Length; ++i) {
 					loc = FindName (info.name_hash, info.names, names [i].Trim (), ignoreCase);
 					if (loc < 0)
-						throw new ArgumentException ("The requested value was not found.");
+						return false;
+
 					retVal |= GetValue (info.values.GetValue (loc), typeCode);
 				}
-				return ToObject (enumType, retVal);
+				result = (TEnum) ToObject (enumType, retVal);
+				return true;
 			}
 
 			// is 'value' a number?
-#if !NET_2_0
-			try {
-				return ToObject (enumType, Convert.ChangeType (value, typeCode));
-			} catch (FormatException) {
-				throw new ArgumentException (String.Format ("The requested value '{0}' was not found.", value));
-			}
-#else
 			switch (typeCode) {
 			case TypeCode.SByte:
 				sbyte sb;
-				if (SByte.TryParse (value, out sb))
-					return ToObject (enumType, sb);
+				if (!SByte.TryParse (value, out sb))
+					return false;
+				result = (TEnum) ToObject (enumType, sb);
 				break;
 			case TypeCode.Byte:
 				byte b;
-				if (Byte.TryParse (value, out b))
-					return ToObject (enumType, b);
+				if (!Byte.TryParse (value, out b))
+					return false;
+				result = (TEnum) ToObject (enumType, b);
 				break;
 			case TypeCode.Int16:
 				short i16;
-				if (Int16.TryParse (value, out i16))
-					return ToObject (enumType, i16);
+				if (!Int16.TryParse (value, out i16))
+					return false;
+				result = (TEnum) ToObject (enumType, i16);
 				break;
 			case TypeCode.UInt16:
 				ushort u16;
-				if (UInt16.TryParse (value, out u16))
-					return ToObject (enumType, u16);
+				if (!UInt16.TryParse (value, out u16))
+					return false;
+				result = (TEnum) ToObject (enumType, u16);
 				break;
 			case TypeCode.Int32:
 				int i32;
-				if (Int32.TryParse (value, out i32))
-					return ToObject (enumType, i32);
+				if (!Int32.TryParse (value, out i32))
+					return false;
+				result = (TEnum) ToObject (enumType, i32);
 				break;
 			case TypeCode.UInt32:
 				uint u32;
-				if (UInt32.TryParse (value, out u32))
-					return ToObject (enumType, u32);
+				if (!UInt32.TryParse (value, out u32))
+					return false;
+				result = (TEnum) ToObject (enumType, u32);
 				break;
 			case TypeCode.Int64:
 				long i64;
-				if (Int64.TryParse (value, out i64))
-					return ToObject (enumType, i64);
+				if (!Int64.TryParse (value, out i64))
+					return false;
+				result = (TEnum) ToObject (enumType, i64);
 				break;
 			case TypeCode.UInt64:
 				ulong u64;
-				if (UInt64.TryParse (value, out u64))
-					return ToObject (enumType, u64);
+				if (!UInt64.TryParse (value, out u64))
+					return false;
+				result = (TEnum) ToObject (enumType, u64);
 				break;
 			default:
 				break;
 			}
-			throw new ArgumentException (String.Format ("The requested value '{0}' was not found.", value));
-#endif
+
+			return true;
 		}
+
+#if NET_4_0 || MOONLIGHT || MOBILE
+		public static bool TryParse<TEnum> (string value, out TEnum result) where TEnum : struct
+		{
+			return TryParse (value, false, out result);
+		}
+
+		public static bool TryParse<TEnum> (string value, bool ignoreCase, out TEnum result) where TEnum : struct
+		{
+			Type tenum_type = typeof (TEnum);
+			if (!tenum_type.IsEnum)
+				throw new ArgumentException("TEnum is not an Enum type.", "enumType");
+
+			result = default (TEnum);
+
+			if (value == null || value.Trim ().Length == 0)
+				return false;
+
+			return Parse (tenum_type, value, ignoreCase, out result);
+		}
+#endif
 
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		private extern int compare_value_to (object other);
@@ -704,9 +670,7 @@ namespace System
 			return ToString ("G");
 		}
 
-#if NET_2_0
 		[Obsolete("Provider is ignored, just use ToString")]
-#endif
 		public string ToString (IFormatProvider provider)
 		{
 			return ToString ("G", provider);
@@ -720,9 +684,7 @@ namespace System
 			return Format (this.GetType (), this.Value, format);
 		}
 
-#if NET_2_0
 		[Obsolete("Provider is ignored, just use ToString")]
-#endif
 		public string ToString (String format, IFormatProvider provider)
 		{
 			// provider is not used for Enums
@@ -733,74 +695,56 @@ namespace System
 			return Format (this.GetType(), this.Value, format);
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public static object ToObject (Type enumType, byte value)
 		{
 			return ToObject (enumType, (object)value);
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public static object ToObject (Type enumType, short value)
 		{
 			return ToObject (enumType, (object)value);
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public static object ToObject (Type enumType, int value)
 		{
 			return ToObject (enumType, (object)value);
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public static object ToObject (Type enumType, long value)
 		{
 			return ToObject (enumType, (object)value);
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		public static extern object ToObject (Type enumType, object value);
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		[CLSCompliant (false)]
 		public static object ToObject (Type enumType, sbyte value)
 		{
 			return ToObject (enumType, (object)value);
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		[CLSCompliant (false)]
 		public static object ToObject (Type enumType, ushort value)
 		{
 			return ToObject (enumType, (object)value);
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		[CLSCompliant (false)]
 		public static object ToObject (Type enumType, uint value)
 		{
 			return ToObject (enumType, (object)value);
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		[CLSCompliant (false)]
 		public static object ToObject (Type enumType, ulong value)
 		{
@@ -995,9 +939,7 @@ namespace System
 			return retVal;
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public static string Format (Type enumType, object value, string format)
 		{
 			if (enumType == null)
@@ -1070,5 +1012,15 @@ namespace System
 			}
 			return retVal;
 		}
+#if NET_4_0 || MOONLIGHT || MOBILE
+		public bool HasFlag (Enum flag)
+		{
+			var val = get_value ();
+			ulong mvalue = GetValue (val, Type.GetTypeCode (val.GetType ()));
+			ulong fvalue = GetValue (flag, Type.GetTypeCode (flag.GetType ()));
+
+			return ((mvalue & fvalue) == fvalue);
+		}
+#endif
 	}
 }

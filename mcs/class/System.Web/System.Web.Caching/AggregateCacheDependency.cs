@@ -26,7 +26,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-#if NET_2_0
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -91,6 +91,14 @@ namespace System.Web.Caching
 			return sb.ToString ();
 		}
 
+		protected override void DependencyDispose ()
+		{
+			// MSDN doesn't document it as being part of the class, but assembly
+			// comparison shows that it does exist in this type, so we're just calling
+			// the base class here
+			base.DependencyDispose ();
+		}
+		
 		internal override void DependencyDisposeInternal ()
 		{
 			if (dependencies != null && dependencies.Count > 0)
@@ -104,6 +112,6 @@ namespace System.Web.Caching
 		}
 	}
 }
-#endif
+
 
 

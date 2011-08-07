@@ -1,7 +1,253 @@
+2011-05-19  Atsushi Eno  <atsushi@ximian.com>
+
+	Allow DocumentType in ImportNode().
+
+	http://lists.ximian.com/pipermail/mono-devel-list/2011-May/037575.html
+
+2011-04-28  Atsushi Eno  <atsushi@ximian.com>
+
+	Extend supported XmlDateTimeSerialization formats. Fixed bug
+	#690475.
+
+2011-04-06  Atsushi Eno  <atsushi@ximian.com>
+
+	auto-detect UTF16-LE too.
+
+2011-03-26  Atsushi Eno  <atsushi@ximian.com>
+
+	Nowadays, XmlDeclaratoin.WriteTo() writes PI instead of raw.
+
+	This resulted in invalid output to JsonWriter (via
+	JsonReaderWriterFactory).
+
+2011-03-14  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fix the mobile build
+
+2011-03-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Enable DTD attdecl processing in mobile profile.
+
+2011-03-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Auto detect BOM-less utf-16 and utf-32. Fixed bug #674580.
+
+2011-03-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove wrong buffer size check in XmlTextReader.ReadChrs().
+
+2011-03-08  Atsushi Eno  <atsushi@ximian.com>
+
+	XmlReader.ReadToNextSibling() saved wrong Depth and failed to
+	proceed.
+
+	Fixed bug #676020.
+
+2011-02-03  Marek Habersack  <grendel@twistedcode.net>
+
+	[xml]
+	XmlReaderSettings.{DtdProcessing,MaxCharactersFromEntities,MaxCharactersInDocument}
+	are present in 3.5+
+
+	With the exception of DtdProcessing, the properties are part of
+	.NET 3.5+. DtdProcessing appeared in 4.0.
+
+2011-01-31  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not return DocumentFragment from AppendChild() etc. Fixed bug
+	#666249.
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
+2011-01-06  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Revert
+
+2011-01-06  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Windows] Implement GetDrives.
+
+	Drive names are ok, but the type is always 'Fixed'. Fixes bug
+	#660907.
+
+2011-01-06  Marek Habersack  <grendel@twistedcode.net>
+
+	[xml] Out of range errors should be swallowed when doing string ->
+	datetime conversion
+
+2011-01-05  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix ToDateTime() with serialization mode to not mess hour based on
+	timezone.
+
+	Fixed bug #661787.
+
+2010-12-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[System.Xml] Enable existing API under 4.0 profile too
+
+2010-11-26  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not add 'zzz' to all DateTime formats blindly. Fixed bug
+	#655089.
+
+2010-11-12  Andreia Gaita  <shana@jitted.com>
+
+	[Xml] duh, don't hide the stacktrace
+
+2010-11-12  Andreia Gaita  <shana@jitted.com>
+
+	[Xml] Check if the underlying writer supports LookupPrefix and
+	return empty instead of blowing up.
+
+2010-11-09  Andreia Gaita  <shana@jitted.com>
+
+	[Xml] Only call Close on the base Writer if it hasn't been closed
+	yet. Fixes #651647
+
+	The serialization classes provided by the SL toolkit
+	(System.Runtime.Serialization.dll) don't like having Close called
+	more than once, so it seems that they don't check their own state
+	and we have to do it to avoid making repeated Close calls.
+
+2010-10-27  Andreia Gaita  <shana@jitted.com>
+
+	[Xml] Fix GetAttribute to handle null namespaces properly, add
+	unit test.
+
+2010-10-18  Atsushi Eno  <atsushi@ximian.com>
+
+	XmlDocument.InnerText is overriden to explicitly throw IOE in 4.0.
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System.Xml build for monodroid
+
+2010-09-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Allow empty element in ReadElementContent*() e.g. for empty list.
+
+2010-08-30  Atsushi Eno  <atsushi@ximian.com>
+
+	Uri was also not supported in Read*ContentAs().
+
+2010-08-30  Atsushi Eno  <atsushi@ximian.com>
+
+	Add TimeSpan support in Read*ContentAs() methods.
+
+2010-08-28  Atsushi Eno  <atsushi@ximian.com>
+
+	XmlWriterSettings could be null.
+
+2010-08-09  atsushieno  <atsushi@ximian.com>
+
+	Parse list type, and parse QName without prefix, as expected.
+
+2010-08-06  Atsushi Eno  <atsushi@ximian.com>
+
+	support Uri in WriteValue().
+
+2010-07-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlNodeReaderImpl.cs : in GetNamespacesInScope(), avoid NREs under
+	  "no current node" situation. Also, look for attributes on iterated
+	  nodes, not current ones.
+
+2010-07-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlInputStream.cs : it had been failing to retrieve correct
+	  encoding due to insufficient buffer reading. Fixed bug #615499.
+
+2010-06-30  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlDefaultWriter.cs : add state management support. 
+	* XmlWriter.cs : use above feature for "null Settings in source
+	  writer" case. This brings some minor .NET compatibility and
+	  should fix bug #607697.
+
+2010-06-30  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlDefaultWriter.cs : new source (which I once wrote for relaxng
+	  and corcompare).
+	* XmlWriter.cs : in some cases XmlWriter.Create() returns a new
+	  wrapping writer instance.
+	  If there was no Settings specified, return null.
+
+2010-06-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlTextReader.cs : do not try to parse xml:base="".
+	  Fixed bug #608391.
+
+2010-06-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlDocument.cs : do not create XmlSchemaInfo instance every time
+	  it validates a node.
+
+2010-05-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlNode.cs : use as-operator (isinst) to optimize certain use case.
+	  Patch by Tom Hindle.
+
+2010-04-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlInputStream.cs : minimize initial buffer size so that it does
+	  not mostly block some readers. Fixed bug #591291.
+
+2010-04-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlDocument.cs : it seems .net does allow Load() with such an xml
+	  reader positioned in the middle of the document. Fixed bug #598953.
+
+2010-04-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlTextReader.cs, DTDReader.cs : 0xFFFF was treated as if it were
+	  0x10000. (It is invalid and should be rejected by decent
+	  XmlReaders usage though.) Fixed bug #594628.
+
+2010-03-29  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlQualifiedName.cs : do not reject names in no namespace.
+
+2010-03-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlReader.cs, XmlQualifiedName.cs : ReadElementContentAs() when
+	  used for qname, treats non-prefixed name as in default namespace.
+
+2010-03-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlTextWriter2.cs : fix cosmetic 2.0 compatibility issue in 
+	  WriteStartAttribute() which allows "" for prefixed xmlns and brings
+	  incompatibility with XmlTextWriter class.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* XmlNodeReader2.cs
+	* DTDValidatingReader2.cs
+	* XmlReader.cs
+	* XmlTextReader.cs
+	* XmlWriter.cs
+	* XmlResolver.cs
+	* XmlNodeReaderImpl.cs
+	* XmlInputStream.cs
+	* XmlReaderSettings.cs
+	* XmlWriterSettings.cs:
+		Use MOONLIGHT symbol to disambiguate MonoTouch and Moonlight code.
+
 2010-02-20  Geoff Norton  <gnorton@novell.com>
 
 	* XmlInputStream.cs: Disable this codepath on monotouch.  Fixes
 	#562155
+
+2010-02-12  Miguel de Icaza  <miguel@novell.com>
+
+	* XmlWriterSettings.cs: Expose NamespaceHandling in NET 4.0 
+
+2010-01-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlReaderBinarySupport.cs : eliminate possible extra buffer
+	  storing of zeros. Fixed bug #543332.
 
 2010-01-25  Atsushi Enomoto  <atsushi@ximian.com>
 
@@ -101,7 +347,6 @@
 2009-10-23  Andreia Gaita  <avidigal@novell.com>
 
 	* XmlConvert.cs: make ToUri static, fixes #548918 (moon)
-	[backport r144712]
 
 2009-10-05  Atsushi Enomoto  <atsushi@ximian.com>
 

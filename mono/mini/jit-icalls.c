@@ -74,6 +74,8 @@ mono_helper_stelem_ref_check (MonoArray *array, MonoObject *val)
 {
 	MONO_ARCH_SAVE_REGS;
 
+	if (!array)
+		mono_raise_exception (mono_get_exception_null_reference ());
 	if (val && !mono_object_isinst (val, array->obj.vtable->klass->element_class))
 		mono_raise_exception (mono_get_exception_array_type_mismatch ());
 }
@@ -241,7 +243,7 @@ mono_idiv (gint32 a, gint32 b)
 	if (!b)
 		mono_raise_exception (mono_get_exception_divide_by_zero ());
 	else if (b == -1 && a == (0x80000000))
-		mono_raise_exception (mono_get_exception_arithmetic ());
+		mono_raise_exception (mono_get_exception_overflow ());
 #endif
 	return a / b;
 }
@@ -267,7 +269,7 @@ mono_irem (gint32 a, gint32 b)
 	if (!b)
 		mono_raise_exception (mono_get_exception_divide_by_zero ());
 	else if (b == -1 && a == (0x80000000))
-		mono_raise_exception (mono_get_exception_arithmetic ());
+		mono_raise_exception (mono_get_exception_overflow ());
 #endif
 
 	return a % b;
@@ -637,8 +639,8 @@ mono_array_new_va (MonoMethod *cm, ...)
 {
 	MonoDomain *domain = mono_domain_get ();
 	va_list ap;
-	guint32 *lengths;
-	guint32 *lower_bounds;
+	uintptr_t *lengths;
+	intptr_t *lower_bounds;
 	int pcount;
 	int rank;
 	int i, d;
@@ -650,22 +652,22 @@ mono_array_new_va (MonoMethod *cm, ...)
 
 	va_start (ap, cm);
 	
-	lengths = alloca (sizeof (guint32) * pcount);
+	lengths = alloca (sizeof (uintptr_t) * pcount);
 	for (i = 0; i < pcount; ++i)
 		lengths [i] = d = va_arg(ap, int);
 
 	if (rank == pcount) {
 		/* Only lengths provided. */
 		if (cm->klass->byval_arg.type == MONO_TYPE_ARRAY) {
-			lower_bounds = alloca (sizeof (guint32) * rank);
-			memset (lower_bounds, 0, sizeof (guint32) * rank);
+			lower_bounds = alloca (sizeof (intptr_t) * rank);
+			memset (lower_bounds, 0, sizeof (intptr_t) * rank);
 		} else {
 			lower_bounds = NULL;
 		}
 	} else {
 		g_assert (pcount == (rank * 2));
 		/* lower bounds are first. */
-		lower_bounds = lengths;
+		lower_bounds = (intptr_t*)lengths;
 		lengths += rank;
 	}
 	va_end(ap);
@@ -678,8 +680,8 @@ MonoArray *
 mono_array_new_1 (MonoMethod *cm, guint32 length)
 {
 	MonoDomain *domain = mono_domain_get ();
-	guint32 lengths [1];
-	guint32 *lower_bounds;
+	uintptr_t lengths [1];
+	intptr_t *lower_bounds;
 	int pcount;
 	int rank;
 
@@ -693,8 +695,8 @@ mono_array_new_1 (MonoMethod *cm, guint32 length)
 	g_assert (rank == pcount);
 
 	if (cm->klass->byval_arg.type == MONO_TYPE_ARRAY) {
-		lower_bounds = alloca (sizeof (guint32) * rank);
-		memset (lower_bounds, 0, sizeof (guint32) * rank);
+		lower_bounds = alloca (sizeof (intptr_t) * rank);
+		memset (lower_bounds, 0, sizeof (intptr_t) * rank);
 	} else {
 		lower_bounds = NULL;
 	}
@@ -706,8 +708,8 @@ MonoArray *
 mono_array_new_2 (MonoMethod *cm, guint32 length1, guint32 length2)
 {
 	MonoDomain *domain = mono_domain_get ();
-	guint32 lengths [2];
-	guint32 *lower_bounds;
+	uintptr_t lengths [2];
+	intptr_t *lower_bounds;
 	int pcount;
 	int rank;
 
@@ -722,8 +724,8 @@ mono_array_new_2 (MonoMethod *cm, guint32 length1, guint32 length2)
 	g_assert (rank == pcount);
 
 	if (cm->klass->byval_arg.type == MONO_TYPE_ARRAY) {
-		lower_bounds = alloca (sizeof (guint32) * rank);
-		memset (lower_bounds, 0, sizeof (guint32) * rank);
+		lower_bounds = alloca (sizeof (intptr_t) * rank);
+		memset (lower_bounds, 0, sizeof (intptr_t) * rank);
 	} else {
 		lower_bounds = NULL;
 	}
@@ -735,8 +737,8 @@ MonoArray *
 mono_array_new_3 (MonoMethod *cm, guint32 length1, guint32 length2, guint32 length3)
 {
 	MonoDomain *domain = mono_domain_get ();
-	guint32 lengths [3];
-	guint32 *lower_bounds;
+	uintptr_t lengths [3];
+	intptr_t *lower_bounds;
 	int pcount;
 	int rank;
 
@@ -752,8 +754,8 @@ mono_array_new_3 (MonoMethod *cm, guint32 length1, guint32 length2, guint32 leng
 	g_assert (rank == pcount);
 
 	if (cm->klass->byval_arg.type == MONO_TYPE_ARRAY) {
-		lower_bounds = alloca (sizeof (guint32) * rank);
-		memset (lower_bounds, 0, sizeof (guint32) * rank);
+		lower_bounds = alloca (sizeof (intptr_t) * rank);
+		memset (lower_bounds, 0, sizeof (intptr_t) * rank);
 	} else {
 		lower_bounds = NULL;
 	}
@@ -926,6 +928,16 @@ mono_lconv_to_r8_un (guint64 a)
 }
 #endif
 
+#if defined(__native_client_codegen__) || defined(__native_client__)
+/* When we cross-compile to Native Client we can't directly embed calls */
+/* to the math library on the host. This will use the fmod on the target*/
+double
+mono_fmod(double a, double b)
+{
+	return fmod(a, b);
+}
+#endif
+
 gpointer
 mono_helper_compile_generic_method (MonoObject *obj, MonoMethod *method, gpointer *this_arg)
 {
@@ -1009,16 +1021,89 @@ mono_create_corlib_exception_2 (guint32 token, MonoString *arg1, MonoString *arg
 MonoObject*
 mono_object_castclass (MonoObject *obj, MonoClass *klass)
 {
+	MonoJitTlsData *jit_tls = NULL;
+
+	if (mini_get_debug_options ()->better_cast_details) {
+		jit_tls = TlsGetValue (mono_jit_tls_id);
+		jit_tls->class_cast_from = NULL;
+	}
+
 	if (!obj)
 		return NULL;
 
 	if (mono_object_isinst (obj, klass))
 		return obj;
 
+	if (mini_get_debug_options ()->better_cast_details) {
+		jit_tls->class_cast_from = obj->vtable->klass;
+		jit_tls->class_cast_to = klass;
+	}
+
 	mono_raise_exception (mono_exception_from_name (mono_defaults.corlib,
 					"System", "InvalidCastException"));
 
 	return NULL;
+}
+
+MonoObject*
+mono_object_castclass_with_cache (MonoObject *obj, MonoClass *klass, gpointer *cache)
+{
+	MonoJitTlsData *jit_tls = NULL;
+	gpointer cached_vtable, obj_vtable;
+
+	if (mini_get_debug_options ()->better_cast_details) {
+		jit_tls = TlsGetValue (mono_jit_tls_id);
+		jit_tls->class_cast_from = NULL;
+	}
+
+	if (!obj)
+		return NULL;
+
+	cached_vtable = *cache;
+	obj_vtable = obj->vtable;
+
+	if (cached_vtable == obj_vtable)
+		return obj;
+
+	if (mono_object_isinst (obj, klass)) {
+		*cache = obj_vtable;
+		return obj;
+	}
+
+	if (mini_get_debug_options ()->better_cast_details) {
+		jit_tls->class_cast_from = obj->vtable->klass;
+		jit_tls->class_cast_to = klass;
+	}
+
+	mono_raise_exception (mono_exception_from_name (mono_defaults.corlib,
+					"System", "InvalidCastException"));
+
+	return NULL;
+}
+
+MonoObject*
+mono_object_isinst_with_cache (MonoObject *obj, MonoClass *klass, gpointer *cache)
+{
+	size_t cached_vtable, obj_vtable;
+
+	if (!obj)
+		return NULL;
+
+	cached_vtable = (size_t)*cache;
+	obj_vtable = (size_t)obj->vtable;
+
+	if ((cached_vtable & ~0x1) == obj_vtable) {
+		return (cached_vtable & 0x1) ? NULL : obj;
+	}
+
+	if (mono_object_isinst (obj, klass)) {
+		*cache = (gpointer)obj_vtable;
+		return obj;
+	} else {
+		/*negative cache*/
+		*cache = (gpointer)(obj_vtable | 0x1);
+		return NULL;
+	}
 }
 
 gpointer

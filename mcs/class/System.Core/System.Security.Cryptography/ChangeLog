@@ -1,3 +1,16 @@
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
+2010-12-14  Jeffrey Stedfast  <fejj@gnome.org>
+
+	Fixed AesManaged parameter names to make gui-compare happy
+
+2010-03-18  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Aes.cs: Build here before NET_4_0 (or MOONLIGHT) otherwise 
+	build only if compiled from mscorlib.dll
+
 2009-11-12  Jb Evain  <jbevain@novell.com>
 
 	* Aes.cs: avoid using an hardcoded assembly version for System.Core.

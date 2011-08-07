@@ -51,6 +51,16 @@ namespace System.Runtime.Serialization.Formatters.Binary
 		{
 			return true;
 		}
+
+#if NET_4_0
+		public void BindToName (string assemblyName, string typeName)
+		{
+			if (assemblyName != null)
+				TypeAssemblyName = assemblyName;
+			if (typeName != null)
+				InstanceTypeName = typeName;
+		}
+#endif
 		
 		public abstract bool RequiresTypes { get; }
 	}
@@ -219,11 +229,12 @@ namespace System.Runtime.Serialization.Formatters.Binary
 		StreamingContext _context;
 		FormatterAssemblyStyle _assemblyFormat;
 		FormatterTypeStyle _typeFormat;
+#if NET_4_0
+		SerializationBinder _binder;
+#endif
 		byte[] arrayBuffer;
 		int ArrayBufferLength = 4096;
-#if NET_2_0
 		SerializationObjectManager _manager;
-#endif
 		
 		class MetadataReference
 		{
@@ -237,14 +248,15 @@ namespace System.Runtime.Serialization.Formatters.Binary
 			}
 		}
 		
-		public ObjectWriter (ISurrogateSelector surrogateSelector, StreamingContext context, FormatterAssemblyStyle assemblyFormat, FormatterTypeStyle typeFormat)
+		public ObjectWriter (BinaryFormatter formatter)
 		{
-			_surrogateSelector = surrogateSelector;
-			_context = context;
-			_assemblyFormat = assemblyFormat;
-			_typeFormat = typeFormat;
-#if NET_2_0
-			_manager = new SerializationObjectManager (context);
+			_surrogateSelector = formatter.SurrogateSelector;
+			_context = formatter.Context;
+			_assemblyFormat = formatter.AssemblyFormat;
+			_typeFormat = formatter.TypeFormat;
+			_manager = new SerializationObjectManager (formatter.Context);
+#if NET_4_0
+			_binder = formatter.Binder;
 #endif
 		}
 
@@ -255,9 +267,7 @@ namespace System.Runtime.Serialization.Formatters.Binary
 			QueueObject (obj);
 			WriteQueuedObjects (writer);
 			WriteSerializationEnd (writer);
-#if NET_2_0
 			_manager.RaiseOnSerializedEvent ();
-#endif
 		}
 
 		public void QueueObject (object obj)
@@ -363,7 +373,12 @@ namespace System.Runtime.Serialization.Formatters.Binary
 		private void GetObjectData (object obj, out TypeMetadata metadata, out object data)
 		{
 			Type instanceType = obj.GetType();
-
+#if NET_4_0
+			string binderAssemblyName = null;
+			string binderTypeName = null;
+			if (_binder != null)
+				_binder.BindToName (instanceType, out binderAssemblyName, out binderTypeName);
+#endif
 			// Check if the formatter has a surrogate selector, if it does, 
 			// check if the surrogate selector handles objects of the given type. 
 
@@ -376,6 +391,11 @@ namespace System.Runtime.Serialization.Formatters.Binary
 					SerializationInfo info = new SerializationInfo (instanceType, new FormatterConverter ());
 					surrogate.GetObjectData (obj, info, _context);
 					metadata = new SerializableTypeMetadata (instanceType, info);
+#if NET_4_0
+					if (_binder != null)
+						metadata.BindToName (binderAssemblyName, binderTypeName);
+#endif
+
 					data = info;
 					return;
 				}
@@ -385,9 +405,7 @@ namespace System.Runtime.Serialization.Formatters.Binary
 
 			BinaryCommon.CheckSerializable (instanceType, _surrogateSelector, _context);
 
-#if NET_2_0
 			_manager.RegisterObject (obj);
-#endif
 
 			ISerializable ser = obj as ISerializable;
 
@@ -396,6 +414,11 @@ namespace System.Runtime.Serialization.Formatters.Binary
 				SerializationInfo info = new SerializationInfo (instanceType, new FormatterConverter ());
 				ser.GetObjectData (info, _context);
 				metadata = new SerializableTypeMetadata (instanceType, info);
+#if NET_4_0
+				if (_binder != null)
+					metadata.BindToName (binderAssemblyName, binderTypeName);
+#endif
+
 				data = info;
 			} 
 			else 
@@ -406,6 +429,11 @@ namespace System.Runtime.Serialization.Formatters.Binary
 					// Don't cache metadata info when the Context property is not null sice
 					// we can't control the number of possible contexts in this case
 					metadata = new MemberTypeMetadata (instanceType, _context);
+#if NET_4_0
+					if (_binder != null)
+						metadata.BindToName (binderAssemblyName, binderTypeName);
+#endif
+
 					return;
 				}
 				
@@ -428,6 +456,10 @@ namespace System.Runtime.Serialization.Formatters.Binary
 
 					if (metadata == null) {
 						metadata = CreateMemberTypeMetadata (instanceType);
+#if NET_4_0
+						if (_binder != null)
+							metadata.BindToName (binderAssemblyName, binderTypeName);
+#endif
 					}
 
 					typesTable [instanceType] = metadata;
@@ -944,7 +976,6 @@ namespace System.Runtime.Serialization.Formatters.Binary
 
 				case TypeTag.RuntimeType:
 					string fullName = type.FullName;
-#if NET_2_0
 					// Map System.MonoType to MS.NET's System.RuntimeType,
 					// when called in remoting context.
 					// Note that this code does not need to be in sync with
@@ -955,7 +986,6 @@ namespace System.Runtime.Serialization.Formatters.Binary
 							fullName =  "System.RuntimeType";
 						else if (type == typeof (System.MonoType[]))
 							fullName =  "System.RuntimeType[]";
-#endif
 					writer.Write (fullName);
 					break;
 

@@ -31,6 +31,7 @@
 using System;
 using System.CodeDom.Compiler;
 using System.Collections;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
 using System.Reflection;
@@ -73,11 +74,9 @@ namespace System.Web.Compilation
 			string key = cachePrefix + compiler.Parser.InputFile;
 			CompilerResults results = (CompilerResults) cache [key];
 
-#if NET_2_0
 			if (!compiler.IsRebuildingPartial)
-#endif
-			if (results != null)
-				return results;
+				if (results != null)
+					return results;
 
 			object ticket;
 			bool acquired = AcquireCompilationTicket (key, out ticket);
@@ -85,23 +84,17 @@ namespace System.Web.Compilation
 			try {
 				Monitor.Enter (ticket);
 				results = (CompilerResults) cache [key];
-#if NET_2_0
 				if (!compiler.IsRebuildingPartial)
-#endif
-				if (results != null)
-					return results;
+					if (results != null)
+						return results;
 
-#if NET_2_0
 				CodeDomProvider comp = compiler.Provider;
-#else
-				ICodeCompiler comp = compiler.Compiler;
-#endif
 				CompilerParameters options = compiler.CompilerParameters;
 				GetExtraAssemblies (options);
 				results = comp.CompileAssemblyFromDom (options, compiler.CompileUnit);
-				ArrayList dependencies = compiler.Parser.Dependencies;
+				List <string> dependencies = compiler.Parser.Dependencies;
 				if (dependencies != null && dependencies.Count > 0) {
-					string [] deps = (string []) dependencies.ToArray (typeof (string));
+					string [] deps = dependencies.ToArray ();
 					HttpContext ctx = HttpContext.Current;
 					HttpRequest req = ctx != null ? ctx.Request : null;
 
@@ -139,11 +132,7 @@ namespace System.Web.Compilation
 				if (results != null)
 					return results;
 
-#if NET_2_0
 				CodeDomProvider comp = compiler.Provider;
-#else
-				ICodeCompiler comp = compiler.Compiler;
-#endif
 				CompilerParameters options = compiler.CompilerParameters;
 
 				GetExtraAssemblies (options);
@@ -205,12 +194,7 @@ namespace System.Web.Compilation
 				if (provider == null)
 					throw new HttpException ("Configuration error. Language not supported: " +
 								  language, 500);
-#if !NET_2_0
-				ICodeCompiler compiler = provider.CreateCompiler ();
-#else
 				CodeDomProvider compiler = provider;
-#endif
-				
 				CompilerParameters options = GetOptions (assemblies);
 				options.IncludeDebugInformation = debug;
 				options.WarningLevel = warningLevel;
@@ -265,8 +249,6 @@ namespace System.Web.Compilation
 		{
 			StringCollection refAsm = options.ReferencedAssemblies;
 			string asmLocation;
-			
-#if NET_2_0
 			string asmName;
 			ArrayList al = WebConfigurationManager.ExtraAssemblies;
 			
@@ -316,21 +298,6 @@ namespace System.Web.Compilation
 					continue;
 				refAsm.Add (asmLocation);
 			}
-#else
-			CompilationConfiguration cfg = CompilationConfiguration.GetInstance (HttpContext.Current);
-			ArrayList asmcoll = cfg != null ? cfg.Assemblies : null;
-
-			if (asmcoll == null)
-				return;
-
-			foreach (string asm in asmcoll) {
-				asmLocation = GetAssemblyLocationFromName (asm);
-				
-				if (asmLocation == null || refAsm.Contains (asmLocation))
-					continue;
-				refAsm.Add (asmLocation);
-			}
-#endif
 		}
 
 		static string GetAssemblyLocationFromName (string name)

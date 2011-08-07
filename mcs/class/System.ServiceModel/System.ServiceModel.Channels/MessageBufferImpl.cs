@@ -26,6 +26,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 using System;
+using System.Collections.Generic;
 using System.Runtime.Serialization;
 using System.Xml;
 using System.Xml.XPath;
@@ -39,13 +40,14 @@ namespace System.ServiceModel.Channels
 		BodyWriter body;
 		bool closed, is_fault;
 		int max_buffer_size;
+		AttributeCollection attributes;
 
-		internal DefaultMessageBuffer (MessageHeaders headers, MessageProperties properties)
-			: this (0, headers, properties, null, false)
+		internal DefaultMessageBuffer (MessageHeaders headers, MessageProperties properties, AttributeCollection attributes)
+			: this (0, headers, properties, null, false, attributes)
 		{
 		}
 
-		internal DefaultMessageBuffer (int maxBufferSize, MessageHeaders headers, MessageProperties properties, BodyWriter body, bool isFault)
+		internal DefaultMessageBuffer (int maxBufferSize, MessageHeaders headers, MessageProperties properties, BodyWriter body, bool isFault, AttributeCollection attributes)
 		{
 			this.max_buffer_size = maxBufferSize;
 			this.headers = headers;
@@ -53,6 +55,7 @@ namespace System.ServiceModel.Channels
 			this.closed = false;
 			this.is_fault = isFault;
 			this.properties = properties;
+			this.attributes = attributes;
 		}
 
 		public override void Close ()
@@ -74,7 +77,7 @@ namespace System.ServiceModel.Channels
 			if (body == null)
 				msg = new EmptyMessage (headers.MessageVersion, headers.Action);
 			else
-				msg = new SimpleMessage (headers.MessageVersion, headers.Action, body.CreateBufferedCopy (max_buffer_size), is_fault);
+				msg = new SimpleMessage (headers.MessageVersion, headers.Action, body.CreateBufferedCopy (max_buffer_size), is_fault, attributes);
 			msg.Headers.Clear ();
 			msg.Headers.CopyHeadersFrom (headers);
 			msg.Properties.CopyProperties (properties);
@@ -93,13 +96,15 @@ namespace System.ServiceModel.Channels
 		MessageVersion version;
 		int max_header_size;
 		MessageProperties properties;
+		AttributeCollection attributes;
 
-		public XPathMessageBuffer (IXPathNavigable source, MessageVersion version, int maxSizeOfHeaders, MessageProperties properties)
+		public XPathMessageBuffer (IXPathNavigable source, MessageVersion version, int maxSizeOfHeaders, MessageProperties properties, AttributeCollection attributes)
 		{
 			this.source = source;
 			this.version = version;
 			this.max_header_size = maxSizeOfHeaders;
 			this.properties = properties;
+			this.attributes = attributes;
 		}
 
 		public override void Close ()

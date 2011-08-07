@@ -246,7 +246,8 @@ namespace System.Windows.Forms
 
 		protected override void SetDisplayedItems ()
 		{
-			this.displayed_items.Clear ();
+			// Only clean the internal collection, without modifying Owner/Parent on items.
+			this.displayed_items.ClearInternal ();
 
 			foreach (ToolStripItem tsi in this.Items)
 				if (tsi.Placement == ToolStripItemPlacement.Main && tsi.Available) {
@@ -276,9 +277,15 @@ namespace System.Windows.Forms
 				// send the WM a message to begin a window resize operation
 				case Msg.WM_LBUTTONDOWN: {
 					Point p = new Point (LowOrder ((int)m.LParam.ToInt32 ()), HighOrder ((int)m.LParam.ToInt32 ()));
+					Form form = FindForm ();
 
 					if (this.SizingGrip && this.SizeGripBounds.Contains (p)) {
-						XplatUI.SendMessage (this.FindForm().Handle, Msg.WM_NCLBUTTONDOWN, (IntPtr) HitTest.HTBOTTOMRIGHT, IntPtr.Zero);
+						// For top level forms it's not enoug to send a NCLBUTTONDOWN message, so
+						// we make a direct call to our XplatUI engine.
+						if (!form.IsMdiChild)
+							XplatUI.BeginMoveResize (form.Handle);
+
+						XplatUI.SendMessage (form.Handle, Msg.WM_NCLBUTTONDOWN, (IntPtr) HitTest.HTBOTTOMRIGHT, IntPtr.Zero);
 						return;
 					}
 					

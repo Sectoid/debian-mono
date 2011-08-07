@@ -27,6 +27,7 @@
 //
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
@@ -37,6 +38,8 @@ using NDesk.Options;
 #else
 using Mono.Options;
 #endif
+
+using Cadenza.Collections.Tests;
 
 using NUnit.Framework;
 
@@ -78,8 +81,78 @@ namespace Tests.Mono.Options
 		public override string ToString () {return s;}
 	}
 
+	class TestArgumentSource : ArgumentSource, IEnumerable {
+		string[] names;
+		string desc;
+
+		public TestArgumentSource (string[] names, string desc)
+		{
+			this.names  = names;
+			this.desc   = desc;
+		}
+
+		Dictionary<string, string[]> args = new Dictionary<string, string[]>();
+
+		public void Add (string key, params string[] values)
+		{
+			args.Add (key, values);
+		}
+
+		public override string[] GetNames ()
+		{
+			return names;
+		}
+
+		public override string Description {
+			get {return desc;}
+		}
+
+		public override bool GetArguments (string value, out IEnumerable<string> replacement)
+		{
+			replacement = null;
+
+			string[] values;
+			if (args.TryGetValue (value, out values)) {
+				replacement = values;
+				return true;
+			}
+
+			return false;
+		}
+
+
+		IEnumerator IEnumerable.GetEnumerator ()
+		{
+			return args.GetEnumerator ();
+		}
+	}
+
 	[TestFixture]
-	public class OptionSetTest {
+	public class OptionSetTest : ListContract<Option> {
+
+		protected override ICollection<Option> CreateCollection (IEnumerable<Option> values)
+		{
+			OptionSet set = new OptionSet();
+			foreach (Option value in values)
+				set.Add (value);
+			return set;
+		}
+
+		protected override Option CreateValueA ()
+		{
+			return new CustomOption ("A", null, 0, null);
+		}
+
+		protected override Option CreateValueB ()
+		{
+			return new CustomOption ("B", null, 0, null);
+		}
+
+		protected override Option CreateValueC ()
+		{
+			return new CustomOption ("C", null, 0, null);
+		}
+
 		static IEnumerable<string> _ (params string[] a)
 		{
 			return a;
@@ -87,6 +160,12 @@ namespace Tests.Mono.Options
 
 		[Test]
 		public void BundledValues ()
+		{
+			BundledValues (_("-DNAME", "-D", "NAME2", "-Debug", "-L/foo", "-L", "/bar", "-EDNAME3"));
+			BundledValues (_("@s1", "-D", "@s2", "-L/foo", "@s4"));
+		}
+
+		public void BundledValues (IEnumerable<string> args)
 		{
 			var defines = new List<string> ();
 			var libs    = new List<string> ();
@@ -96,8 +175,14 @@ namespace Tests.Mono.Options
 				{ "L|library:", v => libs.Add (v) },
 				{ "Debug",      v => debug = v != null },
 				{ "E",          v => { /* ignore */ } },
+				new TestArgumentSource (null, null) {
+					{ "@s1", "-DNAME" },
+					{ "@s2", "NAME2", "@s3" },
+					{ "@s3", "-Debug" },
+					{ "@s4", "-L", "/bar", "-EDNAME3" },
+				},
 			};
-			p.Parse (_("-DNAME", "-D", "NAME2", "-Debug", "-L/foo", "-L", "/bar", "-EDNAME3"));
+			p.Parse (args);
 			Assert.AreEqual (defines.Count, 3);
 			Assert.AreEqual (defines [0], "NAME");
 			Assert.AreEqual (defines [1], "NAME2");
@@ -115,13 +200,23 @@ namespace Tests.Mono.Options
 		[Test]
 		public void RequiredValues ()
 		{
+			RequiredValues (_("a", "-a", "s", "-n=42", "n"));
+			RequiredValues (_("@s1", "s", "@s2", "n"));
+		}
+
+		void RequiredValues (IEnumerable<string> args)
+		{
 			string a = null;
 			int n = 0;
 			OptionSet p = new OptionSet () {
 				{ "a=", v => a = v },
 				{ "n=", (int v) => n = v },
+				new TestArgumentSource (null, null) {
+					{ "@s1", "a", "-a" },
+					{ "@s2", "-n=42" },
+				},
 			};
-			List<string> extra = p.Parse (_("a", "-a", "s", "-n=42", "n"));
+			List<string> extra = p.Parse (args);
 			Assert.AreEqual (extra.Count, 2);
 			Assert.AreEqual (extra [0], "a");
 			Assert.AreEqual (extra [1], "n");
@@ -192,6 +287,13 @@ namespace Tests.Mono.Options
 		[Test]
 		public void CombinationPlatter ()
 		{
+			CombinationPlatter (new string[]{"foo", "-v", "-a=42", "/b-",
+				"-a", "64", "bar", "--f", "B", "/h", "-?", "--help", "-v"});
+			CombinationPlatter (_("@s1", "-a=42", "@s3", "-a", "64", "bar", "@s4"));
+		}
+
+		void CombinationPlatter (IEnumerable<string> args)
+		{
 			int a = -1, b = -1;
 			string av = null, bv = null;
 			Foo f = null;
@@ -207,9 +309,14 @@ namespace Tests.Mono.Options
 					case "?": help |= 0x2; break;
 					case "help": help |= 0x4; break;
 				} } },
+				new TestArgumentSource (null, null) {
+					{ "@s1", "foo", "-v", "@s2" },
+					{ "@s2" },
+					{ "@s3", "/b-" },
+					{ "@s4", "--f", "B", "/h", "-?", "--help", "-v" },
+				},
 			};
-			List<string> e = p.Parse (new string[]{"foo", "-v", "-a=42", "/b-",
-				"-a", "64", "bar", "--f", "B", "/h", "-?", "--help", "-v"});
+			List<string> e = p.Parse (args);
 
 			Assert.AreEqual (e.Count, 2);
 			Assert.AreEqual (e[0], "foo");
@@ -248,7 +355,7 @@ namespace Tests.Mono.Options
 			Assert.AreEqual (a, "-b");
 			Utils.AssertException (typeof(ArgumentNullException),
 					"Argument cannot be null.\nParameter name: option",
-					p, v => { v.Add (null); });
+					p, v => { v.Add ((Option) null); });
 
 			// bad type
 			Utils.AssertException (typeof(OptionException),
@@ -307,6 +414,7 @@ namespace Tests.Mono.Options
 				{ "h|?|help",           "show help text",                       v => {} },
 				{ "version",            "output version information and exit",  v => {} },
 				{ "<>", v => {} },
+				new TestArgumentSource (new[]{"@s1", "@s2"}, "Read Response File for More Options"),
 			};
 
 			StringWriter expected = new StringWriter ();
@@ -329,10 +437,10 @@ namespace Tests.Mono.Options
 			expected.WriteLine ("      --long-desc3           OnlyOnePeriod.");
 			expected.WriteLine ("                               AndNoWhitespaceShouldBeSupportedEvenWithLongDesc-");
 			expected.WriteLine ("                               riptions");
-			expected.WriteLine ("      --long-desc4           Lots of spaces in the middle 1 2 3 4 5 6 7 8 9 0");
-			expected.WriteLine ("                               1 2 3 4 5 and more until the end.");
+			expected.WriteLine ("      --long-desc4           Lots of spaces in the middle 1 2 3 4 5 6 7 8 9 0 1");
+			expected.WriteLine ("                               2 3 4 5 and more until the end.");
 			expected.WriteLine ("      --long-desc5           Lots of spaces in the middle - . - . - . - . - . -");
-			expected.WriteLine ("                                . - . - and more until the end.");
+			expected.WriteLine ("                               . - . - and more until the end.");
  			expected.WriteLine ("  -o, --out=DIRECTORY        The DIRECTORY to place the generated files and");
 			expected.WriteLine ("                               directories.");
  			expected.WriteLine ("                               ");
@@ -340,15 +448,22 @@ namespace Tests.Mono.Options
  			expected.WriteLine ("                               `dirname FILE`/cache/`basename FILE .tree`.");
 			expected.WriteLine ("  -h, -?, --help             show help text");
 			expected.WriteLine ("      --version              output version information and exit");
+			expected.WriteLine ("  @s1, @s2                   Read Response File for More Options");
 
 			StringWriter actual = new StringWriter ();
 			p.WriteOptionDescriptions (actual);
 
-			Assert.AreEqual (actual.ToString (), expected.ToString ());
+			Assert.AreEqual (expected.ToString (), actual.ToString ());
 		}
 
 		[Test]
 		public void OptionBundling ()
+		{
+			OptionBundling (_ ("-abcf", "foo", "bar"));
+			OptionBundling (_ ("@s1", "foo", "bar"));
+		}
+
+		void OptionBundling (IEnumerable<string> args)
 		{
 			string a, b, c, f;
 			a = b = c = f = null;
@@ -357,8 +472,11 @@ namespace Tests.Mono.Options
 				{ "b", v => b = "b" },
 				{ "c", v => c = "c" },
 				{ "f=", v => f = v },
+				new TestArgumentSource (null, null) {
+					{ "@s1", "-abcf" },
+				},
 			};
-			List<string> extra = p.Parse (_ ("-abcf", "foo", "bar"));
+			List<string> extra = p.Parse (args);
 			Assert.AreEqual (extra.Count, 1);
 			Assert.AreEqual (extra [0], "bar");
 			Assert.AreEqual (a, "a");
@@ -373,11 +491,18 @@ namespace Tests.Mono.Options
 			var p = new OptionSet () {
 				{ "a", v => {} },
 				{ "b", v => {} },
+				new TestArgumentSource (null, null) {
+					{ "@s1", "-a", "-b" },
+				},
 			};
 			List<string> e = p.Parse (_ ("-a", "-b", "--", "-a", "-b"));
 			Assert.AreEqual (e.Count, 2);
 			Assert.AreEqual (e [0], "-a");
 			Assert.AreEqual (e [1], "-b");
+
+			e = p.Parse (_ ("@s1", "--", "@s1"));
+			Assert.AreEqual (e.Count, 1);
+			Assert.AreEqual (e [0], "@s1");
 		}
 
 		[Test]
@@ -392,19 +517,42 @@ namespace Tests.Mono.Options
 				{ "d={=>}{-->}", (k, v) => a.Add (k, v) },
 				{ "e={}", (k, v) => a.Add (k, v) },
 				{ "f=+/", (k, v) => a.Add (k, v) },
+				new TestArgumentSource (null, null) {
+					{ "@s1", "-a", "A" },
+					{ "@s2", @"C:\tmp", "-a" },
+					{ "@s3", "C=D", @"-a=E=F:\tmp" },
+					{ "@s4", "-a:G:H", "-aI=J" },
+					{ "@s5", "-b", "1" },
+					{ "@s6", "a", "-b" },
+					{ "@s7", "2", "b" },
+					{ "@s8", "-dA=>B", "-d" },
+					{ "@s9", "C-->D", "-d:E" },
+					{ "@s10", "F", "-d" },
+					{ "@s11", "G", "H" },
+					{ "@s12", "-dJ-->K" }
+				},
 			};
-			p.Parse (_("-a", "A", "B", "-a", "C", "D", "-a=E=F", "-a:G:H", "-aI=J", "-b", "1", "a", "-b", "2", "b"));
-			AssertDictionary (a, 
-					"A", "B", 
-					"C", "D", 
-					"E", "F", 
-					"G", "H", 
-					"I", "J");
-			AssertDictionary (b,
-					"1", "a",
-					"2", "b");
-
+			p.Parse (_("-a", "A", @"C:\tmp", "-a", "C=D", @"-a=E=F:\tmp", "-a:G:H", "-aI=J", "-b", "1", "a", "-b", "2", "b"));
+			Action assert = () => {
+				AssertDictionary (a, 
+						"A", @"C:\tmp", 
+						"C", "D", 
+						"E", @"F:\tmp", 
+						"G", "H", 
+						"I", "J");
+				AssertDictionary (b,
+						"1", "a",
+						"2", "b");
+			};
+			assert ();
 			a.Clear ();
+			b.Clear ();
+
+			p.Parse (_("@s1", "@s2", "@s3", "@s4", "@s5", "@s6", "@s7"));
+			assert ();
+			a.Clear ();
+			b.Clear ();
+
 			p.Parse (_("-c"));
 			Assert.AreEqual (a.Count, 0);
 			p.Parse (_("-c", "a"));
@@ -417,14 +565,21 @@ namespace Tests.Mono.Options
 
 			a.Clear ();
 			p.Parse (_("-dA=>B", "-d", "C-->D", "-d:E", "F", "-d", "G", "H", "-dJ-->K"));
-			AssertDictionary (a,
-					"A", "B",
-					"C", "D", 
-					"E", "F",
-					"G", "H",
-					"J", "K");
-
+			assert = () => {
+				AssertDictionary (a,
+						"A", "B",
+						"C", "D", 
+						"E", "F",
+						"G", "H",
+						"J", "K");
+			};
+			assert ();
 			a.Clear ();
+
+			p.Parse (_("@s8", "@s9", "@s10", "@s11", "@s12"));
+			assert ();
+			a.Clear ();
+
 			p.Parse (_("-eA=B", "-eC=D", "-eE", "F", "-e:G", "H"));
 			AssertDictionary (a,
 					"A=B", "-eC=D",
@@ -481,29 +636,29 @@ namespace Tests.Mono.Options
 				new CustomOption ("a==:", null, 2, v => a.Add (v [0], v [1])),
 				new CustomOption ("b==:", null, 3, v => b.Add (v [0], new string[]{v [1], v [2]})),
 			};
-			p.Parse (_("-a=b=c", "-a=d", "e", "-a:f=g", "-a:h:i", "-a", "j=k", "-a", "l:m"));
+			p.Parse (_(@"-a=b=C:\tmp", "-a=d", @"C:\e", @"-a:f=C:\g", @"-a:h:C:\i", "-a", @"j=C:\k", "-a", @"l:C:\m"));
 			Assert.AreEqual (a.Count, 6);
-			Assert.AreEqual (a ["b"], "c");
-			Assert.AreEqual (a ["d"], "e");
-			Assert.AreEqual (a ["f"], "g");
-			Assert.AreEqual (a ["h"], "i");
-			Assert.AreEqual (a ["j"], "k");
-			Assert.AreEqual (a ["l"], "m");
+			Assert.AreEqual (a ["b"], @"C:\tmp");
+			Assert.AreEqual (a ["d"], @"C:\e");
+			Assert.AreEqual (a ["f"], @"C:\g");
+			Assert.AreEqual (a ["h"], @"C:\i");
+			Assert.AreEqual (a ["j"], @"C:\k");
+			Assert.AreEqual (a ["l"], @"C:\m");
 
 			Utils.AssertException (typeof(OptionException),
 					"Missing required value for option '-a'.",
 					p, v => {v.Parse (_("-a=b"));});
 
-			p.Parse (_("-b", "a", "b", "c", "-b:d:e:f", "-b=g=h:i", "-b:j=k:l"));
+			p.Parse (_("-b", "a", "b", @"C:\tmp", @"-b:d:e:F:\tmp", @"-b=g=h:i:\tmp", @"-b:j=k:l:\tmp"));
 			Assert.AreEqual (b.Count, 4);
 			Assert.AreEqual (b ["a"][0], "b");
-			Assert.AreEqual (b ["a"][1], "c");
+			Assert.AreEqual (b ["a"][1], @"C:\tmp");
 			Assert.AreEqual (b ["d"][0], "e");
-			Assert.AreEqual (b ["d"][1], "f");
+			Assert.AreEqual (b ["d"][1], @"F:\tmp");
 			Assert.AreEqual (b ["g"][0], "h");
-			Assert.AreEqual (b ["g"][1], "i");
+			Assert.AreEqual (b ["g"][1], @"i:\tmp");
 			Assert.AreEqual (b ["j"][0], "k");
-			Assert.AreEqual (b ["j"][1], "l");
+			Assert.AreEqual (b ["j"][1], @"l:\tmp");
 		}
 
 		[Test]

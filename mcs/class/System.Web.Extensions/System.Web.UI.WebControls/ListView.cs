@@ -4,7 +4,7 @@
 // Authors:
 //   Marek Habersack (mhabersack@novell.com)
 //
-// (C) 2007-2008 Novell, Inc
+// (C) 2007-2010 Novell, Inc
 //
 
 //
@@ -845,7 +845,7 @@ namespace System.Web.UI.WebControls
 				if (haveDataToPage) {
 					// Data source has paged data for us, so we must use its total row
 					// count
-					_totalRowCount = pagedDataSource.TotalRowCount;
+					_totalRowCount = pagedDataSource.DataSourceCount;
 				} else if (!emptySet && _totalRowCount > -1)
 					_totalRowCount = retList.Count;
 				else if (_totalRowCount > -1)
@@ -1399,7 +1399,7 @@ namespace System.Web.UI.WebControls
 			_dataKeys = null;
 		}
 		
-		protected override void LoadControlState (object savedState)
+		protected internal override void LoadControlState (object savedState)
 		{
 			ResetDefaults ();
 			object[] state = savedState as object[];
@@ -1759,7 +1759,7 @@ namespace System.Web.UI.WebControls
 			return ret;
 		}
 		
-		protected override void OnInit (EventArgs e)
+		protected internal override void OnInit (EventArgs e)
 		{
 			Page.RegisterRequiresControlState (this);
 			base.OnInit (e);
@@ -1882,7 +1882,7 @@ namespace System.Web.UI.WebControls
 			InvokeEvent <PageEventArgs> (TotalRowCountAvailableEvent, e);
 		}
 	
-		protected override void PerformDataBinding (IEnumerable data)
+		protected internal override void PerformDataBinding (IEnumerable data)
 		{
 			base.PerformDataBinding (data);
 			TrackViewState ();
@@ -1923,7 +1923,7 @@ namespace System.Web.UI.WebControls
 				container.Controls.RemoveAt (start);
 		}
 		
-		protected override void Render (HtmlTextWriter writer)
+		protected internal override void Render (HtmlTextWriter writer)
 		{
 			base.Render (writer);
 			// Why override?
@@ -1952,7 +1952,7 @@ namespace System.Web.UI.WebControls
 			return state;
 		}
 		
-		protected override object SaveControlState ()
+		protected internal override object SaveControlState ()
 		{
 			object[] ret = new object [CSTATE_COUNT];
 			string[] dataKeyNames = DataKeyNames;

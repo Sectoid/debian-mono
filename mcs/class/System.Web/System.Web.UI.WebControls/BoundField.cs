@@ -4,7 +4,7 @@
 // Authors:
 //	Lluis Sanchez Gual (lluis@novell.com)
 //
-// (C) 2005 Novell, Inc (http://www.novell.com)
+// (C) 2005-2010 Novell, Inc (http://www.novell.com)
 //
 
 //
@@ -28,7 +28,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 using System.Collections;
 using System.Collections.Specialized;
 using System.Web.UI;
@@ -36,8 +35,8 @@ using System.ComponentModel;
 using System.Security.Permissions;
 using System.Reflection;
 
-namespace System.Web.UI.WebControls {
-
+namespace System.Web.UI.WebControls
+{
 	[AspNetHostingPermissionAttribute (SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
 	[AspNetHostingPermissionAttribute (SecurityAction.InheritanceDemand, Level = AspNetHostingPermissionLevel.Minimal)]
 	public class BoundField : DataControlField
@@ -50,12 +49,8 @@ namespace System.Web.UI.WebControls {
 		[WebSysDescription ("")]
 		[WebCategoryAttribute ("Behavior")]
 		public virtual bool ApplyFormatInEditMode {
-			get {
-				return ViewState.GetBool ("ApplyFormatInEditMode", false);
-			}
-			set {
-				ViewState ["ApplyFormatInEditMode"] = value;
-			}
+			get { return ViewState.GetBool ("ApplyFormatInEditMode", false); }
+			set { ViewState ["ApplyFormatInEditMode"] = value; }
 		}
 		
 		[DefaultValueAttribute (true)]
@@ -74,7 +69,7 @@ namespace System.Web.UI.WebControls {
 		[WebCategoryAttribute ("Data")]
 		[DefaultValueAttribute ("")]
 		public virtual string DataField {
-			get { return ViewState.GetString ("DataField", ""); }
+			get { return ViewState.GetString ("DataField", String.Empty); }
 			set {
 				ViewState ["DataField"] = value;
 				OnFieldChanged ();
@@ -85,7 +80,7 @@ namespace System.Web.UI.WebControls {
 		[WebSysDescription ("")]
 		[WebCategoryAttribute ("Data")]
 		public virtual string DataFormatString {
-			get { return ViewState.GetString ("DataFormatString", ""); }
+			get { return ViewState.GetString ("DataFormatString", String.Empty); }
 			set {
 				ViewState ["DataFormatString"] = value;
 				OnFieldChanged ();
@@ -95,8 +90,7 @@ namespace System.Web.UI.WebControls {
 		[WebSysDescription ("")]
 		[WebCategoryAttribute ("Appearance")]
 		public override string HeaderText {
-			get { return ViewState.GetString ("HeaderText", "");
-			}
+			get { return ViewState.GetString ("HeaderText", String.Empty); }
 			set {
 				ViewState["HeaderText"] = value;
 				OnFieldChanged ();
@@ -106,7 +100,7 @@ namespace System.Web.UI.WebControls {
 		[DefaultValueAttribute ("")]
 		[WebCategoryAttribute ("Behavior")]
 		public virtual string NullDisplayText {
-			get { return ViewState.GetString ("NullDisplayText", ""); }
+			get { return ViewState.GetString ("NullDisplayText", String.Empty); }
 			set {
 				ViewState ["NullDisplayText"] = value;
 				OnFieldChanged ();
@@ -135,6 +129,15 @@ namespace System.Web.UI.WebControls {
 			}
 		}
 
+		[DefaultValue (true)]
+		public virtual bool HtmlEncodeFormatString {
+			get { return ViewState.GetBool ("HtmlEncodeFormatString", true); }
+			set {
+				ViewState ["HtmlEncodeFormatString"] = value;
+				OnFieldChanged ();
+			}
+		}
+		
 		public override void ExtractValuesFromCell (IOrderedDictionary dictionary,
 			DataControlFieldCell cell, DataControlRowState rowState, bool includeReadOnly)
 		{
@@ -144,13 +147,11 @@ namespace System.Web.UI.WebControls {
 					TextBox box = (TextBox) cell.Controls [0];
 					dictionary [DataField] = box.Text;
 				}
-			} else if (includeReadOnly) {
+			} else if (includeReadOnly)
 				dictionary [DataField] = cell.Text;
-			}
 		}
 
-		public override bool Initialize (bool enableSorting, 
-						 Control control)
+		public override bool Initialize (bool enableSorting, Control control)
 		{
 			return base.Initialize (enableSorting, control);
 		}
@@ -188,22 +189,29 @@ namespace System.Web.UI.WebControls {
 		protected virtual string FormatDataValue (object value, bool encode)
 		{
 			string res;
-			string stringValue = (value != null) ? value.ToString () : string.Empty;
+			bool htmlEncodeFormatString = HtmlEncodeFormatString;
+			string stringValue = (value != null) ? value.ToString () : String.Empty;
 			if (value == null || (stringValue.Length == 0 && ConvertEmptyStringToNull)) {
 				if (NullDisplayText.Length == 0) {
 					encode = false;
 					res = "&nbsp;";
-				}
-				else
+				} else
 					res = NullDisplayText;
+			} else {
+				string format = DataFormatString;
+				if (!String.IsNullOrEmpty (format)) {
+					if (!encode || htmlEncodeFormatString)
+						res = String.Format (format, value);
+					else
+						res = String.Format (format, encode ? HttpUtility.HtmlEncode (stringValue) : stringValue);
+				} else
+					res = stringValue;
 			}
-			else if (DataFormatString.Length > 0)
-				res = string.Format (DataFormatString, value);
+			
+			if (encode && htmlEncodeFormatString)
+				return HttpUtility.HtmlEncode (res);
 			else
-				res = stringValue;
-				
-			if (encode) return HttpUtility.HtmlEncode (res);
-			else return res;
+				return res;
 		}
 		
 		protected virtual object GetValue (Control controlContainer)
@@ -233,23 +241,41 @@ namespace System.Web.UI.WebControls {
 			return DataBinder.GetPropertyValue (dataItem, DataField);
 		}
 		
+		protected override void LoadViewState (object state)
+		{
+			// Why override?
+			base.LoadViewState (state);
+		}
+		
 		protected virtual void OnDataBindField (object sender, EventArgs e)
 		{
-			Control cell = (Control) sender;
-			Control controlContainer = cell.BindingContainer;
+			Control container = (Control) sender;
+			Control controlContainer = container.BindingContainer;
 			if (!(controlContainer is INamingContainer))
 				throw new HttpException ("A DataControlField must be within an INamingContainer.");
 			object val = GetValue (controlContainer);
+			TextBox box = sender as TextBox;
 
-			if (cell.Controls.Count > 0) {
-				TextBox box = (TextBox) cell.Controls [0];
-				if (ApplyFormatInEditMode)
-					box.Text = FormatDataValue (val, SupportsHtmlEncode && HtmlEncode);
-				else
-					box.Text = val != null ? val.ToString() : NullDisplayText;
+			if (box == null) {
+				var cell = sender as DataControlFieldCell;
+				if (cell != null) {
+					ControlCollection controls = cell.Controls;
+					int ccount = controls != null ? controls.Count : 0;
+					if (ccount == 1)
+						box = controls [0] as TextBox;
+					if (box == null) {
+						cell.Text = FormatDataValue (val, SupportsHtmlEncode && HtmlEncode);
+						return;
+					}
+				}
 			}
+
+			if (box == null)
+				throw new HttpException ("Bound field " + DataField + " contains a control that isn't a TextBox.  Override OnDataBindField to inherit from BoundField and add different controls.");
+			if (ApplyFormatInEditMode)
+				box.Text = FormatDataValue (val, SupportsHtmlEncode && HtmlEncode);
 			else
-				((DataControlFieldCell)cell).Text = FormatDataValue (val, SupportsHtmlEncode && HtmlEncode);
+				box.Text = val != null ? val.ToString() : NullDisplayText;
 		}
 		
 		protected override DataControlField CreateField ()
@@ -279,4 +305,4 @@ namespace System.Web.UI.WebControls {
 
 	}
 }
-#endif
+

@@ -58,7 +58,6 @@ typedef struct
 #define MONO_ARCH_HAVE_DECOMPOSE_LONG_OPTS 1
 // #define MONO_ARCH_SIGSEGV_ON_ALTSTACK		1
 // #define MONO_ARCH_SIGNAL_STACK_SIZE		65536
-// #define MONO_ARCH_HAVE_THROW_CORLIB_EXCEPTION	1
 
 #define MONO_ARCH_USE_SIGACTION 	1
 
@@ -155,6 +154,8 @@ typedef struct
 		sframe = (MonoS390StackFrame*)sframe->prev;		\
 		MONO_CONTEXT_SET_IP ((ctx), sframe->return_address);	\
 	} while (0)
+
+#define MONO_ARCH_INIT_TOP_LMF_ENTRY(lmf) do { (lmf)->ebp = -1; } while (0)
 
 /*------------------------------------------------------------------*/
 /*                                                                  */

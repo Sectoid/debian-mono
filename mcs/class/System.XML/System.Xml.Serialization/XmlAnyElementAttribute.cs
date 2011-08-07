@@ -43,9 +43,7 @@ namespace System.Xml.Serialization
 		private string elementName;
 		private string ns;
 		private bool isNamespaceSpecified;
-#if NET_2_0
 		private int order = -1;
-#endif		
 
 		public XmlAnyElementAttribute ()
 		{
@@ -86,11 +84,13 @@ namespace System.Xml.Serialization
 
 #if NET_2_0
 		[MonoTODO]
+		internal bool IsNullableSpecified { get; set; }
+#endif
+
 		public int Order {
 			get { return order; }
 			set { order = value; }
 		}
-#endif
 		
 		internal void AddKeyHash (System.Text.StringBuilder sb)
 		{

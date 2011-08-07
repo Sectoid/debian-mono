@@ -1,3 +1,23 @@
+2011-01-08  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed missing protected internal modifier
+
+2010-09-13  Atsushi Eno  <atsushi@ximian.com>
+
+	implemented large parts of WCF standard endpoints and
+	configuration support.
+
+2010-08-04  atsushieno  <atsushi@ximian.com>
+
+	implement missing configuration members in Sys.SM.Web.
+
+2010-03-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EncodingConverter.cs, WebHttpBindingElement.cs,
+	  WebHttpSecurityElement.cs : implement OnApplyConfiguration(), fill
+	  some TypeConverters, and fix BindingElementType, based on the patch
+	  by Sander Rijken.
+
 2009-10-02  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* WebHttpElement.cs, WebScriptEnablingElement.cs : fix BehavirType.

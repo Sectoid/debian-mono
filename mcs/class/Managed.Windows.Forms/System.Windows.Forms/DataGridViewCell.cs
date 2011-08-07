@@ -25,7 +25,6 @@
 //
 
 
-#if NET_2_0
 
 using System;
 using System.Drawing;
@@ -805,7 +804,7 @@ namespace System.Windows.Forms {
 			string value = null;
 			
 			if (Selected) {
-				DataGridViewCellStyle style = GetInheritedStyle (null, rowIndex, false);
+//				DataGridViewCellStyle style = GetInheritedStyle (null, rowIndex, false);
 				value = GetEditedFormattedValue (rowIndex, DataGridViewDataErrorContexts.ClipboardContent | DataGridViewDataErrorContexts.Formatting) as string;
 			}
 
@@ -927,7 +926,7 @@ namespace System.Windows.Forms {
 			if (DataGridView != null && (RowIndex < 0 || RowIndex >= DataGridView.Rows.Count))
 				throw new ArgumentOutOfRangeException ("rowIndex", "Specified argument was out of the range of valid values.");
 		
-			if (OwningRow != null && OwningRow.Index == DataGridView.NewRowIndex)
+			if (OwningRow != null && DataGridView != null && OwningRow.Index == DataGridView.NewRowIndex)
 				return DefaultNewRowValue;
 
 			if (DataProperty != null && OwningRow.DataBoundItem != null)
@@ -1587,5 +1586,3 @@ namespace System.Windows.Forms {
 	}
 
 }
-
-#endif

@@ -1,3 +1,26 @@
+2011-01-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] System.Web and Microsoft.Web.Infrastructure are now
+	friends
+
+2011-01-08  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed missing protected internal modifier
+
+2010-09-08  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Onobtrusive JavaScript for the 4.0 Menu control List
+	mode
+
+2010-05-05  Marek Habersack  <mhabersack@novell.com>
+
+	* AssemblyInfo.cs: 4.0 metadata updates
+
+2010-02-03  Marek Habersack  <mhabersack@novell.com>
+
+	* AssemblyInfo.cs: added back InternalsVisibleTo for the test
+	assembly - it's needed to access CacheItemPriorityQueue
+
 2009-07-07  Raja R Harinath  <harinath@hurrynot.org>
 
 	* AssemblyInfo.cs: Don't make internals visible to System.Web_test.

@@ -1,3 +1,54 @@
+2011-07-05  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	Implemented a shared way to detect MacOSX for System.dll
+
+2011-02-19  Miguel de Icaza  <miguel@gnome.org>
+
+	[594642]
+	System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces
+	fix for MacOS X
+
+2010-09-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Add some missing StructLayoutAttributes.
+
+2010-09-06  Atsushi Eno  <atsushieno@Atsushi-Eno-no-MacBook.local>
+
+	Fix NetworkInterface marshaling size on OSX and avoid crash.
+
+2010-08-11  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix pinvoked function name and marshaling of MIB stats.
+
+2010-08-09  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	* Ping.cs: generates a random ICMP Identifier field per Echo to
+	help match up pings and their responses. Now has valid TTL and
+	timeouts apply to the correct pings. Also fixed bugs were received
+	Sequence and Identifier would be corrupt for values >255, and
+	fixed corruption of the Data field. Patch by Michael Walsh that
+	fixes bug #627330.
+
+2010-07-05 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* NetworkInterface.cs: avoid endless loop when a bad length is
+	received for AF_PACKET. Fixes bug #601783.
+
+2010-06-22 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Ping.cs: we need to read the output to give the process time
+	to start. Fixes bug #591136.
+
+2010-03-25  Marek Safar  <marek.safar@gmail.com>
+
+	* IPGlobalProperties.cs: Made Win32_IN6_ADDR verifiable.
+
+2009-12-07 Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* Ping.cs: Try to detect the path to the bin command, since different
+	Unix systems store it in different places.
+	Fixes #519272.
+
 2009-10-06 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* GatewayIPAddressInformationCollection.cs:

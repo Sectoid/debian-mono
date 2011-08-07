@@ -38,11 +38,7 @@ namespace System.Threading {
 		Security
 	}
 
-#if NET_2_0
 	public struct AsyncFlowControl : IDisposable {
-#else
-	internal struct AsyncFlowControl : IDisposable {
-#endif
 		private Thread _t;
 		private AsyncFlowControlType _type;
 
@@ -69,7 +65,11 @@ namespace System.Threading {
 			_t = null;
 		}
 
-		void IDisposable.Dispose () 
+#if NET_4_0 || MOBILE
+		public void Dispose ()
+#else
+		void IDisposable.Dispose ()
+#endif
 		{
 			if (_t != null) {
 				Undo ();

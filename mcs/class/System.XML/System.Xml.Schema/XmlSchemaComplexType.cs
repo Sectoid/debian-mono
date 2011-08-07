@@ -414,6 +414,14 @@ namespace System.Xml.Schema
 
 		void FillContentTypeParticle (ValidationEventHandler h, XmlSchema schema)
 		{
+			if (CollectProcessId == schema.CompilationId)
+				return;
+			CollectProcessId = schema.CompilationId;
+
+			var ct = BaseXmlSchemaType as XmlSchemaComplexType;
+			if (ct != null)
+				ct.FillContentTypeParticle (h, schema);
+
 			// {content type} => ContentType and ContentTypeParticle (later)
 			if (ContentModel != null) {
 				CollectContentTypeFromContentModel (h, schema);
@@ -423,8 +431,6 @@ namespace System.Xml.Schema
 			contentTypeParticle = validatableParticle.GetOptimizedParticle (true);
 			if (contentTypeParticle == XmlSchemaParticle.Empty && resolvedContentType == XmlSchemaContentType.ElementOnly)
 				resolvedContentType = XmlSchemaContentType.Empty;
-
-			CollectProcessId = schema.CompilationId;
 		}
 
 		#region {content type}
@@ -480,7 +486,7 @@ namespace System.Xml.Schema
 			if (BaseSchemaTypeName == XmlSchemaComplexType.AnyTypeName)
 				baseComplexType = XmlSchemaComplexType.AnyType;
 
-			// On error case, it simple reject any contents
+			// On error case, it simply rejects any contents
 			if (baseComplexType == null) {
 				validatableParticle = XmlSchemaParticle.Empty;
 				resolvedContentType = XmlSchemaContentType.Empty;
@@ -488,6 +494,7 @@ namespace System.Xml.Schema
 			}
 
 			// 3.4.2 complex content {content type}
+			// FIXME: this part is looking different than the spec. sections.
 			if (cce.Particle == null || cce.Particle == XmlSchemaParticle.Empty) {
 				// - 2.1
 				if (baseComplexType == null) {
@@ -589,8 +596,10 @@ namespace System.Xml.Schema
 
 			CollectSchemaComponent (h, schema);
 
-			ValidateContentFirstPass (h, schema);
-
+			ValidateBaseXmlSchemaType (h, schema);
+			
+			ValidateParticle (h, schema);
+			
 			FillContentTypeParticle (h, schema);
 
 			// 3.4.6: Properties Correct
@@ -650,15 +659,16 @@ namespace System.Xml.Schema
 			XmlSchemaUtil.ValidateAttributesResolved (attributeUses,
 				h, schema, attributes, anyAttribute, ref attributeWildcard, null, false);
 		}
-
-		private void ValidateContentFirstPass (ValidationEventHandler h, XmlSchema schema)
+		
+		private void ValidateBaseXmlSchemaType (ValidationEventHandler h, XmlSchema schema)
 		{
-			if (ContentModel != null) {
-				errorCount += contentModel.Validate (h, schema);
-				if (BaseXmlSchemaTypeInternal != null)
-					errorCount += BaseXmlSchemaTypeInternal.Validate (h, schema);
-			}
-			else if (Particle != null) {
+			if (ContentModel != null && BaseXmlSchemaTypeInternal != null)
+				errorCount += BaseXmlSchemaTypeInternal.Validate (h, schema);
+		}
+
+		private void ValidateParticle (ValidationEventHandler h, XmlSchema schema)
+		{	
+			if (ContentModel == null && Particle != null) {
 				errorCount += particle.Validate (h, schema);
 				XmlSchemaGroupRef pgrp = Particle as XmlSchemaGroupRef;
 				if (pgrp != null) {
@@ -673,6 +683,8 @@ namespace System.Xml.Schema
 
 		private void ValidateContentModel (ValidationEventHandler h, XmlSchema schema)
 		{
+			errorCount += contentModel.Validate (h, schema);
+			
 			XmlSchemaType baseType = BaseXmlSchemaTypeInternal;
 
 			// Here we check 3.4.6 Properties Correct :: 2. and 3.
@@ -845,11 +857,12 @@ namespace System.Xml.Schema
 			}
 			// complexType/simpleContent/restriction
 			if (scr != null) {
-				// Attributes
-				baseAnyAttribute = baseComplexType != null ? baseComplexType.AttributeWildcard : null;
-
+				// attributes
 				localAnyAttribute = scr.AnyAttribute;
-				if (localAnyAttribute != null && baseAnyAttribute != null)
+				this.attributeWildcard = localAnyAttribute;
+				if (baseComplexType != null)
+					baseAnyAttribute = baseComplexType.AttributeWildcard;
+				if (baseAnyAttribute != null && localAnyAttribute != null)
 					// 1.3 attribute wildcard subset. (=> 3.10.6)
 					localAnyAttribute.ValidateWildcardSubset (baseAnyAttribute, h, schema);
 				// 3.4.6 :: 5.1. Beware that There is an errata for 5.1!!
@@ -860,6 +873,11 @@ namespace System.Xml.Schema
 				errorCount += XmlSchemaUtil.ValidateAttributesResolved (
 					this.attributeUses, h, schema, scr.Attributes, 
 					scr.AnyAttribute, ref attributeWildcard, null, false);
+				foreach (DictionaryEntry entry in baseComplexType.AttributeUses) {
+					XmlSchemaAttribute attr = (XmlSchemaAttribute) entry.Value;
+					if (attributeUses [attr.QualifiedName] == null)
+						XmlSchemaUtil.AddToTable (attributeUses, attr, attr.QualifiedName, h);
+				}
 			}
 
 			// Common process of AttributeWildcard.

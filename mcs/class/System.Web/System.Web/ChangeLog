@@ -1,8 +1,468 @@
+2011-04-21  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Inform user about all exceptions thrown during
+	HttpRuntime static initialization
+
+2011-04-05  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #684803. XmlSiteMapProvider must take its
+	root node into account when matching an URL.
+
+2011-04-02  Tomasz Kubacki  <tomasz.kubacki@gmail.com>
+
+	[asp.net] HttpApplication.InitOnce must ensure that
+	HttpApplication.Context does not return null.
+
+	HttpApplication.Context != null is assumed by
+	System.Web.WebPages.WebPagesHttpModule Init method
+
+2011-03-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[asp.net] Return the correct Mime type for 304.
+
+2011-03-17  Marek Habersack  <grendel@twistedcode.net>
+
+	Removed debug noise
+
+2011-03-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #678473. Do not map paths of absolute file
+	paths when passed to HttpRequest.WriteFile
+
+2011-03-16  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #668696. Handle recursive locks gracefully.
+
+2011-03-14  Kornél Pál  <kornelpal@gmail.com>
+
+	[asp.net] Fix for bug #650695. Implements the
+	System.Web.{HttpNotFoundHandler,HttpNotImplementedHandler}
+	classes.
+
+2011-02-09  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented CustomErrorsRedirectMode
+
+2011-01-31  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Handle wrapped ThreadAbortException
+
+	Third party ProcessRequest() like the one from Razor can wrap a
+	ThreadAbortException originated from response.Redirect().
+
+2011-01-27  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] A bunch of fixes related to the default
+	VirtualPathProvider (needed for Orchard)
+
+	* DefaultVirtualDirectory is now more careful when snipping off
+	parts of the path passed to its constructor. Before removing the
+	file part it checks whether the file indeed exists. Also sealed
+	the class and made it use generic List instead of ArrayList *
+	HttpRequest does not normalize mapped paths when converting them
+	to absolute ones. This is to avoid errors when path like
+	"~/bin/../../file.txt" is passed to MapPath. *
+	VirtualPathUtility.ToAbsolute overload with normalize parameter
+	really doesn't normalize the resulting path now.
+
+2011-01-19  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,mvc] Make unobtrustive request validation in MVC v3
+	possible
+
+	Validation is enabled early in the pipeline during request.
+	ValidationUtility makes sure that validation is indeed enabled and
+	replaces the default form and query string collections with a lazy
+	version which will validate values only when an existing key is
+	found and requested.
+
+2011-01-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Introduced unvalidated versions of Form and QueryString
+	properties for MVC3
+
+2011-01-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented BuildManager.GetObjectFactory
+
+	This method is not used by Mono internally but is called by MVC
+	v3.
+
+2011-01-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Added internal property InputValidationEnabled to report
+	whether the user enabled validation for current request.
+
+2011-01-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] (4.0) Validate the form data in Form getter
+
+2011-01-09  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[System.Web] Add web fonts mimetypes to let browser do caching on
+	client-side
+
+2010-12-09  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Get system.web/httpRuntime only once
+
+	Get that section only once and keep it in HttpRuntime.
+
+2010-12-08  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	InitOnce does not throw
+
+2010-12-07  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fixes problem with exceptions on init
+
+	Multiple threads might be waiting on the lock and the modules get
+	loaded and initialized multiple times, leading to an error. This
+	patch fixes it and always returns the right initialization
+	exception, if any, to the client.
+
+2010-11-19  Jackson Harper  <jacksonh@gmail.com>
+
+	Parse RequestPathInvalidCharacters properly. Fixes urls with
+	commas in them.
+
+	This fixes bug #654476.
+	https://bugzilla.novell.com/show_bug.cgi?id=654476
+
+	These values are stored as a comma separated list, not just a list
+	of chars. So we need to parse out all the values, ignoring
+	whitespace.
+
+2010-11-18  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] A few memory usage optimizations.
+
+2010-11-11  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Don't cache child nodes when security trimming is enabled.
+
+	When SecurityTrimmingEnabled is set to true for the node, the
+	cached children collection also depends on the IPrincipal set for
+	the current context.
+
+	Fixes bug #641449.
+
+2010-11-09  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Optimize buffer reuse in HttpWriter.
+
+	When HttpWriter requests a byte buffer to send data to the output
+	stream it now uses a thread-local static buffer pre-allocated to
+	at most 128KB (all threads' buffers should not exceed 4MB). If a
+	buffer exceeding the static buffer size is requested, a transient
+	one is allocated.
+
+2010-11-05  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] HttpContext.TimeoutReached - check whether timer != null
+	before using it.
+
+2010-10-29  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] HttpRequest.MapPath changes to match .NET
+
+	When MapPath is passed a rooted, absolute path which is not in the
+	current application's virtual root, it should throw an exception.
+	If the path is rooted and within the current application, it will
+	be mapped as if it was relative to the root.
+
+2010-10-27  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix a build-breaking typo introduced in
+	ea730c5de2e555fb8ee5c5d906ad41a602f55848
+
+2010-10-27  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #648407. HttpCachePolicy must use the value
+	passed to AppendCacheExtension when generating the Cache-Control
+	header
+
+2010-10-27  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #648432. HttpResponse.WriteFile maps file
+	path if it isn't an absolute one.
+
+	Both on Linux and on Windows file paths starting with x:\\, x://
+	and //server don't have their paths mapped. On Linux it may have
+	weird (and unexpected for a Windows developer) effects since we
+	cannot treat those names in any special way - the are valid Unix
+	file names. On Windows things will work as expected.
+
+2010-10-26  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Cosmetics to make code a bit more efficient
+
+2010-10-26  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #648439. Do not prefix
+	HttpRequest.ServerVariables ["QUERY_STRING"] with a '?'
+
+2010-10-24  Marek Habersack  <grendel@twistedcode.net>
+
+	* HttpRuntime.cs: disable filesystem watchers on appdomain
+	shutdown and refuse to process requests while the current
+	AppDomain is unloading * HttpApplicationFactory.cs: if the current
+	AppDomain is unloading, ignore FileSystemWatcher notifications *
+	WebConfigurationManager.cs: work around a deadlock issue when
+	entering a ReaderWriterLockSlim upgradeable read lock very early
+	during ASP.NET runtime/AppDomain initialization. Every few runs
+	the attempt would lock up and since adding a section to cache is
+	not a critical operation we can afford timing the lock out in this
+	case. The lockup is probably due to the fact that RWLS is using
+	thread local storage to store the current thread's lock status and
+	it may happen that the TLS is not cleared during thread object
+	finalization (see metadata/threads.c, the start_wrapper function)
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
+2010-10-08  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Web/System.Web/HttpResponse.cs: Ensure '?' is not encoded
+	as %3F while redirecting (e.g. aspxerrorpath) since this can cause
+	a loop. i.e. not found leading to not found...
+
+2010-09-30  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Handle closed responses gracefully.
+
+	If ReleaseResources or Flush (true) were called, a flag is set
+	that causes any subsequent Flush () calls to fail with an
+	exception. At the same time, ReleaseResources does not destroy the
+	output stream completely - it has to remain around to match .NET
+	behavior.
+
+2010-09-30  Marek Habersack  <grendel@twistedcode.net>
+
+	Revert "[asp.net] Make sure output_stream is not null before using
+	it"
+
+	This reverts commit a4ed8be6973dcfede7131f080340220b3ce4830b since
+	what we do in ReleaseResources is not what .NET does - a better
+	fix will follow.
+
+2010-09-29  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Make sure output_stream is not null before using it
+
+	It is possible that some code will still attempt to access the
+	HttpResponse instance after ReleaseResources got called. This
+	patch prevents NREX in such cases.
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Make HttpUtility compilable on MonoDroid as well as MonoTouch
+
+2010-08-27  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Call SetEndOfSendNotification
+
+	We have to call SetEndOfSendNotification() as soon as the context
+	is ready. Fixes bug #632253.
+
+2010-08-18  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #621837. Rewriting a path must take path
+	info into account.
+
+	When HttpContext.RewritePath is used, the path info of the new
+	path must be taken into account and the HttpRequest.Path propert
+	must contain it.
+
+2010-08-11  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Partial fix for bug #575600. Convert virtual path to
+	absolute only if necessary in HttpRequest.MapPath
+
+	Also added two tests for HttpRequest.MapPath which check cases
+	when the baseVirtualDir is not rooted.
+
+2010-08-11  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Adapt to new exception in threadpool behavior.
+
+	Since an exception in the threadpool can kill the application,
+	silently ignore it when we know it is not harmful.
+
+2010-08-11  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] HttpContext.RewritePath makes sure the passed path is in
+	canonical form.
+
+	When HttpContext.RewritePath is passed a virtual path with more
+	than one leading slash it results in HttpApplication.GetHandler
+	not being able to locate the appropriate handler. Patch adds code
+	to convert the passed virtual path to a canonical form.
+	Additionally, HttpApplication.Pipeline () now throws an exception
+	when no handler can be determined for the current request.
+
+2010-08-05  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	* HttpRuntime.cs: don't display the abort exception received by
+	the thread unloading the domain.
+
+2010-08-04  Marek Habersack  <grendel@twistedcode.net>
+
+	Make sure configuration is not null before using it.
+
+2010-07-21  Miguel de Icaza  <miguel@novell.com>
+
+	* HttpApplication.cs, HttpRuntime.cs, HttpApplicationFactory.cs:
+	Prepare for the runtime change that will terminate threadpool
+	threads when exception are not caught.
+
+2010-06-27  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpUtility.cs: if IHtmlString instance is passed to HtmlEncode
+	(object), use IHtmlString.ToHtmlString () to return the value
+	without encoding it.
+
+2010-06-02  Marek Habersack  <mhabersack@novell.com>
+
+	* DefaultHttpHandler.cs: implemented, so that static file requests
+	work again in 4.0
+
+2010-06-01  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpUtility.cs: moved chunks of code to the new
+	System.Web.Util.HttpEncoder class.
+
+	* HttpResponseHeader.cs: encode header names and values using
+	HttpEncoder.
+
+	* HttpRequest.cs: added internal method Validate, to validate the
+	request in 4.0 profile.
+
+	* HttpHeaderCollection.cs: added. A helper class to encode header
+	names/values on add.
+
+	* HttpApplication.cs: Pipeline () validates request by calling
+	HttpRequest.Validate in the 4.0 profile.
+
+2010-05-17  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpApplicationFactory.cs: pre-application start methods must be
+	called even before App_Code is compiled.
+
+2010-05-16  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpApplicationFactory.cs: let BuildManager know when it's safe
+	to cache referenced assemblies.
+
+2010-05-15  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpResponse.cs: added internal Context property
+
+	* HttpRequest.cs: added a setter to the internal Context property
+
+	* HttpContext.cs: set request and response Context properties to
+	'this' in the constructor.
+
+2010-05-12  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpApplicationFactory.cs: when initializing new application
+	type, make sure to call pre-application start methods.
+
+	* HttpServerUtility.cs: Execute checks whether
+	IAsyncResult.AsyncWaitHandle is not null before attempting to use
+	it. Fixes bug #604502
+
+2010-05-06  Marek Habersack  <mhabersack@novell.com>
+
+	* PreApplicationStartMethodAttribute.cs: added. New 4.0 type.
+
+	* HttpUtility.cs: HtmlEncode, UrlEncode changes for 4.0
+	Implemented JavaScriptStringEncode for 4.0
+
+	* HttpServerUtility.cs: added TransferRequest methods.
+
+	* HttpRuntime.cs: added AspClientScriptPhysicalPath,
+	AspClientScriptVirtualPath, UsingIntegratedPipeline properties and
+	the GetNamedPermissionSet method.
+
+	* HttpResponse.cs: implemented the following 4.0 methods:
+	RedirectPermanent, RedirectToRoute, RedirectToRoutePermanent and
+	RemoveOutputCacheItem.
+	Output property no longer lazily creates a writer object - it's
+	created in the internal constructors. If a user sets it to null,
+	it remains null for good or bad.
+	Added Output setter for 4.0+
+
+2010-05-05  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpRequest.cs: implemented new 4.0 property - RequestContext
+
+2010-04-29  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpRequest.cs: added 4.0 InsertEntityBody overloads (not
+	supported when running under Mono)
+	Added the HttpChannelBinding 4.0 property.
+	Added the CurrentExecutionFilePathExtension 4.0 property.
+
+2010-04-27  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpException.cs: implemented 4.0 property WebEventCode, also
+	made it available in the 2.0 profile as internal.
+	Added a method with several overloads, NewWithCode, which creates
+	an instance of HttpException and sets the web error code.
+
+	* HttpApplication.cs, HttpRequest.cs, HttpRuntime.cs: use HttpException.NewWithCode for some
+	exceptions.
+
+2010-04-21  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpApplication.cs: update to fix for bug #572469 - ProcessError
+	clears the error after handler return only if stop_processing is
+	true. Also, stop_processing is never set before calling ProcessError
+
+2010-04-02  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpException.cs: handle situations when current exception is an
+	instance of a class derived from HttpException and there's no
+	InnerException.
+
+	* HttpApplication.cs: ProcessError must call ClearError on the
+	current context after the handler returns without error. Fixes bug
+	#572469
+
+2010-03-30 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpResponseStream.cs: speed up short writes.
+
+2010-03-20  Marek Habersack  <mhabersack@novell.com>
+
+	* SiteMapNode.cs: avoid calling ChildNodes twice in HasChildNodes.
+	Cache child nodes in the ChildNodes property.
+
 2010-03-06  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpRequest.cs: cache RawUrl value.
+	Added new internal property, PathNoValidation, which returns
+	request path without validating it.
+	Implemented 4.0 extensible validation.
+
+	* HttpApplication.cs: Pipeline () validates the request path, if
+	new validation mode is enabled, before doing anything else.
+	Added a generic LoadType overload which checks whether the loaded
+	type, if any, derives from the type specified in the method's
+	specialization.
 
 	* HttpUtility.cs: decode entities which use hexadecimal
 	encoding. Fixes bug #585992. Patch from Sebastien Morin
 	<smsisko@gmail.com>, thanks!
+
+2010-03-04  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpRuntime.cs: do less work in the static constructor. Most of
+	the code was moved to System.Web.Util.RuntimeHelpers. Properties
+	which have been moved: MonoVersion, RunningOnWindows,
+	CaseInsensitive, IsDebuggingEnabled
 
 2010-02-27  Marek Habersack  <mhabersack@novell.com>
 
@@ -10,6 +470,26 @@
 
 	* HttpApplication.cs: when app domain is unloading, catch
 	ThreadAbortExceptions and reset the abort.
+
+2010-02-03  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpApplication.cs: GetOutputCacheProviderName returns the value
+	of OutputCache.DefaultProviderName
+
+	* HttpRuntime.cs: internal cache is used to hold the dependencies
+	now.
+
+2010-01-20  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpContext.cs: implemented the 4.0 SetSessionStateBehavior
+	method
+
+	* HttpCacheVaryByContentEncodings.cs, HttpCacheVaryByHeaders.cs,
+	HttpCacheVaryByParams.cs : parameterless constructors are public
+	in 4.0
+
+	* HttpApplication.cs: implemented the 4.0
+	GetOutputCacheProviderName method
 
 2010-01-19  Marek Habersack  <mhabersack@novell.com>
 
@@ -84,6 +564,16 @@
 2009-10-07 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* StaticFileHandler.cs: it's the last flush even when a VPP is used.
+
+2009-10-07  Marek Habersack  <mhabersack@novell.com>
+
+	* TraceData.cs: make long execution times stand out.
+
+2009-09-29  Miguel de Icaza  <miguel@novell.com>
+
+	* HttpUtility.cs: Do not use CAS Attributes when using MonoTouch.
+
+	Remove unnecesasry using clause.
 
 2009-09-29  Marek Habersack  <mhabersack@novell.com>
 

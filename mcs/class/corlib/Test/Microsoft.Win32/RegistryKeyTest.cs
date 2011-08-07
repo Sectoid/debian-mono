@@ -12,8 +12,10 @@
 
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 
 using Microsoft.Win32;
+using Microsoft.Win32.SafeHandles;
 
 using NUnit.Framework;
 
@@ -147,22 +149,7 @@ namespace MonoTests.Microsoft.Win32
 
 			name = new string ('a', 255);
 
-#if NET_2_0
 			Assert.IsNull (Registry.CurrentUser.OpenSubKey (name), "#B1");
-#else
-			try {
-				Registry.CurrentUser.OpenSubKey (name);
-				Assert.Fail ("#B1");
-			} catch (ArgumentException ex) {
-				// Registry subkeys should not be greater
-				// than or equal to 255 characters
-				Assert.AreEqual (typeof (ArgumentException), ex.GetType (), "#B2");
-				Assert.IsNull (ex.InnerException, "#B3");
-				Assert.IsNotNull (ex.Message, "#B4");
-				Assert.IsTrue (ex.Message.IndexOf ("255") != -1, "#B5");
-				Assert.IsNull (ex.ParamName, "#B6");
-			}
-#endif
 
 			name = new string ('a', 256);
 
@@ -625,7 +612,6 @@ namespace MonoTests.Microsoft.Win32
 
 				subKeyName = new string ('a', 255);
 
-#if NET_2_0
 				try {
 					using (RegistryKey createdKey = softwareKey.CreateSubKey (subKeyName)) {
 						Assert.IsNotNull (createdKey, "#B1");
@@ -634,20 +620,6 @@ namespace MonoTests.Microsoft.Win32
 				} finally {
 					softwareKey.DeleteSubKey (subKeyName);
 				}
-#else
-				try {
-					softwareKey.CreateSubKey (subKeyName);
-					Assert.Fail ("#B1");
-				} catch (ArgumentException ex) {
-					// Registry subkeys should not be greater
-					// than or equal to 255 characters
-					Assert.AreEqual (typeof (ArgumentException), ex.GetType (), "#B2");
-					Assert.IsNull (ex.InnerException, "#B3");
-					Assert.IsNotNull (ex.Message, "#B4");
-					Assert.IsTrue (ex.Message.IndexOf ("255") != -1, "#B5");
-					Assert.IsNull (ex.ParamName, "#B6");
-				}
-#endif
 
 				subKeyName = new string ('a', 256);
 
@@ -680,14 +652,173 @@ namespace MonoTests.Microsoft.Win32
 					Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
 					Assert.IsNull (ex.InnerException, "#3");
 					Assert.IsNotNull (ex.Message, "#4");
-#if NET_2_0
 					Assert.AreEqual ("name", ex.ParamName, "#5");
-#else
-					Assert.AreEqual ("subkey", ex.ParamName, "#5");
-#endif
 				}
 			}
 		}
+
+#if NET_4_0
+		// Unfortunately we can't test that the scenario where a volatile
+		// key is not alive after a reboot, but we can test other bits.
+		[Test]
+		public void CreateSubKey_Volatile ()
+		{
+			RegistryKey key = null;
+			RegistryKey subkey = null;
+			string subKeyName = "VolatileKey";
+
+			try {
+				key = Registry.CurrentUser.CreateSubKey (subKeyName, RegistryKeyPermissionCheck.Default, RegistryOptions.Volatile);
+				subkey = key.CreateSubKey ("Child", RegistryKeyPermissionCheck.Default, RegistryOptions.Volatile);
+				key.Close ();
+
+				key = Registry.CurrentUser.OpenSubKey (subKeyName);
+				subkey = key.OpenSubKey ("Child");
+				Assert.AreEqual (true, subkey != null, "#A1");
+			} finally {
+				if (subkey != null)
+					subkey.Close ();
+				if (key != null)
+					key.Close ();
+			}
+		}
+
+		[Test]
+		public void CreateSubKey_Volatile_Child ()
+		{
+			RegistryKey key = null;
+			RegistryKey subkey = null;
+			string subKeyName = "VolatileKey";
+
+			try {
+				key = Registry.CurrentUser.CreateSubKey (subKeyName, RegistryKeyPermissionCheck.Default, RegistryOptions.Volatile);
+				subkey = key.CreateSubKey ("Child"); // Non volatile child
+				Assert.Fail ("#Exc");
+			} catch (IOException) {
+			} finally {
+				if (subkey != null)
+					subkey.Close ();
+				if (key != null)
+					key.Close ();
+			}
+		}
+
+		[Test]
+		public void CreateSubKey_Volatile_Conflict ()
+		{
+			RegistryKey key = null;
+			RegistryKey key2 = null;
+			RegistryKey subkey = null;
+			string subKeyName = "VolatileKey";
+
+			try {
+				// 
+				// Create a volatile key and try to open it as a normal one
+				//
+				key = Registry.CurrentUser.CreateSubKey (subKeyName, RegistryKeyPermissionCheck.Default, RegistryOptions.Volatile);
+				key2 = Registry.CurrentUser.CreateSubKey (subKeyName, RegistryKeyPermissionCheck.Default, RegistryOptions.None);
+				Assert.AreEqual (key.Name, key2.Name, "A0");
+
+				subkey = key2.CreateSubKey ("Child", RegistryKeyPermissionCheck.Default, RegistryOptions.Volatile);
+				Assert.AreEqual (true, key.OpenSubKey ("Child") != null, "#A1");
+				Assert.AreEqual (true, key2.OpenSubKey ("Child") != null, "#A2");
+
+				subkey.Close ();
+				key.Close ();
+				key2.Close ();
+
+				// 
+				// Create a non-volatile key and try to open it as a volatile one
+				//
+				subKeyName = "NonVolatileKey";
+				key2 = Registry.CurrentUser.CreateSubKey (subKeyName, RegistryKeyPermissionCheck.Default, RegistryOptions.None);
+				key2.SetValue ("Name", "Mono");
+				key = Registry.CurrentUser.CreateSubKey (subKeyName, RegistryKeyPermissionCheck.Default, RegistryOptions.Volatile);
+				Assert.AreEqual (key.Name, key2.Name, "B0");
+				Assert.AreEqual ("Mono", key.GetValue ("Name"), "#B1");
+				Assert.AreEqual ("Mono", key2.GetValue ("Name"), "#B2");
+
+				key.CreateSubKey ("Child");
+				Assert.AreEqual (true, key.OpenSubKey ("Child") != null, "#B3");
+				Assert.AreEqual (true, key2.OpenSubKey ("Child") != null, "#B4");
+
+				// 
+				// Close the non-volatile key and try to re-open it as a volatile one
+				//
+				key.Close ();
+				key2.Close ();
+				key = Registry.CurrentUser.CreateSubKey (subKeyName, RegistryKeyPermissionCheck.Default, RegistryOptions.Volatile);
+				Assert.AreEqual ("Mono", key.GetValue ("Name"), "#C0");
+				Assert.AreEqual (true, key.OpenSubKey ("Child") != null, "#C1");
+			} finally {
+				if (subkey != null)
+					subkey.Close ();
+				if (key != null)
+					key.Close ();
+				if (key2 != null)
+					key2.Close ();
+			}
+		}
+
+		[Test]
+		public void DeleteSubKey_Volatile ()
+		{			
+			RegistryKey key = null;
+			RegistryKey subkey = null;
+			string subKeyName = "VolatileKey";
+
+			try {
+				key = Registry.CurrentUser.CreateSubKey (subKeyName, RegistryKeyPermissionCheck.Default, RegistryOptions.Volatile);
+				key.CreateSubKey ("VolatileKeyChild", RegistryKeyPermissionCheck.Default, RegistryOptions.Volatile);
+				key.SetValue ("Name", "Mono");
+				key.Close ();
+
+				Registry.CurrentUser.DeleteSubKeyTree (subKeyName);
+
+				key = Registry.CurrentUser.OpenSubKey (subKeyName);
+				Assert.AreEqual (null, key, "#A0");
+			} finally {
+				if (subkey != null)
+					subkey.Close ();
+				if (key != null)
+					key.Close ();
+			}
+		}
+
+		// Define a normal key, and create a normal and a volatile key under it, and retrieve their names.
+		[Test]
+		public void GetSubKeyNames_Volatile ()
+		{           
+			RegistryKey key = null;
+			RegistryKey subkey = null;
+			string subKeyName = Guid.NewGuid ().ToString ();
+			string volChildKeyName = "volatilechildkey";
+			string childKeyName = "childkey";
+
+			try {
+				key = Registry.CurrentUser.CreateSubKey (subKeyName);
+				key.CreateSubKey (volChildKeyName, RegistryKeyPermissionCheck.Default, RegistryOptions.Volatile);
+				key.CreateSubKey (childKeyName, RegistryKeyPermissionCheck.Default, RegistryOptions.None);
+				key.Close ();
+
+				key = Registry.CurrentUser.OpenSubKey (subKeyName);
+				string [] keyNames = key.GetSubKeyNames ();
+
+				// we can guarantee the order of the child keys, so we sort the two of them
+				Array.Sort (keyNames);
+
+				Assert.AreEqual (2, keyNames.Length, "#A0");
+				Assert.AreEqual (childKeyName, keyNames [0], "#A1");
+				Assert.AreEqual (volChildKeyName, keyNames [1], "#A2");
+			} finally {
+				if (subkey != null)
+					subkey.Close ();
+				if (key != null)
+					key.Close ();
+			}
+
+		}
+#endif
 
 		[Test]
 		public void DeleteSubKey ()
@@ -904,11 +1035,7 @@ namespace MonoTests.Microsoft.Win32
 					Assert.IsNull (createdKey, "#A2");
 				}
 
-#if NET_2_0
 				subKeyName = new string ('a', 256);
-#else
-				subKeyName = new string ('a', 255);
-#endif
 
 				try {
 					softwareKey.DeleteSubKey (subKeyName);
@@ -943,11 +1070,7 @@ namespace MonoTests.Microsoft.Win32
 						Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
 						Assert.IsNull (ex.InnerException, "#3");
 						Assert.IsNotNull (ex.Message, "#4");
-#if NET_2_0
 						Assert.AreEqual ("name", ex.ParamName, "#5");
-#else
-						Assert.AreEqual ("subkey", ex.ParamName, "#5");
-#endif
 					}
 				} finally {
 					try {
@@ -985,6 +1108,27 @@ namespace MonoTests.Microsoft.Win32
 				Assert.IsNull (ex.ParamName, "#5");
 			}
 		}
+
+#if NET_4_0
+		[Test]
+		public void DeleteSubKeyTree_Key_DoesNotExist_Overload ()
+		{
+			// Cannot delete a subkey tree because the subkey does not exist
+			string subKeyName = Guid.NewGuid ().ToString ();
+			try {
+				Registry.CurrentUser.DeleteSubKeyTree (subKeyName, true);
+				Assert.Fail ("#1");
+			} catch (ArgumentException ex) {
+				Assert.AreEqual (typeof (ArgumentException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.IsNull (ex.ParamName, "#5");
+			}
+
+			// It's enough to know this line is not throwing an exception.
+			Registry.CurrentUser.DeleteSubKey (subKeyName, false);
+		}
+#endif
 
 		[Test]
 		public void DeleteSubKeyTree_Key_ReadOnly ()
@@ -1142,11 +1286,7 @@ namespace MonoTests.Microsoft.Win32
 					Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
 					Assert.IsNull (ex.InnerException, "#3");
 					Assert.IsNotNull (ex.Message, "#4");
-#if NET_2_0
 					Assert.AreEqual ("name", ex.ParamName, "#5");
-#else
-					Assert.AreEqual ("subkey", ex.ParamName, "#5");
-#endif
 				}
 			}
 		}
@@ -1522,6 +1662,102 @@ namespace MonoTests.Microsoft.Win32
 			}
 		}
 
+#if NET_4_0
+		[DllImport ("advapi32.dll", CharSet = CharSet.Unicode)]
+		static extern int RegOpenKeyEx (IntPtr keyBase, string keyName, IntPtr reserved, int access, out IntPtr keyHandle);
+        
+		const int RegCurrentUserHive = -2147483647;
+		const int RegAccessRead = 0x00020019;
+
+		// FromHandle is specially designed to retrieve a RegistryKey instance based on a IntPtr
+		// retrieved using any unmanaged registry function, so we use directly RegOpenKeyEx to load
+		// our handle and then pass it to the new 4.0 method.
+		[Test]
+		public void FromHandle ()
+		{
+			// Not supported on Unix
+			if (RunningOnUnix)
+				return;
+
+			string subKeyName = Guid.NewGuid ().ToString ();
+			try {
+				using (RegistryKey key = Registry.CurrentUser.CreateSubKey (subKeyName))
+					key.SetValue ("Name", "Mono001");
+
+				IntPtr handle;
+				int res = RegOpenKeyEx (new IntPtr (RegCurrentUserHive), subKeyName, IntPtr.Zero, RegAccessRead, out handle);
+
+				using (RegistryKey key = RegistryKey.FromHandle (new SafeRegistryHandle (handle, true))) {
+					Assert.AreEqual (String.Empty, key.Name, "#A0");
+					Assert.AreEqual ("Mono001", key.GetValue ("Name"), "#A1");
+				}
+			} finally {
+				RegistryKey createdKey = Registry.CurrentUser.OpenSubKey (subKeyName);
+				if (createdKey != null) {
+					createdKey.Close ();
+					Registry.CurrentUser.DeleteSubKeyTree (subKeyName);
+				}
+			}
+		}
+
+		[Test]
+		public void FromHandle_InvalidHandle ()
+		{
+			// Not supported on Unix
+			if (RunningOnUnix)
+				return;
+
+			string subKeyName = Guid.NewGuid ().ToString ();
+			try {
+				using (RegistryKey key = RegistryKey.FromHandle (new SafeRegistryHandle (IntPtr.Zero, true))) {
+					Assert.AreEqual (String.Empty, key.Name, "#A0");
+
+					// Any operation should throw a IOException, since even if we have a RegistryKey instance,
+					// the handle is not valid.
+					key.CreateSubKey ("ChildSubKey");
+					Assert.Fail ("#Exc0");
+				}
+			} catch (IOException) {
+			} finally {
+				RegistryKey createdKey = Registry.CurrentUser.OpenSubKey (subKeyName);
+				if (createdKey != null) {
+					createdKey.Close ();
+					Registry.CurrentUser.DeleteSubKeyTree (subKeyName);
+				}
+			}
+		}
+
+		[Test]
+		public void Handle ()
+		{
+			if (RunningOnUnix)
+				return;
+
+			string subKeyName = Guid.NewGuid ().ToString ();
+			RegistryKey subkey = null;
+			try {
+				subkey = Registry.CurrentUser.CreateSubKey (subKeyName);
+				Assert.AreEqual (true, subkey.Handle != null, "#A0");
+				Assert.AreEqual (false, subkey.Handle.IsClosed, "#A1");
+				Assert.AreEqual (false, subkey.Handle.IsInvalid, "#A2");
+
+				subkey.Close ();
+				try {
+					if (subkey.Handle != null)
+						Console.WriteLine (); // Avoids a warning at compile time
+					Assert.Fail ("#Disposed");
+				} catch (ObjectDisposedException) {
+				}
+
+			} finally {
+				if (subkey != null) {
+					subkey.Close ();
+					Registry.CurrentUser.DeleteSubKeyTree (subKeyName, false);
+				}
+			}
+		}
+#endif
+
 		[Test]
 		public void GetValue ()
 		{
@@ -1686,7 +1922,6 @@ namespace MonoTests.Microsoft.Win32
 			}
 		}
 
-#if NET_2_0
 		[Test]
 		public void GetValue_Expand ()
 		{
@@ -1785,7 +2020,6 @@ namespace MonoTests.Microsoft.Win32
 				}
 			}
 		}
-#endif
 
 		[Test]
 		public void GetValueNames ()
@@ -2120,25 +2354,10 @@ namespace MonoTests.Microsoft.Win32
 
 					name = new string ('a', 255);
 
-#if NET_2_0
 					createdKey.SetValue (name, "value2");
 					Assert.IsNotNull (createdKey.GetValue (name), "#B1");
 					createdKey.DeleteValue (name);
 					Assert.IsNull (createdKey.GetValue (name), "#B2");
-#else
-					try {
-						createdKey.SetValue (name, "value2");
-						Assert.Fail ("#B1");
-					} catch (ArgumentException ex) {
-						// Registry subkeys should not be greater
-						// than or equal to 255 characters
-						Assert.AreEqual (typeof (ArgumentException), ex.GetType (), "#B2");
-						Assert.IsNull (ex.InnerException, "#B3");
-						Assert.IsNotNull (ex.Message, "#B4");
-						Assert.IsTrue (ex.Message.IndexOf ("255") != -1, "#B5");
-						Assert.IsNull (ex.ParamName, "#B6");
-					}
-#endif
 
 					name = new string ('a', 256);
 
@@ -2538,7 +2757,6 @@ namespace MonoTests.Microsoft.Win32
 			}
 		}
 
-#if NET_2_0
 		[Test] // SetValue (String, Object, RegistryValueKind)
 		public void SetValue2_Key_ReadOnly ()
 		{
@@ -2767,7 +2985,6 @@ namespace MonoTests.Microsoft.Win32
 				Registry.CurrentUser.DeleteSubKeyTree (subKeyName);
 			}
 		}
-#endif
 
 		[Test]
 		public void SubKeyCount ()

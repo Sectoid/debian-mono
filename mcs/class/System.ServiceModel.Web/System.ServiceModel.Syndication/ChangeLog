@@ -1,3 +1,40 @@
+2011-04-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement 4.0 WebOperationContext.Create[Atom10|Json]Response()
+	methods.
+
+2011-03-08  Atsushi Eno  <atsushi@ximian.com>
+
+	More xml output fixes in XmlSyndicationContent and
+	SydicationElementExtension.
+
+	They have couple of complicated xml outputs in both
+	GetReader(AtContent) and Write(Contents)To methods... check new
+	tests for details.
+
+2011-03-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Couple of fixes around XmlSyndicationContent.GetReaderAtContent().
+
+	- The returned XmlReader is positioned at the beginning of the
+	element. - XmlSyndicationContent.GetReaderAtContent() returns
+	XmlReader that begins with the "wrapper" which is dummy Atom 1.0
+	content element.
+
+2010-06-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Rss20ItemFormatter.cs : enabled DateTimeOffset parsing.
+	  Fixed bug #615332, patch by Carlos Martin.
+
+2010-06-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Atom10ItemFormatter.cs : Fix reading of "source" element to not
+	  expect feed element (ReadFrom() expects it). Fixed bug #614596.
+
+2010-06-07  Carlos Martin Nieto  <carlos@cmartin.tk>
+
+	* Rss20ItemFormatter.cs: Don't assume guids are permalinks
+
 2009-12-01  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* Atom10ItemFormatter.cs, Atom10FeedFormatter.cs :

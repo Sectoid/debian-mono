@@ -1,8 +1,2663 @@
+2011-07-20  Martinho Fernandes  <martinho.fernandes@gmail.com>
+
+	[Fix] Command-line option -checked now works (bug #706877)
+
+	The -checked option was not being considered in the
+	BuilderContext. Now it is set on construction of BuilderContext to
+	the value from RootContext.
+
+2011-04-21  Marek Safar  <marek.safar@gmail.com>
+
+	[688891] Keep same TypeParameter ctor syntax
+
+2011-04-21  Marek Safar  <marek.safar@gmail.com>
+
+	[688891] Copy type parameters for base proxy method
+
+2011-04-19  Marek Safar  <marek.safar@gmail.com>
+
+	[687282] Fixes cross references of nested anonymous methods which
+	don't start at parameters level block
+
+2011-03-09  Marek Safar  <marek.safar@gmail.com>
+
+	[677550] Fixes fixed buffer regressions
+
+2011-03-08  Miguel de Icaza  <miguel@gnome.org>
+
+	Make print take an object
+
+2011-03-01  Marek Safar  <marek.safar@gmail.com>
+
+	[675777] Remove invalid zero based optimization
+
+2011-02-23  Marek Safar  <marek.safar@gmail.com>
+
+	[674224] Type parameter constraint can resolve to nested type
+	before it has been imported
+
+2011-02-14  Marek Safar  <marek.safar@gmail.com>
+
+	[671552] Use correct emit method for stobj type
+
+2011-02-08  Marek Safar  <marek.safar@gmail.com>
+
+	[657099] Fix cloning of remapped blocks
+
+2011-02-08  Marek Safar  <marek.safar@gmail.com>
+
+	Fix remapping of cloned block parent when already in cloned
+	context
+
+2011-02-03  Marek Safar  <marek.safar@gmail.com>
+
+	Fix importing of private types under dynamic context
+
+2011-02-03  Marek Safar  <marek.safar@gmail.com>
+
+	Allow any expression to be used in where clause. Some custom linq
+	implementations use non-predicate version of where
+
+2011-02-02  Miguel de Icaza  <miguel@gnome.org>
+
+	[csharp] Change the signature for print
+
+2011-02-02  Marek Safar  <marek.safar@gmail.com>
+
+	Implement support for implicit user conversion for
+	DefaultParameterValue (very odd)
+
+2011-02-01  Marek Safar  <marek.safar@gmail.com>
+
+	Fix empty cast conversion from dynamic type object type argument
+
+2011-01-30  Miguel de Icaza  <miguel@gnome.org>
+
+	[repl] Fix running specified scripts from command line, allow #!
+	syntax, add print command
+
+	We were calling the Reset () method after we had initialized the
+	driver with the new command line arguments, clearing the list of
+	files to execute before we executed them.
+
+	Added support for #! in the csharp repl, and added the print()
+	command to the InteractiveBase
+
+	Add a better way of dealing with -e, without adding hacks to the
+	core that wont work in the future
+
+2011-01-30  Miguel de Icaza  <miguel@gnome.org>
+
+	[repl] Add support for -e EXPRESSION to the csharp command
+
+2011-01-30  Miguel de Icaza  <miguel@gnome.org>
+
+	[repl] Fix running specified scripts from command line, allow #!
+	syntax, add print command
+
+	We were calling the Reset () method after we had initialized the
+	driver with the new command line arguments, clearing the list of
+	files to execute before we executed them.
+
+	Added support for #! in the csharp repl, and added the print()
+	command to the InteractiveBase
+
+2011-01-27  Marek Safar  <marek.safar@gmail.com>
+
+	[667261] Fixes overload resolution of an optional parameter
+	followed by a params parameter of the same type
+
+2011-01-26  Marek Safar  <marek.safar@gmail.com>
+
+	Optimized constructor readonly access has to be inside same
+	declarting type
+
+2011-01-25  Marek Safar  <marek.safar@gmail.com>
+
+	Degrade wrong override member to virtual instead of non-virtual
+
+2011-01-24  Tomasz Kubacki  <tomasz.kubacki@gmail.com>
+
+	[Mono.CSharp] Improve error reporting
+
+2011-01-24  Marek Safar  <marek.safar@gmail.com>
+
+	[666476] Use correct parameter count when checking ambiguous
+	params methods
+
+2011-01-21  Marek Safar  <marek.safar@gmail.com>
+
+	Use byte array as underlying storage for AttributeEncoder
+
+2011-01-21  Miguel de Icaza  <miguel@gnome.org>
+
+	[Mono.CSharp] Fix bug where overwriting variables cleared the
+	wrong value
+
+	This fixes #641910
+
+2011-01-21  Miguel de Icaza  <miguel@gnome.org>
+
+	[csharp] repl using statement fix + support for --fatal
+
+	Fixes #638585 which kept reporting the same error on the using
+	statements over and over Added support for the --fatal flag to the
+	REPL
+
+2011-01-19  Marek Safar  <marek.safar@gmail.com>
+
+	[665333] Encode Length of Public Key correctly
+
+2011-01-18  Marek Safar  <marek.safar@gmail.com>
+
+	Checking skd path for is not enough, add check for mscorlib as
+	well
+
+2011-01-17  Marek Safar  <marek.safar@gmail.com>
+
+	Fallback to corlib location when sdk path cannot be found
+
+2011-01-18  Marek Safar  <marek.safar@gmail.com>
+
+	Remove devirtualization for Type members
+
+2011-01-17  Marek Safar  <marek.safar@gmail.com>
+
+	Add new mcs -sdk option
+
+2011-01-17  Marek Safar  <marek.safar@gmail.com>
+
+	Update to the latest mcs version
+
+2011-01-11  Marek Safar  <marek.safar@gmail.com>
+
+	Update copyright years
+
+2011-01-11  Marek Safar  <marek.safar@gmail.com>
+
+	Use base type parameters to extract params modifier of virtual
+	method
+
+2011-01-11  Marek Safar  <marek.safar@gmail.com>
+
+	Install new ikvm based C# compiler as mcs
+
+2011-01-11  Marek Safar  <marek.safar@gmail.com>
+
+	[662222] Import dynamic attribute using attribute type reader
+
+2011-01-10  Marek Safar  <marek.safar@gmail.com>
+
+	Report correct base modifier for inaccessible protected internal
+	members
+
+2011-01-10  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,mcs] Fixed 'protected internal' build errors and removed
+	System.Web-specific hack from mcs
+
+2011-01-08  Marek Safar  <marek.safar@gmail.com>
+
+	[663059] Add check for protected modifier in InternalsVisibleTo
+	assembly
+
+2011-01-08  Marek Safar  <marek.safar@gmail.com>
+
+	Allow trailing comma for resource argument
+
+2011-01-07  Marek Safar  <marek.safar@gmail.com>
+
+	Better anonymous methods require same parameter types
+
+2011-01-06  Marek Safar  <marek.safar@gmail.com>
+
+	More global state hacking
+
+2011-01-05  Marek Safar  <marek.safar@gmail.com>
+
+	[662440] Don't expand nested type builders of non-generic types
+
+2011-01-05  Marek Safar  <marek.safar@gmail.com>
+
+	Add mcs solution file
+
+2011-01-04  Marek Safar  <marek.safar@gmail.com>
+
+	Set build-in types modifiers
+
+2011-01-04  Marek Safar  <marek.safar@gmail.com>
+
+	Type correctly implicit as expression
+
+2011-01-04  Marek Safar  <marek.safar@gmail.com>
+
+	Cleanup isinst expression resolver
+
+2011-01-04  Marek Safar  <marek.safar@gmail.com>
+
+	Use reduced expression for transparent is check
+
+2011-01-04  Marek Safar  <marek.safar@gmail.com>
+
+	Use one routine for type argument scan for type parameter
+
+2010-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	Implements checking of referenced members with missing references
+
+2010-12-22  Marek Safar  <marek.safar@gmail.com>
+
+	Report obsolete warning for generic methods which base
+	implementation constraints are obsolete
+
+2010-12-22  Marek Safar  <marek.safar@gmail.com>
+
+	[660553] Fixed delegate name hiding.
+
+2010-12-20  Marek Safar  <marek.safar@gmail.com>
+
+	Enable fixed ikvm exception mode
+
+2010-12-20  Marek Safar  <marek.safar@gmail.com>
+
+	Emit constant data type using compiler type containers
+
+2010-12-20  Marek Safar  <marek.safar@gmail.com>
+
+	Add a workaround for ikvm unfixed baked method tokens
+
+2010-12-20  Marek Safar  <marek.safar@gmail.com>
+
+	Disable ikvm exception optimization until it's fixed
+
+2010-12-20  Marek Safar  <marek.safar@gmail.com>
+
+	Keep looking for references assembly after first lib path fails
+
+2010-12-20  Marek Safar  <marek.safar@gmail.com>
+
+	Replace initial eval Reset with PartialReset
+
+2010-12-20  Marek Safar  <marek.safar@gmail.com>
+
+	[660260] A static method is inaccessible from a nested type with
+	explicit generic args
+
+2010-12-20  Marek Safar  <marek.safar@gmail.com>
+
+	[660255] Keep inflated non-inflated method info independently
+
+2010-12-17  Marek Safar  <marek.safar@gmail.com>
+
+	Add more files to mcs dist
+
+2010-12-17  Marek Safar  <marek.safar@gmail.com>
+
+	[660077] Setup class interfaces for defined types in same way as
+	for imported types
+
+2010-12-17  Marek Safar  <marek.safar@gmail.com>
+
+	Made SecurityAction predefined type
+
+2010-12-17  Marek Safar  <marek.safar@gmail.com>
+
+	[657601] Fixes parsing pragma warning when encounter eof
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Set ImageRuntimeVersion based on mscorlib version when available
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	[659970] Close anonymous method scope also for top-level blocks
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Switch to single mcs compiler for all managed code build
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Cleanup references in static mode
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Add more attribute arguments checks
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed cloning of default switch case
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	[659536] Don't re-create array expressions when infering implicit
+	array type
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	[659528] Fixed cloning of switch sections
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	[656150] Fix repl recovery after invalid expression.
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Fix comment typo
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Workaround problem when compiling many resource files references
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Switch to resizeable array when adding second item to base member
+	cache
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Emit delegate constructor parameter names
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Recover from invalid linq block syntax
+
+2010-12-14  Marek Safar  <marek.safar@gmail.com>
+
+	[653710] Check type parameter reference type constraint
+	recursively
+
+2010-12-14  Marek Safar  <marek.safar@gmail.com>
+
+	[656918] Implement expression tree access to hoisted variable
+	reference
+
+2010-12-14  Marek Safar  <marek.safar@gmail.com>
+
+	[656918] Emit instance expression for ET delegate creation
+
+2010-12-14  Marek Safar  <marek.safar@gmail.com>
+
+	Reject automatic version number at major and minor positions
+
+2010-12-14  Marek Safar  <marek.safar@gmail.com>
+
+	[655284] Implemented automatic assembly version numbers
+
+2010-12-14  Marek Safar  <marek.safar@gmail.com>
+
+	[655770] Emit unused members warning for nested types as well
+
+2010-12-14  Marek Safar  <marek.safar@gmail.com>
+
+	[657623] Fix incorrect logic in value type parameter `is' check
+
+2010-12-14  Marek Safar  <marek.safar@gmail.com>
+
+	Add more restrictions to custom attribute encoding
+
+2010-12-14  Marek Safar  <marek.safar@gmail.com>
+
+	[657797] Expand type member cache using secondary constraints as
+	well.
+
+2010-12-13  Marek Safar  <marek.safar@gmail.com>
+
+	Remove duplicate checks
+
+2010-12-13  Marek Safar  <marek.safar@gmail.com>
+
+	[659038] Check interface hierarchy before reporting ambiguous
+	errors
+
+2010-12-13  Marek Safar  <marek.safar@gmail.com>
+
+	[657862] Correctly scan for parent of base method override
+
+2010-12-13  Marek Safar  <marek.safar@gmail.com>
+
+	[658722] Don't require arity symbol to be part of the typename
+
+2010-12-13  Marek Safar  <marek.safar@gmail.com>
+
+	[659022] Resolve reduced expressions
+
+2010-12-10  Marek Safar  <marek.safar@gmail.com>
+
+	Revert unwanted makefile change
+
+2010-12-10  Marek Safar  <marek.safar@gmail.com>
+
+	Add v1 runtime target (broken by design)
+
+2010-12-10  Marek Safar  <marek.safar@gmail.com>
+
+	Resolve entire base initializer block in correct context
+
+2010-12-10  Marek Safar  <marek.safar@gmail.com>
+
+	Report missing types (some of them for now)
+
+2010-12-09  Marek Safar  <marek.safar@gmail.com>
+
+	Try to handle missing generic type definition
+
+2010-12-09  Marek Safar  <marek.safar@gmail.com>
+
+	Read custom attribute name without resolving attribute type if
+	possible
+
+2010-12-09  Marek Safar  <marek.safar@gmail.com>
+
+	Redirect all mscorlib loads into assembly builder when compiling
+	corlib
+
+2010-12-08  Marek Safar  <marek.safar@gmail.com>
+
+	Add initial handling of missing assemblies
+
+2010-12-08  Marek Safar  <marek.safar@gmail.com>
+
+	Add internal --runtime option
+
+2010-12-08  Marek Safar  <marek.safar@gmail.com>
+
+	Add references loading trace
+
+2010-12-08  Marek Safar  <marek.safar@gmail.com>
+
+	Removed check for generics on 1.1 runtime
+
+2010-12-07  Marek Safar  <marek.safar@gmail.com>
+
+	Put back actual save of module target
+
+2010-12-07  Marek Safar  <marek.safar@gmail.com>
+
+	Check file extension manually
+
+2010-12-07  Marek Safar  <marek.safar@gmail.com>
+
+	Symbol writer has to use 4.0 methods in static mode
+
+2010-12-07  Marek Safar  <marek.safar@gmail.com>
+
+	Add IKVM.Reflection support
+
+2010-12-06  Marek Safar  <marek.safar@gmail.com>
+
+	Extract reflection specific assembly builder
+
+2010-12-06  Marek Safar  <marek.safar@gmail.com>
+
+	Re-use existing code path
+
+2010-12-06  Marek Safar  <marek.safar@gmail.com>
+
+	Refactor assemblies loading into a base class
+
+2010-12-06  Marek Safar  <marek.safar@gmail.com>
+
+	Move more fields to RootContext
+
+2010-12-06  Marek Safar  <marek.safar@gmail.com>
+
+	Removed obsolete files
+
+2010-12-06  Marek Safar  <marek.safar@gmail.com>
+
+	Use type definition for generic type forwarders
+
+2010-12-06  Marek Safar  <marek.safar@gmail.com>
+
+	Don't close same type twice when base call closes this declaration
+
+2010-12-06  Marek Safar  <marek.safar@gmail.com>
+
+	Use Version type instead of string value
+
+2010-12-06  Marek Safar  <marek.safar@gmail.com>
+
+	Use decimal optional parameter value decoded by System.Reflection
+
+2010-12-03  Marek Safar  <marek.safar@gmail.com>
+
+	Extract reflection specific code from extended builder
+
+2010-12-03  Marek Safar  <marek.safar@gmail.com>
+
+	Move assembly security declaration to extened builder
+
+2010-12-03  Marek Safar  <marek.safar@gmail.com>
+
+	Don't call module symbol writer methods when we are not using it
+
+2010-12-03  Marek Safar  <marek.safar@gmail.com>
+
+	Delay initialization of missing methods needed by symbol writer
+
+2010-12-03  Marek Safar  <marek.safar@gmail.com>
+
+	Apply implicit parameter attributes using standard path to avoid
+	any duplicates
+
+2010-12-03  Marek Safar  <marek.safar@gmail.com>
+
+	More symbol writer clean-up
+
+2010-12-02  Marek Safar  <marek.safar@gmail.com>
+
+	Don't try to parse invalid namespace declarations, it does more
+	harm than good
+
+2010-12-02  Marek Safar  <marek.safar@gmail.com>
+
+	Update setting of buildin internal types
+
+2010-12-02  Marek Safar  <marek.safar@gmail.com>
+
+	Removed InitOptionalCoreTypes
+
+2010-12-02  Marek Safar  <marek.safar@gmail.com>
+
+	Clean-up module indirections
+
+2010-12-02  Marek Safar  <marek.safar@gmail.com>
+
+	Move all predefined types to module to work with any mscorlib
+
+2010-12-01  Marek Safar  <marek.safar@gmail.com>
+
+	Move references loading into a new class
+
+2010-12-01  Marek Safar  <marek.safar@gmail.com>
+
+	Move AssemblyResource to assembly.cs
+
+2010-11-30  Marek Safar  <marek.safar@gmail.com>
+
+	Import parameter default values using TypeCode
+
+2010-11-30  Marek Safar  <marek.safar@gmail.com>
+
+	Remove remaining typeof
+
+2010-11-30  Marek Safar  <marek.safar@gmail.com>
+
+	Read dynamic attribute using CustomAttributeData
+
+2010-11-30  Marek Safar  <marek.safar@gmail.com>
+
+	Emit optional default value-type parameter using nullref
+
+2010-11-30  Marek Safar  <marek.safar@gmail.com>
+
+	Move core predefined types into a new class
+
+2010-11-30  Marek Safar  <marek.safar@gmail.com>
+
+	Add initial reflection dependant code
+
+2010-11-30  Marek Safar  <marek.safar@gmail.com>
+
+	Move metadata importer out of compiler context finally
+
+2010-11-29  Marek Safar  <marek.safar@gmail.com>
+
+	Check imported custom attributes based on name only
+
+2010-11-29  Marek Safar  <marek.safar@gmail.com>
+
+	Made type member kind logic more flexible
+
+2010-11-29  Marek Safar  <marek.safar@gmail.com>
+
+	Don't special case value type constraint
+
+2010-11-29  Marek Safar  <marek.safar@gmail.com>
+
+	Add sanity check for imported static fixed buffer
+
+2010-11-26  Marek Safar  <marek.safar@gmail.com>
+
+	Removed few custom attribute IsDefined calls
+
+2010-11-26  Marek Safar  <marek.safar@gmail.com>
+
+	Import constants using their raw values only
+
+2010-11-26  Marek Safar  <marek.safar@gmail.com>
+
+	[655766] Encode string null attribute argument
+
+2010-11-26  Marek Safar  <marek.safar@gmail.com>
+
+	Cleanup typed constants
+
+2010-11-26  Marek Safar  <marek.safar@gmail.com>
+
+	Switch symbol writer to public api
+
+2010-11-25  Marek Safar  <marek.safar@gmail.com>
+
+	More using cleanup
+
+2010-11-25  Marek Safar  <marek.safar@gmail.com>
+
+	Remove TypeBuilder from DefineType
+
+2010-11-24  Marek Safar  <marek.safar@gmail.com>
+
+	Unify System.Reflection usings
+
+2010-11-24  Marek Safar  <marek.safar@gmail.com>
+
+	Recover from broken for statement
+
+2010-11-24  Marek Safar  <marek.safar@gmail.com>
+
+	Inflate imported type arguments types with type definition type
+	arguments
+
+2010-11-23  Marek Safar  <marek.safar@gmail.com>
+
+	Remove typeof comparisons
+
+2010-11-22  Marek Safar  <marek.safar@gmail.com>
+
+	Remove typeof usage from DefaultCharSet
+
+2010-11-22  Marek Safar  <marek.safar@gmail.com>
+
+	Don't multiply fixed buffer size (it's done by runtime). Fixes
+	#654058
+
+2010-11-22  Marek Safar  <marek.safar@gmail.com>
+
+	Emit fixed buffers using standard api only
+
+2010-11-22  Marek Safar  <marek.safar@gmail.com>
+
+	Tweak async modifier constant value
+
+2010-11-18  Alexander Corrado  <alexander.corrado@gmail.com>
+
+	Added 'async' as a recognized method modifier.
+
+2010-11-22  Marek Safar  <marek.safar@gmail.com>
+
+	Define embeded resources using standard API
+
+2010-11-21  Marek Safar  <marek.safar@gmail.com>
+
+	Move entry point handling to AssemblyDefinition
+
+2010-11-21  Marek Safar  <marek.safar@gmail.com>
+
+	Make generated assembly attributes container name unique
+
+2010-11-21  Marek Safar  <marek.safar@gmail.com>
+
+	Don't sign netmodules.
+
+2010-11-21  Marek Safar  <marek.safar@gmail.com>
+
+	Put back private key handling
+
+2010-11-21  Marek Safar  <marek.safar@gmail.com>
+
+	Improve handling of netmodules. Fixes #504085
+
+2010-11-19  Marek Safar  <marek.safar@gmail.com>
+
+	Add AssemblySpec to handle all assembly attributes in same way.
+
+2010-11-19  Marek Safar  <marek.safar@gmail.com>
+
+	Add missing file
+
+2010-11-15  Marek Safar  <marek.safar@gmail.com>
+
+	Remove old accessibility check routine
+
+2010-11-12  Marek Safar  <marek.safar@gmail.com>
+
+	Move an assembly declaration handling into a new file
+
+2010-11-12  Marek Safar  <marek.safar@gmail.com>
+
+	Add local version of constructor info constants
+
+2010-11-12  Marek Safar  <marek.safar@gmail.com>
+
+	Remove unused namespaces
+
+2010-11-12  Marek Safar  <marek.safar@gmail.com>
+
+	Show more details for CS1061 eror
+
+2010-11-12  Marek Safar  <marek.safar@gmail.com>
+
+	Inflate nested non-generic interfaces inside generic type
+
+2010-11-12  Marek Safar  <marek.safar@gmail.com>
+
+	[652390] Return type inference can inflate using type parameters
+	out of the reach
+
+2010-11-11  Marek Safar  <marek.safar@gmail.com>
+
+	[650850] Inflate all hoisted type parameter constraints
+
+2010-11-11  Marek Safar  <marek.safar@gmail.com>
+
+	Synchronize event add/remove using CAS
+
+2010-11-10  Marek Safar  <marek.safar@gmail.com>
+
+	Unwraped equality operators cannot use a user operator of
+	different types
+
+2010-11-10  Marek Safar  <marek.safar@gmail.com>
+
+	Implement dynamic mutator over dynamic indexer
+
+2010-11-10  Marek Safar  <marek.safar@gmail.com>
+
+	More tweaks for nullable binary operation
+
+2010-11-10  Marek Safar  <marek.safar@gmail.com>
+
+	False user-operator has priority over logical not user-operator
+
+2010-11-10  Marek Safar  <marek.safar@gmail.com>
+
+	Fixes a logic error in filtering out operators like methods
+
+2010-11-09  Marek Safar  <marek.safar@gmail.com>
+
+	Don't crash on liften null left/right shift
+
+2010-11-09  Marek Safar  <marek.safar@gmail.com>
+
+	Logical binary operarions with dynamic arguments have to be
+	unfolded
+
+2010-11-09  Marek Safar  <marek.safar@gmail.com>
+
+	Import declaring type base type when walking up the tree
+
+2010-11-08  Marek Safar  <marek.safar@gmail.com>
+
+	Emit correctly EndInvoke parameters attributes and names
+
+2010-11-08  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed ambiguity for overload resolution between params and
+	optional parameter of same type
+
+2010-11-08  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up event expression assigning error reporting
+
+2010-11-08  Marek Safar  <marek.safar@gmail.com>
+
+	[651547] Check definitely assigned struct this access correctly.
+
+2010-11-05  Marek Safar  <marek.safar@gmail.com>
+
+	Better 843 error message
+
+2010-11-05  Marek Safar  <marek.safar@gmail.com>
+
+	Move 2.0 Monitor.Enter back out of the try block
+
+2010-11-05  Marek Safar  <marek.safar@gmail.com>
+
+	Only when importing nested types definition base type cannot be
+	setup
+
+2010-11-04  Marek Safar  <marek.safar@gmail.com>
+
+	Allow liften null as a given number of bit positions for shift
+	operator
+
+2010-11-04  Marek Safar  <marek.safar@gmail.com>
+
+	Add boxing for dynamic nullable conversion of coalescing operator
+
+2010-11-04  Marek Safar  <marek.safar@gmail.com>
+
+	Reject inaccessible members based on declaring type in dynamic
+	context
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	Inflate also event backing field
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	Another missing full dynamic type equality check
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	Implement lock statement over generic type parameter
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	Issue a warning about re-assigned locked local variable
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	Fixes NRE in pre-4.0 compilation
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	Reset lock_taken before entering Monitor.Enter
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	ExclusiveOr is not nullable bitwise boolean operator
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	A candidate method can use dynamic in expanded form at non-first
+	position
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	typeof expression does not need unsafe context for pointer types
+
+2010-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	Pass checked context to compound member access setters
+
+2010-11-02  Marek Safar  <marek.safar@gmail.com>
+
+	Emit lock statement using Monitor.Enter (object, ref bool) when
+	available
+
+2010-11-02  Marek Safar  <marek.safar@gmail.com>
+
+	Implements indirect delegates invocation via dynamic member
+	dispatch
+
+2010-11-01  Marek Safar  <marek.safar@gmail.com>
+
+	Pass value type dynamic members as by-ref to persist member side
+	effects
+
+2010-11-01  Marek Safar  <marek.safar@gmail.com>
+
+	Convert dynamic assignment in checked context when set
+
+2010-11-01  Marek Safar  <marek.safar@gmail.com>
+
+	Check for unfixed type arguments before calling overload
+	resolution for inferred return type
+
+2010-11-01  Marek Safar  <marek.safar@gmail.com>
+
+	Set correct result type for chained folded enum subtraction
+
+2010-11-01  Marek Safar  <marek.safar@gmail.com>
+
+	Check binary header using right methods.
+
+2010-10-29  Marek Safar  <marek.safar@gmail.com>
+
+	Make dynamic array access index expresions in checked context
+
+2010-10-29  Marek Safar  <marek.safar@gmail.com>
+
+	Ignore private methods in batch import
+
+2010-10-28  Marek Safar  <marek.safar@gmail.com>
+
+	Fix emitted code for predefined or/and operation between bool? and
+	bool
+
+2010-10-28  Marek Safar  <marek.safar@gmail.com>
+
+	Add more type parameter checks for inherited constraints.
+
+2010-10-27  Marek Safar  <marek.safar@gmail.com>
+
+	Implement type inference of dynamic arguments used as unknown
+	types
+
+2010-10-27  Marek Safar  <marek.safar@gmail.com>
+
+	Use correct location for unexpected type parameter
+
+2010-10-27  Marek Safar  <marek.safar@gmail.com>
+
+	Reorder MethodBase::Attributes usage
+
+2010-10-27  Marek Safar  <marek.safar@gmail.com>
+
+	[649448] Compare original goto block for cloned blocks.
+
+2010-10-27  Marek Safar  <marek.safar@gmail.com>
+
+	[648360] When inflating nested generic type use same type
+	arguments to not inflate already inflated type
+
+2010-10-27  Marek Safar  <marek.safar@gmail.com>
+
+	Make the static field readonly
+
+2010-10-27  Marek Safar  <marek.safar@gmail.com>
+
+	Make static fields readonly
+
+2010-10-27  Marek Safar  <marek.safar@gmail.com>
+
+	crlf fix
+
+2010-10-26  Marek Safar  <marek.safar@gmail.com>
+
+	Revert unwanted changes
+
+2010-10-26  Marek Safar  <marek.safar@gmail.com>
+
+	Check nested declaring types when testing member overrides
+
+2010-10-26  Marek Safar  <marek.safar@gmail.com>
+
+	Delay expensive inflator construction for type parameter
+	constraints
+
+2010-10-25  Marek Safar  <marek.safar@gmail.com>
+
+	Recover from invalid implicit lambda block
+
+2010-10-24  Marek Safar  <marek.safar@gmail.com>
+
+	Add more details to timing debugging
+
+2010-10-24  Marek Safar  <marek.safar@gmail.com>
+
+	Make setting a position out of the buffer size actually work
+
+2010-10-23  Marek Safar  <marek.safar@gmail.com>
+
+	Add missing v3 language version
+
+2010-10-22  Marek Safar  <marek.safar@gmail.com>
+
+	Use faster MemberKind when checking for a nested type
+
+2010-10-22  Marek Safar  <marek.safar@gmail.com>
+
+	Include parent type parameters when inflating nested type
+	parameter constraint of type parameter type
+
+2010-10-22  Marek Safar  <marek.safar@gmail.com>
+
+	Move nested declaration looup to TypeContainer
+
+2010-10-21  Marek Safar  <marek.safar@gmail.com>
+
+	Add dynamic conversion to coalescing operator
+
+2010-10-21  Marek Safar  <marek.safar@gmail.com>
+
+	Implement closest override return type matching
+
+2010-10-20  Marek Safar  <marek.safar@gmail.com>
+
+	[601801] Fixes for parsing nant documentation
+
+	Gleb Golubitsky <rush.william@gmail.com>
+
+2010-10-20  Marek Safar  <marek.safar@gmail.com>
+
+	Check for name conflicts between parent members and child block
+	variables
+
+2010-10-20  Marek Safar  <marek.safar@gmail.com>
+
+	[647845] Don't skip parent types when looking for simple name
+
+2010-10-20  Marek Safar  <marek.safar@gmail.com>
+
+	More work on ambiguous named arguments
+
+2010-10-19  Marek Safar  <marek.safar@gmail.com>
+
+	More optional parameter VB compatibility fixes
+
+2010-10-19  Marek Safar  <marek.safar@gmail.com>
+
+	Restore altered arguments when overload resolution ends up in
+	dynamic dispatch
+
+2010-10-18  Marek Safar  <marek.safar@gmail.com>
+
+	[512754] Overload resolution with named or optional arguments has
+	to use closest member parameters
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	[646997] Correctly emit platform ILOnly flag
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Extension method argument cannot exercise numeric conversion
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Add more dynamic conversion restrictions
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	More tweaks to dynamic overload resolution
+
+2010-10-14  Marek Safar  <marek.safar@gmail.com>
+
+	A conditional expression with either dynamic side is always of
+	dynamic type
+
+2010-10-14  Marek Safar  <marek.safar@gmail.com>
+
+	Don't define same parameter more than once.
+
+2010-10-14  Marek Safar  <marek.safar@gmail.com>
+
+	More conversion tweaks for dynamic in using statement
+
+2010-10-14  Marek Safar  <marek.safar@gmail.com>
+
+	[646298] Compile multiple interface event declarators
+
+2010-10-13  Marek Safar  <marek.safar@gmail.com>
+
+	Use 2 phase dynamic load only for compound operations
+
+2010-10-13  Marek Safar  <marek.safar@gmail.com>
+
+	HasDynamicElement became available use it when building dynamic
+	custom attributes
+
+2010-10-13  Marek Safar  <marek.safar@gmail.com>
+
+	[645992] When importing dynamic type arguments dynamic custom
+	attribute flag has to be checked
+
+2010-10-13  Marek Safar  <marek.safar@gmail.com>
+
+	Dynamic type is never better than other types in overload
+	resolution
+
+2010-10-12  Marek Safar  <marek.safar@gmail.com>
+
+	More fixes for implicit conversions of nullable types with
+	nullable arguments
+
+2010-10-12  Marek Safar  <marek.safar@gmail.com>
+
+	Keep parsing after invalid contstructor declaration
+
+2010-10-12  Marek Safar  <marek.safar@gmail.com>
+
+	[645572] Import more type as possible dynamic types.
+
+2010-10-12  Marek Safar  <marek.safar@gmail.com>
+
+	Report correct error message for compound lifted binary operations
+
+2010-10-12  Marek Safar  <marek.safar@gmail.com>
+
+	Fold duplex conversion casts into a expression to emit single
+	convert for expression trees
+
+2010-10-11  Marek Safar  <marek.safar@gmail.com>
+
+	Compound assignments over reference type array cannot use ldelema
+
+2010-10-10  Marek Safar  <marek.safar@gmail.com>
+
+	[645232] Implement ITypeDefinition for internal types.
+
+2010-10-08  Marek Safar  <marek.safar@gmail.com>
+
+	Don't assume the system.object does not have any fields
+
+2010-10-08  Marek Safar  <marek.safar@gmail.com>
+
+	[642975] Fix initializer of partially static multidimensional
+	arrays
+
+2010-10-08  Marek Safar  <marek.safar@gmail.com>
+
+	[644673] Import of modules got broken
+
+2010-10-08  Marek Safar  <marek.safar@gmail.com>
+
+	Allow imported members cache to be setup in 2 phases as compiled
+	one is to deal with generics recursions
+
+2010-10-07  Marek Safar  <marek.safar@gmail.com>
+
+	Fix compound event assigments with dynamic side effect
+
+2010-10-07  Marek Safar  <marek.safar@gmail.com>
+
+	[644507] Don't use nested type cache until declaring type is
+	setup.
+
+2010-10-07  Marek Safar  <marek.safar@gmail.com>
+
+	Fix compound assigments with dynamic side effect
+
+2010-10-06  Marek Safar  <marek.safar@gmail.com>
+
+	Verify type parameter constraints type parameters
+
+2010-10-06  Marek Safar  <marek.safar@gmail.com>
+
+	Fixes allowed interface method modifiers
+
+2010-10-05  Marek Safar  <marek.safar@gmail.com>
+
+	Inflate imported nested type correctly.
+
+2010-10-05  Marek Safar  <marek.safar@gmail.com>
+
+	Compare all type arguments for nested generic types.
+
+2010-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	ref/out arguments are always of static type
+
+2010-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	Keep imported indexer parameters (they can contain non-inflated
+	type parameters)
+
+2010-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	Implement compound assignment over null value
+
+2010-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	Dynamic compound assignment breaks standard C# result conversion
+	rules
+
+2010-09-30  Marek Safar  <marek.safar@gmail.com>
+
+	void is never of type object
+
+2010-09-30  Marek Safar  <marek.safar@gmail.com>
+
+	Initialize both disposable and local variable for dynamic
+	expressions.
+
+2010-09-30  Marek Safar  <marek.safar@gmail.com>
+
+	More awkward nullable binary expressions which are not lifted even
+	though they should be
+
+2010-09-29  Marek Safar  <marek.safar@gmail.com>
+
+	Implement binary user operators over nullable not lifted
+	expressions.
+
+2010-09-29  Marek Safar  <marek.safar@gmail.com>
+
+	Dynamic compound assignment can be used as an expression as well.
+
+2010-09-29  Marek Safar  <marek.safar@gmail.com>
+
+	[642437] Nested types have to check type arguments only and not
+	full class
+
+2010-09-29  Marek Safar  <marek.safar@gmail.com>
+
+	Skip inaccessible nested types for member access expressions.
+
+2010-09-29  Marek Safar  <marek.safar@gmail.com>
+
+	Inflate custom site container delegates correctly.
+
+2010-09-28  Marek Safar  <marek.safar@gmail.com>
+
+	Optional parameters can be of a user value type
+
+2010-09-28  Marek Safar  <marek.safar@gmail.com>
+
+	Ignore imported not visible internal types
+
+2010-09-25  Marek Safar  <marek.safar@gmail.com>
+
+	Implemented more combinations of nullable boolean logical
+	operators
+
+2010-09-25  Marek Safar  <marek.safar@gmail.com>
+
+	Better error message for syntax error in namespace name
+
+2010-09-21  Marek Safar  <marek.safar@gmail.com>
+
+	Don't restore unused flags
+
+2010-09-21  Marek Safar  <marek.safar@gmail.com>
+
+	[640722] Consider delegate parameters when checking member hiding
+
+2010-09-21  Marek Safar  <marek.safar@gmail.com>
+
+	[640709] Don't reuse method parameters for base proxy, they can be
+	hoisted
+
+2010-09-21  Marek Safar  <marek.safar@gmail.com>
+
+	[640699] Reduced compound expressions need explicit conversion
+	too.
+
+2010-09-20  Marek Safar  <marek.safar@gmail.com>
+
+	Implement postfix operations involving an implicit user operator.
+
+2010-09-20  Marek Safar  <marek.safar@gmail.com>
+
+	Don't check inferred dynamic type arguments against best candidate
+	constraints.
+
+2010-09-20  Marek Safar  <marek.safar@gmail.com>
+
+	More missing conversions between object and dynamic
+
+2010-09-20  Marek Safar  <marek.safar@gmail.com>
+
+	[640285] Initialize this in current block instead of original
+	block
+
+2010-09-20  Marek Safar  <marek.safar@gmail.com>
+
+	Parse secondary static like expression as a non-cast
+
+2010-09-17  Marek Safar  <marek.safar@gmail.com>
+
+	User operators are resolved in a batch, pick up the foremost
+
+2010-09-17  Marek Safar  <marek.safar@gmail.com>
+
+	Make the dynamic sites container name really unique
+
+2010-09-17  Marek Safar  <marek.safar@gmail.com>
+
+	Fixes preference of a user-defined conversion operators over
+	lifted conversion operators
+
+2010-09-17  Marek Safar  <marek.safar@gmail.com>
+
+	Fixes cloning of a variable declarator.
+
+2010-09-17  Marek Safar  <marek.safar@gmail.com>
+
+	Implement predefined binary enum operators involving an implicit
+	user conversion
+
+2010-09-16  Marek Safar  <marek.safar@gmail.com>
+
+	Recover wrong invalid character constants.
+
+2010-09-16  Marek Safar  <marek.safar@gmail.com>
+
+	[639603] Don't emit statements as expressions when they don't
+	support it.
+
+2010-09-16  Marek Safar  <marek.safar@gmail.com>
+
+	[639407] Clean up more static stuff to fix repl instances.
+
+2010-09-15  Marek Safar  <marek.safar@gmail.com>
+
+	Recover wrong embedded statement syntax
+
+2010-09-15  Marek Safar  <marek.safar@gmail.com>
+
+	[639403] Fixes the endless recursion with hacked EOF
+
+2010-09-14  Marek Safar  <marek.safar@gmail.com>
+
+	Encode correctly all constants into a payload
+
+2010-09-14  Marek Safar  <marek.safar@gmail.com>
+
+	Recover wrong invalid initializer syntax.
+
+2010-09-14  Marek Safar  <marek.safar@gmail.com>
+
+	Finish predefined attributes instance access to allow compile time
+	dynamic support in repl.
+
+2010-09-14  Marek Safar  <marek.safar@gmail.com>
+
+	Initialize all core types
+
+2010-09-13  Marek Safar  <marek.safar@gmail.com>
+
+	Removed confusing catch error message.
+
+2010-09-13  Marek Safar  <marek.safar@gmail.com>
+
+	Add a test for arrays with dynamic elements.
+
+2010-09-13  Marek Safar  <marek.safar@gmail.com>
+
+	Implement foreach over nullable values.
+
+2010-09-13  Marek Safar  <marek.safar@gmail.com>
+
+	Keep only 1 using implementation and handle all nullable and
+	dynamic cases there.
+
+2010-09-13  Marek Safar  <marek.safar@gmail.com>
+
+	Better error reporting for missing identifiers.
+
+2010-09-10  Marek Safar  <marek.safar@gmail.com>
+
+	Always compare original block for cloned versions.
+
+2010-09-10  Marek Safar  <marek.safar@gmail.com>
+
+	Tweak few error reports
+
+2010-09-10  Marek Safar  <marek.safar@gmail.com>
+
+	Add comments.
+
+2010-09-10  Marek Safar  <marek.safar@gmail.com>
+
+	Converting the switch statement into normal statement (the block
+	part).
+
+2010-09-10  Marek Safar  <marek.safar@gmail.com>
+
+	When doing member access left side lookup the arity value is
+	actually the exact value.
+
+2010-09-10  Marek Safar  <marek.safar@gmail.com>
+
+	Reject varianly implemented interface members.
+
+2010-09-10  Marek Safar  <marek.safar@gmail.com>
+
+	Try to speep up the GetLocation by a bit.
+
+2010-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	Recover from broken single parameter
+
+2010-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	Report precise error about local variable hiding
+
+2010-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	Do all possible mistaken empty statement checks in the parser
+
+2010-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	Don't recreate top-level destructor block, it carries precious
+	stuff
+
+2010-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	Try to recover after each wrong statement.
+
+2010-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	__arglist can be used as an expression.
+
+2010-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	The first push to make flow-analysis work for complex blocks.
+
+	All blocks are now strictly hierachical which greatly simplifies
+	many things and fixes many subtle bugs with local names. Removing
+	the block cross references helps scalling when compiling deeply
+	nested blocks or large method bodies including linq. Prepared
+	possible dynamic statements to work with variable declarators.
+
+2010-09-06  Jonathan Pobst  <monkey@jpobst.com>
+
+	Normalize line endings.
+
+2010-09-01  Marek Safar  <marek.safar@gmail.com>
+
+	Add ctor block to field initializers to avoid member lookup at
+	wrong block
+
+2010-08-31  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* rootcontext.cs (CloseTypes): Only apply the enum hack for corlib
+	here.
+
+	* rootcontext.cs (EmitCode): Do the corlib basic type hack here
+	before types are emitted. This is required since EmitType produce
+	type initializers, which derive from ValueType and must be able to
+	see the TypeBuilder version of it.
+
+2010-08-31  Marek Safar  <marek.safar@gmail.com>
+
+	Add support for indirect pointer type constants.
+
+2010-08-31  Marek Safar  <marek.safar@gmail.com>
+
+	[635714] Inconsistent accessibility between nested private and
+	protected internal types
+
+2010-08-29  Marek Safar  <marek.safar@gmail.com>
+
+	Don't generate tracing for the parser, it slows it down
+	unnecessary
+
+2010-08-29  Marek Safar  <marek.safar@gmail.com>
+
+	Add more rules for static initializers
+
+2010-08-29  Marek Safar  <marek.safar@gmail.com>
+
+	Removed misused break, format long comment
+
+2010-08-27  Marek Safar  <marek.safar@gmail.com>
+
+	Implement dynamic sites for hoisted mvar types
+
+2010-08-27  Marek Safar  <marek.safar@gmail.com>
+
+	Check also modifier for identical ref/out parameters
+
+2010-08-27  Marek Safar  <marek.safar@gmail.com>
+
+	Fixes build
+
+2010-08-27  Marek Safar  <marek.safar@gmail.com>
+
+	Don't convert ByRef parameters
+
+2010-08-26  Marek Safar  <marek.safar@gmail.com>
+
+	Consider parameter constraints when choosing applicable method
+	candidate
+
+2010-08-26  Marek Safar  <marek.safar@gmail.com>
+
+	Always build type from compiler type when flagged
+
+2010-08-26  Marek Safar  <marek.safar@gmail.com>
+
+	Jagged arrays have to be imported not created
+
+2010-08-26  Marek Safar  <marek.safar@gmail.com>
+
+	Import private event backing fields in dynamic context
+
+2010-08-26  Marek Safar  <marek.safar@gmail.com>
+
+	Special case unbox SLE conversion
+
+2010-08-25  Marek Safar  <marek.safar@gmail.com>
+
+	Maintain only one place with dynamic explicit conversions
+
+2010-08-25  Marek Safar  <marek.safar@gmail.com>
+
+	Defer null check to resolver
+
+2010-08-25  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Fix explicitly-implemented interface member cref generation.
+
+	The //member/@name for explicitly implemented interface members
+	needs to contain the fully-qualified interface name, including
+	type parameters (if necessary), so we need to generate
+	"M:Container`2.Element.System#ICloneable#Clone", not
+	"M:Container`2.Element.ICloneable.Clone".
+
+	Furthermore, explicitly implemented generic interface methods
+	within a generic type were always getting the type parameter count
+	appended to them (which somewhat makes sense, as they're on a
+	generic type...) which is counter to what CSC generates, e.g. we
+	need to generate
+	"P:Container`2.System#Collections#Generic#IList&lt;TValue&gt;#Item(System.Int32)"
+	not "P:Container`2.IList`1.Item``1(System.Int32)".
+
+2010-08-25  Marek Safar  <marek.safar@gmail.com>
+
+	Show better message when assigning to the type
+
+2010-08-25  Marek Safar  <marek.safar@gmail.com>
+
+	Import private members too when using dynamic context
+
+2010-08-24  Marek Safar  <marek.safar@gmail.com>
+
+	Import all delegates as sealed
+
+2010-08-24  Marek Safar  <marek.safar@gmail.com>
+
+	Probing dynamic compatibility is identical to object
+
+2010-08-24  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Improve XML documentation support for generic type parameters.
+
+	Fixes #624242
+
+	This also allows master 'gmcs /doc' to build OpenTK,
+	gitorious.org/cadenza, and build the mcs/tools/mdoc unit tests w/o
+	compilation error.
+
+	The bug was caused by a NotSupportedException when calling
+	ArrayContainer.Name within DocUtil.GetSignatureForDoc(TypeSpec).
+	This is directly fixed by checking explicitly for ArrayContainer.
+
+	Another bug fixed was wrt type parameter indexing in nested types,
+	hence "counting" the number of type parameters declared in all
+	declaring types.
+
+2010-08-24  Marek Safar  <marek.safar@gmail.com>
+
+	More variance best candidate tweaks
+
+2010-08-24  Marek Safar  <marek.safar@gmail.com>
+
+	[633674] Consider nested inflated types when mutating fields and
+	methods
+
+2010-08-24  Marek Safar  <marek.safar@gmail.com>
+
+	[633277] Import type parameters used as type parameter constraints
+
+2010-08-24  Marek Safar  <marek.safar@gmail.com>
+
+	Recreate proxy parameters for imported methods
+
+2010-08-24  Marek Safar  <marek.safar@gmail.com>
+
+	Fixes bootstrap corlib build
+
+2010-08-24  Marek Safar  <marek.safar@gmail.com>
+
+	Dynamic shares object members internally
+
+2010-08-23  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed type inference between upper and lower bounds
+
+2010-08-23  Marek Safar  <marek.safar@gmail.com>
+
+	Add explicit variant delegates conversion
+
+2010-08-23  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed moving of named params arguments
+
+2010-08-20  Marek Safar  <marek.safar@gmail.com>
+
+	Custom attribute itself can be used to specify optional parameter
+
+2010-08-20  Marek Safar  <marek.safar@gmail.com>
+
+	Add workaound for 2.6 bootstrap
+
+2010-08-20  Marek Safar  <marek.safar@gmail.com>
+
+	Prefer dynamic over other types when used with type inference.
+
+2010-08-20  Marek Safar  <marek.safar@gmail.com>
+
+	Create dynamic sites in the scope where used to overcome
+	visibility issues
+
+2010-08-20  Marek Safar  <marek.safar@gmail.com>
+
+	[633037] Resolve instance expression of dynamic members
+
+2010-08-19  Marek Safar  <marek.safar@gmail.com>
+
+	Fixes delegate creation with dynamic parameters
+
+2010-08-19  Marek Safar  <marek.safar@gmail.com>
+
+	More dynamic conversion fixes
+
+2010-08-19  Marek Safar  <marek.safar@gmail.com>
+
+	Optimize few common paths
+
+2010-08-19  Marek Safar  <marek.safar@gmail.com>
+
+	[520151] Fail on invalid directive inside pre-processed block
+
+2010-08-19  Marek Safar  <marek.safar@gmail.com>
+
+	Refactor preprocessor parsing to use less string operations.
+
+2010-08-18  Marek Safar  <marek.safar@gmail.com>
+
+	Reduce memory footprint
+
+2010-08-18  Marek Safar  <marek.safar@gmail.com>
+
+	When merging sessions error messages don't get confused by
+	warnings.
+
+2010-08-17  Marek Safar  <marek.safar@gmail.com>
+
+	Cannot skip on the first type match for multiple inheritances
+
+2010-08-17  Marek Safar  <marek.safar@gmail.com>
+
+	Defer checks until all base types are ready
+
+2010-08-17  Marek Safar  <marek.safar@gmail.com>
+
+	Move lambda return type inference context out of BlockContext
+
+2010-08-17  Marek Safar  <marek.safar@gmail.com>
+
+	[614924] Use proper best type expression for implicit array
+
+2010-08-17  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up unused code
+
+2010-08-17  Marek Safar  <marek.safar@gmail.com>
+
+	Crash with better error message for missing references.
+
+2010-08-16  Marek Safar  <marek.safar@gmail.com>
+
+	[570422] Cannot return from iterators
+
+2010-08-16  Marek Safar  <marek.safar@gmail.com>
+
+	[472007] Add warning about obsolete security attributes
+
+2010-08-16  Marek Safar  <marek.safar@gmail.com>
+
+	[408516] No implicit user conversion from or to interfaces
+
+2010-08-16  Marek Safar  <marek.safar@gmail.com>
+
+	[379537] Mark fields assigned in named argumets as used.
+
+2010-08-16  Marek Safar  <marek.safar@gmail.com>
+
+	[319462] Add more call optimizations
+
+2010-08-13  Marek Safar  <marek.safar@gmail.com>
+
+	[627488] Inflate inherited base method constraints with MVAR
+	arguments
+
+2010-08-13  Marek Safar  <marek.safar@gmail.com>
+
+	Not all nested generic types are allowed for typeof expression.
+
+2010-08-13  Marek Safar  <marek.safar@gmail.com>
+
+	Check inaccessible type arguments
+
+2010-08-13  Marek Safar  <marek.safar@gmail.com>
+
+	Implicit conversions between dynamic and object is allowed for
+	managed types only
+
+2010-08-12  Marek Safar  <marek.safar@gmail.com>
+
+	Optimize little bit cloning operations.
+
+2010-08-10  Marek Safar  <marek.safar@gmail.com>
+
+	[629383] Inflate generic type of default expression
+
+2010-08-10  Marek Safar  <marek.safar@gmail.com>
+
+	[629390] Avoid crash on the sole type expressions used for
+	extension methods
+
+2010-08-10  Marek Safar  <marek.safar@gmail.com>
+
+	Also check for generic arguments of dynamic arrays
+
+2010-08-10  Marek Safar  <marek.safar@gmail.com>
+
+	[629742] Iterators can be of dynamic type
+
+2010-08-10  Marek Safar  <marek.safar@gmail.com>
+
+	Migrate more code to public API for 4.0
+
+2010-08-06  Marek Safar  <marek.safar@gmail.com>
+
+	Avoid a crash when using attributes and only partial method
+	definition exists.
+
+2010-08-06  Marek Safar  <marek.safar@gmail.com>
+
+	Implement dynamic dispatch for element initializers.
+
+2010-08-06  Marek Safar  <marek.safar@gmail.com>
+
+	Add more sanity checks for dynamic attributes.
+
+2010-08-06  Marek Safar  <marek.safar@gmail.com>
+
+	Restrict allowed modifiers for struct members.
+
+2010-08-06  Marek Safar  <marek.safar@gmail.com>
+
+	More fixes for equality comparison between G<object> and
+	G<dynamic>.
+
+2010-08-05  Marek Safar  <marek.safar@gmail.com>
+
+	Removed duplicate variant conversion.
+
+2010-08-05  Marek Safar  <marek.safar@gmail.com>
+
+	Add more files to ignore list
+
+2010-08-05  Marek Safar  <marek.safar@gmail.com>
+
+	Resolve ambiguity between optional and params parameter. Fixes
+	#582360, #625353
+
+2010-08-04  Marek Safar  <marek.safar@gmail.com>
+
+	Ambiguous enumerator pattern means that we can still try to apply
+	interface matching rules. Fixes #620154
+
+2010-08-04  Marek Safar  <marek.safar@gmail.com>
+
+	Use TypeSpecComparer.Default comparer for dynamic ref/out
+	arguments.
+
+2010-08-03  Marek Safar  <marek.safar@gmail.com>
+
+	Member names cannot be the same as their enclosing type. Fixes
+	#627296
+
+2010-08-04  Jb Evain  <jbevain@gmail.com>
+
+	DynamicConversion: properly order the arguments to Binder.Convert
+
+2010-08-03  Marek Safar  <marek.safar@gmail.com>
+
+	Report CS0243 before CS0578. Fixes #624650
+
+2010-08-03  Marek Safar  <marek.safar@gmail.com>
+
+	Add more cases for 4.0 identity comparison. Fixes #624183
+
+2010-08-03  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed equality match between object and dynamic for ref/out
+	parameters.
+
+2010-08-03  Marek Safar  <marek.safar@gmail.com>
+
+	Implemented as operator over dynamic expression. Fixes #624194
+
+2010-08-02  Marek Safar  <marek.safar@gmail.com>
+
+	Add verifier assistance for coalescing operator. Fixes #619192
+
+2010-08-02  Marek Safar  <marek.safar@gmail.com>
+
+	Add verifier required boxing of reference type of fields left
+	expression
+
+2010-08-02  Marek Safar  <marek.safar@gmail.com>
+
+	Emit address load for compound struct references assignment. Fixed
+	#620362
+
+2010-08-02  Marek Safar  <marek.safar@gmail.com>
+
+	Initialize anonymous methods story for all sections inside switch
+	block. Fixes #624324
+
+2010-08-02  Raja R Harinath  <harinath@hurrynot.org>
+
+	Re-enable 'crlf' attributes on *.cs
+
+	This fixes EOL conversions flagged by git 1.7.1
+	core.autocrlf=true. At this point, neither git 1.7.1 nor 1.7.2
+	show any automatic CRLF normalization. I think we're ready for
+	another experiment.
+
+	There seems to be a difference in the handling of mixed
+	line-ending files between git 1.7.2 and older versions, when
+	core.autocrlf is set to true.
+
+2010-08-01  Marek Safar  <marek.safar@gmail.com>
+
+	Import abstract members as abstract only, Fixes #617970.
+
+2010-07-30  Marek Safar  <marek.safar@gmail.com>
+
+	Allow Delegate.Combine/Remove with right null. Fixes #627044
+
+2010-07-28  Marek Safar  <marek.safar@gmail.com>
+
+	* anonymous.cs, assign.cs, attribute.cs, decl.cs, delegate.cs,
+	doc.cs, dynamic.cs, ecore.cs, expression.cs, generic.cs, import.cs,
+	iterators.cs, linq.cs, membercache.cs, method.cs, report.cs,
+	statement.cs, typemanager.cs: Major name lookup fixes to deal with
+	C# 3.0 invocable members, correctly handle accessibility hidding and
+	property-like different get/set base accessors.
+	
+	Also fixes bugs #624870, #618522, #616068, #444180, #333891
+
+2010-07-14  Marek Safar  <marek.safar@gmail.com>
+
+	* namespace.cs, import.cs: When importing nested type via type
+	arguments set their parent type correctly (Fixes #622051).
+
+2010-07-14  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #622104
+	* attribute.cs: Add default lookup flags.
+	
+2010-07-12  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs: Don't use Report directly.
+	
+	* expression.cs, ecore.cs: UserOperatorCall uses MethodSpec without
+	MethodGroupExpr, will be simplified later.
+
+2010-07-09  Marek Safar  <marek.safar@gmail.com>
+
+	* property.cs, parameters.cs: Inflated IndexerSpec parameters.
+	
+	* import.cs: Don't build unused parameters.
+
+2010-07-08  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs (Invocation): Don't recreate simple-name expression.
+
+2010-07-07  Marek Safar  <marek.safar@gmail.com>
+
+	* ecore.cs: Don't report NRE warning for lifted null.
+
+2010-07-07  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, convert.cs, expression.cs: Another reference
+	equality implementation attack (Fixes #620025, #579058).
+
+2010-07-05  Marek Safar  <marek.safar@gmail.com>
+
+	* context.cs, expression.cs, ecore.cs: BaseThis is fully based on
+	this expression (Fixes #619904).
+
+2010-07-05  Marek Safar  <marek.safar@gmail.com>
+
+	* membercache.cs, class.cs: Don't use base member to check for
+	property or indexer base implementation.
+
+2010-07-03  Marek Safar  <marek.safar@gmail.com>
+
+	* membercache.cs: Copy Membercache member state flags for 2 stage
+	inflate (Fixes #619555).
+	
+	* ecore.cs: Use resolved accessors everywhere.
+	
+2010-07-02  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #360820
+	* membercache.cs, property.cs: Check accessors of base property and
+	not the closest one.
+
+2010-07-02  Marek Safar  <marek.safar@gmail.com>
+
+	* modifiers.cs, membercache.cs, import.cs, class.cs: Moved imported
+	override method checks into import.
+
+	* expression.cs: Removed redundant check.
+
+2010-06-30  Marek Safar  <marek.safar@gmail.com>
+
+	* nullable.cs, expression.cs, statement.cs, method.cs, ecore.cs,
+	delegate.cs, cs-parser.jay, visit.cs: Use MemberAccess to resolve
+	base access expression, it has all bits done correctly.
+
+2010-06-30  Marek Safar  <marek.safar@gmail.com>
+
+	* support.cs: Removed unused code.
+	
+	* ecore.cs: Don't use memberlookup for operators.
+
+2010-06-30  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, membercache.cs, convert.cs, expression.cs,
+	ecore.cs: Replace remaining MethodLookup with correct user operator
+	lookup (to do correct deep lookup). Clean up most of outstanding
+	quirks in binary operator overload resolution.
+
+2010-06-29  Marek Safar  <marek.safar@gmail.com>
+
+	* import.cs: Operators must have between 1 and 2 parameters.
+	
+	* method.cs: Switch destructor to direct membercache lookup
+
+2010-06-29  Marek Safar  <marek.safar@gmail.com>
+
+	* driver.cs, expression.cs: Use Membercache for StringConcat when
+	it got all what is needed.
+
+2010-06-29  Marek Safar  <marek.safar@gmail.com>
+
+	* membercache.cs, expression.cs, statement.cs, doc.cs, ecore.cs:
+	Changed FindMembers to allocate a new list only when a filter is
+	used. Saves decent chunk of memory and should save even more in the
+	future when the filter is not used that often.
+
+2010-06-28  Marek Safar  <marek.safar@gmail.com>
+
+	* field.cs, property.cs, assign.cs, const.cs, expression.cs,
+	ecore.cs, class.cs, cs-parser.jay, enum.cs: Don't use intermediate
+	structure for simple type fields (saves memory and makes few things
+	simpler). Clean up some hacks mostly for events.
+
+2010-06-25  Marek Safar  <marek.safar@gmail.com>
+
+	* statement.cs, cs-parser.jay: Don't create expensive block for
+	simple statements.
+
+2010-06-24  Marek Safar  <marek.safar@gmail.com>
+
+	* statement.cs, report.cs: Rethrow internal error when reporting is
+	disabled.
+	
+	* ecore.cs: Check for identical name only when simple name is set.
+	Fixes #616667
+
+2010-06-24  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #616809
+	* generic.cs, expression.cs, ecore.cs: Added a new type expression
+	for open generic type to pass unbound type arguments to typeof
+	expression.
+
+2010-06-24  Marek Safar  <marek.safar@gmail.com>
+
+	* statement.cs: Foreach collection implementation refactoring to
+	search for GetEnumerator more preciselly. Fixes #431453 and more
+	unreported bugs.
+
+	* linq.cs, decl.cs, ecore.cs, delegate.cs: Update methodgroup api.
+
+2010-06-23  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay: Track more locations.
+
+2010-06-22  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs, location.cs, cs-parser.jay: Track more locations.
+
+2010-06-18  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs, anonymous.cs, expression.cs, statement.cs,
+	support.cs, location.cs, cs-parser.jay: Some work on full ast mode.
+
+2010-06-18  Marek Safar  <marek.safar@gmail.com>
+
+	* convert.cs, typespec.cs, method.cs: Fixed few more dynamic
+	conversion.
+
+2010-06-18  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, namespace.cs: Report more predefined types and
+	imported types collision types as a warning.
+	Fixes #537414, #601157
+
+2010-06-18  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs: Overrides base method constraint can use method type
+	parameter.
+
+	* import.cs: Removed redundant cache.
+	
+2010-06-17  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs: Propagate type only inflate downwards.
+
+2010-06-17  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #614955
+	* method.cs: Do not reject binary dynamic operators.
+
+2010-06-17  Marek Safar  <marek.safar@gmail.com>
+
+	* typespec.cs: Internal types have no generic parameters.
+	Fixes #615022.
+
+2010-06-17  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #614955
+	* cs-parser.jay: Correctly set expression mode for default parameter
+	values.
+
+2010-06-17  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #615023
+	* ecore.cs: Resolve dynamic namespace and keyword collision in the
+	favour of the keyword.
+
+2010-06-17  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #614917
+	* convert.cs: Allow more undocumented 0 like values to enum type 
+	conversions.
+
+2010-06-17  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, method.cs: Inflate copied type parameters from base
+	class or explicit interfaces.
+	
+	* convert.cs: Fixed conversion between two type parameters.
+	Fixes #614471
+
+2010-06-16  Marek Safar  <marek.safar@gmail.com>
+
+	* membercache.cs, convert.cs: Correctly resize an array used by
+	GetUserOperator.
+
+2010-06-15  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #599601
+	* dynamic.cs, ecore.cs: A new flag for dynamic resolver to ignore
+	generated member access left expression.
+	
+2010-06-16  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs: Dispatch dynamic invocation solely on left
+	expression type.
+
+2010-06-16  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs, statement.cs: Always persist explicit cast
+	semantic at expression level.
+	
+2010-06-15  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs, attribute.cs: Enable generic type parameters
+	attribute check.
+	
+2010-06-15  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #612146
+	* generic.cs: Don't use fixed array for inflated type parameter
+	interface constraints.
+	
+2010-06-15  Marek Safar  <marek.safar@gmail.com>
+
+	* typespec.cs: ElementTypeSpec has to use its own ITypeDefinition.
+	
+	* report.cs: Unwrap elements for related symbols reporting.
+
+2010-06-15  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #612796
+	* cs-tokenizer.cs: Offset correctly keywords the first character
+	comparison.
+	
+2010-06-15  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #613397
+	* expression.cs: Removed too aggressive object initializers
+	optimization.
+	
+2010-06-15  Marek Safar  <marek.safar@gmail.com>
+	
+	* parameter.cs, property.cs, membercache.cs, decl.cs, iterators.cs,
+	anonymous.cs, expression.cs, support.cs, method.cs, pending.cs,
+	class.cs, cs-parser.jay: Simplify parsing of accessors by removing
+	any intermediate steps and fake nodes, also saves few MBs of memory.
+
+2010-06-11  Marek Safar  <marek.safar@gmail.com>
+	
+	* modifiers.cs, rootcontext.cs, location.cs, cs-parser.jay: More
+	precise modifiers parsing.
+
+2010-06-09  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs, anonymous.cs, expression.cs, cs-parser.jay:
+	Fixed few shift/reduce conflicts.
+
+2010-06-09  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, parameter.cs, dynamic.cs, typespec.cs,
+	expression.cs, ecore.cs, cs-parser.jay: Fully parse composed type
+	specifiers and stop using string in AST.
+
+2010-06-07  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, eval.cs, iterators.cs, anonymous.cs, expression.cs
+	method.cs, class.cs, delegate.cs, cs-parser.jay, driver.cs, visit.cs
+	enum.cs: Hold location of predefined types.
+
+2010-06-07  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #610878
+	* pending.cs: Clone cached list before modifying.
+
+2010-06-04  Marek Safar  <marek.safar@gmail.com>
+
+	* convert.cs, typespec.cs, expression.cs: Start using array member
+	kind for better conversion checks.
+	
+	* import.cs, report.cs: Report better error message for runtime
+	reflection bugs.
+
+2010-06-04  Marek Safar  <marek.safar@gmail.com>
+
+	* membercache.cs, convert.cs, nullable.cs, expression.cs: Optimize
+	user defined conversion probing and simplify user conversion for
+	nullabe types. Fixes #610940.
+
+2010-06-03  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #610919
+	* parameter.cs, property.cs, cs-parser.jay: Use independent implicit
+	parameters for explicit event accessors. Anonymous method capturing
+	won't otherwise work for event implicit parameter.
+
+2010-06-02  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #610088
+	* nullable.cs, expression.cs, statement.cs, method.cs, ecore.cs:
+	Ignore overrides for base overload resolution as for non-base
+	expressions and convert the best candidate to closest override
+	afterwards.
+
+2010-06-01  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #610139
+	* generic.cs, convert.cs: Recursively check effective base interface
+
+2010-06-01  Marek Safar  <marek.safar@gmail.com>
+
+	* statement.cs: Handle nullable types and type parameters in using
+	statement, avoid boxing value types. Also fixes #571010
+
+2010-06-01  Marek Safar  <marek.safar@gmail.com>
+
+	* convert.cs, expression.cs: Emit unbox for underlying nullable
+	type boxing cast.
+
+2010-05-29  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #610126
+	* expression.cs: Don't use branch optimization for types bigger than
+	int.
+
+2010-05-28  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #609088
+	* import.cs: Check private modifier correctly.
+
+2010-05-28  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #609049
+	* ecore.cs: Don't ignore override methods when looking for base
+	member.
+
+2010-05-27  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bugs #608007, #572540, #566130, #476358
+
+	* generic.cs, linq.cs, expression.cs, statement.cs, cs-parser.jay:
+	More tricky refactoring of implicit linq blocks.
+	
+2010-05-25  Marek Safar  <marek.safar@gmail.com>
+
+	* linq.cs, cs-parser.jay: Keep location for all linq clauses.
+
+2010-05-25  Marek Safar  <marek.safar@gmail.com>
+
+	* context.cs, expression.cs, cs-parser.jay: Don't store current
+	block in This expression (it's too early for linq blocks).
+
+2010-05-21  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs: Use constrained prefix more broadly to avoid boxing.
+
+2010-05-20  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #591149
+	* nullable.cs: Don't double wrap same expression.
+	
+2010-05-20  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #569827
+	* anonymous.cs: Any issued error in probing mode means no match.
+
+2010-05-20  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs: Search for base indexer using the closest match
+	rule.
+
+2010-05-20  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #572071
+	* method.cs: Set override constraints using unexpanded interface
+	list.
+
+2010-05-20  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #572071
+	* ecore.cs: Include secondary extension method lookup in probing
+	mode.
+
+2010-05-19  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #515801
+	* typespec.cs (MayBecomeEqualGenericTypes): Recursively check
+	type arguments.
+
+2010-05-19  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #515801
+	* pending.cs: Advance counter correctly.
+
+2010-05-19  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #480139
+	* method.cs, pending.cs: Indexer override uses base name.
+	
+2010-05-19  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #424064
+	* generic.cs: Replace original with inflated type parameter on
+	failure.
+
+2010-05-19  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #359733
+	* parameter.cs: Extension attribute can be defined in each assembly.
+
+2010-05-18  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #446507
+	* method.cs: Only one method can implement an interface.
+
+2010-05-18  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #594905
+	* convert.cs, constant.cs, expression.cs, literal.cs, ecore.cs:
+	Typed null can be used as a source for expression methods.
+
+2010-05-18  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #606551
+	* namespace.cs: Using directive imports only types and not nested
+	namespaces.
+
+2010-05-17  Marek Safar  <marek.safar@gmail.com>
+
+	* typespec.cs, expression.cs, statement.cs, ecore.cs, complete.cs,
+	delegate.cs: Member instance is resolved after member overload
+	definitely resolves static/instance property of member expression.
+	Fixes #545047, #358848, #456605, #460016, #603299
+
+2010-05-12  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #604981
+	* generic.cs, decl.cs, anonymous.cs: Reset more type arguments
+	details for nested anonymous methods stories.
+
+2010-05-11  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #604735
+	* namespace.cs: Don't report namespace collision.
+
+2010-05-11  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #604748
+	* class.cs, typespec.cs: Search full imported attribute hierarchy
+	for AttributeUsage.
+
+2010-05-11  Marek Safar  <marek.safar@gmail.com>
+
+	* namespace.cs: Ignore missing dependencies failure at
+	initialization.
+
+2010-05-11  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #604640
+	* namespace.cs: Don't resolve using constraints too early.
+
+2010-05-11  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #604239
+	* generic.cs: Copy partial type constraints to partial container.
+
+2010-05-10  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #557210
+	* import.cs: Relax underlying enum field rules.
+
+2010-05-10  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #603476
+	* property.cs: Implement IParametersMember for indexer accessors.
+
+2010-05-07  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #601141
+	* class.cs: Update all partial modifiers.
+
+2010-05-06  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #601708
+	* method.cs, membercache.cs: Destructors cannot be hidden.
+
+2010-05-06  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #602551
+	* class.cs: Resursive reference of type definition is allowed.
+
+2010-05-06  Marek Safar  <marek.safar@gmail.com>
+
+	* anonymous.cs: Mutate cached storey instance types too.
+
+2010-05-06  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #602443
+	* convert.cs: Explicit enum conversion cannot involve user operators
+
+2010-05-05  Miguel de Icaza  <miguel@novell.com>
+
+	* class.cs (TypeContainer.DefineBaseTypes)
+	(TypeContainer.CheckRecursiveDefinition): check for the iface not
+	being null, as we could have failed resolution and crashed;
+	Fixes #442144
+
+	* cs-parser.jay: Productions to catch common mistakes when other
+	punctuation operators are used instead of comma.   Fixes 571702	
+
+2010-05-05  Marek Safar  <marek.safar@gmail.com>
+
+	* anonymous.cs: Mutate correct set of constraints.
+
+2010-05-05  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #602842
+	* expression.cs: Resolve all array bound arguments.
+
+2010-05-05  Marek Safar  <marek.safar@gmail.com>
+
+	* import.cs: Don't import private fields.
+
+2010-04-30  Marek Safar  <marek.safar@gmail.com>
+
+	Partially based on patch by <sami.lamti@gmail.com>
+
+	* eval.cs, ecore.cs: Fixed eval show methods.
+
+2010-04-30  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, delegate.cs: Implement output type inference of
+	methodgroup now when the specification was cleared at least little
+	bit.
+
+2010-04-29  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #575611
+	* class.cs: Fix recursive unmanaged recursice sruct check.
+	
+2010-04-29  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #479776
+	* expression.cs: Implement typeof unbounded nested generic types.
+
+2010-04-29  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #474953
+	* class.cs: Fix valid recursive base type definition.
+
+2010-04-29  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #421737
+	* convert.cs, expression.cs: A boxing conversion exists from a
+	nullable-type to a reference type, if a boxing conversion exists
+	from the underlying non-nullable-value-type to the reference type.
+
+2010-04-29  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #376875
+	* import.cs: Import volatile modifier.
+
+2010-04-29  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #372412
+	* typespec.cs, expression.cs, codegen.cs: Emit readonly prefix for
+	generic arrays.
+
+2010-04-29  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #568955
+	* statements.cs: Handle recursive scope initializers.
+
+2010-04-28  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #566511
+	* anonymous.cs: Always get inflated version of hoisted variable
+	on generic type definition.
+
+2010-04-28  Marek Safar  <marek.safar@gmail.com>
+
+	* import.cs, membercache.cs: Relax rules for valid properties.
+
+2010-04-28  Marek Safar  <marek.safar@gmail.com>
+
+	* import.cs: Intern arrays used in generic arguments.
+
+2010-04-28  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #600398
+	* convert.cs: Actually use effective base type for the comparison.
+
+2010-04-28  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #600326
+	* ecore.cs: Pass arity to base member lookup.
+
+2010-04-28  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #573385
+	* expression.cs: MemberAccess is of generic type based on right
+	arity length only.
+
+2010-05-28  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs: Made tab size configurable.
+
+2010-05-27  Marek Safar  <marek.safar@gmail.com>
+
+	* attribute.cs: Ensure Obsolete members are defined before doing
+	ctor look-up.
+
+2010-05-27  Marek Safar  <marek.safar@gmail.com>
+
+	* visit.cs: Add DOM visitor skeleton.
+	
+	* *.cs: Updated.
+
+2010-05-27  Marek Safar  <marek.safar@gmail.com>
+
+	* attribute.cs, codegen.cs: Drop COMPILER_ACCESS hack.
+	
+2010-05-27  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Major rewrite of compiler internals to better work with
+	unmodified System.Reflection.Emit. Some of the key changes are
+	- TypeSpec replaces reflection specific System.Type.
+	- All Type(TypeSpec) operations are now done in compiler therefore
+	no dependency on SRE to inflate generic members and types or to
+	query unclosed types.
+	- MemberCache is now the only and full hierarchical topology.
+	- Generic constraints are implemented properly.
+	- And as a bonus compilation is on average 30% faster.
+
+2010-04-15  Jb Evain  <jbevain@novell.com>
+
+	* dmcs.exe.config: update the runtime version to .net 4.0 RTM.
+
+2010-04-12  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs, attribute.cs, parameter.cs: More attribute type
+	checks.
+
+2010-04-12  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #593342
+
+	* generic.cs, parameter.cs, argument.cs, field.cs, property.cs,
+	decl.cs, roottypes.cs, constant.cs, nullable.cs, expression.cs,
+	method.cs, ecore.cs, class.cs, delegate.cs, attribute.cs,
+	codegen.cs: Add custom attribute encoder to deal with unfinished
+	types and easier corlib bootstrap from its own types.
+
+2010-03-26  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay: Report invalid constraint types.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: rename the net_2_1 profile to moonlight.
+
+2010-03-11  Marek Safar  <marek.safar@gmail.com>
+
+	* statement.cs, cs-parser.jay: Use correct location for empty
+	statements.
+
+2010-03-11  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay: Disable Location from expression.
+	
+	* generic.cs: Check constraints for overrides in the parser.
+
+2010-03-09  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay (GetLocation): Use an expression when available.
+
+2010-03-04  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #582579
+	* ecore.cs (FieldExpr): Don't optimize cross reference loads.
+
+2010-03-04  Marek Safar  <marek.safar@gmail.com>
+
+	A patch by kornelpal@gmail.com
+	
+	* dynamic.cs, anonymous.cs, rootcontext.cs, class.cs: Don't make
+	compiler generated classes sealed by default. Emit and close top
+	level compiler generated classes as well. 
+	
+	* support.cs: Use RuntimeHelpers.GetHashCode.
+
+2010-03-03  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* Makefile: We need to use the internal bootstrapping gmcs for
+	net_2_1_bootstrap too now.
+
+2010-03-02  Raja R Harinath  <harinath@hurrynot.org>
+
+	* expression.cs (IndexerAccess.ResolveAccessor): Add CS1540 check.
+
+2010-03-02  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs: Missed few locations in previous fix.
+
+2010-03-02  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs, argument.cs, dynamic.cs, assign.cs, anonymous.cs,
+	nullable.cs, expression.cs, statement.cs, cs-parser.jay, cfold.cs:
+	Report correct location for operator errors.
+
+2010-03-02  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs (IsDynamicType): Don't check external types when
+	the attribute is not external.
+
+2010-02-24  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #582579
+	* decl.cs (IsExposedFromAssembly): Use PartialContainer for parent
+	modifiers.
+
+2010-02-24  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #581804
+	* ecore.cs: Fixed type comparison.
+
+2010-02-08  Miguel de Icaza  <miguel@novell.com>
+
+	* namespace.cs (CompletionGetTypesStartingWith): Do not include
+	private types in the completion results.
+
+	* cs-parser.jay: Bubble completions after "from x in ?" and "from x
+	... let ?"
+
+2010-02-17  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, field.cs, decl.cs, cs-parser.jay: Simplify special
+	constraint parsing.
+
+2010-02-14  Miguel de Icaza  <miguel@novell.com>
+
+	* eval.cs: Do not do the report printer dance unless the user has
+	set the DescribeTypes feature.
+
+2010-02-10  Marek Safar  <marek.safar@gmail.com>
+
+	* argument.cs, dynamic.cs, expression.cs: Track RC API changes.
+
 2010-02-08  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #577029
 	* anonymous.cs: Fixed TypeBuilder* check.
 
+2010-02-06  Miguel de Icaza  <miguel@novell.com>
+
+	* eval.cs (CompileBlock): Also undo if there are problems during
+	semantic analysis, fixes various cases where invalid C# code would
+	be reported, but the internal changes would not be undone.
+
+2010-02-03  Miguel de Icaza  <miguel@novell.com>
+
+	* driver.cs: Change the --fatal flag to allow a number to be
+	passed, this ignores the first N fatal errors.   Useful to debug
+	errors that do not happen on the first hit.
+
+	* cs-parser.jay (invocation_expression): accept both the
+	CLOSE_PARENS and COMPLETE_COMPLETION, this allows completions
+	inside an invocation.
+
+	* driver.cs: Expose FatalErrors.
+
+	* eval.cs: Initialize the printer's Fatal property from the
+	Driver's FatalError flag, this allows csharp --fatal to work
+	again. 
+
+	Add support for calling Describe (typeof (TYPE)) if the expression
+	entered is a TYPE.
+	
 2010-02-02  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #574991
@@ -14,20 +2669,186 @@
 	A fix for bug #575986
 	* expression.cs: Don't mutate typeof type definitions.
 
+2010-01-28  Marek Safar  <marek.safar@gmail.com>
+
+	* decl.cs: Use only one set of modifiers.
+
 2010-01-26  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #573329
 	* eval.cs: Don't disable error reporting completely on silent mode.
+	
+2010-01-25  Marek Safar  <marek.safar@gmail.com>
 
-2009-12-16  Miguel de Icaza  <miguel@novell.com>
+	A fix for bug #573312
+	* constant.cs, expression.cs, ecore.cs: Emit correct offset for
+	pointer index of unknown size types greater than 2.
 
-	* Fix for 565194
+2010-01-15  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Use only 1 member kind enum.
+
+2010-01-15  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Add event specification.
+
+2010-01-14  Marek Safar  <marek.safar@gmail.com>
+
+	* membercache.cs: Extracted from decl.cs.
+	
+	* *.cs: Put more infrastructure in place.
+
+2010-01-13  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Add property specification, unused yet.
+
+2010-01-13  Marek Safar  <marek.safar@gmail.com>
+
+	* property.cs: Move all property based declarations into a new file.
+
+2010-01-13  Marek Safar  <marek.safar at gmail.com>
+
+	* expression.cs (Conditional): Resolve reduced expression.
+
+2010-01-13  Marek Safar  <marek.safar at gmail.com>
+
+	* *.cs: Introduced non-generic method specification.
+
+2010-01-07  Marek Safar  <marek.safar@gmail.com>
+
+	* method.cs: Move all method based declarations into a new file.
+
+2010-01-07  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Extract field specification.
+
+2009-12-17  Marek Safar  <marek.safar@gmail.com>
+
+	* field.cs: Extracted from class.cs
+
+2009-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	* attribute.cs (GetFixedBuffer): Work on field definition only.
+
+2009-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Clean up NET_4_0 conditional where possible.
+
+2009-12-14 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	support.cs (DynamicType): Assembly property returns the assembly builder.
+	This is required due to how compiler context works in corlib.
+
+2009-12-14  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #564376
+	* assign.cs (LocalTemporary): Removed no longer needed special
+	by-ref handling.
+
+2009-12-11  Marek Safar  <marek.safar@gmail.com>
+
+	* modifiers.cs, decl.cs, iterators.cs, const.cs, anonymous.cs,
+	class.cs, delegate.cs, cs-parser.jay, enum.cs: Turn modifiers into
+	enum for easier debugging.
+
+2009-12-10  Marek Safar  <marek.safar@gmail.com>
+
+	* decl.cs, anonymous.cs, class.cs: Sealed Define it's now main entry
+	point.
+	
+	* parameter.cs, delegate.cs, dynamic.cs: Don't use builder methods
+	directly.
+
+2009-12-10  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay, statement.cs: Handle parser error in code
+	completition.
+
+2009-12-10  Marek Safar  <marek.safar@gmail.com>
+
+	* ecore.cs: Ignore base imported methods when they are already
+	in method bag.
+	
+	* eval.cs: Handle non-existent keys.
+	
+	* report.cs, driver.cs: Make fatal work with console printer only.
+
+2009-12-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* typemanager.cs (MakeGenericMethod): Fix stupid mistake.
+
+2009-12-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* typemanager.cs: Add MakeGenericMethod that checks if the method
+	is really the generic method definition.
+
+	ecore.cs (MethodGroupExpr:IsApplicable): Use new TypeManager function
+	to inflate generic methods.
 
 2009-12-08  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #561149
-	anonymous.cs: Use actual type parameters when checking for generic
+	* anonymous.cs: Use actual type parameters when checking for generic
 	method host.
+
+2009-12-08  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #561369
+	* expression.cs (DoNumericPromotion): Fixed typo.
+
+2009-12-08  Marek Safar  <marek.safar@gmail.com>
+
+	*.cs: Moving to generics world.
+
+	cs-parser.jay: Removed current_array_type.
+
+2009-12-07  Marek Safar  <marek.safar@gmail.com>
+
+	*.cs: Moving to generics world.
+
+2009-12-04  Marek Safar  <marek.safar@gmail.com>
+
+	*.cs: Moving to generics world (day 2).
+
+2009-12-03  Marek Safar  <marek.safar@gmail.com>
+
+	*.cs: Moving to generics world.
+
+2009-12-02  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, parameter.cs, class.cs, delegate.cs, attribute.cs:
+	Encode dynamic type attribute for elements where attributes cannot
+	be used.
+
+2009-12-01  Marek Safar  <marek.safar@gmail.com>
+
+	 argument.cs, assign.cs, expression.cs, cs-parser.jay: Named
+	 arguments by ref.
+
+2009-12-01  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #360455
+	* class.cs: Never report a unused warning for generic events to
+	workaround wrong expression type.
+
+2009-11-30  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #558305
+	* decl.cs, class.cs: Check partial method definitions using correct
+	flag.
+
+2009-11-30  Marek Safar  <marek.safar@gmail.com>
+
+	* argument.cs: Don't cache rarely used dynamic flag.
+
+2009-11-27  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay: Use jay global stacks (saves over 3MB for corlib).
+
+2009-11-27  Marek Safar  <marek.safar@gmail.com>
+
+	* ecore.cs (SimpleName): Removed no longer needed in_transit as
+	Resolve is now non-reentrant (saves ~0.6MB for corlib).
 
 2009-11-26  Marek Safar  <marek.safar@gmail.com>
 
@@ -44,9 +2865,117 @@
 	A fix for bug #558292
 	* class.cs: Allow single unsafe fixed buffer fields.
 
+2009-11-26  Marek Safar  <marek.safar@gmail.com>
+
+	* expression: Optimize few more zero-based operations.
+
+2009-11-26  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs, cs-parser.jay: Simplify literal parsing, also
+	avoids boxing of literal values.
+
+2009-11-26  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs, argument.cs, eval.cs, linq.cs, decl.cs,
+	expression.cs, ecore.cs, location.cs, cs-parser.jay, attribute.cs,
+	codegen.cs: LocatedToken redesing to avoid excessive allocation and
+	boxing (saves ~7MB for corlib). Also fixes presise token location.
+
+2009-11-25  Marek Safar  <marek.safar@gmail.com>
+
+	* ecore.cs, cs-parser.jay: Keep parser structures local. Share
+	common data buckers.
+
+2009-11-24  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs: Lower static array initializer barrier.
+	
+	* support.cs, driver.cs: Share reader buffer.
+
+2009-11-23  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs, support.cs: Some tokenizer optimizations.
+
+2009-11-23  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs, support.cs: Use Dictionary instead of Hashtable,
+	cleanup some obsolete code.
+
+2009-11-20  Marek Safar  <marek.safar@gmail.com>
+
+	* context.cs, expression.cs, ecore.cs, complete.cs: Cleaned up
+	Expression.Resolve.
+
+2009-11-20  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Resolved expressions are never resolved again, this helps to
+	uncover some not easy to find bugs and improve the performance.
+
+2009-11-19  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Made constant expressions fully compatible with any other
+	expression.
+
+2009-11-19  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: DoResolve is a worker method and has to be protected.
+
+2009-11-18  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: More context specific handling.
+
+2009-11-17  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: More context specific handling.
+
+2009-11-16  Marek Safar  <marek.safar@gmail.com>
+
+	* dynamic.cs, class.cs: Removed few fixed user types conversions.
+	
+	* symbolwriter.cs: Uses public ILOffset.
+
+2009-11-13  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #553650
+	* generic.cs: Another missing TypeToCoreType, still too many to fix.
+
+2009-11-13  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #555170
+
+	* class.cs, delegate.cs, enum.cs: Constants have to be available
+	for parameters resolve.
+
+2009-11-12  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, argument.cs, support.cs, delegate.cs: Dynamic
+	arrays.
+
+2009-11-12  Marek Safar  <marek.safar@gmail.com>
+
+	* argument.cs, context.cs, expression.cs, ecore.cs: Dynamic binding
+	with a statically known candidate set.
+
+2009-11-11  Scott Peterson  <lunchtimemama@gmail.com>
+
+	* generic.cs: Made type inflation for generic constraint checks
+	recursive. This fixes BGO #553655.
+
+2009-11-11  Marek Safar  <marek.safar@gmail.com>
+
+	* dynamic.cs, decl.cs, expression.cs, ecore.cs: More dynamic type
+	checks.
+
+2009-11-10  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, generic.cs, parameter.cs, argument.cs, dynamic.cs,
+	linq.cs, rootcontext.cs, ecore.cs, class.cs, delegate.cs,
+	attribute.cs: Add some dynamic error checking.
+
 2009-11-07  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #553465
+
 	* expression.cs: Fixed mixed version of expression tree anonymous
 	type.
 
@@ -57,10 +2986,106 @@
 	* linq.cs, expression.cs, class.cs, cs-parser.jay: Initialize
 	expression tree version of anonymous type with members declaration.
 
+2009-11-05  Marek Safar  <marek.safar@gmail.com>
+
+	* parameter.cs: Handle nullable parameter default expression.
+	
+	* argument.cs, dynamic.cs, expression.cs, support.cs, ecore.cs,
+	class.cs, attribute.cs: Check for wrong dynamic arguments.
+
+2009-11-05  Marek Safar  <marek.safar@gmail.com>
+
+	* statement.cs: Dynamic statements.
+
+2009-11-04  Marek Safar  <marek.safar@gmail.com>
+
+	* dynamic.cs, assign.cs, context.cs, expression.cs, ecore.cs:
+	Compound assignments over dynamic type.
+
+2009-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	* argument.cs, dynamic.cs, expression.cs, delegate.cs: Dynamic
+	constructor arguments.
+
+2009-10-30  Marek Safar  <marek.safar@gmail.com>
+
+	* dynamic.cs, convert.cs, assign.cs, constant.cs, expression.cs,
+	codegen.cs: Unary mutator on dynamic member access expression.
+
 2009-10-29  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #550580	
 	* convert.cs: Don't eliminate explicit precission casts.
+
+2009-10-28  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #550404
+	
+	* parameter.cs, iterators.cs, context.cs, anonymous.cs,
+	expression.cs, statement.cs, ecore.cs: Quote any nested expression
+	tree.
+
+2009-10-27  Marek Safar  <marek.safar@gmail.com>
+
+	* constant.cs, nullable.cs: Create nullable-null as LiftedNull
+	constant.
+	
+	* class.cs: Allow nullable binary user operators.
+
+2009-10-26  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs: Move binary expression optimization at the end of
+	resolve.
+
+2009-10-23  Marek Safar  <marek.safar@gmail.com>
+
+	* constant.cs, nullable.cs, expression.cs, literal.cs, cfold.cs:
+	Separate NullConstant from NullLiteral.
+
+2009-10-23  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, eval.cs, decl.cs, roottypes.cs, context.cs,
+	anonymous.cs, expression.cs, rootcontext.cs, ecore.cs, class.cs,
+	flowanalysis.cs, cs-parser.jay, driver.cs, codegen.cs: Split
+	ModuleContainer. Add common unclosed member check routine.
+
+2009-10-22  Marek Safar  <marek.safar@gmail.com>
+
+	* argument.cs: Use literal flag for real literals only.
+
+	* dynamic.cs: Use correct return type for custom delegates.
+
+2009-10-22  Marek Safar  <marek.safar@gmail.com>
+
+	* dynamic.cs, expression.cs: Pass logical binary flag to dynamic
+	resolver.
+
+2009-10-22  Marek Safar  <marek.safar@gmail.com>
+
+	* dynamic.cs, ecore.cs: Dynamic invocation with void return type.
+
+2009-10-21  Marek Safar  <marek.safar@gmail.com>
+
+	* dynamic.cs, convert.cs, expression.cs, ecore.cs: Wrap array index
+	conversion.
+
+2009-10-21  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, dynamic.cs, expression.cs: Don't resolve runtime
+	binder flags.
+
+2009-10-20  Marek Safar  <marek.safar@gmail.com>
+
+	* argument.cs, dynamic.cs, expression.cs: Latest API update.
+
+2009-10-19  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, expression.cs: Dynamic array initializer.
+
+2009-10-16  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, rootcontext.cs: Clear -nostdlib flag when object
+	is imported.
 
 2009-10-16  Marek Safar  <marek.safar@gmail.com>
 
@@ -68,6 +3093,46 @@
 	* convert.cs, nullable.cs, expression.cs: Do implicit and explicit
 	standard nullable conversion using underlying standard conversion
 	and not full conversion.
+
+2009-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	* dynamic.cs, expression.cs, ecore.cs, delegate.cs: Check return
+	type in VerifyArgumentsCompat.
+
+2009-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	* nullable.cs, expression.cs, statement.cs, namespace.cs, ecore.cs:
+	Reject variable used with type arguments.
+
+2009-10-14  Marek Safar  <marek.safar@gmail.com>
+
+	* argument.cs, dynamic.cs, assign.cs, expression.cs, ecore.cs:
+	Implement dynamic expressions assignment.
+
+2009-10-14  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs: Build underlying expression when resolving unary
+	mutators.
+
+2009-10-14  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs: Emit enum array initializer using binary blob.
+
+2009-10-08  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, constant.cs: Optimize decimal constants which fit
+	to long range.
+
+2009-10-07  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs: Reset object_type.
+	
+	* assign: Made SimpleAssign public.
+
+2009-10-06  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, decl.cs, namespace.cs, ecore.cs, class.cs: Pass
+	invocation assembly to IsThisOrFriendAssembly.
 
 2009-10-05  Marek Safar  <marek.safar@gmail.com>
 
@@ -87,11 +3152,38 @@
 	* parameter.cs: Import optional parameter constants using optional
 	value type.
 
+2009-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	* Makefile: Default is gmcs compiler.
+
+2009-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay: Fixed few NRE.
+
+2009-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay, driver.cs: Expose parser exception in verbose mode.
+
+2009-09-30  Marek Safar  <marek.safar@gmail.com>
+
+	* linq.cs, convert.cs, assign.cs, expression.cs, ecore.cs: Add
+	ShimExpression, ImplicitCast.
+
 2009-09-30  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #542959
 	* delegate.cs: Emit correct delegate instance variable when there
 	are static and non-static overloads.
+
+2009-09-29  Marek Safar  <marek.safar@gmail.com>
+
+	* dynamic.cs, linq.cs, anonymous.cs, expression.cs, statement.cs,
+	ecore.cs, cs-parser.jay: Unary expression dynamic compiler.
+
+2009-09-28  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #542487
+	* ecore.cs: Resolve extension methods hidden by properties.
 
 2009-09-25  Marek Safar  <marek.safar@gmail.com>
 

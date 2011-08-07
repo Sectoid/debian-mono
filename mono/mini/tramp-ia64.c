@@ -24,7 +24,6 @@
 
 /*
  * mono_arch_get_unbox_trampoline:
- * @gsctx: the generic sharing context
  * @m: method pointer
  * @addr: pointer to native code for @m
  *
@@ -33,7 +32,7 @@
  * unboxing before calling the method
  */
 gpointer
-mono_arch_get_unbox_trampoline (MonoGenericSharingContext *gsctx, MonoMethod *m, gpointer addr)
+mono_arch_get_unbox_trampoline (MonoMethod *m, gpointer addr)
 {
 	guint8 *buf;
 	gpointer func_addr, func_gp;
@@ -43,9 +42,6 @@ mono_arch_get_unbox_trampoline (MonoGenericSharingContext *gsctx, MonoMethod *m,
 	MonoDomain *domain = mono_domain_get ();
 
 	/* FIXME: Optimize this */
-
-	if (MONO_TYPE_ISSTRUCT (mono_method_signature (m)->ret))
-		this_reg = 1;
 
 	func_addr = ((gpointer*)addr) [0];
 	func_gp = ((gpointer*)addr) [1];
@@ -180,7 +176,7 @@ mono_arch_nullify_plt_entry (guint8 *code, mgreg_t *regs)
 }
 
 guchar*
-mono_arch_create_trampoline_code (MonoTrampolineType tramp_type)
+mono_arch_create_generic_trampoline (MonoTrampolineType tramp_type, MonoTrampInfo **info, gboolean aot)
 {
 	guint8 *buf, *tramp;
 	int i, offset, saved_regs_offset, saved_fpregs_offset, last_offset, framesize;
@@ -189,6 +185,10 @@ mono_arch_create_trampoline_code (MonoTrampolineType tramp_type)
 	Ia64CodegenState code;
 	unw_dyn_info_t *di;
 	unw_dyn_region_info_t *r_pro;
+
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
 
 	/* 
 	 * Since jump trampolines are not patched, this trampoline is executed every
@@ -412,7 +412,7 @@ mono_arch_invalidate_method (MonoJitInfo *ji, void *func, gpointer func_arg)
 }
 
 gpointer
-mono_arch_create_rgctx_lazy_fetch_trampoline (guint32 encoded_offset)
+mono_arch_create_rgctx_lazy_fetch_trampoline (guint32 slot, MonoTrampInfo **info, gboolean aot)
 {
 	/* FIXME: implement! */
 	g_assert_not_reached ();

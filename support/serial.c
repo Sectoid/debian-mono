@@ -9,9 +9,13 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
-#include <sys/poll.h>
-#include <sys/ioctl.h>
 #include <errno.h>
+#if defined(__APPLE__)
+#include "fakepoll.h"
+#else
+#include <sys/poll.h>
+#endif
+#include <sys/ioctl.h>
 
 #include <glib.h>
 
@@ -65,9 +69,6 @@ open_serial (char* devfile)
 {
 	int fd;
 	fd = open (devfile, O_RDWR | O_NOCTTY | O_NONBLOCK);
-
-	if (fd == -1)
-		return -1;
 
 	return fd;
 }
@@ -128,10 +129,10 @@ write_serial (int fd, guchar *buffer, int offset, int count, int timeout)
 	return 0;
 }
 
-void
+int
 discard_buffer (int fd, gboolean input)
 {
-	tcflush(fd, input ? TCIFLUSH : TCOFLUSH);
+	return tcflush(fd, input ? TCIFLUSH : TCOFLUSH);
 }
 
 gint32
@@ -151,7 +152,9 @@ set_attributes (int fd, int baud_rate, MonoParity parity, int dataBits, MonoStop
 {
 	struct termios newtio;
 
-	tcgetattr (fd, &newtio);
+	if (tcgetattr (fd, &newtio) == -1)
+		return FALSE;
+
 	newtio.c_cflag |=  (CLOCAL | CREAD);
 	newtio.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHOK | ECHONL | ISIG | IEXTEN );
 	newtio.c_oflag &= ~(OPOST);
@@ -160,6 +163,17 @@ set_attributes (int fd, int baud_rate, MonoParity parity, int dataBits, MonoStop
 	/* setup baudrate */
 	switch (baud_rate)
 	{
+/*Some values are not defined on OSX and *BSD */
+#if defined(B921600)
+	case 921600:
+	    baud_rate = B921600;
+	    break;
+#endif
+#if defined(B460800)
+	case 460800:
+	    baud_rate = B460800;
+	    break;
+#endif
 	case 230400: 
 	    baud_rate = B230400;
 	    break;
@@ -398,10 +412,10 @@ set_signal (int fd, MonoSerialSignal signal, gboolean value)
 	return 1;
 }
 
-void
+int
 breakprop (int fd)
 {
-	tcsendbreak (fd, 0);
+	return tcsendbreak (fd, 0);
 }
 
 gboolean

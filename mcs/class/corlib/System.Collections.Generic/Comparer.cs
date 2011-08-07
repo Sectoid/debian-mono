@@ -26,7 +26,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 using System;
 using System.Runtime.InteropServices;
 
@@ -66,6 +65,7 @@ namespace System.Collections.Generic {
 			throw new ArgumentException ();
 		}
 	
+		[Serializable]
 		sealed class DefaultComparer : Comparer<T> {
 	
 			public override int Compare (T x, T y)
@@ -87,9 +87,6 @@ namespace System.Collections.Generic {
 	}
 	
 	[Serializable]
-#if MONOTOUCH
-	internal
-#endif
 	sealed class GenericComparer <T> : Comparer <T> where T : IComparable<T> {
 		public override int Compare (T x, T y)
 		{
@@ -104,4 +101,3 @@ namespace System.Collections.Generic {
 	}
 
 }
-#endif

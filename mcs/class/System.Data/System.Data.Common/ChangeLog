@@ -1,18 +1,35 @@
-2010-03-10  Veerapuram Varadhan  <vvaradhan@novell.com>
+2010-09-08  Jb Evain  <jbevain@gmail.com>
 
-	** Fixes #564833/580736
-	* DbDataAdapter.cs (*Command): Fix for .NET compatibility which 
-	supports both type of adapters with/without discrete command 
-	instances.
+	Enable the System.Data build for monodroid
+
+2011-05-05  Veerapuram Varadhan  <v.varadhan@gmail.com>
+
+	** Fixes 688773
+	* RecordCache.cs (CopyRecord): When copying records, assign default value 
+	for the columns that does not exist in the row being imported.
+
+2010-07-23  Veerapuram Varadhan  <v.varadhan@gmail.com>
+
+	** Fixes #565616 - Based on Patch by Hubert FONGARNAND
+	* DataContainer.cs (GetContainerData): If typecode is string, 
+	call Convert.ToString() irrespective of whether value is 
+	IConvertible or not. 
 	
+2010-03-26  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+    ** Fixes #564833/580736
+    * DbDataAdapter.cs (*Command): Fix for .NET compatibility which
+    supports both type of adapters with/without discrete command
+    instances.
+        	
 2009-10-28  Veerapuram Varadhan  <vvaradhan@novell.com>
 
 	** Fixes #385028/#385029
 	* DbCommandBuilder.cs (CreateInsertCommand): Workaround for inserting 
 	DEFAULT values to non-null-columns.
 	(GetInsertCommand): New overload added to handle above workaround.
-	(set_DataAdapter): Register for the RowUpdatingEventHandler.
-	
+	(set_DataAdapter): Register for the RowUpdatingEventHandlers.
+	 
 2009-10-14  Jonathan Pryor  <jpryor@novell.com>
 
 	* DbConnection.cs: Throw NotImplementedException fom

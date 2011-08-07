@@ -39,12 +39,8 @@ namespace System.Reflection {
 
 	/// <summary>
 	/// </summary>
-#if NET_2_0
 	[ComVisible (true)]
 	[Serializable]
-#else
-	[Flags]
-#endif
 	public enum MethodImplAttributes {
 
 		/// <summary>
@@ -98,6 +94,10 @@ namespace System.Reflection {
 		/// <summary>
 		/// </summary>
 		NoInlining = 8,
+
+		/// <summary>
+		/// </summary>
+		NoOptimization = 64,
 
 		/// <summary>
 		/// </summary>

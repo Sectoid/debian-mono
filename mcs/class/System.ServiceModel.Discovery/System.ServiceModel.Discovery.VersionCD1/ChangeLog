@@ -1,0 +1,122 @@
+2011-04-27  Atsushi Eno  <atsushi@ximian.com>
+
+	Use FindCritera/ResolveCriteria Duration properties for
+	DiscoveryEndpoint timeout.
+
+2011-03-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix MessageID element name in discovery contracts.
+
+2011-02-24  Atsushi Eno  <atsushi@ximian.com>
+
+	To header rewrite only happens in Adhoc mode.
+
+	Update contracts to comply with that and make it consistent
+	between versions.
+
+2011-02-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Recent ContractDescription fix uncovered wrong contracts in
+	discovery.
+
+2010-09-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Assign identical operation name for each contract version so that
+	they don't conflict each other.
+
+2010-09-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Cosmetic exception type change and suppress test failures.
+
+2010-09-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Couple of fixes in FindCriteria and relevant contract types for
+	Find operation.
+
+2010-08-30  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix a couple of Hello/Probe serialization issues.
+
+2010-08-30  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix bogus discovery contract wrapper names.
+
+2010-08-26  Atsushi Eno  <atsushi@ximian.com>
+
+	Add timeout in duplex (UDP) client. Set Via URI to not raise
+	scheme mismatch.
+
+2010-08-26  Atsushi Eno  <atsushi@ximian.com>
+
+	Prepare duplex client types for Adhoc mode for DiscoveryClient.
+
+2010-08-25  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing DiscoveryClientBindingElement implementation.
+
+2010-08-23  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing Announcement fixes. Now it accepts messages from .NET
+	AnnouncementClient (does not process them yet).
+
+2010-08-20  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing DiscoveryClient work. May need further contract fixes.
+
+2010-08-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement discovery contract interfaces in DiscoveryService.
+
+2010-08-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Add simplex Discovery contract interfaces.
+
+2010-08-14  Atsushi Eno  <atsushi@ximian.com>
+
+	forgot to add some files.
+
+2010-08-14  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing DiscoveryEndpoint work.
+
+2010-08-13  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing announcement and discovery work as well as several
+	bugfixes.
+
+2010-08-12  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing AnnouncementClient implementation.
+
+2010-08-12  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing UdpAnnouncementEndpoint work.
+
+2010-08-12  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing AnnouncementService work.
+
+2010-08-09  atsushieno  <atsushi@ximian.com>
+
+	finished Discovery serialization stuff.
+
+2010-08-09  atsushieno  <atsushi@ximian.com>
+
+	ongoing Sys.SM.Discovery serialization implementation.
+
+2010-08-07  Atsushi Eno  <atsushi@ximian.com>
+
+	implement FindCriteria serialization (deserialization is not yet).
+
+2010-08-06  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement DiscoveryMessageSequence* types serialization.
+
+2010-08-04  atsushieno  <atsushi@ximian.com>
+
+	implemented some Sys.SM.Discovery types.
+
+2010-03-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* : initial checkin (mostly stubs).
+

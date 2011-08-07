@@ -6,6 +6,9 @@
  *
  * Copyright (C) 2005-2009 Novell, Inc. (http://www.novell.com)
  */
+#if defined(__native_client__)
+#include "console-null.c"
+#else
 
 #include <config.h>
 #include <glib.h>
@@ -25,6 +28,7 @@
 #include <mono/metadata/object-internals.h>
 #include <mono/metadata/class-internals.h>
 #include <mono/metadata/domain-internals.h>
+#include <mono/metadata/gc-internal.h>
 #include <mono/metadata/metadata.h>
 #include <mono/metadata/threadpool.h>
 
@@ -43,10 +47,8 @@
 #ifdef HAVE_SYS_FILIO_H
 #    include <sys/filio.h>
 #endif
-#ifndef TIOCGWINSZ
-#    ifdef HAVE_SYS_IOCTL_H
-#        include <sys/ioctl.h>
-#    endif
+#ifdef HAVE_SYS_IOCTL_H
+#    include <sys/ioctl.h>
 #endif
 
 #include <mono/metadata/console-io.h>
@@ -65,6 +67,9 @@ static gchar *keypad_xmit_str;
 /* This is the last state used by Mono, used after a CONT signal is received */
 static struct termios mono_attr;
 #endif
+
+/* static void console_restore_signal_handlers (void); */
+static void console_set_signal_handlers (void);
 
 void
 mono_console_init (void)
@@ -175,10 +180,14 @@ static int
 terminal_get_dimensions (void)
 {
 	struct winsize ws;
-
-	if (ioctl (STDIN_FILENO, TIOCGWINSZ, &ws) == 0)
-		return (ws.ws_col << 16) | ws.ws_row;
-
+	int ret;
+	int save_errno = errno;
+	
+	if (ioctl (STDIN_FILENO, TIOCGWINSZ, &ws) == 0){
+		ret = (ws.ws_col << 16) | ws.ws_row;
+		errno = save_errno;
+		return ret;
+	} 
 	return -1;
 }
 #else
@@ -192,13 +201,15 @@ terminal_get_dimensions (void)
 static void
 tty_teardown (void)
 {
+	int unused;
+
 	MONO_ARCH_SAVE_REGS;
 
 	if (!setup_finished)
 		return;
 
 	if (teardown_str != NULL) {
-		write (STDOUT_FILENO, teardown_str, strlen (teardown_str));
+		unused = write (STDOUT_FILENO, teardown_str, strlen (teardown_str));
 		g_free (teardown_str);
 		teardown_str = NULL;
 	}
@@ -221,6 +232,7 @@ do_console_cancel_event (void)
 	MonoMethod *im;
 	MonoVTable *vtable;
 
+	/* FIXME: this should likely iterate all the domains, instead */
 	if (!domain->domain)
 		return;
 
@@ -248,17 +260,32 @@ do_console_cancel_event (void)
 	mono_thread_pool_add ((MonoObject *) load_value, msg, NULL, NULL);
 }
 
+static int need_cancel = FALSE;
+/* this is executed from the finalizer thread */
+void
+mono_console_handle_async_ops (void)
+{
+	if (need_cancel) {
+		need_cancel = FALSE;
+		do_console_cancel_event ();
+	}
+}
+
 static gboolean in_sigint;
 static void
 sigint_handler (int signo)
 {
+	int save_errno;
 	MONO_ARCH_SAVE_REGS;
 
 	if (in_sigint)
 		return;
 
 	in_sigint = TRUE;
-	do_console_cancel_event ();
+	save_errno = errno;
+	need_cancel = TRUE;
+	mono_gc_finalize_notify ();
+	errno = save_errno;
 	in_sigint = FALSE;
 }
 
@@ -267,11 +294,12 @@ static struct sigaction save_sigcont, save_sigint, save_sigwinch;
 static void
 sigcont_handler (int signo, void *the_siginfo, void *data)
 {
+	int unused;
 	// Ignore error, there is not much we can do in the sigcont handler.
 	tcsetattr (STDIN_FILENO, TCSANOW, &mono_attr);
 
 	if (keypad_xmit_str != NULL)
-		write (STDOUT_FILENO, keypad_xmit_str, strlen (keypad_xmit_str));
+		unused = write (STDOUT_FILENO, keypad_xmit_str, strlen (keypad_xmit_str));
 
 	// Call previous handler
 	if (save_sigcont.sa_sigaction != NULL &&
@@ -294,7 +322,27 @@ sigwinch_handler (int signo, void *the_siginfo, void *data)
 		(*save_sigwinch.sa_sigaction) (signo, the_siginfo, data);
 }
 
-void
+/*
+ * console_set_signal_handlers:
+ *
+ * Installs various signals handlers for the use of the console, as
+ * follows:
+ *
+ * SIGCONT: this is received after the application has resumed execution
+ * if it was suspended with Control-Z before.   This signal handler needs
+ * to resend the terminal sequence to send keyboard in keypad mode (this
+ * is the difference between getting a cuu1 code or a kcuu1 code for up-arrow
+ * for example
+ *
+ * SIGINT: invokes the System.Console.DoConsoleCancelEvent method using
+ * a thread from the thread pool which notifies all registered cancel_event
+ * listeners.
+ *
+ * SIGWINCH: is used to track changes to the console window when a GUI
+ * terminal is resized.    It sets an internal variable that is checked
+ * by System.Console when the Terminfo driver has been activated.
+ */
+static void
 console_set_signal_handlers ()
 {
 	struct sigaction sigcont, sigint, sigwinch;
@@ -322,6 +370,7 @@ console_set_signal_handlers ()
 	sigaction (SIGWINCH, &sigwinch, &save_sigwinch);
 }
 
+#if currently_unuused
 //
 // Currently unused, should we ever call the restore handler?
 // Perhaps before calling into Process.Start?
@@ -333,6 +382,7 @@ console_restore_signal_handlers ()
 	sigaction (SIGINT, &save_sigint, NULL);
 	sigaction (SIGWINCH, &save_sigwinch, NULL);
 }
+#endif
 
 static void
 set_control_chars (MonoArray *control_chars, const guchar *cc)
@@ -430,6 +480,10 @@ ves_icall_System_ConsoleDriver_TtySetup (MonoString *keypad, MonoString *teardow
 	mono_attr.c_iflag &= ~(IXON|IXOFF);
 	mono_attr.c_cc [VMIN] = 1;
 	mono_attr.c_cc [VTIME] = 0;
+#ifdef VDSUSP
+	/* Disable C-y being used as a suspend character on OSX */
+	mono_attr.c_cc [VDSUSP] = 255;
+#endif
 	if (tcsetattr (STDIN_FILENO, TCSANOW, &mono_attr) == -1)
 		return FALSE;
 
@@ -451,3 +505,5 @@ ves_icall_System_ConsoleDriver_TtySetup (MonoString *keypad, MonoString *teardow
 
 	return TRUE;
 }
+#endif /* #if defined(__native_client__) */
+

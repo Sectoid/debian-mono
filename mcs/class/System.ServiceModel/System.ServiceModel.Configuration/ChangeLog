@@ -1,3 +1,259 @@
+2011-04-04  Atsushi Eno  <atsushi@ximian.com>
+
+	Add WCF diagnostics implementation (not working yet).
+
+2011-04-01  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf] Unbreak the build (Assembly.IsDynamic is a 4.0 thing)
+
+2011-04-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement ConfigurationName support for ChannelFactory.
+
+	It is required for MoonlightDrtViewer bugfixing.
+
+2011-02-17  Atsushi Eno  <atsushi@ximian.com>
+
+	get out from NET_4_0.
+
+2011-02-17  Atsushi Eno  <atsushi@ximian.com>
+
+	Fill a couple of missing ServiceAuthorizationElement
+	implementation.
+
+2011-02-01  Atsushi Eno  <atsushi@ximian.com>
+
+	standard endpoint and protocol mapping support were lacking at
+	client side.
+
+	Turned out that they had nothing to do with #668089..
+
+2010-10-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Forgot #if NET_4_0.
+
+2010-10-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Add ExtendedProtectionPolicy members. Required by .config files by
+	.NET svcutil.
+
+2010-10-05  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not overwrite properly configured ServiceBehaviorElement.Name.
+
+2010-09-28  Marek Habersack  <grendel@twistedcode.net>
+
+	* NamedServiceModelExtensionCollectionElement.cs: minimum length
+	of the Name property value is 0 for 4.0 *
+	ServiceBehaviorElementCollection.cs: added an override of BaseAdd
+	which makes sure that the element being added has its Name set to
+	String.Empty if the element's name is null * ServiceHostBase.cs:
+	support for simplified behavior configuration. Refactored behavior
+	addition code to a separate method. Check whether behavior is not
+	in the collection before adding it.
+
+2010-09-27  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf]
+	System.ServiceModel.Configuration.CustomBindignCollectionElement.GetDefault
+	returns an instance of CustomBinding
+
+2010-09-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Add missing Properties property.
+
+2010-09-18  Atsushi Eno  <atsushi@ximian.com>
+
+	ProtocolMapping needed config section, default items and support
+	in ServiceHostBase.
+
+2010-09-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Add ProtocolMapping support.
+
+2010-09-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Return new instance.
+
+2010-09-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Add the trickiest line that had me; AddElementName is not on
+	ConfigurationProperty here.
+
+2010-09-15  Atsushi Eno  <atsushi@ximian.com>
+
+	add more NET_4_0.
+
+2010-09-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Add NET_4_0.
+
+2010-09-14  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing standard endpoint configuration support work.
+
+2010-09-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Add new properties in 4.0.
+
+2010-09-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Avoid crash by missing config attributes.
+
+2010-09-13  Atsushi Eno  <atsushi@ximian.com>
+
+	implemented large parts of WCF standard endpoints and
+	configuration support.
+
+2010-09-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Add missing members and implement most of it.
+
+2010-09-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Add IdentityElement implementation and some supplemental extension
+	methods for discovery.
+
+2010-08-02  atsushieno  <atsushi@ximian.com>
+
+	Add build fix (not sure if it is correct; MSDN does not tell it
+	exists.)
+
+2010-07-30  Atsushi Enomoto  <atsushi@ximian.com>
+
+	*  EndpointCollectionElement.cs,
+	  StandardEndpointCollectionElement.cs,
+	  StandardEndpointElement.cs,
+	  StandardEndpointElementCollection.cs : new 4.0 types.
+
+2010-07-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* CallbackTimeoutsElement.cs
+	  ChannelPoolSettingsElement.cs
+	  ClaimTypeElement.cs
+	  ClientCredentialsElement.cs
+	  ServiceCredentialsElement.cs
+	  ServiceModelExtensionCollectionElement.cs
+	  StandardBindingOptionalReliableSessionElement.cs
+	  StandardBindingReliableSessionElement.cs : couple of API fixes.
+	* LocalClientSecuritySettingsElement.cs : fixed Properties.
+
+2010-07-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClaimTypeElement.cs
+	  ClaimTypeElementCollection.cs
+	  FederatedMessageSecurityOverHttpElement.cs
+	  StandardBindingOptionalReliableSessionElement.cs
+	  StandardBindingReliableSessionElement.cs
+	  WSFederationHttpBindingElement.cs
+	  WSFederationHttpSecurityElement.cs
+	  WSHttpBindingBaseElement.cs : implemented ApplyConfiguration and
+	  add/fix descendants' members.
+
+2010-07-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* FederatedMessageSecurityOverHttpElement.cs : use correct converter.
+	* WSFederationHttpBindingCollectionElement.cs : remove extra members.
+	* WSDualHttpBindingElement.cs, WSFederationHttpBindingElement.cs :
+	  fill base properties expectedly.
+
+2010-07-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WSDualHttpBindingElement.cs, WSFederationHttpBindingElement.cs :
+	  BindingElementType is not a configuration property.
+
+2010-07-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ConfigUtil.cs : the error message can be less ambiguous.
+
+2010-07-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ConfigUtil.cs, ServiceCredentialsElement.cs :
+	  implement x509 store support.
+
+2010-07-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientCredentialsElement.cs : warning cleanup.
+
+2010-05-31  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientCredentialsElement.cs, HttpDigestClientElement.cs,
+	  ConfigUtil.cs : implement ClientCredentialsElement.CreateBehavior().
+
+2010-04-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* BaseAddressPrefixFilterElementCollection.cs
+	  BaseAddressPrefixFilterElement.cs : new classes.
+	* ReliableSessionElement.cs
+	  XmlDictionaryReaderQuotasElement.cs
+	  TextMessageEncodingElement.cs
+	  HostTimeoutsElement.cs
+	  BaseAddressElementCollection.cs
+	  BasicHttpBindingElement.cs
+	  BindingElementExtensionElement.cs
+	  StandardBindingElement.cs
+	  BinaryMessageEncodingElement.cs : added couple of missing stuff.
+
+2010-03-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ConnectionOrientedTransportElement.cs, StandardBindingElement.cs, 
+	  LocalClientSecuritySettingsElement.cs, CustomBindingElement.cs:
+	  add couple of missing methods and TypeConverterAttributes.
+
+2010-03-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceMetadataPublishingElement.cs : use IsNullOrEmpty(), names
+	  could be "" which is equivalent to null here.
+
+2010-03-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ConfigUtil.cs, StandardBindingCollectionElement.cs,
+	  MexHttpsBindingCollectionElement.cs,
+	  MexHttpBindingCollectionElement.cs : use GetDefault() in
+	  BindingCollectionElement to create a Binding, instead of activator
+	  immediately. And for mex bindings, use MetadataExchangeBindings.
+
+2010-03-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* TcpTransportElement.cs
+	  MsmqIntegrationElement.cs
+	  MsmqElementBase.cs
+	  NamedPipeTransportElement.cs
+	  HttpsTransportElement.cs
+	  TransportElement.cs
+	  MsmqTransportElement.cs
+	  HttpTransportElement.cs : implement missing methods.
+
+2010-03-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* IssuedTokenClientElement.cs, MsmqBindingElementBase.cs,
+	  NamedPipeConnectionPoolSettingsElement.cs,
+	  TcpConnectionPoolSettingsElement.cs,
+	  StandardBindingReliableSessionElement.cs,
+	  LocalServiceSecuritySettingsElement.cs : use TimeSpanConverter.
+
+2010-03-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceDebugElement.cs : binding names could rather be empty.
+
+2010-03-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlDictionaryReaderQuotasElement.cs : add ApplyConfiguration().
+	* BasicHttpBindingElement.cs : apply transport security part.
+	  Use ReaderQuotas.ApplyConfiguration() for better config application.
+	* HttpTransportSecurityElement.cs :
+	  Add utility config method. Fix enum default values.
+
+2010-03-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* X509RecipientCertificateServiceElement.cs : remove extra FIXMEs.
+	* ServiceCredentialsElement.cs : implement CreateBehavior().
+
+2010-03-03  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceDebugElement.cs, ServiceMetadataPublishingElement.cs:
+	  add missing members.
+
 2009-10-02  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* ConfigUtil.cs : revert the change, to use ServiceHostingEnvironment

@@ -26,7 +26,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-#if NET_2_0
+
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Globalization;
@@ -479,7 +479,7 @@ namespace System.Net.NetworkInformation {
 			if (!Socket.SupportsIPv4)
 				throw new NetworkInformationException ();
 			Win32_MIB_IPSTATS stats;
-			GetIPStatisticsEx (out stats, AF_INET);
+			GetIpStatisticsEx (out stats, AF_INET);
 			return new Win32IPGlobalStatistics (stats);
 		}
 
@@ -488,7 +488,7 @@ namespace System.Net.NetworkInformation {
 			if (!Socket.OSSupportsIPv6)
 				throw new NetworkInformationException ();
 			Win32_MIB_IPSTATS stats;
-			GetIPStatisticsEx (out stats, AF_INET6);
+			GetIpStatisticsEx (out stats, AF_INET6);
 			return new Win32IPGlobalStatistics (stats);
 		}
 
@@ -575,7 +575,7 @@ namespace System.Net.NetworkInformation {
 		static extern int GetIcmpStatisticsEx (out Win32_MIB_ICMP_EX pStats, int dwFamily);
 
 		[DllImport ("Iphlpapi.dll")]
-		static extern int GetIPStatisticsEx (out Win32_MIB_IPSTATS pStats, int dwFamily);
+		static extern int GetIpStatisticsEx (out Win32_MIB_IPSTATS pStats, int dwFamily);
 
 		// Win32 structures
 
@@ -585,12 +585,6 @@ namespace System.Net.NetworkInformation {
 			[FieldOffset (0)]
 			[MarshalAs ((short) UnmanagedType.U1, SizeConst = 16)]
 			public byte [] Bytes;
-			[FieldOffset (0)]
-			[MarshalAs ((short) UnmanagedType.U2, SizeConst = 8)]
-			public byte [] UInt16Array;
-			[FieldOffset (0)]
-			[MarshalAs ((short) UnmanagedType.U4, SizeConst = 4)]
-			public byte [] UInt32Array;
 		}
 
 		[StructLayout (LayoutKind.Sequential)]
@@ -663,5 +657,3 @@ namespace System.Net.NetworkInformation {
 		}
 	}
 }
-#endif
-

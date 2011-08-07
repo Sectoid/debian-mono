@@ -99,6 +99,8 @@ namespace Microsoft.Build.Tasks {
 				// nothing to resolve
 				return true;
 
+			LogTaskParameters ();
+
 			assembly_resolver.Log = Log;
 			tempResolvedFiles = new List<ITaskItem> ();
 			tempCopyLocalFiles = new Dictionary<string, ITaskItem> ();
@@ -154,12 +156,15 @@ namespace Microsoft.Build.Tasks {
 					continue;
 				}
 
-				Log.LogMessage (MessageImportance.Low, "Primary Reference {0}", item.ItemSpec);
+				LogWithPrecedingNewLine (MessageImportance.Low, "Primary Reference {0}", item.ItemSpec);
 				ResolvedReference resolved_ref = ResolveReference (item, searchPaths, true);
 				if (resolved_ref == null) {
 					Log.LogWarning ("Reference '{0}' not resolved", item.ItemSpec);
-					assembly_resolver.LogSearchLoggerMessages ();
+					assembly_resolver.LogSearchLoggerMessages (MessageImportance.Normal);
 				} else {
+					if (Environment.GetEnvironmentVariable ("XBUILD_LOG_REFERENCE_RESOLVER") != null)
+						assembly_resolver.LogSearchLoggerMessages (MessageImportance.Low);
+
 					Log.LogMessage (MessageImportance.Low,
 							"\tReference {0} resolved to {1}. CopyLocal = {2}",
 							item.ItemSpec, resolved_ref.TaskItem,
@@ -209,8 +214,8 @@ namespace Microsoft.Build.Tasks {
 					resolved = assembly_resolver.ResolveGacReference (item, specific_version);
 				} else if (String.Compare (spath, "{RawFileName}") == 0) {
 					//FIXME: identify assembly names, as extract the name, and try with that?
-					AssemblyName aname = assembly_resolver.GetAssemblyNameFromFile (item.ItemSpec);
-					if (aname != null)
+					AssemblyName aname;
+					if (assembly_resolver.TryGetAssemblyNameFromFile (item.ItemSpec, out aname))
 						resolved = assembly_resolver.GetResolvedReference (item, item.ItemSpec, aname, true,
 								SearchPath.RawFileName);
 				} else if (String.Compare (spath, "{CandidateAssemblyFiles}") == 0) {
@@ -221,7 +226,8 @@ namespace Microsoft.Build.Tasks {
 				} else {
 					resolved = assembly_resolver.FindInDirectory (
 							item, spath,
-							allowedAssemblyExtensions ?? default_assembly_extensions);
+							allowedAssemblyExtensions ?? default_assembly_extensions,
+							specific_version);
 				}
 
 				if (resolved != null)
@@ -239,10 +245,13 @@ namespace Microsoft.Build.Tasks {
 			specific_version = true;
 			string value = item.GetMetadata ("SpecificVersion");
 			if (String.IsNullOrEmpty (value)) {
-				AssemblyName name = new AssemblyName (item.ItemSpec);
+				//AssemblyName name = new AssemblyName (item.ItemSpec);
 				// If SpecificVersion is not specified, then
 				// it is true if the Include is a strong name else false
-				specific_version = assembly_resolver.IsStrongNamed (name);
+				//specific_version = assembly_resolver.IsStrongNamed (name);
+
+				// msbuild seems to just look for a ',' in the name :/
+				specific_version = item.ItemSpec.IndexOf (',') >= 0;
 				return true;
 			}
 
@@ -264,21 +273,24 @@ namespace Microsoft.Build.Tasks {
 				assembly_resolver.ResetSearchLogger ();
 
 				if (!File.Exists (item.ItemSpec)) {
-					Log.LogMessage (MessageImportance.Low,
+					LogWithPrecedingNewLine (MessageImportance.Low,
 							"Primary Reference from AssemblyFiles {0}, file not found. Ignoring",
 							item.ItemSpec);
 					continue;
 				}
 
-				Log.LogMessage (MessageImportance.Low, "Primary Reference from AssemblyFiles {0}", item.ItemSpec);
+				LogWithPrecedingNewLine (MessageImportance.Low, "Primary Reference from AssemblyFiles {0}", item.ItemSpec);
 				string copy_local;
 
-				AssemblyName aname = assembly_resolver.GetAssemblyNameFromFile (item.ItemSpec);
-				if (aname == null) {
+				AssemblyName aname;
+				if (!assembly_resolver.TryGetAssemblyNameFromFile (item.ItemSpec, out aname)) {
 					Log.LogWarning ("Reference '{0}' not resolved", item.ItemSpec);
-					assembly_resolver.LogSearchLoggerMessages ();
+					assembly_resolver.LogSearchLoggerMessages (MessageImportance.Normal);
 					continue;
 				}
+
+				if (Environment.GetEnvironmentVariable ("XBUILD_LOG_REFERENCE_RESOLVER") != null)
+					assembly_resolver.LogSearchLoggerMessages (MessageImportance.Low);
 
 				ResolvedReference rr = assembly_resolver.GetResolvedReference (item, item.ItemSpec, aname, true,
 						SearchPath.RawFileName);
@@ -343,7 +355,7 @@ namespace Microsoft.Build.Tasks {
 			if (TryGetResolvedReferenceByAssemblyName (aname, false, out resolved_ref))
 				return resolved_ref;
 
-			Log.LogMessage (MessageImportance.Low, "Dependency {0}", aname);
+			LogWithPrecedingNewLine (MessageImportance.Low, "Dependency {0}", aname);
 			Log.LogMessage (MessageImportance.Low, "\tRequired by {0}", parent_asm_name);
 
 			ITaskItem item = new TaskItem (aname.FullName);
@@ -351,6 +363,9 @@ namespace Microsoft.Build.Tasks {
 			resolved_ref = ResolveReference (item, dependency_search_paths, false);
 
 			if (resolved_ref != null) {
+				if (Environment.GetEnvironmentVariable ("XBUILD_LOG_REFERENCE_RESOLVER") != null)
+						assembly_resolver.LogSearchLoggerMessages (MessageImportance.Low);
+
 				Log.LogMessage (MessageImportance.Low, "\tReference {0} resolved to {1}.",
 					aname, resolved_ref.TaskItem.ItemSpec);
 
@@ -380,7 +395,7 @@ namespace Microsoft.Build.Tasks {
 				}
 			} else {
 				Log.LogWarning ("Reference '{0}' not resolved", aname);
-				assembly_resolver.LogSearchLoggerMessages ();
+				assembly_resolver.LogSearchLoggerMessages (MessageImportance.Normal);
 			}
 
 			return resolved_ref;
@@ -460,7 +475,7 @@ namespace Microsoft.Build.Tasks {
 				return false;
 
 			// match for full name
-			if (AssemblyResolver.AssemblyNamesCompatible (key_aname, found_ref.AssemblyName, true))
+			if (AssemblyResolver.AssemblyNamesCompatible (key_aname, found_ref.AssemblyName, true, false))
 				// exact match, so its already there, dont add anything
 				return true;
 
@@ -487,6 +502,12 @@ namespace Microsoft.Build.Tasks {
 			return true;
 		}
 
+		void LogWithPrecedingNewLine (MessageImportance importance, string format, params object [] args)
+		{
+			Log.LogMessage (importance, String.Empty);
+			Log.LogMessage (importance, format, args);
+		}
+
 		// conflict b/w @main and @conflicting, picking @main
 		void LogConflictWarning (string main, string conflicting)
 		{
@@ -502,6 +523,19 @@ namespace Microsoft.Build.Tasks {
 		{
 			return rr.FoundInSearchPath == SearchPath.Gac ||
 				rr.FoundInSearchPath == SearchPath.TargetFrameworkDirectory;
+		}
+
+		void LogTaskParameters ()
+		{
+			Log.LogMessage (MessageImportance.Low, "TargetFrameworkDirectories:");
+			if (TargetFrameworkDirectories != null)
+				foreach (string dir in TargetFrameworkDirectories)
+					Log.LogMessage (MessageImportance.Low, "\t{0}", dir);
+
+			Log.LogMessage (MessageImportance.Low, "SearchPaths:");
+			if (SearchPaths != null)
+				foreach (string path in SearchPaths)
+					Log.LogMessage (MessageImportance.Low, "\t{0}", path);
 		}
 
 		public bool AutoUnify {
@@ -625,7 +659,15 @@ namespace Microsoft.Build.Tasks {
 		public ITaskItem[] SuggestedRedirects {
 			get { return suggestedRedirects; }
 		}
-		
+
+#if NET_4_0
+		public string TargetFrameworkMoniker { get; set; }
+
+		public string TargetFrameworkMonikerDisplayName { get; set; }
+#endif
+
+		public string TargetFrameworkVersion { get; set; }
+
 		public string[] TargetFrameworkDirectories {
 			get { return targetFrameworkDirectories; }
 			set { targetFrameworkDirectories = value; }
@@ -635,6 +677,7 @@ namespace Microsoft.Build.Tasks {
 			get { return targetProcessorArchitecture; }
 			set { targetProcessorArchitecture = value; }
 		}
+
 
                 static Dictionary<string, string> cultureNamesTable;
                 static Dictionary<string, string> CultureNamesTable {

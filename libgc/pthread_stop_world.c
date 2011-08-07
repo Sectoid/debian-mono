@@ -2,12 +2,14 @@
 
 #if defined(GC_PTHREADS) && !defined(GC_SOLARIS_THREADS) \
      && !defined(GC_IRIX_THREADS) && !defined(GC_WIN32_THREADS) \
-     && !defined(GC_DARWIN_THREADS) && !defined(GC_AIX_THREADS)
+     && !defined(GC_DARWIN_THREADS) && !defined(GC_AIX_THREADS) \
+     && !defined(GC_OPENBSD_THREADS)
 
 #include <signal.h>
 #include <semaphore.h>
 #include <errno.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 /* work around a dlopen issue (bug #75390), undefs to avoid warnings with redefinitions */
 #undef PACKAGE_BUGREPORT
@@ -19,6 +21,19 @@
 
 #ifdef MONO_DEBUGGER_SUPPORTED
 #include "include/libgc-mono-debugger.h"
+#endif
+
+#ifdef NACL
+int nacl_park_threads_now = 0;
+pthread_t nacl_thread_parker = -1;
+
+int nacl_thread_parked[MAX_NACL_GC_THREADS];
+int nacl_thread_used[MAX_NACL_GC_THREADS];
+int nacl_thread_parking_inited = 0;
+int nacl_num_gc_threads = 0;
+pthread_mutex_t nacl_thread_alloc_lock = PTHREAD_MUTEX_INITIALIZER;
+__thread int nacl_thread_idx = -1;
+__thread GC_thread nacl_gc_thread_self = NULL;
 #endif
 
 #if DEBUG_THREADS
@@ -35,6 +50,7 @@
 # endif
 #endif
 
+#ifndef NACL
 void GC_print_sig_mask()
 {
     sigset_t blocked;
@@ -48,7 +64,7 @@ void GC_print_sig_mask()
     }
     GC_printf0("\n");
 }
-
+#endif /* NACL */
 #endif
 
 /* Remove the signals that we want to allow in thread stopping 	*/
@@ -115,6 +131,7 @@ sem_t GC_suspend_ack_sem;
 
 static void _GC_suspend_handler(int sig)
 {
+#ifndef NACL
     int dummy;
     pthread_t my_thread = pthread_self();
     GC_thread me;
@@ -184,6 +201,8 @@ static void _GC_suspend_handler(int sig)
 #if DEBUG_THREADS
     GC_printf1("Continuing 0x%lx\n", my_thread);
 #endif
+
+#endif /* NACL */
 }
 
 void GC_suspend_handler(int sig)
@@ -277,6 +296,10 @@ static void pthread_push_all_stacks()
 #       else
           GC_push_all_stack(lo, hi);
 #	endif
+#       ifdef NACL
+	  /* Push reg_storage as roots, this will cover the reg context */
+          GC_push_all_stack(p -> stop_info.reg_storage, p -> stop_info.reg_storage + NACL_GC_REG_STORAGE_SIZE);
+#       endif
 #	ifdef IA64
 #         if DEBUG_THREADS
             GC_printf3("Reg stack for thread 0x%lx = [%lx,%lx)\n",
@@ -314,11 +337,29 @@ void GC_push_all_stacks()
 pthread_t GC_stopping_thread;
 int GC_stopping_pid;
 
+#ifdef PLATFORM_ANDROID
+static
+int android_thread_kill(pid_t tid, int sig)
+{
+    int  ret;
+    int  old_errno = errno;
+
+    ret = tkill(tid, sig);
+    if (ret < 0) {
+        ret = errno;
+        errno = old_errno;
+    }
+
+    return ret;
+}
+#endif
+
 /* We hold the allocation lock.  Suspend all threads that might	*/
 /* still be running.  Return the number of suspend signals that	*/
 /* were sent. */
 int GC_suspend_all()
 {
+#ifndef NACL
     int n_live_threads = 0;
     int i;
     GC_thread p;
@@ -337,8 +378,12 @@ int GC_suspend_all()
 	    #if DEBUG_THREADS
 	      GC_printf1("Sending suspend signal to 0x%lx\n", p -> id);
 	    #endif
-        
+
+#ifndef PLATFORM_ANDROID
         result = pthread_kill(p -> id, SIG_SUSPEND);
+#else
+        result = android_thread_kill(p -> kernel_id, SIG_SUSPEND);
+#endif
 	    switch(result) {
                 case ESRCH:
                     /* Not really there anymore.  Possible? */
@@ -353,11 +398,15 @@ int GC_suspend_all()
       }
     }
     return n_live_threads;
+#else /* NACL */
+    return 0;
+#endif
 }
 
 /* Caller holds allocation lock.	*/
 static void pthread_stop_world()
 {
+#ifndef NACL
     int i;
     int n_live_threads;
     int code;
@@ -409,7 +458,127 @@ static void pthread_stop_world()
       GC_printf1("World stopped from 0x%lx\n", pthread_self());
     #endif
     GC_stopping_thread = 0;  /* debugging only */
+#else /* NACL */
+    GC_thread p;
+    int i;
+
+    #if DEBUG_THREADS
+    GC_printf1("pthread_stop_world: num_threads %d\n", nacl_num_gc_threads - 1);
+    #endif
+    nacl_thread_parker = pthread_self();
+    nacl_park_threads_now = 1;
+    
+    while (1) {
+	#define NACL_PARK_WAIT_NANOSECONDS 100000
+        int num_threads_parked = 0;
+        struct timespec ts;
+        int num_used = 0;
+	/* Check the 'parked' flag for each thread the GC knows about */
+        for (i = 0; i < MAX_NACL_GC_THREADS && num_used < nacl_num_gc_threads; i++) {
+            if (nacl_thread_used[i] == 1) {
+                num_used++;
+                if (nacl_thread_parked[i] == 1) {
+                    num_threads_parked++;
+                }
+            }
+        }
+	/* -1 for the current thread */
+        if (num_threads_parked >= nacl_num_gc_threads - 1)
+            break;
+        ts.tv_sec = 0;
+        ts.tv_nsec = NACL_PARK_WAIT_NANOSECONDS;
+        #if DEBUG_THREADS
+        GC_printf1("sleeping waiting for %d threads to park...\n", nacl_num_gc_threads - num_threads_parked - 1);
+        #endif
+        nanosleep(&ts, 0);
+    }
+
+#endif /* NACL */
 }
+
+
+#ifdef NACL
+
+#if __x86_64__
+
+#define NACL_STORE_REGS()  \
+    do {                  \
+	asm("push %rbx");\
+	asm("push %rbp");\
+	asm("push %r12");\
+	asm("push %r13");\
+	asm("push %r14");\
+	asm("push %r15");\
+	asm("mov %%esp, %0" : "=m" (nacl_gc_thread_self->stop_info.stack_ptr));\
+        memcpy(nacl_gc_thread_self->stop_info.reg_storage, nacl_gc_thread_self->stop_info.stack_ptr, NACL_GC_REG_STORAGE_SIZE * sizeof(ptr_t));\
+	asm("add $48, %esp");\
+        asm("add %r15, %rsp");\
+    } while (0)
+
+#elif __i386__
+
+#define NACL_STORE_REGS()  \
+    do {                  \
+	asm("push %ebx");\
+	asm("push %ebp");\
+	asm("push %esi");\
+	asm("push %edi");\
+	asm("mov %%esp, %0" : "=m" (nacl_gc_thread_self->stop_info.stack_ptr));\
+        memcpy(nacl_gc_thread_self->stop_info.reg_storage, nacl_gc_thread_self->stop_info.stack_ptr, NACL_GC_REG_STORAGE_SIZE * sizeof(ptr_t));\
+	asm("add $16, %esp");\
+    } while (0)
+
+#endif
+
+void nacl_pre_syscall_hook()
+{
+    int local_dummy = 0;
+    if (nacl_thread_idx != -1) {
+	NACL_STORE_REGS();
+        nacl_gc_thread_self->stop_info.stack_ptr = (ptr_t)(&local_dummy);
+        nacl_thread_parked[nacl_thread_idx] = 1;
+    }
+}
+
+void nacl_post_syscall_hook()
+{
+    /* Calling __nacl_suspend_thread_if_needed() right away should guarantee we don't mutate the GC set. */
+    __nacl_suspend_thread_if_needed();
+    if (nacl_thread_idx != -1) {
+        nacl_thread_parked[nacl_thread_idx] = 0;
+    }
+}
+
+void __nacl_suspend_thread_if_needed() {
+    if (nacl_park_threads_now) {
+        pthread_t self = pthread_self();
+        int local_dummy = 0;
+        /* Don't try to park the thread parker. */
+        if (nacl_thread_parker == self)
+            return;
+
+        /* This can happen when a thread is created   */
+        /* outside of the GC system (wthread mostly). */
+        if (nacl_thread_idx < 0)
+            return;
+
+        /* If it was already 'parked', we're returning from a syscall, */
+        /* so don't bother storing registers again, the GC has a set.  */
+        if (!nacl_thread_parked[nacl_thread_idx]) {
+            NACL_STORE_REGS();
+            nacl_gc_thread_self->stop_info.stack_ptr = (ptr_t)(&local_dummy);
+        }
+        nacl_thread_parked[nacl_thread_idx] = 1;
+        while (nacl_park_threads_now)
+            ; /* spin */
+        nacl_thread_parked[nacl_thread_idx] = 0;
+
+        /* Clear out the reg storage for next suspend. */
+        memset(nacl_gc_thread_self->stop_info.reg_storage, 0, NACL_GC_REG_STORAGE_SIZE * sizeof(ptr_t));
+    }
+}
+
+#endif /* NACL */
 
 /* Caller holds allocation lock.	*/
 void GC_stop_world()
@@ -443,6 +612,7 @@ void GC_stop_world()
 /* the world stopped.							*/
 static void pthread_start_world()
 {
+#ifndef NACL
     pthread_t my_thread = pthread_self();
     register int i;
     register GC_thread p;
@@ -465,8 +635,12 @@ static void pthread_start_world()
 	    #if DEBUG_THREADS
 	      GC_printf1("Sending restart signal to 0x%lx\n", p -> id);
 	    #endif
-        
+
+#ifndef PLATFORM_ANDROID
         result = pthread_kill(p -> id, SIG_THR_RESTART);
+#else
+        result = android_thread_kill(p -> kernel_id, SIG_THR_RESTART);
+#endif
 	    switch(result) {
                 case ESRCH:
                     /* Not really there anymore.  Possible? */
@@ -499,6 +673,12 @@ static void pthread_start_world()
     #if DEBUG_THREADS
       GC_printf0("World started\n");
     #endif
+#else /* NACL */
+#   if DEBUG_THREADS
+    GC_printf0("World starting\n");
+#   endif
+    nacl_park_threads_now = 0;
+#endif /* NACL */
 }
 
 void GC_start_world()
@@ -512,6 +692,7 @@ void GC_start_world()
 }
 
 static void pthread_stop_init() {
+#ifndef NACL
     struct sigaction act;
     
     if (sem_init(&GC_suspend_ack_sem, 0, 0) != 0)
@@ -552,6 +733,7 @@ static void pthread_stop_init() {
               GC_printf0("Will retry suspend signal if necessary.\n");
 	  }
 #     endif
+#endif /* NACL */
 }
 
 /* We hold the allocation lock.	*/

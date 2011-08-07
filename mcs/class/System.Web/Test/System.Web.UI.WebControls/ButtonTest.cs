@@ -93,7 +93,6 @@ namespace MonoTests.System.Web.UI.WebControls
 			WebTest.CopyResource (GetType (), "ButtonColor_Bug325489.aspx", "ButtonColor_Bug325489.aspx");
 		}
 
-#if NET_2_0
 		[Test]
 		public void ButtonColor_Bug325489 ()
 		{
@@ -104,7 +103,6 @@ namespace MonoTests.System.Web.UI.WebControls
 
 			HtmlDiff.AssertAreEqual (origHtml, renderedHtml, "#A1");
 		}
-#endif
 		
 		[Test]
 		public void Button_DefaultValues ()
@@ -217,7 +215,7 @@ namespace MonoTests.System.Web.UI.WebControls
 			b.ToolTip = "Hello_ToolTip";
 			b.RenderControl (tw);
 			
-			string strTarget = "<input type=\"button\" name=\"MyButton\" value=\"Hello\" disabled=\"disabled\" title=\"Hello_ToolTip\" />";
+			string strTarget = "<input type=\"button\" name=\"MyButton\" value=\"Hello\" id=\"MyButton\" disabled=\"disabled\" title=\"Hello_ToolTip\" />";
 			string str = sw.ToString();
 			HtmlDiff.AssertAreEqual (strTarget, str, "Button_Render2");
 		}

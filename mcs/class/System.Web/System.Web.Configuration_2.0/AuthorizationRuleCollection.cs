@@ -108,9 +108,8 @@ namespace System.Web.Configuration {
 			get { return ConfigurationElementCollectionType.BasicMapAlternate; }
 		}
 
-		[MonoTODO ("is it okay to return a comma delimited string here?")]
 		protected override string ElementName {
-			get { return "allow,deny"; }
+			get { return String.Empty; }
 		}
 
 		public AuthorizationRule this [int index] {
@@ -118,7 +117,7 @@ namespace System.Web.Configuration {
 			set { Set (index, value); }
 		}
 
-		protected override ConfigurationPropertyCollection Properties {
+		protected internal override ConfigurationPropertyCollection Properties {
 			get { return properties; }
 		}
 	}

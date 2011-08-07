@@ -23,7 +23,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 
 using System;
 using System.Globalization;
@@ -79,7 +79,7 @@ namespace System.ComponentModel {
 
 		public string ConvertToString (object value)
 		{
-			throw new NotImplementedException ();
+			return (string) ConvertTo (null, CultureInfo.CurrentCulture, value, typeof(string));
 		}
 	}
 }

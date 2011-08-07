@@ -118,7 +118,6 @@ namespace MonoTests.Microsoft.Build.Tasks
 
 			try {
 				Assert.AreEqual (build_result, project.Build (), "Build " + (build_result ? "failed" : "should've failed"));
-				testLogger.DumpMessages ();
 				if (!build_result || messages == null)
 					// build failed as expected, don't check outputs
 					return;
@@ -136,7 +135,7 @@ namespace MonoTests.Microsoft.Build.Tasks
 		{
 			StringBuilder sb = new StringBuilder ();
 			sb.Append (@"<Project xmlns=""http://schemas.microsoft.com/developer/msbuild/2003"">");
-			sb.Append ("\n<UsingTask TaskName=\"Microsoft.Build.Tasks.AssignProjectConfiguration\" AssemblyName=\"Microsoft.Build.Tasks, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a\" />\n");
+			sb.Append ("\n" + GetUsingTask ("AssignProjectConfiguration"));
 			sb.AppendFormat (@"<PropertyGroup>{0}</PropertyGroup>", CreateSolutionConfigurationProperty (guids, "Release|AnyCPU"));
 			sb.Append (CreateProjectReferencesItemGroup (project_ref_guids));
 
@@ -179,5 +178,11 @@ namespace MonoTests.Microsoft.Build.Tasks
 			sb.Append ("</ItemGroup>\n");
 			return sb.ToString ();
 		}
+		
+		string GetUsingTask (string taskName)
+		{
+			return "<UsingTask TaskName='Microsoft.Build.Tasks." + taskName + "' AssemblyFile='" + Consts.GetTasksAsmPath () + "' />";
+		}
+
 	}
 }

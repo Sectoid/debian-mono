@@ -5,7 +5,7 @@
 //	Gonzalo Paniagua Javier (gonzalo@ximian.com)
 //
 // (C) 2002,2003 Ximian, Inc (http://www.ximian.com)
-// Copyright (C) 2005 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2005-2010 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -44,39 +44,97 @@ namespace System.Web.UI
 	[AspNetHostingPermission (SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
 	public sealed class PageParser : TemplateControlParser
 	{
+#if NET_4_0
+		static Type defaultPageBaseType;
+		static Type defaultApplicationBaseType;
+		static Type defaultPageParserFilterType;
+		static Type defaultUserControlBaseType;
+		static bool enableLongStringsAsResources = true;
+#endif
 		PagesEnableSessionState enableSessionState = PagesEnableSessionState.True;
-		bool enableViewStateMac = true;
+		bool enableViewStateMac;
+		bool enableViewStateMacSet;
 		bool smartNavigation;
 		bool haveTrace;
 		bool trace;
 		bool notBuffer;
 		TraceMode tracemode = TraceMode.Default;
-		string responseEncoding;
 		string contentType;
-		int codepage = -1;
-		int lcid = -1;
+		MainDirectiveAttribute <int> codepage;
+		MainDirectiveAttribute <string> responseEncoding;
+		MainDirectiveAttribute <int> lcid;
+		MainDirectiveAttribute <string> clientTarget;
+		MainDirectiveAttribute <string> masterPage;
+		MainDirectiveAttribute <string> title;
+		MainDirectiveAttribute <string> theme;
+#if NET_4_0
+		MainDirectiveAttribute <string> metaDescription;
+		MainDirectiveAttribute <string> metaKeywords;
+#endif
 		string culture;
 		string uiculture;
 		string errorPage;
 		bool validateRequest;
-		string clientTarget;
-
-#if NET_2_0
 		bool async;
 		int asyncTimeout = -1;
-		string masterPage;
 		Type masterType;
 		string masterVirtualPath;
-		string title;
-		string theme;
 		string styleSheetTheme;
 		bool enable_event_validation;
 		bool maintainScrollPositionOnPostBack;
 		int maxPageStateFieldLength = -1;
 		Type previousPageType;
 		string previousPageVirtualPath;
-#endif
+#if NET_4_0
+		public static bool EnableLongStringsAsResources {
+			get { return enableLongStringsAsResources; }
+			set {
+				BuildManager.AssertPreStartMethodsRunning ();
+				enableLongStringsAsResources = value;
+			}
+		}
+		
+		public static Type DefaultPageBaseType {
+			get { return defaultPageBaseType; }
+			set {
+				BuildManager.AssertPreStartMethodsRunning ();
+				if (value != null && !typeof (Page).IsAssignableFrom (value))
+					throw new ArgumentException (String.Format ("The value assigned to property '{0}' is invalid.", "DefaultPageBaseType"));
+				
+				defaultPageBaseType = value;
+			}
+		}
 
+		public static Type DefaultApplicationBaseType {
+			get { return defaultApplicationBaseType; }
+			set {
+				BuildManager.AssertPreStartMethodsRunning ();
+				if (value != null && !typeof (HttpApplication).IsAssignableFrom (value))
+					throw new ArgumentException (String.Format ("The value assigned to property '{0}' is invalid.", "DefaultApplicationBaseType"));
+				defaultApplicationBaseType = value;
+			}
+		}
+
+		public static Type DefaultPageParserFilterType {
+			get { return defaultPageParserFilterType; }
+			set {
+				BuildManager.AssertPreStartMethodsRunning ();
+				if (value != null && !typeof (PageParserFilter).IsAssignableFrom (value))
+					throw new ArgumentException (String.Format ("The value assigned to property '{0}' is invalid.", "DefaultPageParserFilterType"));
+				defaultPageParserFilterType = value;
+			}
+		}
+
+		public static Type DefaultUserControlBaseType {
+			get { return defaultUserControlBaseType; }
+			set {
+				if (value != null && !typeof (UserControl).IsAssignableFrom (value))
+					throw new ArgumentException (String.Format ("The value assigned to property '{0}' is invalid.", "DefaultUserControlBaseType"));
+				BuildManager.AssertPreStartMethodsRunning ();
+				defaultUserControlBaseType = value;
+			}
+		}
+#endif
 		public PageParser ()
 		{
 			LoadConfigDefaults ();
@@ -84,10 +142,7 @@ namespace System.Web.UI
 		
 		internal PageParser (string virtualPath, string inputFile, HttpContext context)
 		{
-#if NET_2_0
 			this.VirtualPath = new VirtualPath (virtualPath);
-#endif
-
 			Context = context;
 			BaseVirtualDir = VirtualPathUtility.GetDirectory (virtualPath, false);
 			InputFile = inputFile;
@@ -96,7 +151,6 @@ namespace System.Web.UI
 			LoadConfigDefaults ();
 		}
 
-#if NET_2_0
 		internal PageParser (VirtualPath virtualPath, TextReader reader, HttpContext context)
 			: this (virtualPath, null, reader, context)
 		{
@@ -116,57 +170,45 @@ namespace System.Web.UI
 			AddApplicationAssembly ();
 			LoadConfigDefaults ();
 		}
-#endif
 
 		internal override void LoadConfigDefaults ()
 		{
 			base.LoadConfigDefaults ();
-#if NET_2_0
 			PagesSection ps = PagesConfig;
-#else
-			PagesConfiguration ps = PagesConfig;
-#endif			
 
 			notBuffer = !ps.Buffer;
 			enableSessionState = ps.EnableSessionState;
 			enableViewStateMac = ps.EnableViewStateMac;
 			smartNavigation = ps.SmartNavigation;
 			validateRequest = ps.ValidateRequest;
-#if NET_2_0
-			masterPage = ps.MasterPageFile;
-			if (masterPage.Length == 0)
-				masterPage = null;
+
+			string value = ps.MasterPageFile;
+			if (value.Length > 0)
+				masterPage = new MainDirectiveAttribute <string> (value, true);
+			
 			enable_event_validation = ps.EnableEventValidation;
 			maxPageStateFieldLength = ps.MaxPageStateFieldLength;
-			theme = ps.Theme;
-			if (theme.Length == 0)
-				theme = null;
+			value = ps.Theme;
+			if (value.Length > 0)
+				theme = new MainDirectiveAttribute <string> (value, true);
+			
 			styleSheetTheme = ps.StyleSheetTheme;
 			if (styleSheetTheme.Length == 0)
 				styleSheetTheme = null;
 			maintainScrollPositionOnPostBack = ps.MaintainScrollPositionOnPostBack;
-#endif
 		}
 		
-		public static IHttpHandler GetCompiledPageInstance (string virtualPath,
-								    string inputFile, 
-								    HttpContext context)
+		public static IHttpHandler GetCompiledPageInstance (string virtualPath, string inputFile, HttpContext context)
 		{
-#if NET_2_0
 			bool isFake = false;
 
 			if (!String.IsNullOrEmpty (inputFile))
 				isFake = !inputFile.StartsWith (HttpRuntime.AppDomainAppPath);
 			
 			return BuildManager.CreateInstanceFromVirtualPath (new VirtualPath (virtualPath, inputFile, isFake), typeof (IHttpHandler)) as IHttpHandler;
-#else
-			PageParser pp = new PageParser (virtualPath, inputFile, context);
-			IHttpHandler h = (IHttpHandler) pp.GetCompiledInstance ();
-			return h;
-#endif
 		}
-		
-		internal override void ProcessMainAttributes (Hashtable atts)
+
+		internal override void ProcessMainAttributes (IDictionary atts)
 		{
 			// note: the 'enableSessionState' configuration property is
 			// processed in a case-sensitive manner while the page-level
@@ -183,78 +225,88 @@ namespace System.Web.UI
 					ThrowParseException ("Invalid value for enableSessionState: " + enabless);
 			}
 
-			string cp = GetString (atts, "CodePage", null);
-			if (cp != null) {
+			string value = GetString (atts, "CodePage", null);
+			if (value != null) {
 				if (responseEncoding != null)
-					ThrowParseException ("CodePage and ResponseEncoding are " +
-						"mutually exclusive.");
+					ThrowParseException ("CodePage and ResponseEncoding are mutually exclusive.");
+				
+				if (!BaseParser.IsExpression (value)) {
+					int cpval = -1;
 
-				int codepage = 0;
-				try {
-					codepage = (int) UInt32.Parse (cp);
-				} catch {
-					ThrowParseException ("Invalid value for CodePage: " + cp);
-				}
+					try {
+						cpval = (int) UInt32.Parse (value);
+					} catch {
+						ThrowParseException ("Invalid value for CodePage: " + value);
+					}
 
-				try {
-					Encoding.GetEncoding (codepage);
-				} catch {
-					ThrowParseException ("Unsupported codepage: " + cp);
-				}
+					try {
+						Encoding.GetEncoding (cpval);
+					} catch {
+						ThrowParseException ("Unsupported codepage: " + value);
+					}
+					codepage = new MainDirectiveAttribute <int> (cpval, true);
+				} else
+					codepage = new MainDirectiveAttribute <int> (value);
 			}
 			
-			responseEncoding = GetString (atts, "ResponseEncoding", null);
-			if (responseEncoding != null) {
-				if (codepage != -1)
-					ThrowParseException ("CodePage and ResponseEncoding are " +
-							     "mutually exclusive.");
+			value = GetString (atts, "ResponseEncoding", null);
+			if (value != null) {
+				if (codepage != null)
+					ThrowParseException ("CodePage and ResponseEncoding are mutually exclusive.");
 
-				try {
-					Encoding.GetEncoding (responseEncoding);
-				} catch {
-					ThrowParseException ("Unsupported encoding: " + responseEncoding);
-				}
+				if (!BaseParser.IsExpression (value)) {
+					try {
+						Encoding.GetEncoding (value);
+					} catch {
+						ThrowParseException ("Unsupported encoding: " + value);
+					}
+					responseEncoding = new MainDirectiveAttribute <string> (value, true);
+				} else
+					responseEncoding = new MainDirectiveAttribute <string> (value);
 			}
 			
 			contentType = GetString (atts, "ContentType", null);
 
-			string lcidStr = GetString (atts, "LCID", null);
-			if (lcidStr != null) {
-				try {
-					lcid = (int) UInt32.Parse (lcidStr);
-				} catch {
-					ThrowParseException ("Invalid value for LCID: " + lcid);
-				}
-
-				CultureInfo ci = null;
-				try {
-					ci = new CultureInfo (lcid);
-				} catch {
-					ThrowParseException ("Unsupported LCID: " + lcid);
-				}
-
-				if (ci.IsNeutralCulture) {
-					string suggestedCulture = SuggestCulture (ci.Name);
-					string fmt = "LCID attribute must be set to a non-neutral Culture.";
-					if (suggestedCulture != null) {
-						ThrowParseException (fmt + " Please try one of these: " +
-								     suggestedCulture);
-					} else {
-						ThrowParseException (fmt);
+			value = GetString (atts, "LCID", null);
+			if (value != null) {
+				if (!BaseParser.IsExpression (value)) {
+					int parsedLcid = -1;
+					try {
+						parsedLcid = (int) UInt32.Parse (value);
+					} catch {
+						ThrowParseException ("Invalid value for LCID: " + value);
 					}
-				}
+
+					CultureInfo ci = null;
+					try {
+						ci = new CultureInfo (parsedLcid);
+					} catch {
+						ThrowParseException ("Unsupported LCID: " + value);
+					}
+
+					if (ci.IsNeutralCulture) {
+						string suggestedCulture = SuggestCulture (ci.Name);
+						string fmt = "LCID attribute must be set to a non-neutral Culture.";
+						if (suggestedCulture != null) {
+							ThrowParseException (fmt + " Please try one of these: " +
+									     suggestedCulture);
+						} else {
+							ThrowParseException (fmt);
+						}
+					}
+					lcid = new MainDirectiveAttribute <int> (parsedLcid, true);
+				} else
+					lcid = new MainDirectiveAttribute <int> (value);
 			}
 
 			culture = GetString (atts, "Culture", null);
 			if (culture != null) {
-				if (lcidStr != null) 
+				if (lcid != null) 
 					ThrowParseException ("Culture and LCID are mutually exclusive.");
 				
 				CultureInfo ci = null;
 				try {
-#if NET_2_0
 					if (!culture.StartsWith ("auto"))
-#endif
 						ci = new CultureInfo (culture);
 				} catch {
 					ThrowParseException ("Unsupported Culture: " + culture);
@@ -275,9 +327,7 @@ namespace System.Web.UI
 			if (uiculture != null) {
 				CultureInfo ci = null;
 				try {
-#if NET_2_0
 					if (!uiculture.StartsWith ("auto"))
-#endif
 						ci = new CultureInfo (uiculture);
 				} catch {
 					ThrowParseException ("Unsupported Culture: " + uiculture);
@@ -317,47 +367,30 @@ namespace System.Web.UI
 
 			errorPage = GetString (atts, "ErrorPage", null);
 			validateRequest = GetBool (atts, "ValidateRequest", validateRequest);
-			clientTarget = GetString (atts, "ClientTarget", null);
-			if (clientTarget != null) {
-				clientTarget = clientTarget.Trim ();
-#if NET_2_0
-				ClientTargetSection sec = GetConfigSection <ClientTargetSection> ("system.web/clientTarget");
-				ClientTarget ct = null;
+			value = GetString (atts, "ClientTarget", null);
+			if (value != null) {				
+				if (!BaseParser.IsExpression (value)) {
+					value = value.Trim ();
+					
+					ClientTargetSection sec = GetConfigSection <ClientTargetSection> ("system.web/clientTarget");
+					ClientTarget ct = null;
 				
-				if ((ct = sec.ClientTargets [clientTarget]) == null)
-					clientTarget = clientTarget.ToLowerInvariant ();
+					if ((ct = sec.ClientTargets [value]) == null)
+						value = value.ToLowerInvariant ();
 				
-				if (ct == null && (ct = sec.ClientTargets [clientTarget]) == null) {
-					ThrowParseException (String.Format (
-							"ClientTarget '{0}' is an invalid alias. See the " +
-							"documentation for <clientTarget> config. section.",
-							clientTarget));
-				}
-				clientTarget = ct.UserAgent;
-#else
-				NameValueCollection coll;
-				coll = (NameValueCollection) HttpContext.GetAppConfig ("system.web/clientTarget");
-				object ct = null;
-				
-				if (coll != null) {
-					ct = coll [clientTarget];
-					if (ct == null)
-						ct = coll [clientTarget.ToLower (Helpers.InvariantCulture)];
-				}
-				
-				if (ct == null) {
-					ThrowParseException (String.Format (
-							"ClientTarget '{0}' is an invalid alias. See the " +
-							"documentation for <clientTarget> config. section.",
-							clientTarget));
-				}
-				clientTarget = (string) ct;
-#endif
+					if (ct == null && (ct = sec.ClientTargets [value]) == null) {
+						ThrowParseException (String.Format (
+									     "ClientTarget '{0}' is an invalid alias. See the " +
+									     "documentation for <clientTarget> config. section.",
+									     clientTarget));
+					}
+					value = ct.UserAgent;
+					clientTarget = new MainDirectiveAttribute <string> (value, true);
+				} else
+					clientTarget = new MainDirectiveAttribute <string> (value);
 			}
 
 			notBuffer = !GetBool (atts, "Buffer", true);
-			
-#if NET_2_0
 			async = GetBool (atts, "Async", false);
 			string asyncTimeoutVal = GetString (atts, "AsyncTimeout", null);
 			if (asyncTimeoutVal != null) {
@@ -368,30 +401,68 @@ namespace System.Web.UI
 				}
 			}
 			
-			masterPage = GetString (atts, "MasterPageFile", masterPage);
-			
-			if (!String.IsNullOrEmpty (masterPage)) {
-				if (!HostingEnvironment.VirtualPathProvider.FileExists (masterPage))
-					ThrowParseFileNotFound (masterPage);
-				AddDependency (masterPage);
+			value = GetString (atts, "MasterPageFile", masterPage != null ? masterPage.Value : null);
+			if (!String.IsNullOrEmpty (value)) {
+				if (!BaseParser.IsExpression (value)) {
+					value = System.Web.VirtualPathUtility.Combine(BaseVirtualDir, value);
+					var vpp = HostingEnvironment.VirtualPathProvider;
+					if (!vpp.FileExists (value))
+						ThrowParseFileNotFound (value);
+					value = vpp.CombineVirtualPaths (VirtualPath.Absolute, VirtualPathUtility.ToAbsolute (value));
+					AddDependency (value, false);
+					masterPage = new MainDirectiveAttribute <string> (value, true);
+				} else
+					masterPage = new MainDirectiveAttribute <string> (value);
 			}
 			
-			title = GetString(atts, "Title", null);
-
-			theme = GetString (atts, "Theme", theme);
+			value = GetString(atts, "Title", null);
+			if (value != null) {
+				if (!BaseParser.IsExpression (value))
+					title = new MainDirectiveAttribute <string> (value, true);
+				else
+					title = new MainDirectiveAttribute <string> (value);
+			}
+			
+			value = GetString (atts, "Theme", theme != null ? theme.Value : null);
+			if (value != null) {
+				if (!BaseParser.IsExpression (value))
+					theme = new MainDirectiveAttribute <string> (value, true);
+				else
+					theme = new MainDirectiveAttribute <string> (value);
+			}
+			
 			styleSheetTheme = GetString (atts, "StyleSheetTheme", styleSheetTheme);
 			enable_event_validation = GetBool (atts, "EnableEventValidation", enable_event_validation);
 			maintainScrollPositionOnPostBack = GetBool (atts, "MaintainScrollPositionOnPostBack", maintainScrollPositionOnPostBack);
+
+			if (atts.Contains ("EnableViewStateMac")) {
+				enableViewStateMac = GetBool (atts, "EnableViewStateMac", enableViewStateMac);
+				enableViewStateMacSet = true;
+			}
+#if NET_4_0
+			value = GetString (atts, "MetaDescription", null);
+			if (value != null) {
+				if (!BaseParser.IsExpression (value))
+					metaDescription = new MainDirectiveAttribute <string> (value, true);
+				else
+					metaDescription = new MainDirectiveAttribute <string> (value);
+			}
+
+			value = GetString (atts, "MetaKeywords", null);
+			if (value != null) {
+				if (!BaseParser.IsExpression (value))
+					metaKeywords = new MainDirectiveAttribute <string> (value, true);
+				else
+					metaKeywords = new MainDirectiveAttribute <string> (value);
+			}
 #endif
 			// Ignored by now
-			GetString (atts, "EnableViewStateMac", null);
 			GetString (atts, "SmartNavigation", null);
 
 			base.ProcessMainAttributes (atts);
 		}
 		
-#if NET_2_0
-		internal override void AddDirective (string directive, Hashtable atts)
+		internal override void AddDirective (string directive, IDictionary atts)
 		{
 			bool isMasterType = String.Compare ("MasterType", directive, StringComparison.OrdinalIgnoreCase) == 0;
 			bool isPreviousPageType = isMasterType ? false : String.Compare ("PreviousPageType", directive,
@@ -424,7 +495,7 @@ namespace System.Web.UI
 					if (!HostingEnvironment.VirtualPathProvider.FileExists (virtualPath))
 						ThrowParseFileNotFound (virtualPath);
 
-					AddDependency (virtualPath);
+					AddDependency (virtualPath, true);
 					if (isMasterType)
 						masterVirtualPath = virtualPath;
 					else
@@ -437,7 +508,6 @@ namespace System.Web.UI
 			} else
 				base.AddDirective (directive, atts);
 		}
-#endif
 		
 		static string SuggestCulture (string culture)
 		{
@@ -449,17 +519,12 @@ namespace System.Web.UI
 			return retval;
 		}
 
-		public static Type GetCompiledPageType (string virtualPath, string inputFile, HttpContext context)
+		internal Type GetCompiledPageType (string virtualPath, string inputFile, HttpContext context)
 		{
-#if NET_2_0
 			return BuildManager.GetCompiledType (virtualPath);
-#else
-			PageParser pp = new PageParser (virtualPath, inputFile, context);
-			return pp.CompileIntoType ();
-#endif
 		}
 		
-		protected override Type CompileIntoType ()
+		internal override Type CompileIntoType ()
 		{
 			AspGenerator generator = new AspGenerator (this);
 			return generator.GetCompiledType ();
@@ -474,6 +539,10 @@ namespace System.Web.UI
 
 		internal bool EnableViewStateMac {
 			get { return enableViewStateMac; }
+		}
+
+		internal bool EnableViewStateMacSet {
+			get { return enableViewStateMacSet; }
 		}
 		
 		internal bool SmartNavigation {
@@ -497,43 +566,71 @@ namespace System.Web.UI
 		internal TraceMode TraceMode {
 			get { return tracemode; }
 		}		
+#if NET_4_0
+		internal override Type DefaultBaseType {
+			get {
+				Type ret = DefaultPageBaseType;
+				if (ret == null)
+					return base.DefaultBaseType;
 
-#if NET_2_0
+				return ret;
+			}
+		}
+#endif
 		internal override string DefaultBaseTypeName {
 			get { return PagesConfig.PageBaseType; }
 		}
-#else
-		internal override string DefaultBaseTypeName {
-			get { return "System.Web.UI.Page"; }
-		}
-#endif
 		
 		internal override string DefaultDirectiveName {
 			get { return "page"; }
-		}
-
-		internal string ResponseEncoding {
-			get { return responseEncoding; }
 		}
 
 		internal string ContentType {
 			get { return contentType; }
 		}
 
-		internal int CodePage {
+		internal MainDirectiveAttribute <string> ResponseEncoding {
+			get { return responseEncoding; }
+		}
+		
+		internal MainDirectiveAttribute <int> CodePage {
 			get { return codepage; }
 		}
 
+		internal MainDirectiveAttribute <int> LCID {
+			get { return lcid; }
+		}
+
+		internal MainDirectiveAttribute <string> ClientTarget {
+			get { return clientTarget; }
+		}
+
+		internal MainDirectiveAttribute <string> MasterPageFile {
+			get { return masterPage; }
+		}
+
+		internal MainDirectiveAttribute <string> Title {
+			get { return title; }
+		}
+
+		internal MainDirectiveAttribute <string> Theme {
+			get { return theme; }
+		}
+#if NET_4_0
+		internal MainDirectiveAttribute <string> MetaDescription {
+			get { return metaDescription; }
+		}
+
+		internal MainDirectiveAttribute <string> MetaKeywords {
+			get { return metaKeywords; }
+		}
+#endif
 		internal string Culture {
 			get { return culture; }
 		}
 
 		internal string UICulture {
 			get { return uiculture; }
-		}
-
-		internal int LCID {
-			get { return lcid; }
 		}
 
 		internal string ErrorPage {
@@ -544,15 +641,10 @@ namespace System.Web.UI
 			get { return validateRequest; }
 		}
 
-		internal string ClientTarget {
-			get { return clientTarget; }
-		}
-
 		internal bool NotBuffer {
 			get { return notBuffer; }
 		}
 
-#if NET_2_0
 		internal bool Async {
 			get { return async; }
 		}
@@ -560,17 +652,9 @@ namespace System.Web.UI
 		internal int AsyncTimeout {
 			get { return asyncTimeout; }
 		}
-		
-		internal string Theme {
-			get { return theme; }
-		}
 
 		internal string StyleSheetTheme {
 			get { return styleSheetTheme; }
-		}
-
-		internal string MasterPageFile {
-			get { return masterPage; }
 		}
 		
 		internal Type MasterType {
@@ -580,10 +664,6 @@ namespace System.Web.UI
 				
 				return masterType;
 			}
-		}
-
-		internal string Title {
-			get { return title; }
 		}
 
 		internal bool EnableEventValidation {
@@ -608,7 +688,6 @@ namespace System.Web.UI
 				return previousPageType;
 			}
 		}
-#endif
 	}
 }
 

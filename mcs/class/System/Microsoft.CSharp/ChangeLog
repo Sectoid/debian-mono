@@ -1,3 +1,21 @@
+2010-04-12  Jonathan Pryor  <jpryor@novell.com>
+
+	* CSharpCodeGenerator.cs: Support generating default(T) expressions.
+
+2010-03-06  Marek Habersack  <mhabersack@novell.com>
+
+	* CSharpCodeCompiler.cs: in the 4.0 profile, the latest C#
+	standard is the default one.
+
+2009-12-02  Marek Habersack  <mhabersack@novell.com>
+
+	* CSharpCodeCompiler.cs: added support for dmcs
+
+2009-10-19  Michael Hutchinson <mhutchinson@novell.com>
+
+	* CSharpCodeGenerator.cs: Remove #if NET_2_0 as they're unneeded 
+	  now, and this makes it easier to sync with MD's branched copy.
+
 2009-04-22 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* CSharpCodeCompiler.cs: better error when there's a problem running

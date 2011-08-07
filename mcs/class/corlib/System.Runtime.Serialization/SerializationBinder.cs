@@ -32,9 +32,7 @@
 namespace System.Runtime.Serialization
 {
 	[Serializable]
-#if NET_2_0
 	[System.Runtime.InteropServices.ComVisibleAttribute (true)]
-#endif
 	public abstract class SerializationBinder
 	{
 		// Constructor
@@ -44,5 +42,13 @@ namespace System.Runtime.Serialization
 		}
 
 		public abstract Type BindToType (string assemblyName, string typeName);
+
+#if NET_4_0
+		public virtual void BindToName (Type serializedType, out string assemblyName, out string typeName)
+		{
+			assemblyName = null;
+			typeName = null;
+		}
+#endif
 	}
 }

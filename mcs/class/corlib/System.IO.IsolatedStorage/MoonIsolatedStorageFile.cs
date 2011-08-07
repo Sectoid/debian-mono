@@ -28,7 +28,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -99,7 +99,14 @@ namespace System.IO.IsolatedStorage {
 			}
 			throw new IsolatedStorageException ();
 		}
-		
+
+		[MonoTODO ("always return true since this was the only behavior in Silverlight 3")]
+		public static bool IsEnabled {
+			get {
+				return true;
+			}
+		}
+
 		public void CreateDirectory (string dir)
 		{
 			PreCheck ();

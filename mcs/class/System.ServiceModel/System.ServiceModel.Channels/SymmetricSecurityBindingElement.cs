@@ -31,6 +31,7 @@ using System.IdentityModel.Selectors;
 using System.IdentityModel.Tokens;
 using System.Net.Security;
 using System.ServiceModel.Channels;
+using System.ServiceModel.Channels.Security;
 using System.ServiceModel.Description;
 using System.ServiceModel.Security;
 using System.ServiceModel.Security.Tokens;
@@ -157,7 +158,7 @@ namespace System.ServiceModel.Channels
 				return (T) (object) GetCapabilities ();
 			if (typeof (T) == typeof (IdentityVerifier))
 				throw new NotImplementedException ();
-			return context.GetInnerProperty<T> ();
+			return base.GetProperty<T> (context);
 		}
 
 		SymmetricSecurityCapabilities GetCapabilities ()

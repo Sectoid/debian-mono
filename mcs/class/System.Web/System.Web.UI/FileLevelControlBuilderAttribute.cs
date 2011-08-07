@@ -6,7 +6,7 @@
 //     Marek Habersack (mhabersack@novell.com)
 //
 // (C) 2007 Mainsoft Co. (http://www.mainsoft.com)
-// (C) 2009 Novell, Inc (http://novell.com/)
+// (C) 2009-2010 Novell, Inc (http://novell.com/)
 //
 //
 //
@@ -30,7 +30,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 namespace System.Web.UI
 {
 	[AttributeUsageAttribute (AttributeTargets.Class)]
@@ -78,8 +77,7 @@ namespace System.Web.UI
 		
 		public override bool IsDefaultAttribute ()
 		{
-			return Equals (Default);
+			return this == Default;
 		}
 	}
 }
-#endif

@@ -1,11 +1,10 @@
-public class Test
-{
-	public static void Main ()
-	{
-	}
+using System;
 
-	public static void Foo (object arg)
+public static class Program
+{
+	private static void Main ()
 	{
-	      string result = arg as string ?? "";
+		Exception ex1 = null ?? new Exception ();
+		Exception ex2 = new Exception() ?? null;
 	}
 }

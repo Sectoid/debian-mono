@@ -1,3 +1,30 @@
+2011-01-10  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Implement a few conversion operations.
+
+	Add conversion operations between 4f, 2d and 4i. Implemented only
+	on x86 for now.
+
+2011-01-09  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix 64bits Shuffle/3 when simd intrinsics are disabled
+
+2011-01-06  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* VectorOperations.cs: Add new methods.
+
+2011-01-06  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Implement Shuffle/3
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
+2010-03-24 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Vector4f.cs: Add vector x scalar multiply.
+
 2009-09-18 Rodrigo Kumpera  <rkumpera@novell.com>
 
 	* SimdRuntime.cs: Raise an exception if the method been queried

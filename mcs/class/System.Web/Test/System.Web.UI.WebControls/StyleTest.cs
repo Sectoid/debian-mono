@@ -127,7 +127,7 @@ namespace MonoTests.System.Web.UI.WebControls
 
 		public bool SetBitCalledFlag = false;
 		public int SetBitCalledValue = 0;
-		protected override void SetBit (int bit) {
+		protected internal override void SetBit (int bit) {
 			SetBitCalledFlag = true;
 			SetBitCalledValue = bit;
 			base.SetBit (bit);
@@ -469,7 +469,10 @@ namespace MonoTests.System.Web.UI.WebControls
 			s.AddAttributesToRender (tw);
 			tw.RenderBeginTag ("span");
 			tw.RenderEndTag ();
-			HtmlDiff.AssertAreEqual ("<span style=\"FillStyleAttributes:FillStyleAttributes;\" />", sw.ToString (), "AddAttributesToRender_use_FillStyleAttributes#2");
+
+			string origHtml = "<span style=\"FillStyleAttributes:FillStyleAttributes;\"></span>";
+			string renderedHtml = sw.ToString ();
+			HtmlDiff.AssertAreEqual (origHtml, renderedHtml, "AddAttributesToRender_use_FillStyleAttributes#2");
 		}
 
 		[Test]

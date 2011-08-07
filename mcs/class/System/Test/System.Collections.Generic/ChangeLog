@@ -1,15 +1,67 @@
+2010-12-26  Luke Halliwell  <luke.j.halliwell@gmail.com>
+
+	Fix for bug 349053 - unable to serialize SortedDictionary
+
+2010-04-09  Raja R Harinath  <harinath@hurrynot.org>
+
+	* SortedSetTest.cs (ViewCount): Test that count reflects changes
+	in underlying set.
+
+2010-04-07  Raja R Harinath  <harinath@hurrynot.org>
+
+	* SortedSetTest.cs: Update to test more view functionality,
+	including set comparison operators.
+
+2010-04-06  Jb Evain  <jbevain@novell.com>
+
+	* SortedSetTest.cs: add test for SortedSubSet.Count.
+
+2010-04-05  Raja R Harinath  <harinath@hurrynot.org>
+
+	* SortedSetTest.cs: Add test for various set comparison operators.
+
+2010-04-04  Raja R Harinath  <harinath@hurrynot.org>
+
+	* SortedSetTest.cs: Add tests for IntersectWith, UnionWith,
+	ExceptWith and SymmetricExceptWith.
+
+2010-04-02  Jb Evain  <jbevain@novell.com>
+
+	* SortedSetTest.cs: add tests for Min and Max on subsets.
+
+2010-04-02  Jb Evain  <jbevain@novell.com>
+
+	* SortedSetTest.cs: add tests for GetViewBetween.
+
+2010-04-02  Jb Evain  <jbevain@novell.com>
+
+	* SortedSetTest.cs: add tests for Min and Max.
+
+2010-04-02  Jb Evain  <jbevain@novell.com>
+
+	* SortedSetTest.cs: add test for RemoveWhere.
+
+2010-04-02  Jb Evain  <jbevain@novell.com>
+
+	* SortedSetTest.cs: add test for Reverse.
+
+2010-04-02  Jb Evain  <jbevain@novell.com>
+
+	* SortedSetTest.cs: add new fixture.
+
+2009-12-01  Jb Evain  <jbevain@novell.com>
+
+	* StackTest.cs: add a test ensuring that disposing the stack
+	enumerator prevents to iterate further.
+
 2009-11-25  Jb Evain  <jbevain@novell.com>
 
 	* QueueTest.cs: add test for a specific combination of
 	calls that make the queue crash when enqueuing an item.
 
-	backport 146925.
-
 2009-11-25  Jb Evain  <jbevain@novell.com>
 
 	* QueueTest.cs: add tests for ICollection.CopyTo.
-
-	backport r146914.
 
 2009-07-31  Raja R Harinath  <harinath@hurrynot.org>
 

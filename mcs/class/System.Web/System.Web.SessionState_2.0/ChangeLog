@@ -1,3 +1,83 @@
+2011-05-24  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Don't throw an exception if a session item being
+	released does not have a lock.
+
+	It can happen when the item is being released after its associated
+	session has ended.
+
+2011-04-22  Marek Habersack  <grendel@twistedcode.net>
+
+	Fix compilation
+
+2011-04-22  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Do nothing if null SessionStateStoreData is passed to
+	SessionStateServerHandler.SetAndReleaseItemExclusive
+
+2011-02-21  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #669807. Cache session item locks as the
+	item might be cleared before the lock needs to be released.
+
+2010-12-09  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Get system.web/httpRuntime only once
+
+	Get that section only once and keep it in HttpRuntime.
+
+2010-11-18  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] A few memory usage optimizations.
+
+2010-11-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Cache + SessionInProcHandler memory usage improvements
+
+2010-10-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	A few moves/changes following previous patch review
+
+2010-10-08  Sebastien Pouliot  <sebastien@ximian.com>
+
+	Normalization of cryptographic uses in asp.net
+
+2010-10-08  Sebastien Pouliot  <sebastien@ximian.com>
+
+	Remove unneeded 'using' clauses
+
+2010-08-10  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #629990 In-Proc session state must remove
+	cache prefix from item key
+
+	When the in-proc session handler puts items in the internal cache,
+	it prefixes them with the @@@InProc@ prefix to make sure they
+	don't conflict with other values stored there. The handler has
+	been failing so far to remove that prefix when triggering the
+	session end event. This commit fixes the issue.
+
+2010-02-24  Marek Habersack  <mhabersack@novell.com>
+
+	* SessionStateServerHandler.cs, SessionSQLServerHandler.cs: added
+	support for session state compression (4.0)
+
+2010-01-20  Marek Habersack  <mhabersack@novell.com>
+
+	* SessionStateBehavior.cs: added (4.0)
+
+2009-10-19  Marek Habersack  <mhabersack@novell.com>
+
+	* SessionStateModule.cs: enabled SQL session state provider.
+
+	* SessionSQLServerHandler.cs: implemented. Uses System.Data.Common
+	for provider-agnostic implementation. Until an issue with Npgsql's
+	2.0 factory missing is resolved it defaults to using
+	Mono.Data.Sqlite as the provider.
+	Selecting of the data provider is done by putting DbProviderName
+	in the connection string specified in the
+	<system.web/sessionState> configuration section.
+
 2009-03-21  Marek Habersack  <mhabersack@novell.com>
 
 	* HttpSessionState.cs: implemented the CookieMode property.

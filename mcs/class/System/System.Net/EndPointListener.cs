@@ -33,6 +33,7 @@ using System.Net.Sockets;
 using System.Collections;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Threading;
 using Mono.Security.Authenticode;
 
 namespace System.Net {
@@ -46,6 +47,7 @@ namespace System.Net {
 		X509Certificate2 cert;
 		AsymmetricAlgorithm key;
 		bool secure;
+		Hashtable unregistered;
 
 		public EndPointListener (IPAddress addr, int port, bool secure)
 		{
@@ -58,8 +60,12 @@ namespace System.Net {
 			sock = new Socket (addr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 			sock.Bind (endpoint);
 			sock.Listen (500);
-			sock.BeginAccept (OnAccept, this);
+			SocketAsyncEventArgs args = new SocketAsyncEventArgs ();
+			args.UserToken = this;
+			args.Completed += OnAccept;
+			sock.AcceptAsync (args);
 			prefixes = new Hashtable ();
+			unregistered = Hashtable.Synchronized (new Hashtable ());
 		}
 
 		void LoadCertificateAndKey (IPAddress addr, int port)
@@ -78,26 +84,27 @@ namespace System.Net {
 			}
 		}
 
-		static void OnAccept (IAsyncResult ares)
+		static void OnAccept (object sender, EventArgs e)
 		{
-			EndPointListener epl = (EndPointListener) ares.AsyncState;
+			SocketAsyncEventArgs args = (SocketAsyncEventArgs) e;
+			EndPointListener epl = (EndPointListener) args.UserToken;
 			Socket accepted = null;
-			try {
-				accepted = epl.sock.EndAccept (ares);
-			} catch {
-				// Anything to do here?
-			} finally {
-				try {
-					epl.sock.BeginAccept (OnAccept, epl);
-				} catch {
-					if (accepted != null) {
-						try {
-							accepted.Close ();
-						} catch {}
-						accepted = null;
-					}
-				} 
+			if (args.SocketError == SocketError.Success) {
+				accepted = args.AcceptSocket;
+				args.AcceptSocket = null;
 			}
+
+			try {
+				if (epl.sock != null)
+					epl.sock.AcceptAsync (args);
+			} catch {
+				if (accepted != null) {
+					try {
+						accepted.Close ();
+					} catch {}
+					accepted = null;
+				}
+			} 
 
 			if (accepted == null)
 				return;
@@ -107,20 +114,25 @@ namespace System.Net {
 				return;
 			}
 			HttpConnection conn = new HttpConnection (accepted, epl, epl.secure, epl.cert, epl.key);
+			epl.unregistered [conn] = conn;
 			conn.BeginReadRequest ();
+		}
+
+		internal void RemoveConnection (HttpConnection conn)
+		{
+			unregistered.Remove (conn);
 		}
 
 		public bool BindContext (HttpListenerContext context)
 		{
 			HttpListenerRequest req = context.Request;
 			ListenerPrefix prefix;
-			HttpListener listener = SearchListener (req.UserHostName, req.Url, out prefix);
+			HttpListener listener = SearchListener (req.Url, out prefix);
 			if (listener == null)
 				return false;
 
 			context.Listener = listener;
 			context.Connection.Prefix = prefix;
-			listener.RegisterContext (context);
 			return true;
 		}
 
@@ -129,57 +141,57 @@ namespace System.Net {
 			if (context == null || context.Request == null)
 				return;
 
-			HttpListenerRequest req = context.Request;
-			ListenerPrefix prefix;
-			HttpListener listener = SearchListener (req.UserHostName, req.Url, out prefix);
-			if (listener != null)
-				listener.UnregisterContext (context);
+			context.Listener.UnregisterContext (context);
 		}
 
-		HttpListener SearchListener (string host, Uri uri, out ListenerPrefix prefix)
+		HttpListener SearchListener (Uri uri, out ListenerPrefix prefix)
 		{
 			prefix = null;
 			if (uri == null)
 				return null;
 
-			//TODO: We should use a ReaderWriterLock between this and the add/remove operations.
-			if (host != null) {
-				int colon = host.IndexOf (':');
-				if (colon >= 0)
-					host = host.Substring (0, colon);
-			}
-
+			string host = uri.Host;
+			int port = uri.Port;
 			string path = HttpUtility.UrlDecode (uri.AbsolutePath);
 			string path_slash = path [path.Length - 1] == '/' ? path : path + "/";
 			
 			HttpListener best_match = null;
 			int best_length = -1;
 
-			lock (prefixes) {
-				if (host != null && host != "") {
-					foreach (ListenerPrefix p in prefixes.Keys) {
-						string ppath = p.Path;
-						if (ppath.Length < best_length)
-							continue;
+			if (host != null && host != "") {
+				Hashtable p_ro = prefixes;
+				foreach (ListenerPrefix p in p_ro.Keys) {
+					string ppath = p.Path;
+					if (ppath.Length < best_length)
+						continue;
 
-						if (p.Host == host && (path.StartsWith (ppath) || path_slash.StartsWith (ppath))) {
-							best_length = ppath.Length;
-							best_match = (HttpListener) prefixes [p];
-							prefix = p;
-						}
+					if (p.Host != host || p.Port != port)
+						continue;
+
+					if (path.StartsWith (ppath) || path_slash.StartsWith (ppath)) {
+						best_length = ppath.Length;
+						best_match = (HttpListener) p_ro [p];
+						prefix = p;
 					}
-					if (best_length != -1)
-						return best_match;
 				}
-
-				best_match = MatchFromList (host, path, unhandled, out prefix);
-				if (best_match != null)
-					return best_match;
-
-				best_match = MatchFromList (host, path, all, out prefix);
-				if (best_match != null)
+				if (best_length != -1)
 					return best_match;
 			}
+
+			ArrayList list = unhandled;
+			best_match = MatchFromList (host, path, list, out prefix);
+			if (path != path_slash && best_match == null)
+				best_match = MatchFromList (host, path_slash, list, out prefix);
+			if (best_match != null)
+				return best_match;
+
+			list = all;
+			best_match = MatchFromList (host, path, list, out prefix);
+			if (path != path_slash && best_match == null)
+				best_match = MatchFromList (host, path_slash, list, out prefix);
+			if (best_match != null)
+				return best_match;
+
 			return null;
 		}
 
@@ -216,24 +228,23 @@ namespace System.Net {
 				if (p.Path == prefix.Path) //TODO: code
 					throw new HttpListenerException (400, "Prefix already in use.");
 			}
-
 			coll.Add (prefix);
 		}
 
-		void RemoveSpecial (ArrayList coll, ListenerPrefix prefix)
+		bool RemoveSpecial (ArrayList coll, ListenerPrefix prefix)
 		{
 			if (coll == null)
-				return;
+				return false;
 
 			int c = coll.Count;
 			for (int i = 0; i < c; i++) {
 				ListenerPrefix p = (ListenerPrefix) coll [i];
 				if (p.Path == prefix.Path) {
 					coll.RemoveAt (i);
-					CheckIfRemove ();
-					return;
+					return true;
 				}
 			}
+			return false;
 		}
 
 		void CheckIfRemove ()
@@ -241,10 +252,12 @@ namespace System.Net {
 			if (prefixes.Count > 0)
 				return;
 
-			if (unhandled != null && unhandled.Count > 0)
+			ArrayList list = unhandled;
+			if (list != null && list.Count > 0)
 				return;
 
-			if (all != null && all.Count > 0)
+			list = all;
+			if (list != null && list.Count > 0)
 				return;
 
 			EndPointManager.RemoveEndPoint (this, endpoint);
@@ -253,57 +266,87 @@ namespace System.Net {
 		public void Close ()
 		{
 			sock.Close ();
+			lock (unregistered.SyncRoot) {
+				foreach (HttpConnection c in unregistered.Keys)
+					c.Close (true);
+				unregistered.Clear ();
+			}
 		}
 
 		public void AddPrefix (ListenerPrefix prefix, HttpListener listener)
 		{
-			lock (prefixes) {
-				if (prefix.Host == "*") {
-					if (unhandled == null)
-						unhandled = new ArrayList ();
-
+			ArrayList current;
+			ArrayList future;
+			if (prefix.Host == "*") {
+				do {
+					current = unhandled;
+					future = (current != null) ? (ArrayList) current.Clone () : new ArrayList ();
 					prefix.Listener = listener;
-					AddSpecial (unhandled, prefix);
-					return;
-				}
+					AddSpecial (future, prefix);
+				} while (Interlocked.CompareExchange (ref unhandled, future, current) != current);
+				return;
+			}
 
-				if (prefix.Host == "+") {
-					if (all == null)
-						all = new ArrayList ();
+			if (prefix.Host == "+") {
+				do {
+					current = all;
+					future = (current != null) ? (ArrayList) current.Clone () : new ArrayList ();
 					prefix.Listener = listener;
-					AddSpecial (all, prefix);
-					return;
-				}
+					AddSpecial (future, prefix);
+				} while (Interlocked.CompareExchange (ref all, future, current) != current);
+				return;
+			}
 
-				if (prefixes.ContainsKey (prefix)) {
-					HttpListener other = (HttpListener) prefixes [prefix];
+			Hashtable prefs, p2;
+			do {
+				prefs = prefixes;
+				if (prefs.ContainsKey (prefix)) {
+					HttpListener other = (HttpListener) prefs [prefix];
 					if (other != listener) // TODO: code.
 						throw new HttpListenerException (400, "There's another listener for " + prefix);
 					return;
 				}
-
-				prefixes [prefix] = listener;
-			}
+				p2 = (Hashtable) prefs.Clone ();
+				p2 [prefix] = listener;
+			} while (Interlocked.CompareExchange (ref prefixes, p2, prefs) != prefs);
 		}
 
 		public void RemovePrefix (ListenerPrefix prefix, HttpListener listener)
 		{
-			lock (prefixes) {
-				if (prefix.Host == "*") {
-					RemoveSpecial (unhandled, prefix);
-					return;
-				}
-
-				if (prefix.Host == "+") {
-					RemoveSpecial (all, prefix);
-					return;
-				}
-
-				if (prefixes.ContainsKey (prefix)) {
-					prefixes.Remove (prefix);
-					CheckIfRemove ();
-				}
+			ArrayList current;
+			ArrayList future;
+			if (prefix.Host == "*") {
+				do {
+					current = unhandled;
+					future = (current != null) ? (ArrayList) current.Clone () : new ArrayList ();
+					if (!RemoveSpecial (future, prefix))
+						break; // Prefix not found
+				} while (Interlocked.CompareExchange (ref unhandled, future, current) != current);
+				CheckIfRemove ();
+				return;
 			}
+
+			if (prefix.Host == "+") {
+				do {
+					current = all;
+					future = (current != null) ? (ArrayList) current.Clone () : new ArrayList ();
+					if (!RemoveSpecial (future, prefix))
+						break; // Prefix not found
+				} while (Interlocked.CompareExchange (ref all, future, current) != current);
+				CheckIfRemove ();
+				return;
+			}
+
+			Hashtable prefs, p2;
+			do {
+				prefs = prefixes;
+				if (!prefs.ContainsKey (prefix))
+					break;
+
+				p2 = (Hashtable) prefs.Clone ();
+				p2.Remove (prefix);
+			} while (Interlocked.CompareExchange (ref prefixes, p2, prefs) != prefs);
+			CheckIfRemove ();
 		}
 	}
 }

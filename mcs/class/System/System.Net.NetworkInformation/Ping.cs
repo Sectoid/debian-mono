@@ -28,12 +28,14 @@
 //
 #if NET_2_0
 using System;
+using System.IO;
 using System.Text;
 using System.Diagnostics;
 using System.Globalization;
 using System.ComponentModel;
 using System.Net.Sockets;
 using System.Security.Principal;
+using System.Security.Cryptography;
 using System.Runtime.InteropServices;
 
 namespace System.Net.NetworkInformation {
@@ -56,9 +58,14 @@ namespace System.Net.NetworkInformation {
 		}
 		
 		const int DefaultCount = 1;
-		const string PingBinPath = "/bin/ping";
+		static readonly string [] PingBinPaths = new string [] {
+			"/bin/ping",
+			"/sbin/ping",
+			"/usr/sbin/ping"
+		};
+		static readonly string PingBinPath;
 		const int default_timeout = 4000; // 4 sec.
-		const int identifier = 1; // no need to be const, but there's no place to change it.
+		ushort identifier;
 
 		// This value is correct as of Linux kernel version 2.6.25.9
 		// See /usr/include/linux/capability.h
@@ -79,13 +86,29 @@ namespace System.Net.NetworkInformation {
 				CheckLinuxCapabilities ();
 				if (!canSendPrivileged && WindowsIdentity.GetCurrent ().Name == "root")
 					canSendPrivileged = true;
+			
+				// Since different Unix systems can have different path to bin, we try some
+				// of the known ones.
+				foreach (string ping_path in PingBinPaths)
+					if (File.Exists (ping_path)) {
+						PingBinPath = ping_path;
+						break;
+					}
 			}
 			else
 				canSendPrivileged = true;
+
+			if (PingBinPath == null)
+				PingBinPath = "/bin/ping"; // default, fallback value
 		}
 		
 		public Ping ()
 		{
+			// Generate a new random 16 bit identifier for every ping
+			RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider ();
+			byte [] randomIdentifier = new byte [2];
+			rng.GetBytes (randomIdentifier);
+			identifier = (ushort)(randomIdentifier [0] + (randomIdentifier [1] << 8));
 		}
   
 		[DllImport ("libc", EntryPoint="capget")]
@@ -271,14 +294,12 @@ namespace System.Net.NetworkInformation {
 			ping.StartInfo.RedirectStandardOutput = true;
 			ping.StartInfo.RedirectStandardError = true;
 
-			DateTime start = DateTime.UtcNow;
 			try {
 				ping.Start ();
 
 #pragma warning disable 219
-			// No need to read stdout or stderr as long as the output is less than 4k on linux <= 2.6.11 and 65k after that
-			//	string stdout = ping.StandardOutput.ReadToEnd ();
-			//	string stderr = ping.StandardError.ReadToEnd ();
+				string stdout = ping.StandardOutput.ReadToEnd ();
+				string stderr = ping.StandardError.ReadToEnd ();
 #pragma warning restore 219
 				
 				trip_time = (long) (DateTime.Now - sentTime).TotalMilliseconds;
@@ -383,7 +404,7 @@ namespace System.Net.NetworkInformation {
 			}
 
 			// to be sent
-			public IcmpMessage (byte type, byte code, short identifier, short sequence, byte [] data)
+			public IcmpMessage (byte type, byte code, ushort identifier, ushort sequence, byte [] data)
 			{
 				bytes = new byte [data.Length + 8];
 				bytes [0] = type;
@@ -407,18 +428,18 @@ namespace System.Net.NetworkInformation {
 				get { return bytes [1]; }
 			}
 
-			public byte Identifier {
-				get { return (byte) (bytes [4] + (bytes [5] << 8)); }
+			public ushort Identifier {
+				get { return (ushort) (bytes [4] + (bytes [5] << 8)); }
 			}
 
-			public byte Sequence {
-				get { return (byte) (bytes [6] + (bytes [7] << 8)); }
+			public ushort Sequence {
+				get { return (ushort) (bytes [6] + (bytes [7] << 8)); }
 			}
 
 			public byte [] Data {
 				get {
 					byte [] data = new byte [bytes.Length - 8];
-					Buffer.BlockCopy (bytes, 0, data, 0, data.Length);
+					Buffer.BlockCopy (bytes, 8, data, 0, data.Length);
 					return data;
 				}
 			}

@@ -33,56 +33,17 @@
 
 using System;
 using System.Runtime.CompilerServices;
-
-#if NET_2_0
 using System.Runtime.InteropServices;
-#endif
 
 namespace System.Threading 
 {
-
-#if NET_2_0
 	[ComVisible (true)]
-#endif
- 	public sealed class AutoResetEvent :
-#if NET_2_0
-	EventWaitHandle
-#else
-	WaitHandle 
-#endif
+ 	public sealed class AutoResetEvent : EventWaitHandle
 	{
 		// Constructor
-#if NET_2_0
 		public AutoResetEvent (bool initialState)
 			: base(initialState, EventResetMode.AutoReset)
 		{
 		}
-#else
-		public AutoResetEvent(bool initialState) {
-			bool created;
-			
-			Handle = NativeEventCalls.CreateEvent_internal(false,initialState,null, out created);
-		}
-#endif
-
-		// Methods
-
-/* Need BOOTSTRAP_NET_2_0 because System.Threading.Timer wants to use
- * the Set and Reset methods that have moved to EventWaitHandle in the
- * 2.0 profile
- */
-#if ONLY_1_1 || BOOTSTRAP_NET_2_0
-		public bool Set() {
-			CheckDisposed ();
-			
-			return(NativeEventCalls.SetEvent_internal(Handle));
-		}
-
-		public bool Reset() {
-			CheckDisposed ();
-			
-			return(NativeEventCalls.ResetEvent_internal(Handle));
-		}
-#endif
 	}
 }

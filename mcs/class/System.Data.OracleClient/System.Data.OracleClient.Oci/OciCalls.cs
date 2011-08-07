@@ -1,4 +1,4 @@
-﻿//
+//
 // OciCalls.cs
 //
 // Part of the Mono class libraries at
@@ -8,13 +8,15 @@
 // Namespace: System.Data.OracleClient.Oci
 //
 // Authors: Joerg Rosenkranz <joergr@voelcker.com>
-//          Daniel Morgan <danielmorgan@verizon.net>
+//          Daniel Morgan <monodanmorg@yahoo.com>
 //
 // Copyright (C) Joerg Rosenkranz, 2004
-// Copyright (C) Daniel Morgan, 2005
+// Copyright (C) Daniel Morgan, 2005, 2009
 //
 // Licensed under the MIT/X11 License.
 //
+
+//#define ORACLE_DATA_ACCESS
 
 using System;
 using System.Diagnostics;
@@ -61,6 +63,19 @@ namespace System.Data.OracleClient.Oci
 				uint size,
 				[MarshalAs (UnmanagedType.U4)] OciAttributeType attrtype,
 				IntPtr errhp);
+
+#if ORACLE_DATA_ACCESS
+			[DllImport ("oci", EntryPoint = "OCIPasswordChange")]
+			internal static extern int OCIPasswordChange (IntPtr svchp, 
+				IntPtr errhp,
+				byte [] user_name, 
+				[MarshalAs (UnmanagedType.U4)] int usernm_len,
+				byte [] opasswd,
+				[MarshalAs (UnmanagedType.U4)] int opasswd_len,
+				byte [] npasswd,
+				[MarshalAs (UnmanagedType.U4)] int npasswd_len,
+				[MarshalAs (UnmanagedType.U4)] uint mode);
+#endif
 
 			[DllImport ("oci")]
 			internal static extern int OCIErrorGet (IntPtr hndlp,
@@ -449,7 +464,7 @@ namespace System.Data.OracleClient.Oci
 				[MarshalAs (UnmanagedType.U4)] int dstlen,
 				byte [] src,
 				[MarshalAs (UnmanagedType.U4)] int srclen,
-				[MarshalAs (UnmanagedType.U4)] out int rsize);
+				[MarshalAs (UnmanagedType.SysUInt)] ref UIntPtr rsizep);
 
 			[DllImport ("oci")]
 			internal static extern int OCIUnicodeToCharSet (
@@ -458,7 +473,7 @@ namespace System.Data.OracleClient.Oci
 				[MarshalAs (UnmanagedType.U4)] int dstlen,
 				[MarshalAs (UnmanagedType.LPWStr)] string src,
 				[MarshalAs (UnmanagedType.U4)] int srclen,
-				[MarshalAs (UnmanagedType.U4)] out int rsize);
+				[MarshalAs (UnmanagedType.SysUInt)] ref UIntPtr rsizep);
 		}
 
 		#endregion
@@ -490,7 +505,21 @@ namespace System.Data.OracleClient.Oci
 			#endif
 			return OciNativeCalls.OCIAttrSetString (trgthndlp, trghndltyp, attributep, size, attrtype, errhp);
 		}
-
+#if ORACLE_DATA_ACCESS
+		internal static int OCIPasswordChange (IntPtr svchp, IntPtr errhp,
+				int usernm_len,
+				byte [] opasswd,
+				int opasswd_len,
+				byte [] npasswd,
+				int npasswd_len,
+				uint mode)
+		{
+			#if TRACE
+			Trace.WriteLineIf(traceOci, string.Format("OCIPasswordChange"), "OCI");
+			#endif
+			return OciNativeCalls.OCIPasswordChange (svchp, errhp, user_name, (uint) usernm_len, opasswd, (uint) opasswd_len, npasswd, (uint) npasswd_len, mode);
+		}
+#endif
 		internal static int OCIErrorGet (IntPtr hndlp,
 			uint recordno,
 			IntPtr sqlstate,
@@ -1154,26 +1183,26 @@ namespace System.Data.OracleClient.Oci
 			IntPtr svchp,
 			StringBuilder dst,
 			byte [] src,
-			out int rsize)
+			[MarshalAs (UnmanagedType.SysUInt)] ref UIntPtr rsizep)
 		{
 			#if TRACE
 			Trace.WriteLineIf(traceOci, "OCICharSetToUnicode", "OCI");
 			#endif
 
-			return OciNativeCalls.OCICharSetToUnicode (svchp, dst, dst!=null ? dst.Capacity : 0, src, src.Length, out rsize);
+			return OciNativeCalls.OCICharSetToUnicode (svchp, dst, dst!=null ? dst.Capacity : 0, src, src.Length, ref rsizep);
 		}
 
 		internal static int OCIUnicodeToCharSet (
 			IntPtr svchp,
 			byte [] dst,
 			[MarshalAs (UnmanagedType.LPWStr)] string src,
-			[MarshalAs (UnmanagedType.U4)] out int rsize)
+			[MarshalAs (UnmanagedType.SysUInt)] ref UIntPtr rsizep)
 		{
 			#if TRACE
-			Trace.WriteLineIf(traceOci, "OCICharSetToUnicode", "OCI");
+			Trace.WriteLineIf(traceOci, "OCIUnicodeToCharSet", "OCI");
 			#endif
 
-			return OciNativeCalls.OCIUnicodeToCharSet (svchp, dst, dst!=null ? dst.Length : 0, src, src.Length, out rsize);
+			return OciNativeCalls.OCIUnicodeToCharSet (svchp, dst, dst!=null ? dst.Length : 0, src, src.Length, ref rsizep);
 		}
 
 		[DllImport ("oci")]

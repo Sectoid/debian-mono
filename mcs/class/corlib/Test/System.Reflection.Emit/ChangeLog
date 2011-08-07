@@ -1,20 +1,220 @@
+2011-04-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Revert "Add checks to ParameterBuilder.SetConstant () to avoid an
+	assert in the runtime. Fixes #684438."
+
+	This reverts commit c5c488ec9d93d7003f28ac246813a469c4b7b088.
+
+	This seems to break IronRuby.
+
+2011-04-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Add checks to ParameterBuilder.SetConstant () to avoid an assert
+	in the runtime. Fixes #684438.
+
+2010-11-30  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Check for null and valuetypes.
+
+2010-10-26  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* TypeBuilderTest.cs: Add regression test.
+
+	Fixes #649237
+
+2010-10-25  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add regression test for #649017.
+
+2010-10-22  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* TypeBuilderTest.cs: Add regression test.
+
+	Fixes #648391
+
+2010-10-19  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add regression test for #640780
+
+2010-10-11  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* DynamicMethodTest.cs: Add test for GetCurrentMethod.
+
+	Fixes #640702
+
+2010-10-08  Jb Evain  <jbevain@gmail.com>
+
+	Add tests for ModuleBuilder.ResolveMember on different kind of
+	tokens
+
+2010-10-07  Jb Evain  <jbevain@gmail.com>
+
+	Add tests for ModuleBuilder.ResolveMemberToken
+
+2010-10-07  Jb Evain  <jbevain@gmail.com>
+
+	Fix test
+
+2010-10-07  Jb Evain  <jbevain@gmail.com>
+
+	[Test] Add test for ModuleBuilder.ResolveFieldToken on generic
+	fields.
+
+2010-09-20  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* AssemblyBuilderTest.cs: Add test for GetTypes () and incomplete
+	TypeBuilders'.
+
+	Fixes #640288
+
+2010-09-13  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* MethodBuilderTest.cs: Add test for #384127.
+
+	Fixes bug #384127.
+
+2010-08-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the corlib tests build.
+
+2010-08-17  Jb Evain  <jbevain@gmail.com>
+
+	Add test for dynamic methods with invalid unicode name
+
+2010-08-06  Jb Evain  <jbevain@gmail.com>
+
+	Test that we can call GetMethodBody on a method defined in a
+	dynamic module.
+
+2010-08-04  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* MethodBuilderTest.cs: Add test for generic arguments used are
+	parameter of a method builder.
+
+2010-07-29 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodBuilderTest.cs: Add test for #626441.
+
+2010-07-15  Miguel de Icaza  <miguel@novell.com>
+
+	* FieldBuilderTest.cs: Add new test that exercises encoding
+	datetime constants with SetConstant.
+
+2010-06-21 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* GenericTypeParameterBuilderTest.cs: Fix test
+	under v4.
+
+2010-06-15  Zoltan Varga  <vargaz@gmail.com>
+
+	* ModuleBuilderTest.cs: Disable the TestGlobalMethods () test since it's been failing
+	for a long time.
+
+2010-05-27  Jb Evain  <jbevain@novell.com>
+
+	* EnumBuilderTest.cs: add test for .net_4_0's GetEnumUnderlyingType.
+
+2010-05-13 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilderTest.cs: Fix test not to depend
+	on interface order.
+
+2010-04-20 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilderTest.cs: Enable a bunch of asserts.
+	They regression test #331126.
+
+2010-04-20 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilderTest.cs: Slay all 1.0 code.
+
+2010-04-13 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilderTest.cs: Regression test for #422113.
+
+2010-04-09 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodBuilderTest.cs: Regression test for #591226.
+
+2010-04-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilderTest.cs: Regression test for #591225.
+
+2010-04-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilderTest.cs: Regression test for #594728.
+
+2010-04-01 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ModuleBuilderTest.cs (TestGlobalMethods): Improve test.
+
+2010-03-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* ModuleBuilderTest.cs: Add a test for #592215.
+
+2010-03-26 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* AssemblyBuilderTest.cs: Test GetReferencedAssemblies
+	and GetLoadedModules.
+
+2010-03-25 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* AssemblyBuilderTest.cs: Add test for v4 GetModule(s).
+
+2010-03-24 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* DerivedTypesTests.cs: Fix some tests under v4.
+
+2010-03-23 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodOnTypeBuilderInstTest.cs: Add Test for ContainsGenericParameters.
+
+2010-03-11 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilderTest.cs: New tests for GetMethod, GetConstructor and GetField.
+
+2010-02-02  Zoltan Varga  <vargaz@gmail.com>
+
+	* DynamicMethodTest.cs: Add a test for #575955.
+
+2010-01-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* CustomAttributeBuilderTest.cs: Add a test for #574353.
+
+2010-01-21 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilderTest.cs: Add tests for #572660.
+
+2010-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* ILGeneratorTest.cs: Add a test for #564411.
+
+2009-12-16 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilderTest.cs: Add tests for #565127.
+
+2009-12-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* MethodBuilderTest.cs: Add a test for #565117.
+
+2009-12-09  Jb Evain  <jbevain@novell.com>
+
+	* ILGeneratorTest.cs: add a test for Emit(OpCode,LocalBuilder)
+	when the opcode is not related to locals.
+
 2009-10-30  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* MethodBuilderTest.cs: Add (copy from TypeBuilderTest) test 
 	cases for two DefineGenericParameters
-	[Backport r145118]
 
 2009-10-29  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* ModuleBuilderTest.cs: Add test cases for GetType overloads
-	* TypeBuilderTest.cs: Remove NotWorking from two 
-	DefineGenericParameters test case.
-	[Backport r145013]
+	* TypeBuilderTest.cs: Remove NotWorking from two DefineGenericParameters test case.
 
 2009-10-24  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* TypeBuilderTest.cs: Validation test cases for GetConstructor
-	[Backport r144791]
 
 2009-09-02 Rodrigo Kumpera  <rkumpera@novell.com>
 

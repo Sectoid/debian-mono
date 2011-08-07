@@ -53,6 +53,8 @@ namespace System.Web.UI.WebControls
 	[Designer ("System.Web.UI.Design.WebControls.TreeViewDesigner, " + Consts.AssemblySystem_Design, "System.ComponentModel.Design.IDesigner")]
 	public class TreeView: HierarchicalDataBoundControl, IPostBackEventHandler, IPostBackDataHandler, ICallbackEventHandler
 	{
+		static readonly char[] postDataSplitChars = {'|'};
+		
 		string activeSiteMapPath;
 		bool stylesPrepared;
 		Style hoverNodeStyle;
@@ -1025,12 +1027,15 @@ namespace System.Web.UI.WebControls
 			if (EnableClientScript && PopulateNodesFromClient) {
 				string states = postCollection [ClientID + "_PopulatedStates"];
 				if (states != null) {
-					foreach (string id in states.Split ('|')) {
-						if (String.IsNullOrEmpty(id))
-							continue;
+					foreach (string id in states.Split (postDataSplitChars, StringSplitOptions.RemoveEmptyEntries)) {
 						TreeNode node = FindNodeByPos (id);
-						if (node != null && node.PopulateOnDemand && !node.Populated)
-							node.Populated = true;
+						if (node != null && node.PopulateOnDemand && !node.Populated) {
+							Page page = Page;
+							if (page != null && page.IsCallback)
+								node.Populated = true; // Bug #492307
+							else
+								node.Populate (); // Bug #626829
+						}
 					}
 				}
 				res = true;
@@ -1042,7 +1047,7 @@ namespace System.Web.UI.WebControls
 			if (EnableClientScript) {
 				string states = postCollection [ClientID + "_ExpandStates"];
 				if (states != null) {
-					string[] ids = states.Split ('|');
+					string[] ids = states.Split (postDataSplitChars, StringSplitOptions.RemoveEmptyEntries);
 					UnsetExpandStates (Nodes, ids);
 					SetExpandStates (ids);
 				} else
@@ -1086,13 +1091,14 @@ namespace System.Web.UI.WebControls
 		{
 			base.OnPreRender (e);
 
-			if (Page != null) {
-				if (Enabled)
-					Page.RegisterRequiresPostBack (this);
+			Page page = Page;
+			if (page != null) {
+				if (IsEnabled)
+					page.RegisterRequiresPostBack (this);
 			
-				if (EnableClientScript && !Page.ClientScript.IsClientScriptIncludeRegistered (typeof(TreeView), "TreeView.js")) {
-					string url = Page.ClientScript.GetWebResourceUrl (typeof(TreeView), "TreeView.js");
-					Page.ClientScript.RegisterClientScriptInclude (typeof(TreeView), "TreeView.js", url);
+				if (EnableClientScript && !page.ClientScript.IsClientScriptIncludeRegistered (typeof(TreeView), "TreeView.js")) {
+					string url = page.ClientScript.GetWebResourceUrl (typeof(TreeView), "TreeView.js");
+					page.ClientScript.RegisterClientScriptInclude (typeof(TreeView), "TreeView.js", url);
 				}
 			}
 			
@@ -1117,11 +1123,11 @@ namespace System.Web.UI.WebControls
 							     ClientScriptManager.GetScriptLiteral (GetNodeImageUrl ("noexpand", imageStyle)));
 			}
 
-			if (Page != null) {
+			if (page != null) {
 				script.AppendFormat (_OnPreRender_Script_PopulateCallback,
 						     ctree,
-						     Page.theForm,
-						     Page.WebFormScriptReference);
+						     page.theForm,
+						     page.WebFormScriptReference);
 				
 						     // Page.ClientScript.GetCallbackEventReference (
 						     // 	     "this.uid", "nodeId",
@@ -1134,23 +1140,24 @@ namespace System.Web.UI.WebControls
 						     ClientScriptManager.GetScriptLiteral (GetNodeImageToolTip (true, null)),
 						     ClientScriptManager.GetScriptLiteral (GetNodeImageToolTip (false, null)));
 				
-				if (!Page.IsPostBack)
+				if (!page.IsPostBack)
 					SetNodesExpandedToDepthRecursive (Nodes);
 
-				if (EnableClientScript) {
-					Page.ClientScript.RegisterHiddenField (ClientID + "_ExpandStates", GetExpandStates ());
+				bool enableClientScript = EnableClientScript;
+				if (enableClientScript) {
+					page.ClientScript.RegisterHiddenField (ClientID + "_ExpandStates", GetExpandStates ());
 
 					// Make sure the basic script infrastructure is rendered
-					Page.ClientScript.RegisterWebFormClientScript ();
+					page.ClientScript.RegisterWebFormClientScript ();
 				}
 
-				if (EnableClientScript && PopulateNodesFromClient)
-					Page.ClientScript.RegisterHiddenField (ClientID + "_PopulatedStates", "|");
+				if (enableClientScript && PopulateNodesFromClient)
+					page.ClientScript.RegisterHiddenField (ClientID + "_PopulatedStates", "|");
 
 				EnsureStylesPrepared ();
 
 				if (hoverNodeStyle != null) {
-					if (Page.Header == null)
+					if (page.Header == null)
 						throw new InvalidOperationException ("Using TreeView.HoverNodeStyle requires Page.Header to be non-null (e.g. <head runat=\"server\" />).");
 					RegisterStyle (HoverNodeStyle, HoverNodeLinkStyle);
 					script.AppendFormat (_OnPreRender_Script_HoverStyle,
@@ -1159,7 +1166,7 @@ namespace System.Web.UI.WebControls
 							     ClientScriptManager.GetScriptLiteral (HoverNodeLinkStyle.RegisteredCssClass));					
 				}
 				
-				Page.ClientScript.RegisterStartupScript (typeof(TreeView), this.UniqueID, script.ToString (), true);
+				page.ClientScript.RegisterStartupScript (typeof(TreeView), this.UniqueID, script.ToString (), true);
 				script = null;
 			}
 		}
@@ -1329,15 +1336,17 @@ namespace System.Web.UI.WebControls
 				writer.AddAttribute (HtmlTextWriterAttribute.Href, "#" + ClientID + "_SkipLink");
 				writer.RenderBeginTag (HtmlTextWriterTag.A);
 
-				Image img = new Image ();
 				ClientScriptManager csm = new ClientScriptManager (null);
-				img.ImageUrl = csm.GetWebResourceUrl (typeof (SiteMapPath), "transparent.gif");
-				img.Attributes.Add ("height", "0");
-				img.Attributes.Add ("width", "0");
-				img.AlternateText = skipLinkText;
-				img.Render (writer);
-
-				writer.RenderEndTag ();
+				
+				writer.AddAttribute (HtmlTextWriterAttribute.Alt, skipLinkText);
+				writer.AddAttribute (HtmlTextWriterAttribute.Src, csm.GetWebResourceUrl (typeof (SiteMapPath), "transparent.gif"));
+				writer.AddAttribute (HtmlTextWriterAttribute.Height, "0");
+				writer.AddAttribute (HtmlTextWriterAttribute.Width, "0");
+				writer.AddStyleAttribute (HtmlTextWriterStyle.BorderWidth, "0px");
+				writer.RenderBeginTag (HtmlTextWriterTag.Img);
+				
+				writer.RenderEndTag (); // img
+				writer.RenderEndTag (); // a
 			}
 			base.RenderBeginTag (writer);
 		}
@@ -1355,8 +1364,9 @@ namespace System.Web.UI.WebControls
 		
  		void RenderNode (HtmlTextWriter writer, TreeNode node, int level, ArrayList levelLines, bool hasPrevious, bool hasNext)
 		{
-			if (node.PopulateOnDemand && node.HadChildrenBeforePopulating)
-				throw new InvalidOperationException ("PopulateOnDemand cannot be set to true on a node that already has children.");
+			// FIXME: disabled for now - needs closer investigation
+			//if (node.PopulateOnDemand && node.HadChildrenBeforePopulating)
+			// 	throw new InvalidOperationException ("PopulateOnDemand cannot be set to true on a node that already has children.");
 			
 			DecorateNode(node);
 			
@@ -1375,16 +1385,17 @@ namespace System.Web.UI.WebControls
 			else
 				hasChildNodes = (node.PopulateOnDemand && !node.Populated) || node.ChildNodes.Count > 0;
 				
-			writer.AddAttribute ("cellpadding", "0", false);
-			writer.AddAttribute ("cellspacing", "0", false);
-			writer.AddStyleAttribute ("border-width", "0");
+			writer.AddAttribute (HtmlTextWriterAttribute.Cellpadding, "0", false);
+			writer.AddAttribute (HtmlTextWriterAttribute.Cellspacing, "0", false);
+			writer.AddStyleAttribute (HtmlTextWriterStyle.BorderWidth, "0");
 			writer.RenderBeginTag (HtmlTextWriterTag.Table);
 
+#if !NET_4_0
 			Unit nodeSpacing = GetNodeSpacing (node);
 
 			if (nodeSpacing != Unit.Empty && (node.Depth > 0 || node.Index > 0))
 				RenderMenuItemSpacing (writer, nodeSpacing);
-			
+#endif
 			writer.RenderBeginTag (HtmlTextWriterTag.Tr);
 			
 			// Vertical lines from previous levels
@@ -1392,11 +1403,11 @@ namespace System.Web.UI.WebControls
 			nodeImage = GetNodeImageUrl ("i", imageStyle);
 			for (int n=0; n<level; n++) {
 				writer.RenderBeginTag (HtmlTextWriterTag.Td);
-				writer.AddStyleAttribute ("width", NodeIndent + "px");
-				writer.AddStyleAttribute ("height", "1px");
+				writer.AddStyleAttribute (HtmlTextWriterStyle.Width, NodeIndent + "px");
+				writer.AddStyleAttribute (HtmlTextWriterStyle.Height, "1px");
 				writer.RenderBeginTag (HtmlTextWriterTag.Div);
 				if (ShowLines && levelLines [n] != null) {
-					writer.AddAttribute ("src", nodeImage);
+					writer.AddAttribute (HtmlTextWriterAttribute.Src, nodeImage);
 					writer.AddAttribute (HtmlTextWriterAttribute.Alt, String.Empty, false);
 					writer.RenderBeginTag (HtmlTextWriterTag.Img);
 					writer.RenderEndTag ();
@@ -1442,18 +1453,18 @@ namespace System.Web.UI.WebControls
 					
 					if (buttonImage) {
 						if (!clientExpand || (!PopulateNodesFromClient && node.PopulateOnDemand && !node.Populated))
-							writer.AddAttribute ("href", GetClientEvent (node, "ec"));
+							writer.AddAttribute (HtmlTextWriterAttribute.Href, GetClientEvent (node, "ec"));
 						else
-							writer.AddAttribute ("href", GetClientExpandEvent(node));
+							writer.AddAttribute (HtmlTextWriterAttribute.Href, GetClientExpandEvent(node));
 						writer.RenderBeginTag (HtmlTextWriterTag.A);	// Anchor
 					}
 
 					// tooltip is 'HtmlAttributeEncoded'
-					writer.AddAttribute ("alt", tooltip);
+					writer.AddAttribute (HtmlTextWriterAttribute.Alt, tooltip);
 
 					if (buttonImage && clientExpand)
-						writer.AddAttribute ("id", GetNodeClientId (node, "img"));
-					writer.AddAttribute ("src", nodeImage);
+						writer.AddAttribute (HtmlTextWriterAttribute.Id, GetNodeClientId (node, "img"));
+					writer.AddAttribute (HtmlTextWriterAttribute.Src, nodeImage);
 					if (buttonImage)
 						writer.AddStyleAttribute (HtmlTextWriterStyle.BorderWidth, "0");
 					writer.RenderBeginTag (HtmlTextWriterTag.Img);
@@ -1483,10 +1494,13 @@ namespace System.Web.UI.WebControls
 			
 			if (!String.IsNullOrEmpty (imageUrl)) {
 				writer.RenderBeginTag (HtmlTextWriterTag.Td);	// TD
+#if NET_4_0
+				writer.AddAttribute (HtmlTextWriterAttribute.Tabindex, "-1");
+#endif
 				BeginNodeTag (writer, node, clientExpand);
-				writer.AddAttribute ("src", imageUrl);
+				writer.AddAttribute (HtmlTextWriterAttribute.Src, imageUrl);
 				writer.AddStyleAttribute (HtmlTextWriterStyle.BorderWidth, "0");
-				writer.AddAttribute ("alt", node.ImageToolTip);
+				writer.AddAttribute (HtmlTextWriterAttribute.Alt, node.ImageToolTip);
 				writer.RenderBeginTag (HtmlTextWriterTag.Img);
 				writer.RenderEndTag ();	// IMG
 				writer.RenderEndTag ();	// style tag
@@ -1494,14 +1508,12 @@ namespace System.Web.UI.WebControls
 			}
 
 			if (!NodeWrap)
-				writer.AddStyleAttribute ("white-space", "nowrap");
+				writer.AddStyleAttribute (HtmlTextWriterStyle.WhiteSpace, "nowrap");
 
 			bool nodeIsSelected = node == SelectedNode && selectedNodeStyle != null;
 			if (!nodeIsSelected && selectedNodeStyle != null) {
 				if (!String.IsNullOrEmpty (activeSiteMapPath))
-					nodeIsSelected = String.Compare (activeSiteMapPath,
-									 node.NavigateUrl,
-									 HttpRuntime.CaseInsensitive ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) == 0;
+					nodeIsSelected = String.Compare (activeSiteMapPath, node.NavigateUrl, RuntimeHelpers.StringComparison) == 0;
 			}
 			
 			AddNodeStyle (writer, node, level, nodeIsSelected);
@@ -1514,10 +1526,17 @@ namespace System.Web.UI.WebControls
 			// Checkbox
 			
 			if (node.ShowCheckBoxInternal) {
-				writer.AddAttribute ("name", ClientID + "_cs_" + node.Path);
-				writer.AddAttribute ("type", "checkbox", false);
-				writer.AddAttribute ("title", node.Text);
-				if (node.Checked) writer.AddAttribute ("checked", "checked", false);
+				writer.AddAttribute (HtmlTextWriterAttribute.Name, ClientID + "_cs_" + node.Path);
+				writer.AddAttribute (HtmlTextWriterAttribute.Type, "checkbox", false);
+#if NET_4_0
+				string str = node.ToolTip;
+				if (!String.IsNullOrEmpty (str))
+					writer.AddAttribute (HtmlTextWriterAttribute.Title, str);
+#else
+				writer.AddAttribute (HtmlTextWriterAttribute.Title, node.Text);
+#endif
+				if (node.Checked)
+					writer.AddAttribute (HtmlTextWriterAttribute.Checked, "checked", false);
 				writer.RenderBeginTag (HtmlTextWriterTag.Input);	// INPUT
 				writer.RenderEndTag ();	// INPUT
 			}
@@ -1527,7 +1546,7 @@ namespace System.Web.UI.WebControls
 			node.BeginRenderText (writer);
 			
 			if (clientExpand)
-				writer.AddAttribute ("id", GetNodeClientId (node, "txt"));
+				writer.AddAttribute (HtmlTextWriterAttribute.Id, GetNodeClientId (node, "txt"));
 			AddNodeLinkStyle (writer, node, level, nodeIsSelected);
 			BeginNodeTag (writer, node, clientExpand);
 			writer.Write (node.Text);
@@ -1538,9 +1557,10 @@ namespace System.Web.UI.WebControls
 			writer.RenderEndTag ();	// TD
 			
 			writer.RenderEndTag ();	// TR
-
+#if !NET_4_0
 			if (nodeSpacing != Unit.Empty)
 				RenderMenuItemSpacing (writer, nodeSpacing);
+#endif
 			
 			writer.RenderEndTag ();	// TABLE
 			
@@ -1561,10 +1581,10 @@ namespace System.Web.UI.WebControls
 				
 				if (clientExpand) {
 					if (!(node.Expanded.HasValue && node.Expanded.Value))
-						writer.AddStyleAttribute ("display", "none");
+						writer.AddStyleAttribute (HtmlTextWriterStyle.Display, "none");
 					else
-						writer.AddStyleAttribute ("display", "block");
-					writer.AddAttribute ("id", GetNodeClientId (node, null));
+						writer.AddStyleAttribute (HtmlTextWriterStyle.Display, "block");
+					writer.AddAttribute (HtmlTextWriterAttribute.Id, GetNodeClientId (node, null));
 					writer.RenderBeginTag (HtmlTextWriterTag.Span);
 					
 					if (renderChildNodes) {
@@ -1602,7 +1622,7 @@ namespace System.Web.UI.WebControls
 				return;
 
 			writer.RenderBeginTag (HtmlTextWriterTag.Table);
-			writer.AddAttribute ("height", ((int) value).ToString (), false);
+			writer.AddAttribute (HtmlTextWriterAttribute.Height, ((int) value).ToString (), false);
 			writer.RenderBeginTag (HtmlTextWriterTag.Tr);
 			writer.RenderBeginTag (HtmlTextWriterTag.Td);
 			writer.RenderEndTag (); // td
@@ -1612,7 +1632,9 @@ namespace System.Web.UI.WebControls
 		
 		void RenderMenuItemSpacing (HtmlTextWriter writer, Unit itemSpacing)
 		{
-			writer.AddStyleAttribute ("height", itemSpacing.ToString ());
+#if !NET_4_0
+			writer.AddStyleAttribute (HtmlTextWriterStyle.Height, itemSpacing.ToString ());
+#endif
 			writer.RenderBeginTag (HtmlTextWriterTag.Tr);
 			writer.RenderBeginTag (HtmlTextWriterTag.Td);
 			writer.RenderEndTag ();
@@ -1650,33 +1672,64 @@ namespace System.Web.UI.WebControls
 			if (Page.Header != null) {
 				// styles are registered
 				if (nodeStyle != null) {
+#if NET_4_0
+ 					style.PrependCssClass (nodeStyle.RegisteredCssClass);
+ 					style.PrependCssClass (nodeStyle.CssClass);
+#else
 					style.AddCssClass (nodeStyle.CssClass);
 					style.AddCssClass (nodeStyle.RegisteredCssClass);
+#endif
 				}
 				if (node.IsLeafNode) {
 					if (leafNodeStyle != null) {
+#if NET_4_0
+						style.PrependCssClass (leafNodeStyle.RegisteredCssClass);
+						style.PrependCssClass (leafNodeStyle.CssClass);
+#else
 						style.AddCssClass (leafNodeStyle.CssClass);
 						style.AddCssClass (leafNodeStyle.RegisteredCssClass);
+#endif
 					}
 				} else if (node.IsRootNode) {
 					if (rootNodeStyle != null) {
+#if NET_4_0
+						style.PrependCssClass (rootNodeStyle.RegisteredCssClass);
+						style.PrependCssClass (rootNodeStyle.CssClass);
+#else
 						style.AddCssClass (rootNodeStyle.CssClass);
 						style.AddCssClass (rootNodeStyle.RegisteredCssClass);
+#endif
 					}
 				} else if (node.IsParentNode) {
 					if (parentNodeStyle != null) {
+#if NET_4_0
+						style.AddCssClass (parentNodeStyle.RegisteredCssClass);
+						style.AddCssClass (parentNodeStyle.CssClass);
+#else
 						style.AddCssClass (parentNodeStyle.CssClass);
 						style.AddCssClass (parentNodeStyle.RegisteredCssClass);
+#endif
 					}
 				}
+				
 				if (levelStyles != null && levelStyles.Count > level) {
+#if NET_4_0
+ 					style.PrependCssClass (levelStyles [level].RegisteredCssClass);
+ 					style.PrependCssClass (levelStyles [level].CssClass);
+#else
 					style.AddCssClass (levelStyles [level].CssClass);
 					style.AddCssClass (levelStyles [level].RegisteredCssClass);
+#endif
 				}
 				
 				if (nodeIsSelected) {
+#if NET_4_0
+					style.AddCssClass (selectedNodeStyle.RegisteredCssClass);
+					style.AddCssClass (selectedNodeStyle.CssClass);
+#else
 					style.AddCssClass (selectedNodeStyle.CssClass);
 					style.AddCssClass (selectedNodeStyle.RegisteredCssClass);
+#endif
 				}
 			} else {
 				// styles are not registered
@@ -1708,6 +1761,9 @@ namespace System.Web.UI.WebControls
 		void AddNodeLinkStyle (HtmlTextWriter writer, TreeNode node, int level, bool nodeIsSelected)
 		{
 			Style style = new Style ();
+#if NET_4_0
+			bool addBorderStyle = false;
+#endif
 			if (Page.Header != null) {
 				// styles are registered
 				style.AddCssClass (ControlLinkStyle.RegisteredCssClass);
@@ -1720,6 +1776,9 @@ namespace System.Web.UI.WebControls
 				if (levelLinkStyles != null && levelLinkStyles.Count > level) {
 					style.AddCssClass (levelLinkStyles [level].CssClass);
 					style.AddCssClass (levelLinkStyles [level].RegisteredCssClass);
+#if NET_4_0
+					addBorderStyle = true;
+#endif
 				}
 				
 				if (node.IsLeafNode) {
@@ -1748,35 +1807,45 @@ namespace System.Web.UI.WebControls
 				style.CopyFrom (ControlLinkStyle);
 				if (nodeStyle != null)
 					style.CopyFrom (nodeLinkStyle);
-
-				if (levelLinkStyles != null && levelLinkStyles.Count > level)
+				
+				if (levelLinkStyles != null && levelLinkStyles.Count > level) {
 					style.CopyFrom (levelLinkStyles [level]);
+#if NET_4_0
+					addBorderStyle = true;
+#endif
+				}
 				
 				if (node.IsLeafNode) {
-					if (node.IsLeafNode && leafNodeStyle != null) {
+					if (node.IsLeafNode && leafNodeStyle != null)
 						style.CopyFrom (leafNodeLinkStyle);
-					}
 				} else if (node.IsRootNode) {
-					if (node.IsRootNode && rootNodeStyle != null) {
+					if (node.IsRootNode && rootNodeStyle != null)
 						style.CopyFrom (rootNodeLinkStyle);
-					}
 				} else if (node.IsParentNode) {
-					if (node.IsParentNode && parentNodeStyle != null) {
+					if (node.IsParentNode && parentNodeStyle != null)
 						style.CopyFrom (parentNodeLinkStyle);
-					}
 				}
 				
 				if (nodeIsSelected)
 					style.CopyFrom (selectedNodeLinkStyle);
+				
 				style.AlwaysRenderTextDecoration = true;
 			}
+#if NET_4_0
+			if (addBorderStyle) {
+				// This appears not to come from any style. Instead, it's added
+				// whenever a level style is present.
+				writer.AddStyleAttribute (HtmlTextWriterStyle.BorderStyle, "none");
+				writer.AddStyleAttribute (HtmlTextWriterStyle.FontSize, "1em");
+			}		
+#endif
 			style.AddAttributesToRender (writer);
 		}
 
 		void BeginNodeTag (HtmlTextWriter writer, TreeNode node, bool clientExpand)
 		{
 			if(node.ToolTip.Length>0)
-				writer.AddAttribute ("title", node.ToolTip);
+				writer.AddAttribute (HtmlTextWriterAttribute.Title, node.ToolTip);
 
 			string navigateUrl = node.NavigateUrl;
 			if (!String.IsNullOrEmpty (navigateUrl)) {
@@ -1786,15 +1855,16 @@ namespace System.Web.UI.WebControls
 #else
 				string navUrl = ResolveClientUrl (navigateUrl);
 #endif
-				writer.AddAttribute ("href", navUrl);
+				writer.AddAttribute (HtmlTextWriterAttribute.Href, navUrl);
 				if (target.Length > 0)
-					writer.AddAttribute ("target", target);
+					writer.AddAttribute (HtmlTextWriterAttribute.Target, target);
 				writer.RenderBeginTag (HtmlTextWriterTag.A);
 			} else if (node.SelectAction != TreeNodeSelectAction.None) {
 				if (node.SelectAction == TreeNodeSelectAction.Expand && clientExpand)
-					writer.AddAttribute ("href", GetClientExpandEvent (node));
+					writer.AddAttribute (HtmlTextWriterAttribute.Href, GetClientExpandEvent (node));
 				else
-					writer.AddAttribute ("href", GetClientEvent (node, "sel"));
+					writer.AddAttribute (HtmlTextWriterAttribute.Href, GetClientEvent (node, "sel"));
+
 				writer.RenderBeginTag (HtmlTextWriterTag.A);
 			} else
 				writer.RenderBeginTag (HtmlTextWriterTag.Span);

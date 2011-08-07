@@ -26,8 +26,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System;
 using System.Collections;
 
@@ -36,7 +34,7 @@ namespace System.Runtime.Serialization {
 	public sealed class SerializationObjectManager
 	{
 		readonly StreamingContext context;
-		readonly Hashtable seen = new Hashtable ();
+		readonly Hashtable seen = new Hashtable (HashHelper.Instance, HashHelper.Instance);
 
 		event SerializationCallbacks.CallbackHandler callbacks;
 
@@ -53,7 +51,7 @@ namespace System.Runtime.Serialization {
 			SerializationCallbacks sc = SerializationCallbacks
 				.GetSerializationCallbacks (obj.GetType ());
 
-			seen [obj] = 1;
+			seen [obj] = HashHelper.NonNullObject;
 			sc.RaiseOnSerializing (obj, context);
 
 			if (sc.HasSerializedCallbacks) {
@@ -70,7 +68,27 @@ namespace System.Runtime.Serialization {
 			if (callbacks != null)
 				callbacks (context);
 		}
+
+		class HashHelper : IHashCodeProvider, IComparer {
+			public static object NonNullObject = new object ();
+			public static HashHelper Instance = new HashHelper ();
+
+			private HashHelper ()
+			{
+			}
+
+			public int GetHashCode (object obj)
+			{
+				if (obj == null)
+					return 0;
+				return Object.InternalGetHashCode (obj);
+			}
+
+			public int Compare (object x, object y)
+			{
+				return Object.ReferenceEquals (x, y) ? 0 : 1;
+			}
+		}
 	}
 }
 
-#endif

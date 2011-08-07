@@ -47,7 +47,6 @@
 #include <mono/metadata/coree.h>
 #include <mono/metadata/attach.h>
 #include "mono/utils/mono-counters.h"
-#include <mono/utils/gc_wrapper.h>
 
 #include "mini.h"
 #include "jit.h"
@@ -61,7 +60,7 @@ static FILE *mini_stats_fd = NULL;
 
 static void mini_usage (void);
 
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 /* Need this to determine whether to detach console */
 #include <mono/metadata/cil-coff.h>
 /* This turns off command line globbing under win32 */
@@ -115,6 +114,12 @@ opt_funcs [sizeof (int) * 8] = {
 	NULL
 };
 
+#ifdef __native_client_codegen__
+extern gint8 nacl_align_byte;
+#endif
+#ifdef __native_client__
+extern char *nacl_mono_path;
+#endif
 
 #define DEFAULT_OPTIMIZATIONS (	\
 	MONO_OPT_PEEPHOLE |	\
@@ -122,7 +127,6 @@ opt_funcs [sizeof (int) * 8] = {
 	MONO_OPT_INLINE |       \
 	MONO_OPT_CONSPROP |     \
 	MONO_OPT_COPYPROP |     \
-	MONO_OPT_TREEPROP |     \
 	MONO_OPT_DEADCE |       \
 	MONO_OPT_BRANCH |	\
 	MONO_OPT_LINEARS |	\
@@ -134,7 +138,7 @@ opt_funcs [sizeof (int) * 8] = {
 	MONO_OPT_SIMD |	\
 	MONO_OPT_AOT)
 
-#define EXCLUDED_FROM_ALL (MONO_OPT_SHARED | MONO_OPT_PRECOMP)
+#define EXCLUDED_FROM_ALL (MONO_OPT_SHARED | MONO_OPT_PRECOMP | MONO_OPT_UNSAFE)
 
 static guint32
 parse_optimizations (const char* p)
@@ -312,13 +316,13 @@ opt_sets [] = {
        MONO_OPT_BRANCH | MONO_OPT_PEEPHOLE | MONO_OPT_LINEARS | MONO_OPT_CFOLD,
        MONO_OPT_BRANCH | MONO_OPT_PEEPHOLE | MONO_OPT_LINEARS | MONO_OPT_COPYPROP | MONO_OPT_CONSPROP | MONO_OPT_DEADCE,
        MONO_OPT_BRANCH | MONO_OPT_PEEPHOLE | MONO_OPT_LINEARS | MONO_OPT_COPYPROP | MONO_OPT_CONSPROP | MONO_OPT_DEADCE | MONO_OPT_LOOP | MONO_OPT_INLINE | MONO_OPT_INTRINS,
+       MONO_OPT_BRANCH | MONO_OPT_PEEPHOLE | MONO_OPT_LINEARS | MONO_OPT_COPYPROP | MONO_OPT_CONSPROP | MONO_OPT_DEADCE | MONO_OPT_LOOP | MONO_OPT_INLINE | MONO_OPT_INTRINS | MONO_OPT_TAILC,
        MONO_OPT_BRANCH | MONO_OPT_PEEPHOLE | MONO_OPT_LINEARS | MONO_OPT_COPYPROP | MONO_OPT_CONSPROP | MONO_OPT_DEADCE | MONO_OPT_LOOP | MONO_OPT_INLINE | MONO_OPT_INTRINS | MONO_OPT_SSA,
        MONO_OPT_BRANCH | MONO_OPT_PEEPHOLE | MONO_OPT_LINEARS | MONO_OPT_COPYPROP | MONO_OPT_CONSPROP | MONO_OPT_DEADCE | MONO_OPT_LOOP | MONO_OPT_INLINE | MONO_OPT_INTRINS | MONO_OPT_EXCEPTION,
        MONO_OPT_BRANCH | MONO_OPT_PEEPHOLE | MONO_OPT_LINEARS | MONO_OPT_COPYPROP | MONO_OPT_CONSPROP | MONO_OPT_DEADCE | MONO_OPT_LOOP | MONO_OPT_INLINE | MONO_OPT_INTRINS | MONO_OPT_EXCEPTION | MONO_OPT_CMOV,
        MONO_OPT_BRANCH | MONO_OPT_PEEPHOLE | MONO_OPT_LINEARS | MONO_OPT_COPYPROP | MONO_OPT_CONSPROP | MONO_OPT_DEADCE | MONO_OPT_LOOP | MONO_OPT_INLINE | MONO_OPT_INTRINS | MONO_OPT_EXCEPTION | MONO_OPT_ABCREM,
        MONO_OPT_BRANCH | MONO_OPT_PEEPHOLE | MONO_OPT_LINEARS | MONO_OPT_COPYPROP | MONO_OPT_CONSPROP | MONO_OPT_DEADCE | MONO_OPT_LOOP | MONO_OPT_INLINE | MONO_OPT_INTRINS | MONO_OPT_EXCEPTION | MONO_OPT_ABCREM | MONO_OPT_SSAPRE,
        MONO_OPT_BRANCH | MONO_OPT_PEEPHOLE | MONO_OPT_LINEARS | MONO_OPT_COPYPROP | MONO_OPT_CONSPROP | MONO_OPT_DEADCE | MONO_OPT_LOOP | MONO_OPT_INLINE | MONO_OPT_INTRINS | MONO_OPT_ABCREM,
-       MONO_OPT_BRANCH | MONO_OPT_PEEPHOLE | MONO_OPT_LINEARS | MONO_OPT_COPYPROP | MONO_OPT_CONSPROP | MONO_OPT_DEADCE | MONO_OPT_LOOP | MONO_OPT_INLINE | MONO_OPT_INTRINS | MONO_OPT_TREEPROP,
        MONO_OPT_BRANCH | MONO_OPT_PEEPHOLE | MONO_OPT_LINEARS | MONO_OPT_COPYPROP | MONO_OPT_CONSPROP | MONO_OPT_DEADCE | MONO_OPT_LOOP | MONO_OPT_INLINE | MONO_OPT_INTRINS | MONO_OPT_SSAPRE,
        MONO_OPT_BRANCH | MONO_OPT_PEEPHOLE | MONO_OPT_LINEARS | MONO_OPT_COPYPROP | MONO_OPT_CONSPROP | MONO_OPT_DEADCE | MONO_OPT_LOOP | MONO_OPT_INLINE | MONO_OPT_INTRINS | MONO_OPT_ABCREM | MONO_OPT_SHARED,
        DEFAULT_OPTIMIZATIONS, 
@@ -1085,7 +1089,7 @@ mini_usage_jitdeveloper (void)
 		 "    --stats                Print statistics about the JIT operations\n"
 		 "    --wapi=hps|semdel|seminfo IO-layer maintenance\n"
 		 "    --inject-async-exc METHOD OFFSET Inject an asynchronous exception at METHOD\n"
-		 "    --verify-all           Run the verifier on all methods\n"
+		 "    --verify-all           Run the verifier on all assemblies and methods\n"
 		 "    --full-aot             Avoid JITting any code\n"
 		 "    --agent=ASSEMBLY[:ARG] Loads the specific agent assembly and executes its Main method with the given argument before loading the main assembly.\n"
 		 "    --no-x86-stack-align   Don't align stack on x86\n"
@@ -1114,12 +1118,16 @@ mini_usage (void)
 		"Usage is: mono [options] program [program-options]\n"
 		"\n"
 		"Development:\n"
-		"    --aot                  Compiles the assembly to native code\n"
+		"    --aot[=<options>]      Compiles the assembly to native code\n"
 		"    --debug[=<options>]    Enable debugging support, use --help-debug for details\n"
  		"    --debugger-agent=options Enable the debugger agent\n"
 		"    --profile[=profiler]   Runs in profiling mode with the specified profiler module\n"
 		"    --trace[=EXPR]         Enable tracing, use --help-trace for details\n"
+		"    --jitmap               Output a jit method map to /tmp/perf-PID.map\n"
 		"    --help-devel           Shows more options available to developers\n"
+#ifdef __native_client_codegen__
+		"    --nacl-align-mask-off  Turn off Native Client 32-byte alignment mask (for debug only)\n"
+#endif
 		"\n"
 		"Runtime:\n"
 		"    --config FILE          Loads FILE as the Mono config\n"
@@ -1133,6 +1141,8 @@ mini_usage (void)
 		"                           mode is one of cas, core-clr, verifiable or validil\n"
 		"    --attach=OPTIONS       Pass OPTIONS to the attach agent in the runtime.\n"
 		"                           Currently the only supported option is 'disable'.\n"
+		"    --llvm, --nollvm       Controls whenever the runtime uses LLVM to compile code.\n"
+	        "    --gc=[sgen,boehm]      Select SGen or Boehm GC (runs mono or mono-sgen)\n"
 	  );
 }
 
@@ -1185,7 +1195,6 @@ static const char info[] =
 #else
 	"\tTLS:           normal\n"
 #endif /* HAVE_KW_THREAD */
-	"\tGC:            " USED_GC_NAME "\n"
 #ifdef MONO_ARCH_SIGSEGV_ON_ALTSTACK
     "\tSIGSEGV:       altstack\n"
 #else
@@ -1193,11 +1202,34 @@ static const char info[] =
 #endif
 #ifdef HAVE_EPOLL
     "\tNotifications: epoll\n"
+#elif defined(HAVE_KQUEUE)
+    "\tNotification:  kqueue\n"
 #else
     "\tNotification:  Thread + polling\n"
 #endif
         "\tArchitecture:  " ARCHITECTURE "\n"
 	"\tDisabled:      " DISABLED_FEATURES "\n"
+	"\tMisc:          "
+#ifdef MONO_SMALL_CONFIG
+	"smallconfig "
+#endif
+#ifdef MONO_BIG_ARRAYS
+	"bigarrays "
+#endif
+#ifdef MONO_DEBUGGER_SUPPORTED
+	"debugger "
+#endif
+#if defined(MONO_ARCH_SOFT_DEBUG_SUPPORTED) && !defined(DISABLE_SOFT_DEBUG)
+	"softdebug "
+#endif
+		"\n"
+#ifdef MONO_ARCH_LLVM_SUPPORTED
+#ifdef ENABLE_LLVM
+	"\tLLVM:          yes(" LLVM_VERSION ")\n"
+#else
+	"\tLLVM:          supported, not enabled.\n"
+#endif
+#endif
 	"";
 
 #ifndef MONO_ARCH_AOT_SUPPORTED
@@ -1206,7 +1238,7 @@ static const char info[] =
 #define error_if_aot_unsupported()
 #endif
 
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 BOOL APIENTRY DllMain (HMODULE module_handle, DWORD reason, LPVOID reserved)
 {
 	if (!GC_DllMain (module_handle, reason, reserved))
@@ -1218,8 +1250,10 @@ BOOL APIENTRY DllMain (HMODULE module_handle, DWORD reason, LPVOID reserved)
 		mono_install_runtime_load (mini_init);
 		break;
 	case DLL_PROCESS_DETACH:
+#ifdef ENABLE_COREE
 		if (coree_module_handle)
 			FreeLibrary (coree_module_handle);
+#endif
 		break;
 	}
 	return TRUE;
@@ -1254,6 +1288,11 @@ mono_jit_parse_options (int argc, char * argv[])
  			mono_debugger_agent_parse_options (argv [i] + 17);
 			opt->mdb_optimizations = TRUE;
 			enable_debugging = TRUE;
+		} else if (!strcmp (argv [i], "--soft-breakpoints")) {
+			MonoDebugOptions *opt = mini_get_debug_options ();
+
+			opt->soft_breakpoints = TRUE;
+			opt->explicit_null_checks = TRUE;
 		} else {
 			fprintf (stderr, "Unsupported command line option: '%s'\n", argv [i]);
 			exit (1);
@@ -1261,6 +1300,30 @@ mono_jit_parse_options (int argc, char * argv[])
 	}
 }
 
+static void
+mono_set_use_smp (int use_smp)
+{
+#if HAVE_SCHED_SETAFFINITY
+	if (!use_smp) {
+		unsigned long proc_mask = 1;
+#ifdef GLIBC_BEFORE_2_3_4_SCHED_SETAFFINITY
+		sched_setaffinity (getpid(), (gpointer)&proc_mask);
+#else
+		sched_setaffinity (getpid(), sizeof (unsigned long), (gpointer)&proc_mask);
+#endif
+	}
+#endif
+}
+	
+
+/**
+ * mono_main:
+ * @argc: number of arguments in the argv array
+ * @argv: array of strings containing the startup arguments
+ *
+ * Launches the Mono JIT engine and parses all the command line options
+ * in the same way that the mono command line VM would.
+ */
 int
 mono_main (int argc, char* argv[])
 {
@@ -1288,18 +1351,20 @@ mono_main (int argc, char* argv[])
 	int test_jit_info_table = FALSE;
 #endif
 
+#ifdef MOONLIGHT
+#ifndef HOST_WIN32
+	/* stdout defaults to block buffering if it's not writing to a terminal, which
+	 * happens with our test harness: we redirect stdout to capture it. Force line
+	 * buffering in all cases. */
+	setlinebuf (stdout);
+#endif
+#endif
+
 	setlocale (LC_ALL, "");
 
-#if HAVE_SCHED_SETAFFINITY
-	if (getenv ("MONO_NO_SMP")) {
-		unsigned long proc_mask = 1;
-#ifdef GLIBC_BEFORE_2_3_4_SCHED_SETAFFINITY
-		sched_setaffinity (getpid(), (gpointer)&proc_mask);
-#else
-		sched_setaffinity (getpid(), sizeof (unsigned long), (gpointer)&proc_mask);
-#endif
-	}
-#endif
+	if (getenv ("MONO_NO_SMP"))
+		mono_set_use_smp (FALSE);
+	
 	if (!g_thread_supported ())
 		g_thread_init (NULL);
 
@@ -1333,9 +1398,14 @@ mono_main (int argc, char* argv[])
 			mini_verbose++;
 		} else if (strcmp (argv [i], "--version") == 0 || strcmp (argv [i], "-V") == 0) {
 			char *build = mono_get_runtime_build_info ();
-			g_print ("Mono JIT compiler version %s\nCopyright (C) 2002-2010 Novell, Inc and Contributors. www.mono-project.com\n", build);
+			char *gc_descr;
+
+			g_print ("Mono JIT compiler version %s\nCopyright (C) 2002-2011 Novell, Inc and Contributors. www.mono-project.com\n", build);
 			g_free (build);
 			g_print (info);
+			gc_descr = mono_gc_get_description ();
+			g_print ("\tGC:            %s\n", gc_descr);
+			g_free (gc_descr);
 			if (mini_verbose) {
 				const char *cerror;
 				const char *clibpath;
@@ -1375,6 +1445,33 @@ mono_main (int argc, char* argv[])
 			opt = parse_optimizations (argv [i] + 11);
 		} else if (strncmp (argv [i], "-O=", 3) == 0) {
 			opt = parse_optimizations (argv [i] + 3);
+		} else if (strcmp (argv [i], "--gc=sgen") == 0) {
+			if (!strcmp (mono_gc_get_gc_name (), "boehm")) {
+				GString *path = g_string_new (argv [0]);
+				g_string_append (path, "-sgen");
+				argv [0] = path->str;
+#ifdef HAVE_EXECVP
+				execvp (path->str, argv);
+#else
+				fprintf (stderr, "Error: --gc=<NAME> option not supported on this platform.\n");
+#endif
+			}
+		} else if (strcmp (argv [i], "--gc=boehm") == 0) {
+			if (!strcmp (mono_gc_get_gc_name (), "sgen")) {
+				char *copy = g_strdup (argv [0]);
+				char *p = strstr (copy, "-sgen");
+				if (p == NULL){
+					fprintf (stderr, "Error, this process is not named mono-sgen and the command line option --boehm was passed");
+					exit (1);
+				}
+				*p = 0;
+				argv [0] = p;
+#ifdef HAVE_EXECVP
+				execvp (p, argv);
+#else
+				fprintf (stderr, "Error: --gc=<NAME> option not supported on this platform.\n");
+#endif
+			}
 		} else if (strcmp (argv [i], "--config") == 0) {
 			if (i +1 >= argc){
 				fprintf (stderr, "error: --config requires a filename argument\n");
@@ -1447,6 +1544,8 @@ mono_main (int argc, char* argv[])
 			action = DO_COMPILE;
 		} else if (strncmp (argv [i], "--runtime=", 10) == 0) {
 			forced_version = &argv [i][10];
+		} else if (strcmp (argv [i], "--jitmap") == 0) {
+			mono_enable_jit_map ();
 		} else if (strcmp (argv [i], "--profile") == 0) {
 			enable_profile = TRUE;
 			profile_options = NULL;
@@ -1524,9 +1623,7 @@ mono_main (int argc, char* argv[])
 				return 1;
 			}
 		} else if (strcmp (argv [i], "--desktop") == 0) {
-#if defined (HAVE_BOEHM_GC)
-			GC_dont_expand = 1;
-#endif
+			mono_gc_set_desktop_mode ();
 			/* Put desktop-specific optimizations here */
 		} else if (strcmp (argv [i], "--server") == 0){
 			/* Put server-specific optimizations here */
@@ -1549,11 +1646,34 @@ mono_main (int argc, char* argv[])
 		} else if (strcmp (argv [i], "--test-jit-info-table") == 0) {
 			test_jit_info_table = TRUE;
 #endif
+		} else if (strcmp (argv [i], "--llvm") == 0) {
+#ifndef MONO_ARCH_LLVM_SUPPORTED
+			fprintf (stderr, "Mono Warning: --llvm not supported on this platform.\n");
+#else
+			mono_use_llvm = TRUE;
+#endif
+		} else if (strcmp (argv [i], "--nollvm") == 0){
+			mono_use_llvm = FALSE;
+#ifdef __native_client_codegen__
+		} else if (strcmp (argv [i], "--nacl-align-mask-off") == 0){
+			nacl_align_byte = -1; /* 0xff */
+#endif
+#ifdef __native_client__
+		} else if (strcmp (argv [i], "--nacl-mono-path") == 0){
+			nacl_mono_path = g_strdup(argv[++i]);
+#endif
 		} else {
 			fprintf (stderr, "Unknown command line option: '%s'\n", argv [i]);
 			return 1;
 		}
 	}
+
+#ifdef __native_client_codegen__
+	if (getenv ("MONO_NACL_ALIGN_MASK_OFF"))
+	{
+		nacl_align_byte = -1; /* 0xff */
+	}
+#endif
 
 	if (!argv [i]) {
 		mini_usage ();
@@ -1565,9 +1685,13 @@ mono_main (int argc, char* argv[])
 
 #ifdef MONO_CROSS_COMPILE
        if (!mono_compile_aot) {
-		   fprintf (stderr, "This mono runtime is compiled for cross-compiling. Only the --aot option is supported.");
+		   fprintf (stderr, "This mono runtime is compiled for cross-compiling. Only the --aot option is supported.\n");
 		   exit (1);
        }
+#if SIZEOF_VOID_P == 8 && defined(TARGET_ARM)
+       fprintf (stderr, "Can't cross-compile on 64 bit platforms to arm.\n");
+       exit (1);
+#endif
 #endif
 
 	if ((action == DO_EXEC) && mono_debug_using_mono_debugger ())
@@ -1619,7 +1743,6 @@ mono_main (int argc, char* argv[])
 #endif
 
 	mono_set_defaults (mini_verbose, opt);
-	mono_setup_vtable_in_class_init = FALSE;
 	domain = mini_init (argv [i], forced_version);
 
 	if (agents) {
@@ -1714,7 +1837,7 @@ mono_main (int argc, char* argv[])
 			exit (1);
 		}
 
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 		/* Detach console when executing IMAGE_SUBSYSTEM_WINDOWS_GUI on win32 */
 		if (!enable_debugging && !mono_compile_aot && ((MonoCLIImageInfo*)(mono_assembly_get_image (assembly)->image_info))->cli_header.nt.pe_subsys_required == IMAGE_SUBSYSTEM_WINDOWS_GUI)
 			FreeConsole ();
@@ -1742,6 +1865,7 @@ mono_main (int argc, char* argv[])
 	 * shut down), it will crash:
 	 * http://mail-archives.apache.org/mod_mbox/harmony-dev/200801.mbox/%3C200801130327.41572.gshimansky@apache.org%3E
 	 * Testcase: tests/main-exit-background-change.exe.
+	 * Testcase: test/main-returns-background-abort-resetabort.exe.
 	 * To make this race less frequent, we avoid freeing the global code manager.
 	 * Since mono_main () is hopefully only used by the runtime executable, this 
 	 * will only cause a shutdown leak. This workaround also has the advantage
@@ -1749,8 +1873,11 @@ mono_main (int argc, char* argv[])
 	 * FIXME: Fix this properly by waiting for threads to really exit using 
 	 * pthread_join (). This cannot be done currently as the io-layer calls
 	 * pthread_detach ().
+	 *
+	 * This used to be an amd64 only crash, but it looks like now most glibc targets do unwinding
+	 * that requires reading the target code.
 	 */
-#ifdef __x86_64__
+#ifdef __linux__
 		mono_dont_free_global_codeman = TRUE;
 #endif
 
@@ -1794,6 +1921,7 @@ mono_main (int argc, char* argv[])
 		return 3;
 	}
 
+#ifndef DISABLE_JIT
 	if (action == DO_DRAW) {
 		int part = 0;
 
@@ -1885,6 +2013,7 @@ mono_main (int argc, char* argv[])
 		cfg = mini_method_compile (method, opt, mono_get_root_domain (), FALSE, FALSE, 0);
 		mono_destroy_compile (cfg);
 	}
+#endif
 
 	mini_cleanup (domain);
  	return 0;

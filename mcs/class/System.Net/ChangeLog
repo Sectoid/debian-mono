@@ -1,47 +1,68 @@
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Add existing class to System.Net build
+
+2010-11-05  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* moonlight_raw_System.Net.dll.sources: Add new CookieParser to
+	the build
+
+2010-04-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* moonlight_raw_System.Net.dll.sources: Add System.Net.Sockets/
+	SocketClientAccessPolicyProtocol.cs to the build
+
+2010-04-05  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* moonlight_raw_System.Net.dll.sources: Move InternalWebRequest
+	StreamWrapper.cs back to System.Windows.dll
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* net_2_1_*.dll.sources: rename to moonlight_*.dll.sources.
+
+2010-03-10  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* net_2_1_raw_System.Net.dll.sources: Add types from (new internal)
+	System.Net.Policy (moved from System.Windows.Browser.dll)
+	* Makefile: Add reference to System.Xml.dll to parse policies
+
 2010-01-25  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* System.Net.dll.sources: Add UdpAnySourceMulticastClient and
 	UdpSingleSourceMulticastClient stubs (with some validations)
 	for SL4 (required to compile tests)
-	[Backport r150127]
 
 2010-01-11  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* System.Net.dll.sources: Add InternalWebRequestStreamWrapper.cs
 	* Makefile: Add reference to System.Core (for Action<T>)
-	[Backport r149327]
 
-2009-12-05  Sebastien Pouliot  <sebastien@ximian.com>
+2009-12-04  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* System.Net.dll.sources: Remove (almost) everything. This 
 	assembly in 3.5+ does not share anything with what SL2/3 
 	provide (the later being a part of System.dll)
-	[Backport r147727]
+
+2009-12-04  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* net_2_1_raw_System.Net.dll.sources: Remove HttpStatusCode_2_1.cs
 
 2009-12-04  Sebastien Pouliot  <sebastien@ximian.com>
 
-	* net_2_1_raw_System.Net.dll.sources: Remove HttpStatusCode_2_1.cs
-	[Backport r147704]
-
-2009-11-05  Rolf Bjarne Kvinge  <RKvinge@novell.com>
-
-	* net_2_1_raw_System.Net.dll.sources: Add Consts.cs, Locale.cs and
-	MonoTODOAttribute.cs to the build to fix ambiguous references to
-	those types in corlib and System.dll. This way we'll use our own
-	types.
+	* net_2_1_raw_System.Net.dll.sources: Adjust location for
+	DnsEndPoint
 
 2009-09-29  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* net_2_1_raw_System.Net.dll.sources: Remove Timer_2_1.cs and 
 	related classes from System.dll - they are not required anymore
 	since Gonzalo's changes on Socket.Close(int)
-	[Backport r142851]
 
 2009-09-27  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* net_2_1_raw_System.Net.dll.sources: Add Timer_2_1.cs and 
 	related classes from System.dll
-	[Backport of r142720]
 
 2009-09-24  Sebastien Pouliot  <sebastien@ximian.com>
 

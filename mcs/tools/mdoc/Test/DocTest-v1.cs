@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
+/// <summary>Namespace Test: [<see cref="N:Mono.DocTest" />]</summary>
+/// <remarks><c>T:NoNamespace</c></remarks>
 public class NoNamespace {}
 
 namespace System {
@@ -108,7 +110,10 @@ namespace Mono.DocTest {
 	}
 
 	/// <summary>Possible colors</summary>
-	/// <remarks><see cref="T:Mono.DocTest.Color"/>.</remarks>
+	/// <remarks>
+	///   <see cref="T:Mono.DocTest.Color"/>.
+	///   Namespace Test: [<see cref="N:Mono.DocTest" />]
+	/// </remarks>
 	[MonoTODO]
 	public enum Color {
 		/// <summary>Insert Red summary here</summary>
@@ -524,6 +529,9 @@ namespace Mono.DocTest.Generic {
 
 		/// <remarks>E:Mono.DocTest.Generic.GenericBase`1.MyEvent</remarks>
 		public event EventHandler<FooEventArgs> MyEvent;
+
+		/// <remarks>E:Mono.DocTest.Generic.GenericBase`1.ItemChanged</remarks>
+		public event Action<MyList<U>, MyList<U>.Helper<U, U>> ItemChanged;
 
 		/// <remarks>T:Mono.DocTest.Generic.GenericBase`1.NestedCollection</remarks>
 		public class NestedCollection {

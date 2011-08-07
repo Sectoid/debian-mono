@@ -24,8 +24,6 @@
 //
 
 
-#if NET_2_0
-
 using System;
 using System.ComponentModel;
 
@@ -184,9 +182,18 @@ namespace System.Windows.Forms {
 			}
 		}
 
+		internal int DisplayIndexInternal {
+			get { return DisplayIndex; }
+			set { displayIndex = value; }
+		}
+
 		internal int DataColumnIndex {
 			get { return dataColumnIndex; }
-			set { dataColumnIndex = value; }
+			set { 
+				dataColumnIndex = value;
+				if (dataColumnIndex >= 0)
+					isDataBound = true;
+			}
 		}
 
 		[DefaultValue (0)]
@@ -498,11 +505,6 @@ Example */
 			headerCell.SetColumnIndex(Index);
 		}
 
-		internal void SetIsDataBound (bool value)
-		{
-			isDataBound = value;
-		}
-		
 		internal override void SetState (DataGridViewElementStates state) {
 			if (State != state) {
 				base.SetState(state);
@@ -519,4 +521,3 @@ Example */
 	}
 }
 
-#endif

@@ -5,8 +5,9 @@
 // Author:
 //	Miguel de Icaza (miguel@novell.com)
 //	Gonzalo Paniagua Javier (gonzalo@ximian.com)
+//      Marek Habersack <mhabersack@novell.com>
 //
-// Copyright (C) 2005 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2005-2010 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -42,11 +43,16 @@ using System.Security.Permissions;
 using System.Web.Hosting;
 using System.Web.SessionState;
 
-namespace System.Web {
-	
+#if NET_4_0
+using System.Web.Routing;
+#endif
+
+namespace System.Web
+{	
 	// CAS - no InheritanceDemand here as the class is sealed
 	[AspNetHostingPermission (SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
-	public sealed partial class HttpResponse {
+	public sealed partial class HttpResponse
+	{
 		internal HttpWorkerRequest WorkerRequest;
 		internal HttpResponseStream output_stream;
 		internal bool buffer = true;
@@ -82,7 +88,7 @@ namespace System.Web {
 		// the headers that we compute here.
 		//
 
-		NameValueCollection headers;
+		HttpHeaderCollection headers;
 		bool headers_sent;
 		NameValueCollection cached_headers;
 
@@ -93,25 +99,25 @@ namespace System.Web {
 		internal bool use_chunked;
 		
 		bool closed;
+		bool completed;
 		internal bool suppress_content;
 
 		//
 		// Session State
 		//
 		string app_path_mod;
-		
-#if NET_2_0
 		bool is_request_being_redirected;
 		Encoding headerEncoding;
-#endif
 
 		internal HttpResponse ()
 		{
 			output_stream = new HttpResponseStream (this);
+			writer = new HttpWriter (this);
 		}
 
 		public HttpResponse (TextWriter writer) : this ()
 		{
+
 			this.writer = writer;
 		}
 
@@ -124,8 +130,9 @@ namespace System.Web {
 			if (worker_request != null)
 				use_chunked = (worker_request.GetHttpVersion () == "HTTP/1.1");
 #endif
+			writer = new HttpWriter (this);
 		}
-		
+
 		internal TextWriter SetTextWriter (TextWriter writer)
 		{
 			TextWriter prev = this.writer;
@@ -137,11 +144,7 @@ namespace System.Web {
 			get {
 				if (!version_header_checked && version_header == null) {
 					version_header_checked = true;
-#if NET_2_0
-					HttpRuntimeSection config = WebConfigurationManager.GetWebApplicationSection ("system.web/httpRuntime") as HttpRuntimeSection;
-#else
-					HttpRuntimeConfig config = HttpContext.GetAppConfig ("system.web/httpRuntime") as HttpRuntimeConfig;
-#endif
+					HttpRuntimeSection config = HttpRuntime.Section;
 					if (config != null && config.EnableVersionHeader)
 						version_header = Environment.Version.ToString (3);
 				}
@@ -149,7 +152,12 @@ namespace System.Web {
 				return version_header;
 			}
 		}
-		
+
+		internal HttpContext Context {
+			get { return context; }
+			set { context = value; }
+		}
+			
 		internal string[] FileDependencies {
 			get {
 				if (fileDependencies == null || fileDependencies.Count == 0)
@@ -287,7 +295,7 @@ namespace System.Web {
 				output_stream.Filter = value;
 			}
 		}
-#if NET_2_0
+
 		public Encoding HeaderEncoding {
 			get {
 				if (headerEncoding == null) {
@@ -314,14 +322,10 @@ namespace System.Web {
 			}
 		}
 
-		public
-#else
-		internal
-#endif
-		NameValueCollection Headers {
+		public NameValueCollection Headers {
 			get {
 				if (headers == null)
-					headers = new NameValueCollection ();
+					headers = new HttpHeaderCollection ();
 
 				return headers;
 			}
@@ -336,18 +340,18 @@ namespace System.Web {
 				return WorkerRequest.IsClientConnected ();
 			}
 		}
-#if NET_2_0
+
 		public bool IsRequestBeingRedirected {
 			get { return is_request_being_redirected; }
 		}
-#endif
+
 		public TextWriter Output {
 			get {
-				if (writer == null)
-					writer = new HttpWriter (this);
-
 				return writer;
 			}
+#if NET_4_0
+			set { writer = value; }
+#endif
 		}
 
 		public Stream OutputStream {
@@ -376,23 +380,13 @@ namespace System.Web {
 
 				string s = value.Substring (0, p);
 				
-#if NET_2_0
 				if (!Int32.TryParse (s, out status_code))
 					throw new HttpException ("Invalid format for the Status property");
-#else
-						    
-				try {
-					status_code = Int32.Parse (s);
-				} catch {
-					throw new HttpException ("Invalid format for the Status property");
-				}
-#endif
 				
 				status_description = value.Substring (p+1);
 			}
 		}
 
-#if NET_2_0
 		// We ignore the two properties on Mono as they are for use with IIS7, but there is
 		// no point in throwing PlatformNotSupportedException. We might find a use for them
 		// some day.
@@ -405,7 +399,6 @@ namespace System.Web {
 			get;
 			set;
 		}
-#endif
 		
 		public int StatusCode {
 			get {
@@ -447,7 +440,6 @@ namespace System.Web {
 			}
 		}
 
-#if NET_2_0
 		[MonoTODO ("Not implemented")]
 		public void AddCacheDependency (CacheDependency[] dependencies)
 		{
@@ -459,7 +451,7 @@ namespace System.Web {
 		{
 			throw new NotImplementedException ();
 		}
-#endif
+
 		[MonoTODO("Currently does nothing")]
 		public void AddCacheItemDependencies (ArrayList cacheKeys)
 		{
@@ -478,14 +470,13 @@ namespace System.Web {
 				return;
 			FileDependenciesArray.AddRange (filenames);
 		}
-#if NET_2_0
+
 		public void AddFileDependencies (string[] filenames)
 		{
 			if (filenames == null || filenames.Length == 0)
 				return;
 			FileDependenciesArray.AddRange (filenames);
 		}
-#endif		
 
 		public void AddFileDependency (string filename)
 		{
@@ -512,8 +503,7 @@ namespace System.Web {
 		public void AppendHeader (string name, string value)
 		{
 			if (headers_sent)
-				throw new HttpException ("headers have been already sent");
-			
+				throw new HttpException ("Headers have been already sent");
 #if !TARGET_J2EE
 			if (String.Compare (name, "content-length", true, Helpers.InvariantCulture) == 0){
 				content_length = (long) UInt64.Parse (value);
@@ -552,7 +542,7 @@ namespace System.Web {
 		
 		public string ApplyAppPathModifier (string virtualPath)
 		{
-			if (virtualPath == null)
+			if (virtualPath == null || context == null)
 				return null;
 		
 			if (virtualPath.Length == 0)
@@ -565,13 +555,9 @@ namespace System.Web {
 			}
 
 			bool cookieless = false;
-#if NET_2_0
 			SessionStateSection config = WebConfigurationManager.GetWebApplicationSection ("system.web/sessionState") as SessionStateSection;
 			cookieless = SessionStateModule.IsCookieLess (context, config);
-#else
-			SessionConfig config = HttpContext.GetAppConfig ("system.web/sessionState") as SessionConfig;
-			cookieless = config.CookieLess;
-#endif
+
 			if (!cookieless)
 				return virtualPath;
 
@@ -637,12 +623,10 @@ namespace System.Web {
 			closed = true;
 		}
 
-#if NET_2_0
 		public void DisableKernelCache ()
 		{
 			// does nothing in Mono
 		}
-#endif
 		
 		public void End ()
 		{
@@ -818,6 +802,9 @@ namespace System.Web {
 
 		internal void Flush (bool final_flush)
 		{
+			if (completed)
+				throw new HttpException ("Server cannot flush a completed response");
+			
 			DoFilter (final_flush);
 			if (!headers_sent){
 				if (final_flush || status_code != 200)
@@ -831,9 +818,11 @@ namespace System.Web {
 				output_stream.Clear ();
 				if (WorkerRequest != null)
 					output_stream.Flush (WorkerRequest, true); // ignore final_flush here.
+				completed = true;
 				return;
 			}
-
+			completed = final_flush;
+			
 			if (!headers_sent)
 				WriteHeaders (final_flush);
 
@@ -860,12 +849,7 @@ namespace System.Web {
 			AppendHeader ("PICS-Label", value);
 		}
 
-		public void Redirect (string url)
-		{
-			Redirect (url, true);
-		}
-
-		public void Redirect (string url, bool endResponse)
+		void Redirect (string url, bool endResponse, int code)
 		{
 			if (url == null)
 				throw new ArgumentNullException ("url");
@@ -875,15 +859,14 @@ namespace System.Web {
 
 			if (url.IndexOf ('\n') != -1)
 				throw new ArgumentException ("Redirect URI cannot contain newline characters.", "url");
-#if NET_2_0
+			
 			is_request_being_redirected = true;
-#endif
 			ClearHeaders ();
 			ClearContent ();
 			
-			StatusCode = 302;
+			StatusCode = code;
 			url = ApplyAppPathModifier (url);
-#if NET_2_0
+
 			bool isFullyQualified;
 			if (StrUtils.StartsWith (url, "http:", true) ||
 			    StrUtils.StartsWith (url, "https:", true) ||
@@ -894,18 +877,24 @@ namespace System.Web {
 				isFullyQualified = false;
 
 			if (!isFullyQualified) {
-				HttpRuntimeSection config = WebConfigurationManager.GetWebApplicationSection ("system.web/httpRuntime") as HttpRuntimeSection;
+				HttpRuntimeSection config = HttpRuntime.Section;
 				if (config != null && config.UseFullyQualifiedRedirectUrl) {
 					var ub = new UriBuilder (context.Request.Url);
-					ub.Path = url;
+					int qpos = url.IndexOf ('?');
+					if (qpos == -1) {
+						ub.Path = url;
+						ub.Query = null;
+					} else {
+						ub.Path = url.Substring (0, qpos);
+						ub.Query = url.Substring (qpos + 1);
+					}
 					ub.Fragment = null;
 					ub.Password = null;
-					ub.Query = null;
 					ub.UserName = null;
 					url = ub.Uri.ToString ();
 				}
 			}
-#endif
+			
 			redirect_location = url;
 
 			// Text for browsers that can't handle location header
@@ -915,11 +904,107 @@ namespace System.Web {
 			
 			if (endResponse)
 				End ();
-#if NET_2_0
 			is_request_being_redirected = false;
-#endif
+		}
+		
+		public void Redirect (string url)
+		{
+			Redirect (url, true);
 		}
 
+		public void Redirect (string url, bool endResponse)
+		{
+			Redirect (url, endResponse, 302);
+		}
+#if NET_4_0
+		public void RedirectPermanent (string url)
+		{
+			RedirectPermanent (url, true);
+		}
+
+		public void RedirectPermanent (string url, bool endResponse)
+		{
+			Redirect (url, endResponse, 301);
+		}
+
+		public void RedirectToRoute (object routeValues)
+		{
+			RedirectToRoute ("RedirectToRoute", null, new RouteValueDictionary (routeValues), 302, true);
+		}
+
+		public void RedirectToRoute (RouteValueDictionary routeValues)
+		{
+			RedirectToRoute ("RedirectToRoute", null, routeValues, 302, true);
+		}
+
+		public void RedirectToRoute (string routeName)
+		{
+			RedirectToRoute ("RedirectToRoute", routeName, null, 302, true);
+		}
+
+		public void RedirectToRoute (string routeName, object routeValues)
+		{
+			RedirectToRoute ("RedirectToRoute", routeName, new RouteValueDictionary (routeValues), 302, true);
+		}
+
+		public void RedirectToRoute (string routeName, RouteValueDictionary routeValues)
+		{
+			RedirectToRoute ("RedirectToRoute", routeName, routeValues, 302, true);
+		}
+
+		public void RedirectToRoutePermanent (object routeValues)
+		{
+			RedirectToRoute ("RedirectToRoutePermanent", null, new RouteValueDictionary (routeValues), 301, false);
+		}
+
+		public void RedirectToRoutePermanent (RouteValueDictionary routeValues)
+		{
+			RedirectToRoute ("RedirectToRoutePermanent", null, routeValues, 301, false);
+		}
+
+		public void RedirectToRoutePermanent (string routeName)
+		{
+			RedirectToRoute ("RedirectToRoutePermanent", routeName, null, 301, false);
+		}
+
+		public void RedirectToRoutePermanent (string routeName, object routeValues)
+		{
+			RedirectToRoute ("RedirectToRoutePermanent", routeName, new RouteValueDictionary (routeValues), 301, false);
+		}		
+
+		public void RedirectToRoutePermanent (string routeName, RouteValueDictionary routeValues)
+		{
+			RedirectToRoute ("RedirectToRoutePermanent", routeName, routeValues, 301, false);
+		}
+		
+		void RedirectToRoute (string callerName, string routeName, RouteValueDictionary routeValues, int redirectCode, bool endResponse)
+		{
+			HttpContext ctx = context ?? HttpContext.Current;
+			HttpRequest req = ctx != null ? ctx.Request : null;
+			
+			if (req == null)
+				// Let's emulate .NET
+				throw new NullReferenceException ();
+			
+			VirtualPathData vpd = RouteTable.Routes.GetVirtualPath (req.RequestContext, routeName, routeValues);
+			string redirectUrl = vpd != null ? vpd.VirtualPath : null;
+			if (String.IsNullOrEmpty (redirectUrl))
+				throw new InvalidOperationException ("No matching route found for RedirectToRoute");
+
+			Redirect (redirectUrl, true, redirectCode);
+		}
+
+		public static void RemoveOutputCacheItem (string path, string providerName)
+		{
+			if (path == null)
+				throw new ArgumentNullException ("path");
+
+			if (path.Length > 0 && path [0] != '/')
+				throw new ArgumentException ("Invalid path for HttpResponse.RemoveOutputCacheItem: '" + path + "'. An absolute virtual path is expected");
+
+			OutputCache.RemoveFromProvider (path, providerName);
+		}
+#endif
 		public static void RemoveOutputCacheItem (string path)
 		{
 			if (path == null)
@@ -931,7 +1016,19 @@ namespace System.Web {
 			if (path [0] != '/')
 				throw new ArgumentException ("'" + path + "' is not an absolute virtual path.");
 
-			HttpRuntime.InternalCache.Remove (path);
+#if NET_4_0
+			RemoveOutputCacheItem (path, OutputCache.DefaultProviderName);
+#else
+			HttpContext context = HttpContext.Current;
+			HttpApplication app_instance = context != null ? context.ApplicationInstance : null;
+			HttpModuleCollection modules = app_instance != null ? app_instance.Modules : null;
+			OutputCacheModule ocm = modules != null ? modules.Get ("OutputCache") as OutputCacheModule : null;
+			OutputCacheProvider internalProvider = ocm != null ? ocm.InternalProvider : null;
+			if (internalProvider == null)
+				return;
+
+			internalProvider.Remove (path);
+#endif
 		}
 
 		public void SetCookie (HttpCookie cookie)
@@ -941,27 +1038,82 @@ namespace System.Web {
 
 		public void Write (char ch)
 		{
-			Output.Write (ch);
+			TextWriter writer = Output;
+#if NET_4_0
+			// Emulating .NET
+			if (writer == null)
+				throw new NullReferenceException (".NET 4.0 emulation. A null value was found where an object was required.");
+#endif
+			writer.Write (ch);
 		}
 
 		public void Write (object obj)
 		{
+			TextWriter writer = Output;
+#if NET_4_0
+			// Emulating .NET
+			if (writer == null)
+				throw new NullReferenceException (".NET 4.0 emulation. A null value was found where an object was required.");
+#endif
 			if (obj == null)
 				return;
 			
-			Output.Write (obj.ToString ());
+			writer.Write (obj.ToString ());
 		}
 		
 		public void Write (string s)
 		{
-			Output.Write (s);
+			TextWriter writer = Output;
+#if NET_4_0
+			// Emulating .NET
+			if (writer == null)
+				throw new NullReferenceException (".NET 4.0 emulation. A null value was found where an object was required.");
+#endif
+			writer.Write (s);
 		}
 		
 		public void Write (char [] buffer, int index, int count)
 		{
-			Output.Write (buffer, index, count);
+			TextWriter writer = Output;
+#if NET_4_0
+			// Emulating .NET
+			if (writer == null)
+				throw new NullReferenceException (".NET 4.0 emulation. A null value was found where an object was required.");
+#endif
+			writer.Write (buffer, index, count);
 		}
 
+		bool IsFileSystemDirSeparator (char ch)
+		{
+			return ch == '\\' || ch == '/';
+		}
+		
+		string GetNormalizedFileName (string fn)
+		{
+			if (String.IsNullOrEmpty (fn))
+				return fn;
+
+			// On Linux we don't change \ to / since filenames with \ are valid. We also
+			// don't remove drive: designator for the same reason.
+			int len = fn.Length;
+			if (len >= 3 && fn [1] == ':' && IsFileSystemDirSeparator (fn [2]))
+				return Path.GetFullPath (fn); // drive-qualified absolute file path
+
+			bool startsWithDirSeparator = IsFileSystemDirSeparator (fn [0]);
+			if (len >= 2 && startsWithDirSeparator && IsFileSystemDirSeparator (fn [1]))
+				return Path.GetFullPath (fn); // UNC path
+
+			if (!startsWithDirSeparator) {
+				HttpContext ctx = context ?? HttpContext.Current;
+				HttpRequest req = ctx != null ? ctx.Request : null;
+				
+				if (req != null)
+					return req.MapPath (fn);
+			}
+			
+			return fn; // Or should we rather throw?
+		}
+		
 		internal void WriteFile (FileStream fs, long offset, long size)
 		{
 			byte [] buffer = new byte [32*1024];
@@ -987,12 +1139,13 @@ namespace System.Web {
 			if (filename == null)
 				throw new ArgumentNullException ("filename");
 
+			string fn = GetNormalizedFileName (filename);
 			if (readIntoMemory){
-				using (FileStream fs = File.OpenRead (filename))
+				using (FileStream fs = File.OpenRead (fn))
 					WriteFile (fs, 0, fs.Length);
 			} else {
-				FileInfo fi = new FileInfo (filename);
-				output_stream.WriteFile (filename, 0, fi.Length);
+				FileInfo fi = new FileInfo (fn);
+				output_stream.WriteFile (fn, 0, fi.Length);
 			}
 			if (buffer)
 				return;
@@ -1049,7 +1202,7 @@ namespace System.Web {
 			output_stream.ApplyFilter (false);
 			Flush ();
 		}
-#if NET_2_0
+
 		public void WriteSubstitution (HttpResponseSubstitutionCallback callback)
 		{
 			// Emulation of .NET behavior
@@ -1077,7 +1230,7 @@ namespace System.Web {
 			
 			cached_response.SetData (callback);
 		}
-#endif
+
 		//
 		// Like WriteFile, but never buffers, so we manually Flush here
 		//
@@ -1098,7 +1251,6 @@ namespace System.Web {
 			Flush (final_flush);
 		}
 
-#if NET_2_0
 		public void TransmitFile (string filename, long offset, long length)
 		{
 			output_stream.WriteFile (filename, offset, length);
@@ -1134,7 +1286,6 @@ namespace System.Web {
 					Flush (true);
 			}
 		}
-#endif
 		
 #region Session state support
 		internal void SetAppPathModifier (string app_modifier)
@@ -1214,8 +1365,12 @@ namespace System.Web {
 
 		internal void ReleaseResources ()
 		{
+			if (completed)
+				return;
+			
 			output_stream.ReleaseResources (true);
-			output_stream = null;
+			Close ();
+			completed = true;
 		}
 	}
 

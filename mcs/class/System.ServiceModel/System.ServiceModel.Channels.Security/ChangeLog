@@ -1,0 +1,54 @@
+2010-10-15  Atsushi Eno  <atsushi@ximian.com>
+
+	The previous changes somehow regressed on olive samples, so give
+	quick fixes.
+
+2010-10-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Add SecurityDuplexSessionChannel, and making room for duplex
+	channel, phase 2.
+
+2010-10-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Eliminate IReplyChannel dependency in security support and make
+	room for (TCP) duplex channel.
+
+2010-07-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SecurityReplyChannel.cs : when the inner channel gave null
+	  context while returning true, also output null as context.
+	  Throw an error if the inner authenticator is invalid.
+
+2010-07-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SecurityReplyChannel.cs : handle WS-Trust message here.
+	* SecurityRequestContext.cs : so, do not pass those messages here.
+
+2010-07-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MessageSecurityBindingSupport.cs : and move this to here too.
+
+2010-07-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SecurityCapabilities.cs, SupportingTokenInfo.cs :
+	  new internal types, split from MessageSecurityBindingSupport.cs.
+
+2010-07-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SecurityRequestContext.cs : revert extra and bogus changes I had
+	  locally.
+
+2010-07-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SecurityChannelFactory.cs
+	  SecurityChannelListener.cs
+	  SecurityRequestContext.cs
+	  SecurityOutputChannel.cs
+	  SecurityReplyChannel.cs
+	  SecurityRequestChannel.cs
+	  SecureMessageGenerator.cs
+	  SecureMessageDecryptor.cs
+	  WSEncryptedXml.cs
+	  WSSignedXml.cs
+	  WSSecurityMessageHeader.cs : moved from System.ServiceModel.Channels.
+

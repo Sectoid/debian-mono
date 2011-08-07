@@ -27,8 +27,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System;
 using System.Runtime.InteropServices;
 
@@ -39,12 +37,23 @@ namespace System.Reflection {
 	public struct CustomAttributeNamedArgument {
 		CustomAttributeTypedArgument typedArgument;
 		MemberInfo memberInfo;
-
-		internal CustomAttributeNamedArgument (MemberInfo memberInfo, object typedArgument)
+		
+#if NET_4_0
+		public
+#endif
+		CustomAttributeNamedArgument (MemberInfo memberInfo, object value)
 		{
 			this.memberInfo = memberInfo;
-			this.typedArgument = (CustomAttributeTypedArgument) typedArgument;
+			this.typedArgument = (CustomAttributeTypedArgument) value;
 		}
+		
+#if NET_4_0
+		public CustomAttributeNamedArgument (MemberInfo memberInfo, CustomAttributeTypedArgument typedArgument)
+		{
+			this.memberInfo = memberInfo;
+			this.typedArgument = typedArgument;
+		}
+#endif
 
 		public MemberInfo MemberInfo {
 			get {
@@ -89,6 +98,4 @@ namespace System.Reflection {
 	}
 
 }
-
-#endif
 

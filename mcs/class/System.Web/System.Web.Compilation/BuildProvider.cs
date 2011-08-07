@@ -5,7 +5,7 @@
 //	Chris Toshok (toshok@ximian.com)
 //	Gonzalo Paniagua Javier (gonzalo@ximian.com)
 //
-// (C) 2006 Novell, Inc (http://www.novell.com)
+// (C) 2006-2009 Novell, Inc (http://www.novell.com)
 //
 
 //
@@ -29,8 +29,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System;
 using System.CodeDom;
 using System.CodeDom.Compiler;
@@ -47,6 +45,9 @@ namespace System.Web.Compilation
 {
 	public abstract class BuildProvider
 	{
+#if NET_4_0
+		static Dictionary <string, Type> registeredBuildProviderTypes;
+#endif
 		ArrayList ref_assemblies;
 		
 		ICollection vpath_deps;
@@ -135,7 +136,52 @@ namespace System.Web.Compilation
 			// MS also throws a NullReferenceException here when not hosted.
 			return VirtualPathProvider.OpenFile (virtualPath);
 		}
+#if NET_4_0
+		public static void RegisterBuildProvider (string extension, Type providerType)
+		{
+			if (String.IsNullOrEmpty (extension))
+				throw new ArgumentException ("The string parameter 'extension' cannot be null or empty.", "extension");
+
+			if (providerType == null)
+				throw new ArgumentNullException ("providerType");
+
+			if (!typeof (BuildProvider).IsAssignableFrom (providerType))
+				throw new ArgumentException ("The parameter 'providerType' is invalid", "providerType");
+
+			BuildManager.AssertPreStartMethodsRunning ();
+
+			if (registeredBuildProviderTypes == null)
+				registeredBuildProviderTypes = new Dictionary <string, Type> (StringComparer.OrdinalIgnoreCase);
+
+			registeredBuildProviderTypes [extension] = providerType;
+		}
+
+		internal static Type GetProviderTypeForExtension (string extension)
+		{
+			if (String.IsNullOrEmpty (extension))
+				return null;
+
+			Type type = null;
+			if (registeredBuildProviderTypes == null || !registeredBuildProviderTypes.TryGetValue (extension, out type) || type == null) {
+				var cs = WebConfigurationManager.GetSection ("system.web/compilation") as CompilationSection;
+				BuildProviderCollection bpcoll = cs != null ? cs.BuildProviders : null;
+				global::System.Web.Configuration.BuildProvider bpcfg = bpcoll != null ? bpcoll [extension] : null;
+				if (bpcfg != null)
+					type = HttpApplication.LoadType (bpcfg.Type);
+			}
+
+			return type;
+		}
 		
+		internal static BuildProvider GetProviderInstanceForExtension (string extension)
+		{
+			Type type = GetProviderTypeForExtension (extension);
+			if (type == null)
+				return null;
+			
+			return Activator.CreateInstance (type, null) as global::System.Web.Compilation.BuildProvider;
+		}
+#endif
 		public virtual CompilerType CodeCompilerType {
 			get { return null; } // Documented to return null
 		}
@@ -203,5 +249,5 @@ namespace System.Web.Compilation
 		}
 	}
 }
-#endif
+
 

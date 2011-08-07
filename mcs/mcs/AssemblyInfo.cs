@@ -27,11 +27,10 @@
 //
 
 using System.Reflection;
-using System.Runtime.CompilerServices;
 
 [assembly: AssemblyTitle ("Mono C# Compiler")]
 [assembly: AssemblyProduct ("Mono C# Compiler")]
-[assembly: AssemblyCopyright ("2001 - 2008 Novell, Inc.")]
+[assembly: AssemblyCopyright ("2001 - 2009 Novell, Inc.")]
 [assembly: AssemblyCompany ("Novell, Inc.")]
 [assembly: AssemblyCulture ("")]
 [assembly: AssemblyConfiguration ("")]
@@ -39,9 +38,5 @@ using System.Runtime.CompilerServices;
 [assembly: AssemblyVersion (Consts.MonoVersion)]
 [assembly: AssemblyFileVersion (Consts.FxFileVersion)]
 
-#if GMCS_SOURCE
-[assembly: AssemblyDescription ("Mono C# Compiler with Generics")]
-#else
 [assembly: AssemblyDescription ("Mono C# Compiler")]
-#endif
 

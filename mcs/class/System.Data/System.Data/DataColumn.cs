@@ -405,15 +405,9 @@ namespace System.Data {
 
 				//Check AutoIncrement status, make compatible datatype
 				if(AutoIncrement == true) {
-					// we want to check that the datatype is supported?
-					// TODO: Is this the same as CanAutoIncrement or was the omission of Decimal intended?
-					TypeCode typeCode = Type.GetTypeCode(value);
-
-					if (typeCode != TypeCode.Int16 &&
-					    typeCode != TypeCode.Int32 &&
-					    typeCode != TypeCode.Int64) {
+					// we want to check that the datatype is supported?					
+					if (!CanAutoIncrement (value))
 						AutoIncrement = false;
-					}
 				}
 
 				if (DefaultValue != GetDefaultValueForType (prevType))
@@ -707,8 +701,16 @@ namespace System.Data {
 			//Copy.Container
 			copy.DataType = DataType;
 			copy._defaultValue = _defaultValue;
-			copy._expression = _expression;
+			// Use the property to set the expression as it updates compiledExpression, if any.
+			copy.Expression = _expression;
 			//Copy.ExtendedProperties
+			if (_extendedProperties.Count > 0) {
+				Array extPropArray = Array.CreateInstance (typeof (object), _extendedProperties.Count);
+				_extendedProperties.CopyTo (extPropArray, 0);
+				for (var i = 0; i < _extendedProperties.Count; i++)
+					copy.ExtendedProperties.Add (extPropArray.GetValue(i), 
+					                             ExtendedProperties[extPropArray.GetValue(i)]);
+			}
 			copy._maxLength = _maxLength;
 			copy._nameSpace = _nameSpace;
 			copy._prefix = _prefix;

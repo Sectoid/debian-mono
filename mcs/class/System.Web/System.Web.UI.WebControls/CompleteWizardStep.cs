@@ -24,8 +24,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System;
 using System.Web;
 using System.Web.UI;
@@ -35,6 +33,7 @@ using System.Text;
 
 namespace System.Web.UI.WebControls
 {
+	[Browsable (false)]
 	public sealed class CompleteWizardStep : TemplatedWizardStep
 	{
 		public CompleteWizardStep ()
@@ -43,23 +42,22 @@ namespace System.Web.UI.WebControls
 
 		// MSDN: The StepType property overrides the WizardStepBase.StepType property to ensure that CompleteWizardStep is always set to the Complete value of 
 		// the WizardStepType enumeration. Attempting to set the StepType property to a different value will result in an InvalidOperationException.
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
+		[Filterable (false)]
+		[Browsable (false)]
 		[ThemeableAttribute (false)]
-		public override WizardStepType StepType
-		{
+		public override WizardStepType StepType {
 			get { return WizardStepType.Complete; }
 			set { throw new InvalidOperationException (); }
 		}
 
 		[LocalizableAttribute (true)]
-		public override string Title
-		{
-			get
-			{
+		public override string Title {
+			get {
 				object o = ViewState ["TitleText"];
 				return (o == null) ? Locale.GetText ("Complete") : (string) o;
 			}
-			set
-			{
+			set {
 				if (value == null)
 					ViewState.Remove ("TitleText");
 				else
@@ -70,4 +68,3 @@ namespace System.Web.UI.WebControls
 
 }
 
-#endif

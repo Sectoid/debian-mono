@@ -4,7 +4,7 @@
 // Authors:
 //   Chris Toshok (toshok@ximian.com)
 //
-// (C) 2006 Novell, Inc. (http://www.novell.com)
+// (C) 2006-2010 Novell, Inc. (http://www.novell.com)
 //
 
 //
@@ -28,8 +28,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System;
 using System.Collections;
 using System.IO;
@@ -50,7 +48,7 @@ namespace System.Web.UI
 		{
 		}
 
-		internal override void AddDirective (string directive, Hashtable atts)
+		internal override void AddDirective (string directive, IDictionary atts)
 		{
 			int cmp = String.Compare ("Register", directive, StringComparison.OrdinalIgnoreCase);
 			if (cmp == 0) {
@@ -66,5 +64,3 @@ namespace System.Web.UI
 		}
 	}
 }
-
-#endif

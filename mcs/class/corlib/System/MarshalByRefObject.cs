@@ -37,9 +37,7 @@ using System.Runtime.InteropServices;
 namespace System
 {
 	[Serializable]
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public abstract class MarshalByRefObject
 	{
 		[NonSerialized]
@@ -98,7 +96,6 @@ namespace System
 				return new System.Runtime.Remoting.Lifetime.Lease();
 		}
 
-#if NET_2_0
 		protected MarshalByRefObject MemberwiseClone (bool cloneIdentity)
 		{
 			MarshalByRefObject mbr = (MarshalByRefObject) MemberwiseClone ();
@@ -106,6 +103,5 @@ namespace System
 				mbr._identity = null;
 			return mbr;
 		}
-#endif
 	}
 }

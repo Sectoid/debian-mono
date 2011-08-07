@@ -29,7 +29,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 
 using System.IO;
 using System.Runtime.InteropServices;
@@ -38,12 +38,8 @@ using Mono.Security.Cryptography;
 
 namespace System.Security.Cryptography {
 
-#if NET_2_0
 	[ComVisible (true)]
 	public sealed class RSACryptoServiceProvider : RSA, ICspAsymmetricAlgorithm {
-#else
-	public sealed class RSACryptoServiceProvider : RSA {
-#endif
 		private const int PROV_RSA_FULL = 1;	// from WinCrypt.h
 
 		private KeyPairPersistence store;
@@ -109,7 +105,12 @@ namespace System.Security.Cryptography {
 			}
 			else {
 				store = new KeyPairPersistence (p);
-				store.Load ();
+				bool exists = store.Load ();
+				bool required = (p.Flags & CspProviderFlags.UseExistingKey) != 0;
+
+				if (required && !exists)
+					throw new CryptographicException ("Keyset does not exist");
+
 				if (store.KeyValue != null) {
 					persisted = true;
 					this.FromXmlString (store.KeyValue);
@@ -154,13 +155,8 @@ namespace System.Security.Cryptography {
 			}
 		}
 
-#if (NET_2_0)
 		[ComVisible (false)]
-		public 
-#else
-		internal
-#endif
-		bool PublicOnly {
+		public bool PublicOnly {
 			get { return rsa.PublicOnly; }
 		}
 	
@@ -282,31 +278,27 @@ namespace System.Security.Cryptography {
 		private string GetHashNameFromOID (string oid) 
 		{
 			switch (oid) {
-				case "1.3.14.3.2.26":
-					return "SHA1";
-				case "1.2.840.113549.2.5":
-					return "MD5";
-				default:
-					throw new NotSupportedException (oid + " is an unsupported hash algorithm for RSA signing");
+			case "1.3.14.3.2.26":
+				return "SHA1";
+			case "1.2.840.113549.2.5":
+				return "MD5";
+			case "2.16.840.1.101.3.4.2.1":
+				return "SHA256";
+			case "2.16.840.1.101.3.4.2.2":
+				return "SHA384";
+			case "2.16.840.1.101.3.4.2.3":
+				return "SHA512";
+			default:
+				throw new CryptographicException (oid + " is an unsupported hash algorithm for RSA signing");
 			}
 		}
 
-		// LAMESPEC: str is not the hash name but an OID
-		// NOTE: this method is LIMITED to SHA1 and MD5 like the MS framework 1.0 
-		// and 1.1 because there's no method to get a hash algorithm from an OID. 
-		// However there's no such limit when using the [De]Formatter class.
 		public byte[] SignHash (byte[] rgbHash, string str) 
 		{
 			if (rgbHash == null)
 				throw new ArgumentNullException ("rgbHash");
-#if NET_2_0
 			// Fx 2.0 defaults to the SHA-1
 			string hashName = (str == null) ? "SHA1" : GetHashNameFromOID (str);
-#else
-			if (str == null)
-				throw new CryptographicException (Locale.GetText ("No OID specified"));
-			string hashName = GetHashNameFromOID (str);
-#endif
 			HashAlgorithm hash = HashAlgorithm.Create (hashName);
 			return PKCS1.Sign_v15 (this, hash, rgbHash);
 		}
@@ -315,10 +307,8 @@ namespace System.Security.Cryptography {
 		// HashAlgorithm descendant
 		public bool VerifyData (byte[] buffer, object halg, byte[] signature) 
 		{
-#if NET_1_1
 			if (buffer == null)
 				throw new ArgumentNullException ("buffer");
-#endif
 			if (signature == null)
 				throw new ArgumentNullException ("signature");
 
@@ -327,24 +317,14 @@ namespace System.Security.Cryptography {
 			return PKCS1.Verify_v15 (this, hash, toBeVerified, signature);
 		}
 	
-		// LAMESPEC: str is not the hash name but an OID
-		// NOTE: this method is LIMITED to SHA1 and MD5 like the MS framework 1.0 
-		// and 1.1 because there's no method to get a hash algorithm from an OID. 
-		// However there's no such limit when using the [De]Formatter class.
 		public bool VerifyHash (byte[] rgbHash, string str, byte[] rgbSignature) 
 		{
 			if (rgbHash == null) 
 				throw new ArgumentNullException ("rgbHash");
 			if (rgbSignature == null)
 				throw new ArgumentNullException ("rgbSignature");
-#if NET_2_0
 			// Fx 2.0 defaults to the SHA-1
 			string hashName = (str == null) ? "SHA1" : GetHashNameFromOID (str);
-#else
-			if (str == null)
-				throw new CryptographicException (Locale.GetText ("No OID specified"));
-			string hashName = GetHashNameFromOID (str);
-#endif
 			HashAlgorithm hash = HashAlgorithm.Create (hashName);
 			return PKCS1.Verify_v15 (this, hash, rgbHash, rgbSignature);
 		}
@@ -376,14 +356,13 @@ namespace System.Security.Cryptography {
 				persisted = true;
 			}
 		}
-#if NET_2_0
 		// ICspAsymmetricAlgorithm
 
-		[MonoTODO ("Always return null")]
-		// FIXME: call into KeyPairPersistence to get details
 		[ComVisible (false)]
 		public CspKeyContainerInfo CspKeyContainerInfo {
-			get { return null; }
+			get {
+				return new CspKeyContainerInfo(store.Parameters);
+			}
 		}
 
 		[ComVisible (false)]
@@ -427,7 +406,6 @@ namespace System.Security.Cryptography {
 				}
 			}
 		}
-#endif
 	}
 }
 

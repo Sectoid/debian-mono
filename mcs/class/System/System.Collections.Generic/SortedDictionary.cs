@@ -32,14 +32,18 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 using System;
 using System.Collections;
+using System.Diagnostics;
+using System.Runtime.Serialization;
+using System.Security.Permissions;
 
 namespace System.Collections.Generic
 {
 	[Serializable]
-	public class SortedDictionary<TKey,TValue> : IDictionary<TKey,TValue>, ICollection<KeyValuePair<TKey,TValue>>, IEnumerable<KeyValuePair<TKey,TValue>>, IDictionary, ICollection, IEnumerable
+	[DebuggerDisplay ("Count={Count}")]
+	[DebuggerTypeProxy (typeof (CollectionDebuggerView<,>))]
+	public class SortedDictionary<TKey,TValue> : IDictionary<TKey,TValue>, ICollection<KeyValuePair<TKey,TValue>>, IEnumerable<KeyValuePair<TKey,TValue>>, IDictionary, ICollection, IEnumerable, ISerializable
 	{
 		class Node : RBTree.Node {
 			public TKey key;
@@ -74,6 +78,7 @@ namespace System.Collections.Generic
 			}
 		}
 
+		[Serializable]
 		class NodeHelper : RBTree.INodeHelper<TKey> {
 			public IComparer<TKey> cmp;
 
@@ -125,6 +130,17 @@ namespace System.Collections.Generic
 			foreach (KeyValuePair<TKey, TValue> entry in dic)
 				Add (entry.Key, entry.Value);
 		}
+
+		protected SortedDictionary (SerializationInfo info, StreamingContext context)
+		{
+			hlp = (NodeHelper)info.GetValue("Helper", typeof(NodeHelper));
+			tree = new RBTree (hlp);
+
+			KeyValuePair<TKey, TValue> [] data = (KeyValuePair<TKey, TValue>[])info.GetValue("KeyValuePairs", typeof(KeyValuePair<TKey, TValue>[]));
+			foreach (KeyValuePair<TKey, TValue> entry in data)
+				Add(entry.Key, entry.Value);
+		}
+
 		#endregion
 
 		#region PublicProperty
@@ -224,6 +240,18 @@ namespace System.Collections.Generic
 			return n != null;
 		}
 
+		[SecurityPermission (SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.SerializationFormatter)]
+		public virtual void GetObjectData (SerializationInfo info, StreamingContext context)
+		{
+			if (info == null)
+				throw new ArgumentNullException ("info");
+
+			KeyValuePair<TKey, TValue> [] data = new KeyValuePair<TKey,TValue> [Count];
+			CopyTo (data, 0);
+			info.AddValue ("KeyValuePairs", data);
+			info.AddValue ("Helper", hlp);
+		}
+
 		#endregion
 
 		#region PrivateMethod
@@ -278,7 +306,7 @@ namespace System.Collections.Generic
 		{
 			TValue value;
 			return TryGetValue (item.Key, out value) &&
- 				EqualityComparer<TValue>.Default.Equals (item.Value, value) &&
+				EqualityComparer<TValue>.Default.Equals (item.Value, value) &&
 				Remove (item.Key);
 		}
 
@@ -376,6 +404,8 @@ namespace System.Collections.Generic
 		#endregion
 
 		[Serializable]
+		[DebuggerDisplay ("Count={Count}")]
+		[DebuggerTypeProxy (typeof (CollectionDebuggerView<,>))]
 		public sealed class ValueCollection : ICollection<TValue>,
 			IEnumerable<TValue>, ICollection, IEnumerable
 		{
@@ -462,7 +492,7 @@ namespace System.Collections.Generic
 
 			IEnumerator IEnumerable.GetEnumerator ()
 			{
- 				return new Enumerator (_dic);
+				return new Enumerator (_dic);
 			}
 
 			public struct Enumerator : IEnumerator<TValue>,IEnumerator, IDisposable
@@ -509,6 +539,8 @@ namespace System.Collections.Generic
 		}
 
 		[Serializable]
+		[DebuggerDisplay ("Count={Count}")]
+		[DebuggerTypeProxy (typeof (CollectionDebuggerView<,>))]
 		public sealed class KeyCollection : ICollection<TKey>,
 			IEnumerable<TKey>, ICollection, IEnumerable
 		{
@@ -595,7 +627,7 @@ namespace System.Collections.Generic
 
 			IEnumerator IEnumerable.GetEnumerator ()
 			{
- 				return new Enumerator (_dic);
+				return new Enumerator (_dic);
 			}
 
 			public struct Enumerator : IEnumerator<TKey>, IEnumerator, IDisposable
@@ -700,4 +732,3 @@ namespace System.Collections.Generic
 		}
 	}
 }
-#endif

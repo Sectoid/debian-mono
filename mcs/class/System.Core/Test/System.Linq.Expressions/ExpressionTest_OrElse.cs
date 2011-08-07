@@ -80,7 +80,9 @@ namespace MonoTests.System.Linq.Expressions
 			Assert.AreEqual (ExpressionType.OrElse, expr.NodeType, "OrElse#01");
 			Assert.AreEqual (typeof (bool), expr.Type, "OrElse#02");
 			Assert.IsNull (expr.Method, "OrElse#03");
+#if !NET_4_0
 			Assert.AreEqual ("(True || False)", expr.ToString(), "OrElse#04");
+#endif
 		}
 
 		[Test]
@@ -95,8 +97,10 @@ namespace MonoTests.System.Linq.Expressions
 			Assert.AreEqual (typeof (OpClass), expr.Type, "OrElse#06");
 			Assert.AreEqual (mi, expr.Method, "OrElse#07");
 			Assert.AreEqual ("op_BitwiseOr", expr.Method.Name, "OrElse#08");
+#if !NET_4_0
 			Assert.AreEqual ("(value(MonoTests.System.Linq.Expressions.OpClass) || value(MonoTests.System.Linq.Expressions.OpClass))",
 				expr.ToString(), "OrElse#09");
+#endif
 		}
 
 		public class BrokenMethod {
@@ -276,7 +280,7 @@ namespace MonoTests.System.Linq.Expressions
 			Assert.AreEqual (new Slot (64), orelse (new Slot (64), new Slot (64)));
 			Assert.AreEqual (new Slot (32), orelse (new Slot (32), new Slot (64)));
 		}
-
+#if !NET_4_0 // dlr bug 5867
 		[Test]
 		public void UserDefinedOrElseLiftedToNull ()
 		{
@@ -298,7 +302,7 @@ namespace MonoTests.System.Linq.Expressions
 			Assert.AreEqual (new Slot (32), orelse (new Slot (32), null));
 			Assert.AreEqual (null, orelse (null, null));
 		}
-
+#endif
 		[Test]
 		public void UserDefinedOrElseShortCircuit ()
 		{

@@ -33,6 +33,7 @@ namespace MonoTests.System.Net.Sockets
 		{
 			IPEndPoint ep = new IPEndPoint (IPAddress.Any, 0);
 
+			/* UDP sockets use Any to disconnect
 			try {
 				using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)) {
 					s.Connect (ep);
@@ -42,6 +43,7 @@ namespace MonoTests.System.Net.Sockets
 			} catch (SocketException ex) {
 				Assert.AreEqual (10049, ex.ErrorCode, "#2");
 			}
+			*/
 
 			try {
 				using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
@@ -889,6 +891,21 @@ namespace MonoTests.System.Net.Sockets
 		}
 
 		[Test]
+		[Category("NotWorking")] // We cannot totally remove buffers (minimum is set to 256
+		public void BuffersCheck_None ()
+		{
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+				int original = s.ReceiveBufferSize;
+				s.ReceiveBufferSize = 0;
+				Assert.AreEqual (0, s.ReceiveBufferSize, "ReceiveBufferSize " + original.ToString ());
+
+				original = s.SendBufferSize;
+				s.SendBufferSize = 0;
+				Assert.AreEqual (0, s.SendBufferSize, "SendBufferSize " + original.ToString ());
+			}
+		}
+
+		[Test]
 		[ExpectedException (typeof(ObjectDisposedException))]
 		public void ReceiveBufferSizeClosed ()
 		{
@@ -1720,7 +1737,6 @@ namespace MonoTests.System.Net.Sockets
 		}
 		
 		[Test]
-		[Category ("NotOnMac")] // MacOSX will block attempting to connect to 127.0.0.4 causing the test to fail
 		public void BeginConnectMultiple ()
 		{
 			Socket sock = new Socket (AddressFamily.InterNetwork,
@@ -3997,5 +4013,102 @@ namespace MonoTests.System.Net.Sockets
 				Assert.AreEqual (typeof (Socket).FullName, ex.ObjectName, "#5");
 			}
 		}
+
+		[Test]
+		public void Shutdown_NoConnect ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+			s.Bind (new IPEndPoint (IPAddress.Loopback, 0));
+			s.Listen (1);
+			try {
+				s.Shutdown (SocketShutdown.Both);
+				Assert.Fail ("#1");
+			} catch (SocketException exc) {
+				Assert.AreEqual (10057, exc.ErrorCode, "#2");
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test]
+		[ExpectedException (typeof (NullReferenceException))]
+		public void ReceiveAsync_Null ()
+		{
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+				s.ReceiveAsync (null);
+			}
+		}
+
+		[Test]
+		[ExpectedException (typeof (NullReferenceException))]
+		public void ReceiveAsync_Default ()
+		{
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+				SocketAsyncEventArgs saea = new SocketAsyncEventArgs ();
+				s.ReceiveAsync (saea);
+			}
+		}
+
+
+		[Test]
+		[ExpectedException (typeof (NullReferenceException))]
+		public void ReceiveAsync_NullBuffer ()
+		{
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+				SocketAsyncEventArgs saea = new SocketAsyncEventArgs ();
+				saea.SetBuffer (null, 0, 0);
+				s.ReceiveAsync (null);
+			}
+		}
+
+		[Test]
+		[ExpectedException (typeof (ObjectDisposedException))]
+		public void ReceiveAsync_ClosedSocket ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+			s.Close ();
+			s.ReceiveAsync (null);
+		}
+
+		[Test]
+		[ExpectedException (typeof (NullReferenceException))]
+		public void SendAsync_Null ()
+		{
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+				s.SendAsync (null);
+			}
+		}
+
+		[Test]
+		[ExpectedException (typeof (NullReferenceException))]
+		public void SendAsync_Default ()
+		{
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+				SocketAsyncEventArgs saea = new SocketAsyncEventArgs ();
+				s.SendAsync (saea);
+			}
+		}
+
+
+		[Test]
+		[ExpectedException (typeof (NullReferenceException))]
+		public void SendAsync_NullBuffer ()
+		{
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+				SocketAsyncEventArgs saea = new SocketAsyncEventArgs ();
+				saea.SetBuffer (null, 0, 0);
+				s.SendAsync (null);
+			}
+		}
+
+		[Test]
+		[ExpectedException (typeof (ObjectDisposedException))]
+		public void SendAsync_ClosedSocket ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+			s.Close ();
+			s.SendAsync (null);
+		}
 	}
 }
+

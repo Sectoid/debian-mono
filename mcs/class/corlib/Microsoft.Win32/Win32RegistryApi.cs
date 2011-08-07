@@ -37,10 +37,12 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Text;
+using Microsoft.Win32.SafeHandles;
 
 namespace Microsoft.Win32
 {
@@ -56,12 +58,18 @@ namespace Microsoft.Win32
 
 		// FIXME must be a way to determin this dynamically?
 		const int Int32ByteSize = 4;
+		const int Int64ByteSize = 8;
 
 		// FIXME this is hard coded on Mono, can it be determined dynamically? 
 		readonly int NativeBytesPerCharacter = Marshal.SystemDefaultCharSize;
 
-		[DllImport ("advapi32.dll", CharSet=CharSet.Unicode, EntryPoint="RegCreateKey")]
-		static extern int RegCreateKey (IntPtr keyBase, string keyName, out IntPtr keyHandle);
+		const int RegOptionsNonVolatile = 0x00000000;
+		const int RegOptionsVolatile = 0x00000001;
+
+		[DllImport ("advapi32.dll", CharSet=CharSet.Unicode, EntryPoint="RegCreateKeyEx")]
+		static extern int RegCreateKeyEx (IntPtr keyBase, string keyName, int reserved, 
+			IntPtr lpClass, int options, int access, IntPtr securityAttrs,
+			out IntPtr keyHandle, out int disposition);
 	       
 		[DllImport ("advapi32.dll", CharSet=CharSet.Unicode, EntryPoint="RegCloseKey")]
 		static extern int RegCloseKey (IntPtr keyHandle);
@@ -113,6 +121,11 @@ namespace Microsoft.Win32
 				string valueName, IntPtr reserved, RegistryValueKind type,
 				ref int data, int rawDataLength);
 
+		[DllImport ("advapi32.dll", CharSet=CharSet.Unicode, EntryPoint="RegSetValueEx")]
+		private static extern int RegSetValueEx (IntPtr keyBase, 
+				string valueName, IntPtr reserved, RegistryValueKind type,
+				ref long data, int rawDataLength);
+
 		[DllImport ("advapi32.dll", CharSet=CharSet.Unicode, EntryPoint="RegQueryValueEx")]
 		private static extern int RegQueryValueEx (IntPtr keyBase,
 				string valueName, IntPtr reserved, ref RegistryValueKind type,
@@ -128,17 +141,35 @@ namespace Microsoft.Win32
 				string valueName, IntPtr reserved, ref RegistryValueKind type,
 				ref int data, ref int dataSize);
 
+		[DllImport ("advapi32.dll", CharSet=CharSet.Unicode, EntryPoint="RegQueryValueEx")]
+		private static extern int RegQueryValueEx (IntPtr keyBase,
+				string valueName, IntPtr reserved, ref RegistryValueKind type,
+				ref long data, ref int dataSize);
+
 		// Returns our handle from the RegistryKey
-		static IntPtr GetHandle (RegistryKey key)
+		public IntPtr GetHandle (RegistryKey key)
 		{
-			return (IntPtr) key.Handle;
+			return (IntPtr) key.InternalHandle;
 		}
 
 		static bool IsHandleValid (RegistryKey key)
 		{
-			return key.Handle != null;
+			return key.InternalHandle != null;
 		}
 
+		public RegistryValueKind GetValueKind (RegistryKey rkey, string name)
+		{
+			RegistryValueKind type = 0;
+			int size = 0;
+			IntPtr handle = GetHandle (rkey);
+			int result = RegQueryValueEx (handle, name, IntPtr.Zero, ref type, IntPtr.Zero, ref size);
+
+			if (result == Win32ResultCode.FileNotFound || result == Win32ResultCode.MarkedForDeletion) 
+				return RegistryValueKind.Unknown;
+
+			return type;
+		}
+		
 		/// <summary>
 		/// Acctually read a registry value. Requires knowledge of the
 		/// value's type and size.
@@ -173,6 +204,10 @@ namespace Microsoft.Win32
 				int data = 0;
 				result = RegQueryValueEx (handle, name, IntPtr.Zero, ref type, ref data, ref size);
 				obj = data;
+			} else if (type == RegistryValueKind.QWord) {
+				long data = 0;
+				result = RegQueryValueEx (handle, name, IntPtr.Zero, ref type, ref data, ref size);
+				obj = data;
 			} else if (type == RegistryValueKind.Binary) {
 				byte[] data;
 				result = GetBinaryValue (rkey, name, type, out data, size);
@@ -199,7 +234,6 @@ namespace Microsoft.Win32
 			return obj;
 		}
 
-#if NET_2_0
 		//
 		// This version has to do extra checking, make sure that the requested
 		// valueKind matches the type of the value being stored
@@ -210,7 +244,10 @@ namespace Microsoft.Win32
 			int result;
 			IntPtr handle = GetHandle (rkey);
 
-			if (valueKind == RegistryValueKind.DWord && type == typeof (int)) {
+			if (valueKind == RegistryValueKind.QWord && type == typeof (long)) {
+				long rawValue = (long)value;
+				result = RegSetValueEx (handle, name, IntPtr.Zero, RegistryValueKind.QWord, ref rawValue, Int64ByteSize); 
+			} else if (valueKind == RegistryValueKind.DWord && type == typeof (int)) {
 				int rawValue = (int)value;
 				result = RegSetValueEx (handle, name, IntPtr.Zero, RegistryValueKind.DWord, ref rawValue, Int32ByteSize); 
 			} else if (valueKind == RegistryValueKind.Binary && type == typeof (byte[])) {
@@ -247,7 +284,6 @@ namespace Microsoft.Win32
 				GenerateException (result);
 			}
 		}
-#endif
 	
 		public void SetValue (RegistryKey rkey, string name, object value)
 		{
@@ -407,15 +443,36 @@ namespace Microsoft.Win32
 		{
 			if (!IsHandleValid (rkey))
 				return;
+#if NET_4_0
+			SafeRegistryHandle safe_handle = rkey.Handle;
+			if (safe_handle != null) {
+				// closes the unmanaged pointer for us.
+				safe_handle.Close ();
+				return;
+			}
+#endif
 			IntPtr handle = GetHandle (rkey);
 			RegCloseKey (handle);
 		}
+
+#if NET_4_0
+		public RegistryKey FromHandle (SafeRegistryHandle handle)
+		{
+			// At this point we can't tell whether the key is writable
+			// or not (nor the name), so we let the error check code handle it later, as
+			// .Net seems to do.
+			return new RegistryKey (handle.DangerousGetHandle (), String.Empty, true);
+		}
+#endif
 
 		public RegistryKey CreateSubKey (RegistryKey rkey, string keyName)
 		{
 			IntPtr handle = GetHandle (rkey);
 			IntPtr subKeyHandle;
-			int result = RegCreateKey (handle , keyName, out subKeyHandle);
+			int disposition;
+			int result = RegCreateKeyEx (handle , keyName, 0, IntPtr.Zero,
+				RegOptionsNonVolatile,
+				OpenRegKeyRead | OpenRegKeyWrite, IntPtr.Zero, out subKeyHandle, out disposition);
 
 			if (result == Win32ResultCode.MarkedForDeletion)
 				throw RegistryKey.CreateMarkedForDeletionException ();
@@ -427,6 +484,27 @@ namespace Microsoft.Win32
 			return new RegistryKey (subKeyHandle, CombineName (rkey, keyName),
 				true);
 		}
+
+#if NET_4_0
+		public RegistryKey CreateSubKey (RegistryKey rkey, string keyName, RegistryOptions options)
+		{
+			IntPtr handle = GetHandle (rkey);
+			IntPtr subKeyHandle;
+			int disposition;
+			int result = RegCreateKeyEx (handle , keyName, 0, IntPtr.Zero,
+				options == RegistryOptions.Volatile ? RegOptionsVolatile : RegOptionsNonVolatile,
+				OpenRegKeyRead | OpenRegKeyWrite, IntPtr.Zero, out subKeyHandle, out disposition);
+
+			if (result == Win32ResultCode.MarkedForDeletion)
+				throw RegistryKey.CreateMarkedForDeletionException ();
+
+			if (result != Win32ResultCode.Success)
+				GenerateException (result);
+			
+			return new RegistryKey (subKeyHandle, CombineName (rkey, keyName),
+				true);
+		}
+#endif
 
 		public void DeleteKey (RegistryKey rkey, string keyName, bool shouldThrowWhenKeyMissing)
 		{
@@ -465,7 +543,7 @@ namespace Microsoft.Win32
 		{
 			IntPtr handle = GetHandle (rkey);
 			StringBuilder buffer = new StringBuilder (BufferMaxLength);
-			ArrayList keys = new ArrayList ();
+			var keys = new List<string> ();
 				
 			for (int index = 0; true; index ++) {
 				int result = RegEnumKey (handle, index, buffer, buffer.Capacity);
@@ -482,14 +560,14 @@ namespace Microsoft.Win32
 				// should not be here!
 				GenerateException (result);
 			}
-			return (string []) keys.ToArray (typeof(String));
+			return keys.ToArray ();
 		}
 
 
 		public string [] GetValueNames (RegistryKey rkey)
 		{
 			IntPtr handle = GetHandle (rkey);
-			ArrayList values = new ArrayList ();
+			var values = new List<string> ();
 			
 			for (int index = 0; true; index ++)
 			{
@@ -514,7 +592,7 @@ namespace Microsoft.Win32
 				GenerateException (result);
 			}
 
-			return (string []) values.ToArray (typeof(String));
+			return values.ToArray ();
 		}
 
 		/// <summary>
@@ -530,6 +608,8 @@ namespace Microsoft.Win32
 					throw new SecurityException ();
 				case Win32ResultCode.NetworkPathNotFound:
 					throw new IOException ("The network path was not found.");
+				case Win32ResultCode.InvalidHandle:
+					throw new IOException ("Invalid handle.");
 				default:
 					// unidentified system exception
 					throw new SystemException ();
@@ -538,13 +618,7 @@ namespace Microsoft.Win32
 
 		public string ToString (RegistryKey rkey)
 		{
-#if NET_2_0
 			return rkey.Name;
-#else			
-			IntPtr handle = GetHandle (rkey);
-			
-			return String.Format ("{0} [0x{1:X}]", rkey.Name, handle.ToInt32 ());
-#endif
 		}
 
 		/// <summary>

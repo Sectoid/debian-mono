@@ -871,6 +871,8 @@ namespace System.Linq.Expressions {
 				return AddChecked (left, right, method);
 			case ExpressionType.AndAlso:
 				return AndAlso (left, right);
+			case ExpressionType.ArrayIndex:
+				return ArrayIndex (left, right);
 			case ExpressionType.Coalesce:
 				return Coalesce (left, right, conversion);
 			case ExpressionType.Divide:
@@ -1181,7 +1183,7 @@ namespace System.Linq.Expressions {
 		static bool IsConvertiblePrimitive (Type type)
 		{
 			var t = type.GetNotNullableType ();
-
+	
 			if (t == typeof (bool))
 				return false;
 
@@ -1217,6 +1219,9 @@ namespace System.Linq.Expressions {
 				return true;
 
 			if (type.IsInterface || target.IsInterface)
+				return true;
+
+			if (type.IsEnum && target == typeof (Enum))
 				return true;
 
 			if (type.IsValueType || target.IsValueType)

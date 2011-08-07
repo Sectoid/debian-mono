@@ -2,42 +2,32 @@
  *
  * Copyright (c) Microsoft Corporation. 
  *
- * This source code is subject to terms and conditions of the Microsoft Public License. A 
+ * This source code is subject to terms and conditions of the Apache License, Version 2.0. A 
  * copy of the license can be found in the License.html file at the root of this distribution. If 
- * you cannot locate the  Microsoft Public License, please send an email to 
+ * you cannot locate the  Apache License, Version 2.0, please send an email to 
  * dlr@microsoft.com. By using this source code in any fashion, you are agreeing to be bound 
- * by the terms of the Microsoft Public License.
+ * by the terms of the Apache License, Version 2.0.
  *
  * You must not remove this notice, or any other, from this software.
  *
  *
  * ***************************************************************************/
-using System; using Microsoft;
 
-
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-#if CODEPLEX_40
 using System.Dynamic;
 using System.Dynamic.Utils;
-#else
-using Microsoft.Scripting;
-using Microsoft.Scripting.Utils;
-#endif
 using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-#if !CODEPLEX_40
-using Microsoft.Runtime.CompilerServices;
-#endif
-
 using System.Collections.ObjectModel;
 
-#if CODEPLEX_40
-namespace System.Linq.Expressions {
+#if CLR2
+namespace Microsoft.Scripting.Ast {
 #else
-namespace Microsoft.Linq.Expressions {
+namespace System.Linq.Expressions {
 #endif
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Maintainability", "CA1506:AvoidExcessiveClassCoupling")]
     internal sealed class DebugViewWriter : ExpressionVisitor {
@@ -239,12 +229,7 @@ namespace Microsoft.Linq.Expressions {
             GetMemberBinder getMember;
             SetMemberBinder setMember;
             DeleteMemberBinder deleteMember;
-            GetIndexBinder getIndex;
-            SetIndexBinder setIndex;
-            DeleteIndexBinder deleteIndex;
             InvokeMemberBinder call;
-            InvokeBinder invoke;
-            CreateInstanceBinder create;
             UnaryOperationBinder unary;
             BinaryOperationBinder binary;
 
@@ -256,17 +241,17 @@ namespace Microsoft.Linq.Expressions {
                 return "SetMember " + setMember.Name;
             } else if ((deleteMember = binder as DeleteMemberBinder) != null) {
                 return "DeleteMember " + deleteMember.Name;
-            } else if ((getIndex = binder as GetIndexBinder) != null) {
+            } else if (binder is GetIndexBinder) {
                 return "GetIndex";
-            } else if ((setIndex = binder as SetIndexBinder) != null) {
+            } else if (binder is SetIndexBinder) {
                 return "SetIndex";
-            } else if ((deleteIndex = binder as DeleteIndexBinder) != null) {
+            } else if (binder is DeleteIndexBinder) {
                 return "DeleteIndex";
             } else if ((call = binder as InvokeMemberBinder) != null) {
                 return "Call " + call.Name;
-            } else if ((invoke = binder as InvokeBinder) != null) {
+            } else if (binder is InvokeBinder) {
                 return "Invoke";
-            } else if ((create = binder as CreateInstanceBinder) != null) {
+            } else if (binder is CreateInstanceBinder) {
                 return "Create";
             } else if ((unary = binder as UnaryOperationBinder) != null) {
                 return "UnaryOperation " + unary.Operation;
@@ -876,8 +861,6 @@ namespace Microsoft.Linq.Expressions {
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Maintainability", "CA1502:AvoidExcessiveComplexity")]
         protected internal override Expression VisitUnary(UnaryExpression node) {
-            bool parenthesize = NeedsParentheses(node, node.Operand);
-
             switch (node.NodeType) {
                 case ExpressionType.Convert:
                     Out("(" + node.Type.ToString() + ")");

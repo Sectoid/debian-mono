@@ -27,7 +27,7 @@
 #include "marshal.h"
 #include "coree.h"
 #include <mono/io-layer/io-layer.h>
-#include <mono/utils/mono-logger.h>
+#include <mono/utils/mono-logger-internal.h>
 #include <mono/utils/mono-path.h>
 #include <mono/utils/mono-mmap.h>
 #include <mono/utils/mono-io-portability.h>
@@ -36,6 +36,7 @@
 #include <mono/metadata/object-internals.h>
 #include <mono/metadata/security-core-clr.h>
 #include <mono/metadata/verify-internals.h>
+#include <mono/metadata/verify.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #ifdef HAVE_UNISTD_H
@@ -57,6 +58,57 @@ static gboolean debug_assembly_unload = FALSE;
 static gboolean mutex_inited;
 static CRITICAL_SECTION images_mutex;
 
+typedef struct ImageUnloadHook ImageUnloadHook;
+struct ImageUnloadHook {
+	MonoImageUnloadFunc func;
+	gpointer user_data;
+};
+
+GSList *image_unload_hooks;
+
+void
+mono_install_image_unload_hook (MonoImageUnloadFunc func, gpointer user_data)
+{
+	ImageUnloadHook *hook;
+	
+	g_return_if_fail (func != NULL);
+
+	hook = g_new0 (ImageUnloadHook, 1);
+	hook->func = func;
+	hook->user_data = user_data;
+	image_unload_hooks = g_slist_prepend (image_unload_hooks, hook);
+}
+
+void
+mono_remove_image_unload_hook (MonoImageUnloadFunc func, gpointer user_data)
+{
+	GSList *l;
+	ImageUnloadHook *hook;
+
+	for (l = image_unload_hooks; l; l = l->next) {
+		hook = l->data;
+
+		if (hook->func == func && hook->user_data == user_data) {
+			g_free (hook);
+			image_unload_hooks = g_slist_delete_link (image_unload_hooks, l);
+			break;
+		}
+	}
+}
+
+static void
+mono_image_invoke_unload_hook (MonoImage *image)
+{
+	GSList *l;
+	ImageUnloadHook *hook;
+
+	for (l = image_unload_hooks; l; l = l->next) {
+		hook = l->data;
+
+		hook->func (image, hook->user_data);
+	}
+}
+
 /* returns offset relative to image->raw_data */
 guint32
 mono_cli_rva_image_map (MonoImage *image, guint32 addr)
@@ -69,7 +121,7 @@ mono_cli_rva_image_map (MonoImage *image, guint32 addr)
 	for (i = 0; i < top; i++){
 		if ((addr >= tables->st_virtual_address) &&
 		    (addr < tables->st_virtual_address + tables->st_raw_data_size)){
-#ifdef PLATFORM_WIN32
+#ifdef ENABLE_COREE
 			if (image->is_module_handle)
 				return addr;
 #endif
@@ -106,7 +158,7 @@ mono_image_rva_map (MonoImage *image, guint32 addr)
 				if (!mono_image_ensure_section_idx (image, i))
 					return NULL;
 			}
-#ifdef PLATFORM_WIN32
+#ifdef ENABLE_COREE
 			if (image->is_module_handle)
 				return image->raw_data + addr;
 #endif
@@ -144,7 +196,14 @@ mono_images_init (void)
 void
 mono_images_cleanup (void)
 {
+	GHashTableIter iter;
+	MonoImage *image;
+
 	DeleteCriticalSection (&images_mutex);
+
+	g_hash_table_iter_init (&iter, loaded_images_hash);
+	while (g_hash_table_iter_next (&iter, NULL, (void**)&image))
+		mono_trace (G_LOG_LEVEL_INFO, MONO_TRACE_ASSEMBLY, "Assembly image '%s' still loaded at shutdown.", image->name);
 
 	g_hash_table_destroy (loaded_images_hash);
 	g_hash_table_destroy (loaded_images_refonly_hash);
@@ -180,7 +239,7 @@ mono_image_ensure_section_idx (MonoImage *image, int section)
 
 	if (sect->st_raw_data_ptr + sect->st_raw_data_size > image->raw_data_len)
 		return FALSE;
-#ifdef PLATFORM_WIN32
+#ifdef ENABLE_COREE
 	if (image->is_module_handle)
 		iinfo->cli_sections [section] = image->raw_data + sect->st_virtual_address;
 	else
@@ -469,10 +528,6 @@ mono_image_check_for_module_cctor (MonoImage *image)
 	MonoTableInfo *t, *mt;
 	t = &image->tables [MONO_TABLE_TYPEDEF];
 	mt = &image->tables [MONO_TABLE_METHOD];
-	if (mono_framework_version () == 1) {
-		image->checked_module_cctor = TRUE;
-		return;
-	}
 	if (image->dynamic) {
 		/* FIXME: */
 		image->checked_module_cctor = TRUE;
@@ -534,7 +589,7 @@ mono_image_load_module (MonoImage *image, int idx)
 	GList *list_iter, *valid_modules = NULL;
 	MonoImageOpenStatus status;
 
-	if ((image->module_count == 0) || (idx > image->module_count))
+	if ((image->module_count == 0) || (idx > image->module_count || idx <= 0))
 		return NULL;
 	if (image->modules_loaded [idx - 1])
 		return image->modules [idx - 1];
@@ -573,7 +628,7 @@ mono_image_load_module (MonoImage *image, int idx)
 			if (image->modules [idx - 1]) {
 				mono_image_addref (image->modules [idx - 1]);
 				image->modules [idx - 1]->assembly = image->assembly;
-#ifdef PLATFORM_WIN32
+#ifdef ENABLE_COREE
 				if (image->modules [idx - 1]->is_module_handle)
 					mono_image_fixup_vtable (image->modules [idx - 1]);
 #endif
@@ -647,7 +702,7 @@ do_load_header (MonoImage *image, MonoDotNetHeader *header, int offset)
 {
 	MonoDotNetHeader64 header64;
 
-#ifdef PLATFORM_WIN32
+#ifdef ENABLE_COREE
 	if (!image->is_module_handle)
 #endif
 	if (offset + sizeof (MonoDotNetHeader32) > image->raw_data_len)
@@ -768,7 +823,7 @@ do_load_header (MonoImage *image, MonoDotNetHeader *header, int offset)
  	SWAPPDE (header->datadir.pe_cli_header);
 	SWAPPDE (header->datadir.pe_reserved);
 
-#ifdef PLATFORM_WIN32
+#ifdef ENABLE_COREE
 	if (image->is_module_handle)
 		image->raw_data_len = header->nt.pe_image_size;
 #endif
@@ -787,7 +842,7 @@ mono_image_load_pe_data (MonoImage *image)
 	iinfo = image->image_info;
 	header = &iinfo->cli_header;
 
-#ifdef PLATFORM_WIN32
+#ifdef ENABLE_COREE
 	if (!image->is_module_handle)
 #endif
 	if (offset + sizeof (msdos) > image->raw_data_len)
@@ -881,6 +936,7 @@ do_mono_image_load (MonoImage *image, MonoImageOpenStatus *status,
 {
 	MonoCLIImageInfo *iinfo;
 	MonoDotNetHeader *header;
+	GSList *errors = NULL;
 
 	mono_profiler_module_event (image, MONO_PROFILE_START_LOAD);
 
@@ -895,7 +951,7 @@ do_mono_image_load (MonoImage *image, MonoImageOpenStatus *status,
 	if (care_about_pecoff == FALSE)
 		goto done;
 
-	if (!mono_verifier_verify_pe_data (image, NULL))
+	if (!mono_verifier_verify_pe_data (image, &errors))
 		goto invalid_image;
 
 	if (!mono_image_load_pe_data (image))
@@ -905,13 +961,13 @@ do_mono_image_load (MonoImage *image, MonoImageOpenStatus *status,
 		goto done;
 	}
 
-	if (!mono_verifier_verify_cli_data (image, NULL))
+	if (!mono_verifier_verify_cli_data (image, &errors))
 		goto invalid_image;
 
 	if (!mono_image_load_cli_data (image))
 		goto invalid_image;
 
-	if (!mono_verifier_verify_table_data (image, NULL))
+	if (!mono_verifier_verify_table_data (image, &errors))
 		goto invalid_image;
 
 	mono_image_load_names (image);
@@ -926,9 +982,14 @@ done:
 	return image;
 
 invalid_image:
+	if (errors) {
+		MonoVerifyInfo *info = errors->data;
+		g_warning ("Could not load image %s due to %s", image->name, info->message);
+		mono_free_verify_list (errors);
+	}
 	mono_profiler_module_loaded (image, MONO_PROFILE_FAILED);
 	mono_image_close (image);
-		return NULL;
+	return NULL;
 }
 
 static MonoImage *
@@ -1117,7 +1178,7 @@ mono_image_open_from_data (char *data, guint32 data_len, gboolean need_copy, Mon
 	return mono_image_open_from_data_full (data, data_len, need_copy, status, FALSE);
 }
 
-#ifdef PLATFORM_WIN32
+#ifdef ENABLE_COREE
 /* fname is not duplicated. */
 MonoImage*
 mono_image_open_from_module_handle (HMODULE module_handle, char* fname, gboolean has_entry_point, MonoImageOpenStatus* status)
@@ -1151,7 +1212,7 @@ mono_image_open_full (const char *fname, MonoImageOpenStatus *status, gboolean r
 	
 	g_return_val_if_fail (fname != NULL, NULL);
 	
-#ifdef PLATFORM_WIN32
+#ifdef ENABLE_COREE
 	/* Load modules using LoadLibrary. */
 	if (!refonly && coree_module_handle) {
 		HMODULE module_handle;
@@ -1200,8 +1261,12 @@ mono_image_open_full (const char *fname, MonoImageOpenStatus *status, gboolean r
 			if (status) {
 				if (last_error == ERROR_BAD_EXE_FORMAT || last_error == STATUS_INVALID_IMAGE_FORMAT)
 					*status = MONO_IMAGE_IMAGE_INVALID;
-				else
-					*status = MONO_IMAGE_ERROR_ERRNO;
+				else {
+					if (last_error == ERROR_FILE_NOT_FOUND || last_error == ERROR_PATH_NOT_FOUND)
+						errno = ENOENT;
+					else
+						errno = 0;
+				}
 			}
 			return NULL;
 		}
@@ -1299,7 +1364,7 @@ mono_image_open_raw (const char *fname, MonoImageOpenStatus *status)
 void
 mono_image_fixup_vtable (MonoImage *image)
 {
-#ifdef PLATFORM_WIN32
+#ifdef ENABLE_COREE
 	MonoCLIImageInfo *iinfo;
 	MonoPEDirEntry *de;
 	MonoVTableFixup *vtfixup;
@@ -1362,12 +1427,6 @@ free_mr_signatures (gpointer key, gpointer val, gpointer user_data)
 */
 
 static void
-free_remoting_wrappers (gpointer key, gpointer val, gpointer user_data)
-{
-	g_free (val);
-}
-
-static void
 free_array_cache_entry (gpointer key, gpointer val, gpointer user_data)
 {
 	g_slist_free ((GSList*)val);
@@ -1404,21 +1463,22 @@ free_hash (GHashTable *hash)
 		g_hash_table_destroy (hash);
 }
 
-/**
- * mono_image_close:
- * @image: The image file we wish to close
- *
- * Closes an image file, deallocates all memory consumed and
- * unmaps all possible sections of the file
+/*
+ * Returns whether mono_image_close_finish() must be called as well.
+ * We must unload images in two steps because clearing the domain in
+ * SGen requires the class metadata to be intact, but we need to free
+ * the mono_g_hash_tables in case a collection occurs during domain
+ * unloading and the roots would trip up the GC.
  */
-void
-mono_image_close (MonoImage *image)
+gboolean
+mono_image_close_except_pools (MonoImage *image)
 {
 	MonoImage *image2;
 	GHashTable *loaded_images;
 	int i;
+	GSList *free_list;
 
-	g_return_if_fail (image != NULL);
+	g_return_val_if_fail (image != NULL, FALSE);
 
 	/* 
 	 * Atomically decrement the refcount and remove ourselves from the hash tables, so
@@ -1428,7 +1488,7 @@ mono_image_close (MonoImage *image)
 
 	if (InterlockedDecrement (&image->ref_count) > 0) {
 		mono_images_unlock ();
-		return;
+		return FALSE;
 	}
 
 	loaded_images = image->ref_only ? loaded_images_refonly_hash : loaded_images_hash;
@@ -1442,14 +1502,14 @@ mono_image_close (MonoImage *image)
 
 	mono_images_unlock ();
 
-#ifdef PLATFORM_WIN32
+#ifdef ENABLE_COREE
 	if (image->is_module_handle && image->has_entry_point) {
 		mono_images_lock ();
 		if (image->ref_count == 0) {
 			/* Image will be closed by _CorDllMain. */
 			FreeLibrary ((HMODULE) image->raw_data);
 			mono_images_unlock ();
-			return;
+			return FALSE;
 		}
 		mono_images_unlock ();
 	}
@@ -1459,7 +1519,9 @@ mono_image_close (MonoImage *image)
 
 	mono_trace (G_LOG_LEVEL_INFO, MONO_TRACE_ASSEMBLY, "Unloading image %s [%p].", image->name, image);
 
-	mono_metadata_clean_for_image (image);
+	mono_image_invoke_unload_hook (image);
+
+	free_list = mono_metadata_clean_for_image (image);
 
 	/*
 	 * The caches inside a MonoImage might refer to metadata which is stored in referenced 
@@ -1471,15 +1533,19 @@ mono_image_close (MonoImage *image)
 		int i;
 
 		for (i = 0; i < t->rows; i++) {
-			if (image->references [i])
-				mono_assembly_close (image->references [i]);
+			if (image->references [i] && image->references [i] != REFERENCE_MISSING) {
+				if (!mono_assembly_close_except_image_pools (image->references [i]))
+					image->references [i] = NULL;
+			}
 		}
-
-		g_free (image->references);
-		image->references = NULL;
+	} else {
+		if (image->references) {
+			g_free (image->references);
+			image->references = NULL;
+		}
 	}
 
-#ifdef PLATFORM_WIN32
+#ifdef ENABLE_COREE
 	mono_images_lock ();
 	if (image->is_module_handle && !image->has_entry_point)
 		FreeLibrary ((HMODULE) image->raw_data);
@@ -1542,8 +1608,7 @@ mono_image_close (MonoImage *image)
 	free_hash (image->delegate_end_invoke_cache);
 	free_hash (image->delegate_invoke_cache);
 	free_hash (image->delegate_abstract_invoke_cache);
-	if (image->remoting_invoke_cache)
-		g_hash_table_foreach (image->remoting_invoke_cache, free_remoting_wrappers, NULL);
+	free_hash (image->delegate_bound_static_invoke_cache);
 	free_hash (image->remoting_invoke_cache);
 	free_hash (image->runtime_invoke_cache);
 	free_hash (image->runtime_invoke_direct_cache);
@@ -1560,6 +1625,8 @@ mono_image_close (MonoImage *image)
 	free_hash (image->castclass_cache);
 	free_hash (image->proxy_isinst_cache);
 	free_hash (image->thunk_invoke_cache);
+	free_hash (image->var_cache_slow);
+	free_hash (image->mvar_cache_slow);
 
 	/* The ownership of signatures is not well defined */
 	//g_hash_table_foreach (image->memberref_signatures, free_mr_signatures, NULL);
@@ -1568,9 +1635,6 @@ mono_image_close (MonoImage *image)
 	g_hash_table_destroy (image->helper_signatures);
 	g_hash_table_destroy (image->method_signatures);
 
-	if (image->generic_class_cache)
-		g_hash_table_destroy (image->generic_class_cache);
-
 	if (image->rgctx_template_hash)
 		g_hash_table_destroy (image->rgctx_template_hash);
 
@@ -1578,6 +1642,7 @@ mono_image_close (MonoImage *image)
 		mono_property_hash_destroy (image->property_hash);
 
 	g_slist_free (image->reflection_info_unregister_classes);
+	image->reflection_info_unregister_classes = free_list;
 
 	if (image->interface_bitset) {
 		mono_unload_interface_ids (image->interface_bitset);
@@ -1594,21 +1659,62 @@ mono_image_close (MonoImage *image)
 	}
 
 	for (i = 0; i < image->module_count; ++i) {
-		if (image->modules [i])
-			mono_image_close (image->modules [i]);
+		if (image->modules [i]) {
+			if (!mono_image_close_except_pools (image->modules [i]))
+				image->modules [i] = NULL;
+		}
 	}
-	if (image->modules)
-		g_free (image->modules);
 	if (image->modules_loaded)
 		g_free (image->modules_loaded);
-	if (image->references)
-		g_free (image->references);
-	mono_perfcounters->loader_bytes -= mono_mempool_get_allocated (image->mempool);
 
 	DeleteCriticalSection (&image->szarray_cache_lock);
 	DeleteCriticalSection (&image->lock);
 
 	/*g_print ("destroy image %p (dynamic: %d)\n", image, image->dynamic);*/
+	if (image->dynamic) {
+		/* Dynamic images are GC_MALLOCed */
+		g_free ((char*)image->module_name);
+		mono_dynamic_image_free ((MonoDynamicImage*)image);
+	}
+
+	mono_profiler_module_event (image, MONO_PROFILE_END_UNLOAD);
+
+	return TRUE;
+}
+
+void
+mono_image_close_finish (MonoImage *image)
+{
+	int i;
+	GSList *l;
+
+	for (l = image->reflection_info_unregister_classes; l; l = l->next)
+		g_free (l->data);
+	g_slist_free (image->reflection_info_unregister_classes);
+	image->reflection_info_unregister_classes = NULL;
+
+	if (image->references && !image->dynamic) {
+		MonoTableInfo *t = &image->tables [MONO_TABLE_ASSEMBLYREF];
+		int i;
+
+		for (i = 0; i < t->rows; i++) {
+			if (image->references [i] && image->references [i] != REFERENCE_MISSING)
+				mono_assembly_close_finish (image->references [i]);
+		}
+
+		g_free (image->references);
+		image->references = NULL;
+	}
+
+	for (i = 0; i < image->module_count; ++i) {
+		if (image->modules [i])
+			mono_image_close_finish (image->modules [i]);
+	}
+	if (image->modules)
+		g_free (image->modules);
+
+	mono_perfcounters->loader_bytes -= mono_mempool_get_allocated (image->mempool);
+
 	if (!image->dynamic) {
 		if (debug_assembly_unload)
 			mono_mempool_invalidate (image->mempool);
@@ -1617,16 +1723,25 @@ mono_image_close (MonoImage *image)
 			g_free (image);
 		}
 	} else {
-		/* Dynamic images are GC_MALLOCed */
-		g_free ((char*)image->module_name);
-		mono_dynamic_image_free ((MonoDynamicImage*)image);
 		if (debug_assembly_unload)
 			mono_mempool_invalidate (image->mempool);
 		else
 			mono_mempool_destroy (image->mempool);
 	}
+}
 
-	mono_profiler_module_event (image, MONO_PROFILE_END_UNLOAD);
+/**
+ * mono_image_close:
+ * @image: The image file we wish to close
+ *
+ * Closes an image file, deallocates all memory consumed and
+ * unmaps all possible sections of the file
+ */
+void
+mono_image_close (MonoImage *image)
+{
+	if (mono_image_close_except_pools (image))
+		mono_image_close_finish (image);
 }
 
 /** 
@@ -1885,7 +2000,7 @@ mono_image_load_file_for_image (MonoImage *image, int fileidx)
 		}
 
 		image->files [fileidx - 1] = res;
-#ifdef PLATFORM_WIN32
+#ifdef ENABLE_COREE
 		if (res->is_module_handle)
 			mono_image_fixup_vtable (res);
 #endif

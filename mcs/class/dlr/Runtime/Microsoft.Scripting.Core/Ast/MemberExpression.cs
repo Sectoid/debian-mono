@@ -2,35 +2,30 @@
  *
  * Copyright (c) Microsoft Corporation. 
  *
- * This source code is subject to terms and conditions of the Microsoft Public License. A 
+ * This source code is subject to terms and conditions of the Apache License, Version 2.0. A 
  * copy of the license can be found in the License.html file at the root of this distribution. If 
- * you cannot locate the  Microsoft Public License, please send an email to 
+ * you cannot locate the  Apache License, Version 2.0, please send an email to 
  * dlr@microsoft.com. By using this source code in any fashion, you are agreeing to be bound 
- * by the terms of the Microsoft Public License.
+ * by the terms of the Apache License, Version 2.0.
  *
  * You must not remove this notice, or any other, from this software.
  *
  *
  * ***************************************************************************/
-using System; using Microsoft;
 
-
+using System;
 using System.Diagnostics;
-#if CODEPLEX_40
 using System.Dynamic.Utils;
-#else
-using Microsoft.Scripting.Utils;
-#endif
 using System.Reflection;
 
 #if SILVERLIGHT
 using System.Core;
 #endif
 
-#if CODEPLEX_40
-namespace System.Linq.Expressions {
+#if CLR2
+namespace Microsoft.Scripting.Ast {
 #else
-namespace Microsoft.Linq.Expressions {
+namespace System.Linq.Expressions {
 #endif
 
     /// <summary>
@@ -154,9 +149,9 @@ namespace Microsoft.Linq.Expressions {
             ContractUtils.RequiresNotNull(field, "field");
 
             if (field.IsStatic) {
-                ContractUtils.Requires(expression == null, "expression", Strings.OnlyStaticFieldsHaveNullInstance);
+                if (expression != null) throw new ArgumentException(Strings.OnlyStaticFieldsHaveNullInstance, "expression");
             } else {
-                ContractUtils.Requires(expression != null, "field", Strings.OnlyStaticFieldsHaveNullInstance);
+                if (expression == null) throw new ArgumentException(Strings.OnlyStaticFieldsHaveNullInstance, "field");
                 RequiresCanRead(expression, "expression");
                 if (!TypeUtils.AreReferenceAssignable(field.DeclaringType, expression.Type)) {
                     throw Error.FieldInfoNotDefinedForType(field.DeclaringType, field.Name, expression.Type);
@@ -270,9 +265,9 @@ namespace Microsoft.Linq.Expressions {
             }
 
             if (mi.IsStatic) {
-                ContractUtils.Requires(expression == null, "expression", Strings.OnlyStaticPropertiesHaveNullInstance); 
+                if (expression != null) throw new ArgumentException(Strings.OnlyStaticPropertiesHaveNullInstance, "expression");
             } else {
-                ContractUtils.Requires(expression != null, "property", Strings.OnlyStaticPropertiesHaveNullInstance);
+                if (expression == null) throw new ArgumentException(Strings.OnlyStaticPropertiesHaveNullInstance, "property");
                 RequiresCanRead(expression, "expression");
                 if (!TypeUtils.IsValidInstanceType(property, expression.Type)) {
                     throw Error.PropertyNotDefinedForType(property, expression.Type);
