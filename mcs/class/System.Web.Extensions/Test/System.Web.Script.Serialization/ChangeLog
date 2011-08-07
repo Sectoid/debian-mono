@@ -1,3 +1,7 @@
+2011-03-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Test for bug #655474
+
 2011-01-04  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Failing tests fixes.

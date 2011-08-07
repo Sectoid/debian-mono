@@ -1,3 +1,13 @@
+2011-05-16  Atsushi Eno  <atsushi@ximian.com>
+
+	(manually) Merge pull request #101 from occ/master
+
+	Decimal support to XmlBinaryDictionaryReader
+
+2011-03-09  Peter Gerbrandt  <pg@viadux.de>
+
+	Implement support for QNameIndex (0xBC) in attribute nodes.
+
 2011-02-14  Miguel de Icaza  <miguel@gnome.org>
 
 	[670974] Use the underlying BaseStream to read bytes instead of

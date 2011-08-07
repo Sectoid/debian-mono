@@ -1935,7 +1935,11 @@ target_type_is_incompatible (MonoCompile *cfg, MonoType *target, MonoInst *arg)
 	case MONO_TYPE_I:
 	case MONO_TYPE_U:
 	case MONO_TYPE_FNPTR:
-		if (arg->type != STACK_I4 && arg->type != STACK_PTR)
+		/* 
+		 * Some opcodes like ldloca returns 'transient pointers' which can be stored in
+		 * in native int. (#688008).
+		 */
+		if (arg->type != STACK_I4 && arg->type != STACK_PTR && arg->type != STACK_MP)
 			return 1;
 		return 0;
 	case MONO_TYPE_CLASS:
@@ -5788,7 +5792,8 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 				MONO_INST_NEW (cfg, ins, OP_START_HANDLER);
 				MONO_ADD_INS (tblock, ins);
 
-				if (seq_points) {
+				if (seq_points && clause->flags != MONO_EXCEPTION_CLAUSE_FINALLY) {
+					/* finally clauses already have a seq point */
 					NEW_SEQ_POINT (cfg, ins, clause->handler_offset, TRUE);
 					MONO_ADD_INS (tblock, ins);
 				}
@@ -8145,7 +8150,6 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 				EMIT_NEW_CLASSCONST (cfg, args [1], klass);
 
 				/* inline cache*/
-				/*FIXME AOT support*/
 				if (cfg->compile_aot)
 					EMIT_NEW_AOTCONST (cfg, args [2], MONO_PATCH_INFO_CASTCLASS_CACHE, NULL);
 				else
@@ -8208,8 +8212,10 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 				EMIT_NEW_CLASSCONST (cfg, args [1], klass);
 
 				/* inline cache*/
-				/*FIXME AOT support*/
-				EMIT_NEW_PCONST (cfg, args [2], mono_domain_alloc0 (cfg->domain, sizeof (gpointer)));
+				if (cfg->compile_aot)
+					EMIT_NEW_AOTCONST (cfg, args [2], MONO_PATCH_INFO_CASTCLASS_CACHE, NULL);
+				else
+					EMIT_NEW_PCONST (cfg, args [2], mono_domain_alloc0 (cfg->domain, sizeof (gpointer)));
 
 				*sp++ = mono_emit_method_call (cfg, mono_isinst, args, NULL);
 				ip += 5;
@@ -8782,11 +8788,13 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 
 				CHECK_TYPELOAD (klass);
 				if (!addr) {
-					if (mini_field_access_needs_cctor_run (cfg, method, vtable) && !(g_slist_find (class_inits, vtable))) {
-						mono_emit_abs_call (cfg, MONO_PATCH_INFO_CLASS_INIT, vtable->klass, helper_sig_class_init_trampoline, NULL);
-						if (cfg->verbose_level > 2)
-							printf ("class %s.%s needs init call for %s\n", klass->name_space, klass->name, mono_field_get_name (field));
-						class_inits = g_slist_prepend (class_inits, vtable);
+					if (mini_field_access_needs_cctor_run (cfg, method, vtable)) {
+						if (!(g_slist_find (class_inits, vtable))) {
+							mono_emit_abs_call (cfg, MONO_PATCH_INFO_CLASS_INIT, vtable->klass, helper_sig_class_init_trampoline, NULL);
+							if (cfg->verbose_level > 2)
+								printf ("class %s.%s needs init call for %s\n", klass->name_space, klass->name, mono_field_get_name (field));
+							class_inits = g_slist_prepend (class_inits, vtable);
+						}
 					} else {
 						if (cfg->run_cctors) {
 							MonoException *ex;
@@ -10377,7 +10385,16 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 		UNVERIFIED;
 
 	bblock->cil_length = ip - bblock->cil_code;
-	bblock->next_bb = end_bblock;
+	if (bblock->next_bb) {
+		/* This could already be set because of inlining, #693905 */
+		MonoBasicBlock *bb = bblock;
+
+		while (bb->next_bb)
+			bb = bb->next_bb;
+		bb->next_bb = end_bblock;
+	} else {
+		bblock->next_bb = end_bblock;
+	}
 
 	if (cfg->method == method && cfg->domainvar) {
 		MonoInst *store;

@@ -1,3 +1,19 @@
+2011-04-05  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #684803. XmlSiteMapProvider must take its
+	root node into account when matching an URL.
+
+2011-04-03  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] 2.0 standalone tests must have the
+	MONO_TESTS_IN_PROGRESS variable exported in the environment
+
+2011-03-14  Kornél Pál  <kornelpal@gmail.com>
+
+	[asp.net] Fix for bug #650695. Implements the
+	System.Web.{HttpNotFoundHandler,HttpNotImplementedHandler}
+	classes.
+
 2011-02-09  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Implemented CustomErrorsRedirectMode

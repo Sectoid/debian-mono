@@ -1,3 +1,7 @@
+2011-04-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	backport pull request for 2.10.2
+
 2011-02-08  Marek Habersack  <grendel@twistedcode.net>
 
 	[crypto] Added missing 4.0 algorithm names

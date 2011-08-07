@@ -1,3 +1,30 @@
+2011-03-09  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix test on windows.
+
+	AssignTargetPathTest.TestLink : Fix test on windows
+
+2011-03-09  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Clean up test logs.
+
+	Remove unnecessary debug spew for tests that pass.
+
+2011-03-02  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Add support for Before/AfterTargets.
+
+	A target 'foo' can have BeforeTargets or AfterTargets attributes,
+	which list the targets before or after, 'foo' should be run. This
+	is a 4.0 feature.
+
+2011-02-28  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Remove property if Output TaskParameter is null.
+
+	If the TaskParameter for Output of a task is null, then remove the
+	corresponding property. Add relevant test.
+
 2011-02-15  Ankit Jain  <radical@corewars.org>
 
 	[xbuild] Fix bug #671700, resource naming in presence of "Link".

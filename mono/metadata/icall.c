@@ -27,6 +27,9 @@
 #if defined (HOST_WIN32)
 #include <stdlib.h>
 #endif
+#if defined (HAVE_WCHAR_H)
+#include <wchar.h>
+#endif
 
 #include "mono/utils/mono-membar.h"
 #include <mono/metadata/object.h>
@@ -1906,12 +1909,18 @@ ves_icall_MonoField_GetRawConstantValue (MonoReflectionField *this)
 	gchar *v;
 	MonoTypeEnum def_type;
 	const char *def_value;
+	MonoType *t;
+	MonoError error;
 
 	MONO_ARCH_SAVE_REGS;
 	
 	mono_class_init (field->parent);
 
-	if (!(field->type->attrs & FIELD_ATTRIBUTE_HAS_DEFAULT))
+	t = mono_field_get_type_checked (field, &error);
+	if (!mono_error_ok (&error))
+		mono_error_raise_exception (&error);
+
+	if (!(t->attrs & FIELD_ATTRIBUTE_HAS_DEFAULT))
 		mono_raise_exception (mono_get_exception_invalid_operation (NULL));
 
 	if (field->parent->image->dynamic) {
@@ -6619,6 +6628,17 @@ ves_icall_System_Environment_GetLogicalDrives (void)
 }
 
 static MonoString *
+ves_icall_System_IO_DriveInfo_GetDriveFormat (MonoString *path)
+{
+	gunichar2 volume_name [MAX_PATH];
+	
+	if (GetVolumeInformation (mono_string_chars (path), NULL, 0, NULL, NULL, NULL, volume_name, MAX_PATH) == FALSE)
+		return NULL;
+	/* Not sure using wcslen here is safe */
+	return mono_string_new_utf16 (mono_domain_get (), volume_name, wcslen (volume_name));
+}
+
+static MonoString *
 ves_icall_System_Environment_InternalGetHome (void)
 {
 	MONO_ARCH_SAVE_REGS;
@@ -6825,6 +6845,9 @@ ves_icall_System_Runtime_Activation_ActivationServices_AllocateUninitializedClas
 	domain = mono_object_domain (type);
 	klass = mono_class_from_mono_type (type->type);
 	mono_class_init_or_throw (klass);
+
+	if (MONO_CLASS_IS_INTERFACE (klass) || (klass->flags & TYPE_ATTRIBUTE_ABSTRACT))
+		mono_raise_exception (mono_get_exception_argument ("type", "Type cannot be instantiated"));
 
 	if (klass->rank >= 1) {
 		g_assert (klass->rank == 1);

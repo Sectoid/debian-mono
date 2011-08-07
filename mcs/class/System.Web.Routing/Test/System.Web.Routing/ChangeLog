@@ -1,3 +1,13 @@
+2011-04-01  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,routing] Fix for bug #682869.
+	RouteCollection.MapPageRoute is a 4.0 thing
+
+2011-02-24  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #671753. Route.GetVirtualPath must take
+	ambient values into account.
+
 2011-01-22  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net,routing] Fix for bug #651966. Regular expression

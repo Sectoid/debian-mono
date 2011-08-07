@@ -1,3 +1,7 @@
+2011-06-30  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Added FormsAuthentication.Timeout 4.0 property
+
 2011-02-01  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] FormsAuthenticationTicket.FromByteArray stops early if

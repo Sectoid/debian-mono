@@ -1,3 +1,13 @@
+2011-04-16  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] MinimizableAttributeTypeConverter only converts from
+	strings.
+
+	It returns a boolean 'false' when the passed string matches
+	(case-insensitively) 'false' or is empty, returns 'true'
+	otherwise. All the other types (and a null value) cause it to
+	throw the NotSupportedException.
+
 2011-01-10  Marek Safar  <marek.safar@gmail.com>
 
 	Fixed more missing protected internal modifiers

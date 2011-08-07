@@ -1,3 +1,7 @@
+2011-03-25  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] HtmlForum.Name rendering updates + test updates
+
 2011-01-11  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Fix for bug #662918. Do not create the HtmlTitle child

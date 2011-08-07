@@ -142,6 +142,8 @@ namespace System.Threading.Tasks
 		
 		public void Start (TaskScheduler scheduler)
 		{
+			if (status >= TaskStatus.WaitingToRun)
+				throw new InvalidOperationException ("The Task is not in a valid state to be started.");
 			SetupScheduler (scheduler);
 			Schedule ();
 		}
@@ -283,6 +285,12 @@ namespace System.Threading.Tasks
 			int kindCode = (int)kind;
 			
 			if (kindCode >= ((int)TaskContinuationOptions.NotOnRanToCompletion)) {
+				// Remove other options
+				kind &= ~(TaskContinuationOptions.PreferFairness
+				          | TaskContinuationOptions.LongRunning
+				          | TaskContinuationOptions.AttachedToParent
+				          | TaskContinuationOptions.ExecuteSynchronously);
+
 				if (status == TaskStatus.Canceled) {
 					if (kind == TaskContinuationOptions.NotOnCanceled)
 						return false;
@@ -338,7 +346,8 @@ namespace System.Threading.Tasks
 			status = TaskStatus.WaitingToRun;
 			
 			// If worker is null it means it is a local one, revert to the old behavior
-			if (childWorkAdder == null || CheckTaskOptions (taskCreationOptions, TaskCreationOptions.PreferFairness)) {
+			// If TaskScheduler.Current is not being used, the scheduler was explicitly provided, so we must use that
+			if (scheduler != TaskScheduler.Current || childWorkAdder == null || CheckTaskOptions (taskCreationOptions, TaskCreationOptions.PreferFairness)) {
 				scheduler.QueueTask (this);
 			} else {
 				/* Like the semantic of the ABP paper describe it, we add ourselves to the bottom 
@@ -532,34 +541,39 @@ namespace System.Threading.Tasks
 		{
 			if (tasks == null)
 				throw new ArgumentNullException ("tasks");
-			if (tasks.Length == 0)
-				throw new ArgumentException ("tasks is empty", "tasks");
 			
-			foreach (var t in tasks)
+			foreach (var t in tasks) {
+				if (t == null)
+					throw new ArgumentNullException ("tasks", "the tasks argument contains a null element");
 				t.Wait ();
+			}
 		}
 
 		public static void WaitAll (Task[] tasks, CancellationToken cancellationToken)
 		{
 			if (tasks == null)
 				throw new ArgumentNullException ("tasks");
-			if (tasks.Length == 0)
-				throw new ArgumentException ("tasks is empty", "tasks");
 			
-			foreach (var t in tasks)
+			foreach (var t in tasks) {
+				if (t == null)
+					throw new ArgumentNullException ("tasks", "the tasks argument contains a null element");
+
 				t.Wait (cancellationToken);
+			}
 		}
 		
 		public static bool WaitAll (Task[] tasks, TimeSpan timeout)
 		{
 			if (tasks == null)
 				throw new ArgumentNullException ("tasks");
-			if (tasks.Length == 0)
-				throw new ArgumentException ("tasks is empty", "tasks");
 			
 			bool result = true;
-			foreach (var t in tasks)
+			foreach (var t in tasks) {
+				if (t == null)
+					throw new ArgumentNullException ("tasks", "the tasks argument contains a null element");
+
 				result &= t.Wait (timeout);
+			}
 			return result;
 		}
 		
@@ -567,12 +581,14 @@ namespace System.Threading.Tasks
 		{
 			if (tasks == null)
 				throw new ArgumentNullException ("tasks");
-			if (tasks.Length == 0)
-				throw new ArgumentException ("tasks is empty", "tasks");
 			
 			bool result = true;
-			foreach (var t in tasks)
+			foreach (var t in tasks) {
+				if (t == null)
+					throw new ArgumentNullException ("tasks", "the tasks argument contains a null element");
+
 				result &= t.Wait (millisecondsTimeout);
+			}
 			return result;
 		}
 		
@@ -580,12 +596,14 @@ namespace System.Threading.Tasks
 		{
 			if (tasks == null)
 				throw new ArgumentNullException ("tasks");
-			if (tasks.Length == 0)
-				throw new ArgumentException ("tasks is empty", "tasks");
 			
 			bool result = true;
-			foreach (var t in tasks)
+			foreach (var t in tasks) {
+				if (t == null)
+					throw new ArgumentNullException ("tasks", "the tasks argument contains a null element");
+
 				result &= t.Wait (millisecondsTimeout, cancellationToken);
+			}
 			return result;
 		}
 		

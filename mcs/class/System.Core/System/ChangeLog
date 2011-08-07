@@ -1,3 +1,9 @@
+2011-03-10  Duane Wandless  <dwandless@pixmaclt10.local>
+
+	GetApplicableRule returns NULL in TimeZoneInfo.cs yet the code
+	does not always handle a NULL return value. This change fixes this
+	issue and allows timezones like China Standard Time to work.
+
 2011-01-31  Jonathan Pryor  <jonpryor@vt.edu>
 
 	Fix the basic-profile build.

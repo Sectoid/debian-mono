@@ -385,7 +385,7 @@ struct _MonoInternalThread {
 	gpointer lock_data;
 	MonoAppContext *current_appcontext;
 	int stack_size;
-	GSList *appdomain_refs;
+	gpointer appdomain_refs;
 	/* This is modified using atomic ops, so keep it a gint32 */
 	gint32 interruption_requested;
 	gpointer suspend_event;
@@ -409,7 +409,7 @@ struct _MonoInternalThread {
 	 * when a new field is added to the unmanaged MonoThread structure.
 	 */
 	gpointer unused5;
-	gpointer unused6;
+	gint32 managed_id;
 };
 
 struct _MonoThread {

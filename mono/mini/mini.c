@@ -2594,10 +2594,14 @@ mono_jit_thread_attach (MonoDomain *domain)
 #ifdef MINI_HAVE_FAST_TLS
 	if (!MINI_FAST_TLS_GET (mono_lmf_addr)) {
 		mono_thread_attach (domain);
+		// #678164
+		mono_thread_set_state (mono_thread_internal_current (), ThreadState_Background);
 	}
 #else
-	if (!TlsGetValue (mono_jit_tls_id))
+	if (!TlsGetValue (mono_jit_tls_id)) {
 		mono_thread_attach (domain);
+		mono_thread_set_state (mono_thread_internal_current (), ThreadState_Background);
+	}
 #endif
 	if (mono_domain_get () != domain)
 		mono_domain_set (domain, TRUE);
@@ -2621,6 +2625,15 @@ mono_thread_abort (MonoObject *obj)
 			(obj->vtable->klass == mono_defaults.threadabortexception_class)) {
 		mono_thread_exit ();
 	} else {
+		MonoObject *other = NULL;
+		MonoString *str = mono_object_to_string (obj, &other);
+		if (str) {
+			char *msg = mono_string_to_utf8 (str);
+			fprintf (stderr, "[ERROR] FATAL UNHANDLED EXCEPTION: %s\n", msg);
+			fflush (stderr);
+			g_free (msg);
+		}
+
 		exit (mono_environment_exitcode_get ());
 	}
 }
@@ -2726,9 +2739,12 @@ mini_thread_cleanup (MonoInternalThread *thread)
 		 *
 		 * The current offender is mono_thread_manage which cleanup threads from the outside.
 		 */
-		if (thread == mono_thread_internal_current ()) {
-			mono_set_lmf (NULL);
+		if (thread == mono_thread_internal_current ())
 			mono_set_jit_tls (NULL);
+
+		/* If we attach a thread but never call into managed land, we might never get an lmf.*/
+		if (mono_get_lmf ()) {
+			mono_set_lmf (NULL);
 			mono_set_lmf_addr (NULL);
 		}
 
@@ -4189,6 +4205,7 @@ mini_method_compile (MonoMethod *method, guint32 opts, MonoDomain *domain, gbool
 	cfg->orig_method = method;
 	cfg->gen_seq_points = debug_options.gen_seq_points;
 	cfg->explicit_null_checks = debug_options.explicit_null_checks;
+	cfg->soft_breakpoints = debug_options.soft_breakpoints;
 	if (try_generic_shared)
 		cfg->generic_sharing_context = (MonoGenericSharingContext*)&cfg->generic_sharing_context;
 	cfg->compile_llvm = try_llvm;
@@ -6001,6 +6018,8 @@ mini_parse_debug_options (void)
 			debug_options.init_stacks = TRUE;
 		else if (!strcmp (arg, "casts"))
 			debug_options.better_cast_details = TRUE;
+		else if (!strcmp (arg, "soft-breakpoints"))
+			debug_options.soft_breakpoints = TRUE;
 		else {
 			fprintf (stderr, "Invalid option for the MONO_DEBUG env variable: %s\n", arg);
 			fprintf (stderr, "Available options: 'handle-sigint', 'keep-delegates', 'reverse-pinvoke-exceptions', 'collect-pagefault-stats', 'break-on-unverified', 'no-gdb-backtrace', 'dont-free-domains', 'suspend-on-sigsegv', 'suspend-on-unhandled', 'dyn-runtime-invoke', 'gdb', 'explicit-null-checks', 'init-stacks'\n");

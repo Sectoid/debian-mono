@@ -66,6 +66,9 @@
 /* Disable inter-process shared handles */
 #undef DISABLE_SHARED_HANDLES
 
+/* Disable shared perfcounters. */
+#undef DISABLE_SHARED_PERFCOUNTERS
+
 /* Disable SIMD intrinsics related optimizations. */
 #undef DISABLE_SIMD
 
@@ -95,6 +98,9 @@
 
 /* Define to 1 if you have the <alloca.h> header file. */
 #undef HAVE_ALLOCA_H
+
+/* "Host supports ARMV6 instructions" */
+#undef HAVE_ARMV6
 
 /* Supports C99 array initialization */
 #undef HAVE_ARRAY_ELEM_INIT
@@ -495,13 +501,13 @@
 /* Define to 1 if you have the <string.h> header file. */
 #undef HAVE_STRING_H
 
-/* Define to 1 if `d_off' is member of `struct dirent'. */
+/* Define to 1 if `d_off' is a member of `struct dirent'. */
 #undef HAVE_STRUCT_DIRENT_D_OFF
 
-/* Define to 1 if `d_reclen' is member of `struct dirent'. */
+/* Define to 1 if `d_reclen' is a member of `struct dirent'. */
 #undef HAVE_STRUCT_DIRENT_D_RECLEN
 
-/* Define to 1 if `d_type' is member of `struct dirent'. */
+/* Define to 1 if `d_type' is a member of `struct dirent'. */
 #undef HAVE_STRUCT_DIRENT_D_TYPE
 
 /* Define to 1 if the system has the type `struct flock'. */
@@ -513,10 +519,10 @@
 /* Have struct ip_mreqn */
 #undef HAVE_STRUCT_IP_MREQN
 
-/* Define to 1 if `kp_proc' is member of `struct kinfo_proc'. */
+/* Define to 1 if `kp_proc' is a member of `struct kinfo_proc'. */
 #undef HAVE_STRUCT_KINFO_PROC_KP_PROC
 
-/* Define to 1 if `pw_gecos' is member of `struct passwd'. */
+/* Define to 1 if `pw_gecos' is a member of `struct passwd'. */
 #undef HAVE_STRUCT_PASSWD_PW_GECOS
 
 /* Define to 1 if the system has the type `struct pollfd'. */
@@ -525,7 +531,7 @@
 /* Define to 1 if the system has the type `struct stat'. */
 #undef HAVE_STRUCT_STAT
 
-/* Define to 1 if `f_flags' is member of `struct statfs'. */
+/* Define to 1 if `f_flags' is a member of `struct statfs'. */
 #undef HAVE_STRUCT_STATFS_F_FLAGS
 
 /* Define to 1 if the system has the type `struct timespec'. */
@@ -763,8 +769,14 @@
 /* Define to the one symbol short name of this package. */
 #undef PACKAGE_TARNAME
 
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
+
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
+
+/* Targeting the Android platform */
+#undef PLATFORM_ANDROID
 
 /* This platform does not support symlinks */
 #undef PLATFORM_NO_SYMLINKS
@@ -786,6 +798,9 @@
 
 /* ... */
 #undef TARGET_AMD64
+
+/* ... */
+#undef TARGET_ANDROID
 
 /* ... */
 #undef TARGET_ARM

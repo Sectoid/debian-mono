@@ -56,6 +56,12 @@
 	* AttributeCollection.cs: Remove the NET_2_0 directives, as well
 	as the else case for it (we are always NET_2_0 now).
 
+2011-05-05  Veerapuram Varadhan  <v.varadhan@gmail.com>
+
+	** Fixes #663287
+	* NullableConverter.cs (ConvertTo): Compare the type of value
+	against underlyingType instead of nullableType.
+	
 2010-07-19  Marek Habersack  <mhabersack@novell.com>
 
 	* MultilineStringConverter.cs: implemented

@@ -39,6 +39,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Runtime.Serialization;
 using System.Text;
@@ -314,7 +315,6 @@ namespace MonoTests.System.Runtime.Serialization
 
 		[Test]
 		[ExpectedException (typeof (SerializationException))]
-		[Category ("NotWorking")] // behavior changed in 3.5/SP1
 		public void SerializeSimpleXml ()
 		{
 			DataContractSerializer ser =
@@ -979,7 +979,6 @@ namespace MonoTests.System.Runtime.Serialization
 		}
 
 		[Test]
-		[Category ("NotWorking")]
 		public void DeserializeDCWithNullableEnum ()
 		{
 			DCWithNullableEnum dc = Deserialize<DCWithNullableEnum> (
@@ -1533,6 +1532,58 @@ namespace MonoTests.System.Runtime.Serialization
 			Assert.IsTrue (sw.ToString ().IndexOf (expectedPart) > 0, assert);
 			return (T) ds.ReadObject (XmlReader.Create (new StringReader (sw.ToString ())));
 		}
+
+		[Test]
+		public void DateTimeOffsetSerialization ()
+		{
+			var ds = new DataContractSerializer (typeof (DateTimeOffset));
+			var sw = new StringWriter ();
+			string xml = "<DateTimeOffset xmlns:i='http://www.w3.org/2001/XMLSchema-instance' xmlns='http://schemas.datacontract.org/2004/07/System'><DateTime>2011-03-01T02:05:06.078Z</DateTime><OffsetMinutes>120</OffsetMinutes></DateTimeOffset>".Replace ('\'', '"');
+			var v = new DateTimeOffset (new DateTime (2011, 3, 1, 4, 5, 6, 78), TimeSpan.FromMinutes (120));
+			using (var xw = XmlWriter.Create (sw, settings)) {
+				ds.WriteObject (xw, v);
+			}
+			Assert.AreEqual (xml, sw.ToString (), "#1");
+			Assert.AreEqual (v, ds.ReadObject (XmlReader.Create (new StringReader (sw.ToString ()))), "#2");
+		}
+
+		[Test]
+		public void XmlDocumentSupport ()
+		{
+			var xml = "<XmlDocumentContract xmlns:i='http://www.w3.org/2001/XMLSchema-instance' xmlns='urn:foo'><Content><Root xmlns=''>Hello, world!</Root></Content><Nodes><child1 xmlns='' /><child2 xmlns='' /></Nodes></XmlDocumentContract>".Replace ('\'', '"');
+			var xml2 = "<Root>Hello, world!</Root>";
+			var obj = new XmlDocumentContract ();
+			var doc = new XmlDocument ();
+			doc.LoadXml (xml2);
+			obj.Content = doc.DocumentElement;
+			doc = new XmlDocument ();
+			doc.LoadXml ("<root><child1/><child2/></root>");
+			var l = new List<XmlNode> ();
+			foreach (XmlNode node in doc.DocumentElement.ChildNodes)
+				l.Add (node);
+			obj.Nodes = l.ToArray ();
+			var serializer = new DataContractSerializer (typeof (XmlDocumentContract))
+			;
+			var sb = new StringBuilder ();
+			using (var writer = new StringWriter (sb))
+				serializer.WriteObject (new XmlTextWriter (writer), obj);
+			Assert.AreEqual (xml, sb.ToString (), "#1");
+			using (var reader = new StringReader (sb.ToString ()))
+				obj = serializer.ReadObject (new XmlTextReader (reader)) as XmlDocumentContract;
+			Assert.AreEqual ("Hello, world!", obj.Content != null ? obj.Content.InnerText : String.Empty, "#2");
+			Assert.AreEqual (2, obj.Nodes != null ? obj.Nodes.Length : -1, "#3");
+		}
+
+		[Test]
+		public void ArrayAsEnumerableAsRoot ()
+		{
+			var ds = new DataContractSerializer (typeof (IEnumerable<Guid>));
+			var sw = new StringWriter ();
+			using (var xw = XmlWriter.Create (sw, settings))
+				ds.WriteObject (xw, new Guid [] {Guid.Empty});
+			string xml = "<ArrayOfguid xmlns:i='http://www.w3.org/2001/XMLSchema-instance' xmlns='http://schemas.microsoft.com/2003/10/Serialization/Arrays'><guid>00000000-0000-0000-0000-000000000000</guid></ArrayOfguid>".Replace ('\'', '"');
+			Assert.AreEqual (xml, sw.ToString (), "#1");
+		}
 	}
 	
 	[DataContract]
@@ -1852,6 +1903,26 @@ namespace MonoTests.System.Runtime.Serialization
 	[DataContract]
 	class BaseConstraintType4 : BaseConstraintType2
 	{
+	}
+
+	[DataContract (Namespace = "urn:foo")]
+	public class XmlDocumentContract
+	{
+		[DataMember (Name = "Content")]
+		private XmlElement content;
+
+		public XmlElement Content {
+			get { return content; }
+			set { content = value; }
+		}
+
+		[DataMember (Name = "Nodes")]
+		private XmlNode [] nodes;
+
+		public XmlNode [] Nodes {
+			get { return nodes; }
+			set { nodes = value; }
+		}
 	}
 }
 

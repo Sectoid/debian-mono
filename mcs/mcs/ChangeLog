@@ -1,3 +1,41 @@
+2011-07-20  Martinho Fernandes  <martinho.fernandes@gmail.com>
+
+	[Fix] Command-line option -checked now works (bug #706877)
+
+	The -checked option was not being considered in the
+	BuilderContext. Now it is set on construction of BuilderContext to
+	the value from RootContext.
+
+2011-04-21  Marek Safar  <marek.safar@gmail.com>
+
+	[688891] Keep same TypeParameter ctor syntax
+
+2011-04-21  Marek Safar  <marek.safar@gmail.com>
+
+	[688891] Copy type parameters for base proxy method
+
+2011-04-19  Marek Safar  <marek.safar@gmail.com>
+
+	[687282] Fixes cross references of nested anonymous methods which
+	don't start at parameters level block
+
+2011-03-09  Marek Safar  <marek.safar@gmail.com>
+
+	[677550] Fixes fixed buffer regressions
+
+2011-03-08  Miguel de Icaza  <miguel@gnome.org>
+
+	Make print take an object
+
+2011-03-01  Marek Safar  <marek.safar@gmail.com>
+
+	[675777] Remove invalid zero based optimization
+
+2011-02-23  Marek Safar  <marek.safar@gmail.com>
+
+	[674224] Type parameter constraint can resolve to nested type
+	before it has been imported
+
 2011-02-14  Marek Safar  <marek.safar@gmail.com>
 
 	[671552] Use correct emit method for stobj type

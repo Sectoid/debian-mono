@@ -1,3 +1,27 @@
+2011-06-20  Michael Hutchinson  <m.j.hutchinson@gmail.com>
+
+	Fix the cairo dllmap on OS X
+
+2011-03-28  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	mono-sgen-gdb.py should be installed conditionally
+
+2011-03-13  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Add new ignore file.
+
+2011-03-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the previous change.
+
+2011-03-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix out-of-tree builds.
+
+2011-03-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Install a mono-sgen-gdb.py as well.
+
 2011-01-19  Mark Probst  <mark.probst@gmail.com>
 
 	[build] pkg-config support for libmonosgen.

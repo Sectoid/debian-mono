@@ -2039,6 +2039,8 @@ encode_method_ref (MonoAotCompile *acfg, MonoMethod *method, guint8 *buf, guint8
 		case MONO_WRAPPER_CASTCLASS:
 			if (!strcmp (method->name, "__castclass_with_cache")) {
 				encode_value (MONO_AOT_WRAPPER_CASTCLASS_WITH_CACHE, p, &p);
+			} else if (!strcmp (method->name, "__isinst_with_cache")) {
+				encode_value (MONO_AOT_WRAPPER_ISINST_WITH_CACHE, p, &p);
 			} else {
 				g_assert_not_reached ();
 			}
@@ -2621,6 +2623,8 @@ add_wrappers (MonoAotCompile *acfg)
 
 		/* castclass_with_check wrapper */
 		add_method (acfg, mono_marshal_get_castclass_with_cache ());
+		/* isinst_with_check wrapper */
+		add_method (acfg, mono_marshal_get_isinst_with_cache ());
 	}
 
 	/* 
@@ -4670,6 +4674,8 @@ can_encode_patch (MonoAotCompile *acfg, MonoJumpInfo *patch_info)
 			case MONO_WRAPPER_CASTCLASS:
 				if (!strcmp (method->name, "__castclass_with_cache"))
 					return TRUE;
+				else if (!strcmp (method->name, "__isinst_with_cache"))
+					return TRUE;
 				else
 					return FALSE;
 			default:
@@ -5328,8 +5334,6 @@ emit_code (MonoAotCompile *acfg)
 
 		/* Emit unbox trampoline */
 		if (acfg->aot_opts.full_aot && cfg->orig_method->klass->valuetype && (method->flags & METHOD_ATTRIBUTE_VIRTUAL)) {
-			char call_target [256];
-
 			if (!method->wrapper_type && !method->is_inflated) {
 				g_assert (method->token);
 				sprintf (symbol, "ut_%d", mono_metadata_token_index (method->token) - 1);
@@ -5348,9 +5352,7 @@ emit_code (MonoAotCompile *acfg)
 
 			emit_label (acfg, symbol);
 
-			sprintf (call_target, "%s", cfg->asm_symbol);
-
-			arch_emit_unbox_trampoline (acfg, cfg, cfg->orig_method, call_target);
+			arch_emit_unbox_trampoline (acfg, cfg, cfg->orig_method, cfg->asm_symbol);
 		}
 
 		if (cfg->compile_llvm)

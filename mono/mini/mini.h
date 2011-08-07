@@ -1135,6 +1135,7 @@ enum {
 #define MONO_BBLOCK_IS_IN_REGION(bblock, regtype) (((bblock)->region & (0xf << 4)) == (regtype))
 
 #define MONO_REGION_FLAGS(region) ((region) & 0x7)
+#define MONO_REGION_CLAUSE_INDEX(region) (((region) >> 8) - 1)
 
 #define get_vreg_to_inst(cfg, vreg) ((vreg) < (cfg)->vreg_to_inst_len ? (cfg)->vreg_to_inst [(vreg)] : NULL)
 
@@ -1283,6 +1284,7 @@ typedef struct {
 	guint            gen_seq_points : 1;
 	guint            explicit_null_checks : 1;
 	guint            compute_gc_maps : 1;
+	guint            soft_breakpoints : 1;
 	gpointer         debug_info;
 	guint32          lmf_offset;
     guint16          *intvars;
@@ -1600,6 +1602,14 @@ typedef struct {
 	 * debugging of the stack marking code in the GC.
 	 */
 	gboolean init_stacks;
+
+	/*
+	 * Whenever to implement single stepping and breakpoints without signals in the
+	 * soft debugger. This is useful on platforms without signals, like the ps3, or during
+	 * runtime debugging, since it avoids SIGSEGVs when a single step location or breakpoint
+	 * is hit.
+	 */
+	gboolean soft_breakpoints;
 } MonoDebugOptions;
 
 enum {
@@ -2421,7 +2431,7 @@ gboolean mono_gdb_render_native_backtraces (void) MONO_INTERNAL;
 #define SIG_HANDLER_SIGNATURE(ftn) ftn (int _dummy, siginfo_t *info, void *context)
 #define SIG_HANDLER_PARAMS _dummy, info, context
 #elif defined(HOST_WIN32)
-#define SIG_HANDLER_SIGNATURE(ftn) ftn (int _dummy, EXCEPTION_RECORD *info, void *context)
+#define SIG_HANDLER_SIGNATURE(ftn) ftn (int _dummy, EXCEPTION_POINTERS *info, void *context)
 #define SIG_HANDLER_PARAMS _dummy, info, context
 #elif defined(__HAIKU__)
 #define SIG_HANDLER_SIGNATURE(ftn) ftn (int _dummy, void *userData, vregs regs)
@@ -2445,6 +2455,7 @@ enum {
 	MONO_AOT_WRAPPER_PTR_TO_STRUCTURE,
 	MONO_AOT_WRAPPER_STRUCTURE_TO_PTR,
 	MONO_AOT_WRAPPER_CASTCLASS_WITH_CACHE,
+	MONO_AOT_WRAPPER_ISINST_WITH_CACHE,
 	MONO_AOT_WRAPPER_LAST
 };
 
