@@ -2421,7 +2421,8 @@ Depends: ${misc:Depends},
          mono-gac (= ${source:Version}),
          mono-xbuild (= ${source:Version}),
          libmono-cil-dev (= ${source:Version}),
-         libmono-2.0-dev (= ${source:Version}),
+         libmono-2.0-dev (>= ${source:Version}),
+         libmono-2.0-dev (<< ${source:Version}.1~),
          pkg-config
 Description: Mono development tools
  Mono is a platform for running and developing applications based on the
