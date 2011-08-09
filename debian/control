@@ -479,8 +479,8 @@ Description: Mono.Cecil library
  runtime, which can produce and execute CIL (Common Intermediate Language)
  bytecode (aka assemblies), and a class library.
  .
- This package contains the private Mono.Cecil library that allows to generate
- and inspect programs and libraries in the ECMA CIL format.
+ This package contains the private Mono.Cecil library that allows one to
+ generate and inspect programs and libraries in the ECMA CIL format.
 
 Package: libmono-c5-1.1-cil
 Architecture: all
@@ -537,8 +537,8 @@ Description: Mono Management library (for CLI 2.0)
  bytecode (aka assemblies), and a class library.
  .
  This package contains the Mono.Management library for CLI 2.0, which provides
- attach functionality for the Mono runtime. It allows to load code externally
- into a Mono process to debug or augment code live.
+ attach functionality for the Mono runtime. It allows one to load code
+ externally into a Mono process to debug or augment code live.
 
 Package: libmono-management4.0-cil
 Architecture: all
@@ -552,8 +552,8 @@ Description: Mono Management library (for CLI 4.0)
  bytecode (aka assemblies), and a class library.
  .
  This package contains the Mono.Management library for CLI 4.0, which provides
- attach functionality for the Mono runtime. It allows to load code externally
- into a Mono process to debug or augment code live.
+ attach functionality for the Mono runtime. It allows one to load code
+ externally into a Mono process to debug or augment code live.
 
 Package: libmono-messaging2.0-cil
 Architecture: all
