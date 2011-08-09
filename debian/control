@@ -66,9 +66,9 @@ Description: Mono runtime - SGen (experimental)
  Mono currently only supports the X86, PowerPC, ARM, SPARC, S/390, AMD64 and
  IA64 architectures.
  .
- This package uses SGen which is Mono's new simple generational garbage collector
- instead of Boehm's conservative garbage collector. SGen is currently only
- for testing and thus should not be used in production.
+ This package uses SGen which is Mono's new simple generational garbage
+ collector instead of Boehm's conservative garbage collector. SGen is
+ currently only for testing and thus should not be used in production.
 
 Package: mono-runtime-dbg
 Priority: extra
