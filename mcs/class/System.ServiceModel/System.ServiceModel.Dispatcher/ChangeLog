@@ -1,3 +1,16 @@
+2011-08-02  Nicolas GRAZIANO  <nicolas.graziano@ineo-gdfsuez.com>
+
+	TypedMessageConverter do not take into account the xml attribute
+	which modify the serialization.
+
+	Correction and Unit Test.
+
+2011-08-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Fill/reflect ReturnValue to and from corresponding message part.
+
+	This may have fixed bug #41.
+
 2011-06-28  Atsushi Eno  <atsushi@ximian.com>
 
 	Implement support for Stream param with WebHttpBinding raw content

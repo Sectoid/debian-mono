@@ -1,3 +1,8 @@
+2011-08-07  Bassam Tabbara  <bassam@symform.com>
+
+	Networkstream now throws IOException('connection closed') if the
+	socket was closed/disposed
+
 2011-06-20  XTZGZoReX  <xtzgzorex@gmail.com>
 
 	Socket: Fixed a security issue when default-initialized

@@ -1,3 +1,26 @@
+2011-08-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix padding of call instructions.
+
+2011-08-02  Rolf Bjarne Kvinge  <rolf@xamarin.com>
+
+	[aot-compiler] Replace assert with descriptive error message.
+
+2011-08-02  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* aot-compiler.c (arch_emit_imt_thunk): Implement fail tramp
+	support on arm. This enables variance to work under full-aot. The
+	code blowout is not really significant as even on non linked apps
+	the imt thunk overhead is 0.5%.
+
+2011-08-02  Alex  <alexh@dragonflybsd.org>
+
+	Define MONO_ARCH_NOMAP32BIT for DragonFly BSD.
+
+2011-07-29  Miguel de Icaza  <miguel@gnome.org>
+
+	Update copyrights
+
 2011-07-29  Rodrigo Kumpera  <kumpera@gmail.com>
 
 	Use wrappers for accessing socket errors. Cygwin does not have

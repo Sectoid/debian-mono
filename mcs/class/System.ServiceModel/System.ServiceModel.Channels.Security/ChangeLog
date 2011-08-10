@@ -1,3 +1,9 @@
+2011-08-02  Atsushi Eno  <atsushieno@gmail.com>
+
+	Merge pull request #143 from mistoll/master
+
+	Fixes for WCF BasicHttpBinding with message security
+
 2010-10-15  Atsushi Eno  <atsushi@ximian.com>
 
 	The previous changes somehow regressed on olive samples, so give

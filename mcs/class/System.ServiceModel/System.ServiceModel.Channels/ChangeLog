@@ -1,3 +1,9 @@
+2011-08-02  Atsushi Eno  <atsushieno@gmail.com>
+
+	Merge pull request #143 from mistoll/master
+
+	Fixes for WCF BasicHttpBinding with message security
+
 2011-07-22  Atsushi Eno  <atsushieno@veritas-vos-liberabit.com>
 
 	Avoid possible duplicate xmlns output. Fixes xsp-based hosting

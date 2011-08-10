@@ -1,3 +1,7 @@
+2011-08-01  Alex  <alexh@dragonflybsd.org>
+
+	Add support for DragonFly and NetBSD to sigcontext.
+
 2011-07-12  Rodrigo Kumpera  <kumpera@gmail.com>
 
 	Add shared_perfcounters option to enable minimal.

@@ -3598,7 +3598,7 @@ fi
 
 # Define the identity of the package.
  PACKAGE=mono
- VERSION=2.10.3
+ VERSION=2.10.4
 
 
 cat >>confdefs.h <<_ACEOF
