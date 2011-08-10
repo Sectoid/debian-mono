@@ -23,12 +23,14 @@ mono (2.10.3-1) experimental; urgency=low
               libmono-microsoft-visualc10.0-cil and
               libmono-microsoft-web-infrastructure1.0-cil
   * [491534a] Fixed non-binNMUable error for mono-devel
-  * [eb78f74] Fixed spelling mistake according to lintian: s/allows to/allows one to/
+  * [eb78f74] Fixed spelling mistake according to lintian:
+              s/allows to/allows one to/
   * [5fae96e] Fixed too long extended description line for mono-runtime-sgen
   * [5dbb6e1] Set single-debian-patch in debian/source/options
   * [98bf4a8] Added CLI 4.0 support to mono-api-check
   * [5965895] Bumped clilibs to 2.10.3 where appropriate
-  * [e706e60] New lame API check tool: mono-api-source-check (only use at your own risk!)
+  * [e706e60] New lame API check tool: mono-api-source-check
+              (only use at your own risk!)
 
   [ Zoltan Varga ]
   * [300bb53] Apply a workaround for a gcc 4.6 problem on arm.
