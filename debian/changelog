@@ -1,3 +1,40 @@
+mono (2.10.3-1) experimental; urgency=low
+
+  * The "from Xamarin with love" release
+
+  [ Mirco Bauer ]
+  * [5f13e09] Updated download URL in debian/watch
+  * [4abf062] Added desktop file for mono with and without a terminal window
+  * [f165789] Imported Upstream version 2.10.3
+  * [b51b15c] Dropped unused libglib2.0-dev from build-deps which was replaced
+              by Mono's own eglib
+  * [00a5c48] Fixed manpage reference for cli-csc alternative
+  * [b6fb713] New patch structure
+  * [6cb63b3] Use debian-branch instead of current branch
+  * [3956527] Added I18N west package as dependency to WinForms as the
+              RichTextBox class requires CP1252 (closes: #629151)
+  * [997bec0] Mono.WebBrowser library is now shipped in both 2.0 and 4.0
+              runtime flavors
+  * [dfd65af] Added /usr/lib/mono/xbuild-frameworks to mono-xbuild package
+  * [12478bf] Removed useless dh_makeclilibs call for not existing
+              libmono-winforms4.0-cil
+  * [3d2d42c] Allow the inclusion of the binary file debian/mono-runtime.png
+  * [2a814af] Fixed missing separator in Depends field of
+              libmono-microsoft-visualc10.0-cil and
+              libmono-microsoft-web-infrastructure1.0-cil
+  * [491534a] Fixed non-binNMUable error for mono-devel
+  * [eb78f74] Fixed spelling mistake according to lintian: s/allows to/allows one to/
+  * [5fae96e] Fixed too long extended description line for mono-runtime-sgen
+  * [5dbb6e1] Set single-debian-patch in debian/source/options
+  * [98bf4a8] Added CLI 4.0 support to mono-api-check
+  * [5965895] Bumped clilibs to 2.10.3 where appropriate
+  * [e706e60] New lame API check tool: mono-api-source-check (only use at your own risk!)
+
+  [ Zoltan Varga ]
+  * [300bb53] Apply a workaround for a gcc 4.6 problem on arm.
+
+ -- Mirco Bauer <meebey@debian.org>  Wed, 10 Aug 2011 23:52:12 +0200
+
 mono (2.10.1-4) experimental; urgency=low
 
   [ Zoltan Varga ]
