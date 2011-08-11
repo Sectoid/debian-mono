@@ -1,3 +1,9 @@
+2011-08-02  Geoff Norton  <grompf@gmail.com>
+
+	[gc] Darwin/AMD64 can have 64-bit thread id's, so we need to
+	ensure we cast properly to make sure the modulus has a valid
+	result. Additionally add support for x86_THREAD_STATE64.
+
 2011-04-29  Geoff Norton  <grompf@sublimeintervention.com>
 
 	[boehm] Avoid a ENOMEM when allocating across an unallocated page

@@ -1,3 +1,9 @@
+2011-08-05  Miguel de Icaza  <miguel@gnome.org>
+
+	Merge pull request #129 from grumpydev/CryptoFixo
+
+	Fix for out of bounds exception in Rfc2898DeriveBytes
+
 2011-04-17  Sebastien Pouliot  <sebastien@ximian.com>
 
 	backport pull request for 2.10.2

@@ -1,3 +1,17 @@
+2011-08-04  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Enqueue finalizers after update the pointer.
+
+	If the object was forwarded we read a bogus vtable and hence a
+	bogus klass.
+
+2011-08-03  Marek Habersack  <grendel@twistedcode.net>
+
+	[runtime, globalization] Fix for Xamarin bug #161. Fix culture
+	info data for certain locale short date formats
+
+	Modified locales which don't use '/' as the short date separator.
+
 2011-07-26  Rodrigo Kumpera  <kumpera@gmail.com>
 
 	OSX won't expose IPV6_PKTINFO unless __APPLE_USE_RFC_3542 is

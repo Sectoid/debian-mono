@@ -1,3 +1,11 @@
+2011-08-01  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	Oops, fixed a typo
+
+2011-07-29  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	Fix a mkbundle compiler warning by #including mono-config.h
+
 2010-08-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Fix the build

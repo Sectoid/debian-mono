@@ -1,10 +1,3 @@
-2011-08-03  Marek Habersack  <grendel@twistedcode.net>
-
-	[runtime, globalization] Fix for Xamarin bug #161. Fix culture
-	info data for certain locale short date formats
-
-	Modified locales which don't use '/' as the short date separator.
-
 2010-03-23  Geoff Norton  <gnorton@novell.com>
 
 	* da_DK.xml: The short format is day. month, not 

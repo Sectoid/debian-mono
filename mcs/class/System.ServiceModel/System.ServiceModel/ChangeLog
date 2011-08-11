@@ -1,3 +1,14 @@
+2011-08-03  Atsushi Eno  <atsushieno@veritas-vos-liberabit.com>
+
+	Fix NET_2_1 builds (regression from the previous
+	SecurityBindingElement fixes).
+
+2011-08-02  Atsushi Eno  <atsushieno@gmail.com>
+
+	Merge pull request #143 from mistoll/master
+
+	Fixes for WCF BasicHttpBinding with message security
+
 2011-07-27  Atsushi Eno  <atsushi@ximian.com>
 
 	Fix wsdl import wrt element qname (!= type name).

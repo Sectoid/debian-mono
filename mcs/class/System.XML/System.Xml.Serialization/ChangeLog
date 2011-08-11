@@ -1,3 +1,18 @@
+2011-08-03  Atsushi Eno  <atsushieno@gmail.com>
+
+	Merge pull request #146 from
+	flutos/207ce0bccceec3ff7860ea986086fedb5a92d822
+
+	fix for bug 708178 that would fail if the type wasnt IEnumerable,
+	should check if it implement IEnumerable rather than is
+	IEnumerable
+
+2011-08-03  Atsushi Eno  <atsushieno@veritas-vos-liberabit.com>
+
+	Fix bug #707434, check order only when applicable.
+
+	Based on the input by Scott Fluto.
+
 2011-07-21  Atsushi Eno  <atsushieno@veritas-vos-liberabit.com>
 
 	Fix bug #703910 - implement Order support in XmlSerializer.

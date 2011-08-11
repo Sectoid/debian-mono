@@ -1,3 +1,16 @@
+2011-08-03  Atsushi Eno  <atsushieno@veritas-vos-liberabit.com>
+
+	Fix build, merge some missing changes to MessagePartDescription.
+
+2011-08-02  Atsushi Eno  <atsushi@ximian.com>
+
+	part of fix bug #41. MessageParameterAttribute is considered for
+	return value.
+
+	Conflicts:
+
+	mcs/class/System.ServiceModel/System.ServiceModel.Description/MessagePartDescription.cs
+
 2011-07-27  Atsushi Eno  <atsushi@ximian.com>
 
 	Fix wsdl import wrt element qname (!= type name).
