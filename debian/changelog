@@ -1,3 +1,16 @@
+mono (2.10.4-1) experimental; urgency=low
+
+  [ Mirco Bauer ]
+  * New upstream (bugfix) release
+  * [6a8fc99] Install mono-api-diff.exe in mono/4.0
+  * [85bc08e] Imported Upstream version 2.10.4
+  * [113d0f0] Wrapped too long debian/changelog lines
+
+  [ Miguel de Icaza ]
+  * [03ceab5] Do not throw if we get a RunAndCollect
+
+ -- Mirco Bauer <meebey@debian.org>  Thu, 11 Aug 2011 21:32:53 +0200
+
 mono (2.10.3-1) experimental; urgency=low
 
   * The "from Xamarin with love" release
