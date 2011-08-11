@@ -1,9 +1,3 @@
-2011-08-02  Atsushi Eno  <atsushieno@gmail.com>
-
-	Merge pull request #143 from mistoll/master
-
-	Fixes for WCF BasicHttpBinding with message security
-
 2010-07-26  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* SamlSubject.cs : add missing .ctor().

@@ -1,3 +1,9 @@
+2011-08-07  Bassam Tabbara  <bassam@symform.com>
+
+	Fixed regression in System.Web.Routing caused by
+	62b047ae5bb8eec096e5b764029a1f283ee51347. Value and constraint
+	where switched when evaluating regex route constraints.
+
 2011-03-16  Bassam Tabbara  <bassam@symform.com>
 
 	[asp.net] Fix for bug #667513. Implement support for PathInfo in

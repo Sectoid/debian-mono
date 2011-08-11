@@ -1,3 +1,19 @@
+2011-08-02  Nicolas GRAZIANO  <nicolas.graziano@ineo-gdfsuez.com>
+
+	TypedMessageConverter do not take into account the xml attribute
+	which modify the serialization.
+
+	Correction and Unit Test.
+
+2011-08-02  Atsushi Eno  <atsushi@ximian.com>
+
+	part of fix bug #41. MessageParameterAttribute is considered for
+	return value.
+
+	Conflicts:
+
+	mcs/class/System.ServiceModel/System.ServiceModel.Description/MessagePartDescription.cs
+
 2011-05-10  Atsushi Eno  <atsushi@ximian.com>
 
 	Fix common issue in MetadataSet - call MoveToContent() while

@@ -1,3 +1,7 @@
+2011-08-05  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix for #162
+
 2011-07-27  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Ensure that Task is in a correct initial state before starting it

@@ -1,3 +1,12 @@
+2011-08-02  Atsushi Eno  <atsushi@ximian.com>
+
+	part of fix bug #41. MessageParameterAttribute is considered for
+	return value.
+
+	Conflicts:
+
+	mcs/class/System.ServiceModel/System.ServiceModel.Description/MessagePartDescription.cs
+
 2011-07-19  Atsushi Eno  <atsushieno@veritas-vos-liberabit.com>
 
 	support action parameter in SOAP 1.2 content type. Close pull
