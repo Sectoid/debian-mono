@@ -1,3 +1,10 @@
+mono (2.10.4-2) experimental; urgency=low
+
+  * [77d26a4] Fixed failing upgrade of libmono-webbrowser0.5-cil to
+              libmono-webbrowser2.0-cil with conflicts/replaces
+
+ -- Mirco Bauer <meebey@debian.org>  Fri, 12 Aug 2011 21:19:36 +0200
+
 mono (2.10.4-1) experimental; urgency=low
 
   [ Mirco Bauer ]
