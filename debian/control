@@ -497,6 +497,8 @@ Description: Mono C5 library
 
 Package: libmono-webbrowser2.0-cil
 Architecture: all
+Conflicts: libmono-webbrowser0.5-cil
+Replaces: libmono-webbrowser0.5-cil
 Depends: ${misc:Depends},
          ${cli:Depends}
 Recommends: ${cli:Recommends}
