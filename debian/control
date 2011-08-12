@@ -514,6 +514,8 @@ Description: Mono Web Browser library (for CLI 2.0)
 
 Package: libmono-webbrowser4.0-cil
 Architecture: all
+Conflicts: libmono-webbrowser0.5-cil
+Replaces: libmono-webbrowser0.5-cil
 Depends: ${misc:Depends},
          ${cli:Depends}
 Recommends: ${cli:Recommends}
