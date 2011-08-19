@@ -555,14 +555,16 @@ namespace Microsoft.Build.BuildEngine {
 
 		public string DefaultToolsVersion {
 			get {
-				// This is used as the fall back version if the
-				// project can't find a version to use
-				// Hard-coded to 2.0, so it allows even vs2005 projects
-				// to build correctly, as they won't have a ToolsVersion
-				// set!
-				return String.IsNullOrEmpty (defaultToolsVersion)
-						? "2.0"
-						: defaultToolsVersion;
+				if (String.IsNullOrEmpty (defaultToolsVersion))
+#if NET_4_0
+					return "4.0";
+#elif NET_3_5
+					return "3.5";
+#else
+					return "2.0";
+#endif
+				
+				return defaultToolsVersion;
 			}
 			set {
 				if (Toolsets [value] == null)
