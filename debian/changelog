@@ -1,3 +1,11 @@
+mono (2.10.4-3) experimental; urgency=low
+
+  [ Jo Shields ]
+  * [985d2ae] Revert "[xbuild] Make Engine.DefaultToolsVersion 2.0 ."
+    This reverts commit 4010c69c7d61223c73f111be2d79c4a440b70b45.
+
+ -- Mirco Bauer <meebey@debian.org>  Mon, 22 Aug 2011 22:44:41 +0200
+
 mono (2.10.4-2) experimental; urgency=low
 
   * [77d26a4] Fixed failing upgrade of libmono-webbrowser0.5-cil to
