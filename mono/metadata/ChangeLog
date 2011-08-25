@@ -1,3 +1,62 @@
+2011-08-19  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix sgen-arm-mach. It requires some #define juggling. .
+
+2011-08-19  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (mono_class_is_variant_compatible): Reject valuetypes if
+	not the same straight away. This fixes testing IEnumerable<int?>
+	with IEnumerable<int>.
+
+	Fixes bxc #185
+
+2011-08-18  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-bridge.c (dyn_array_ensure_capacity): We must correctly
+	calculate the size as our allocator asserts when we do it with
+	very large allocs.
+
+2011-08-17  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix android's broken pthread_kill under sgen.
+
+2011-08-17  Miguel de Icaza  <miguel@gnome.org>
+
+	updated copyrights
+
+2011-08-17  Miguel de Icaza  <miguel@gnome.org>
+
+	More updates
+
+2011-08-13  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[threadpool] Exit on unhandled exceptions only
+
+	Unhandled exceptions will only set the exitcode if there is no
+	AppDomain unhandled exception handler. When the exitcode is set,
+	the TP will exit for unhandled exceptions.
+
+	Fixes bug #227.
+
+2011-08-12  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[threadpool] Work around for a race-condition
+
+	Under some circumstances new_job was not signaled and the
+	threadpool threads didn't realized there was a workitem in the
+	queue.
+
+	Fixes Xamarin bug #12 and Novell bug #690357.
+
+2011-08-11  Marek Habersack  <grendel@twistedcode.net>
+
+	Compilation fix for e449d41158a205581e7519cc961b7c618f6163a8
+
+2011-08-11  Marek Habersack  <grendel@twistedcode.net>
+
+	[runtime] Fix for Xamarin bug #99. Don't fail to parse assembly
+	names with spaces surrounding = in key=value pairs
+
 2011-08-04  Mark Probst  <mark.probst@gmail.com>
 
 	[sgen] Enqueue finalizers after update the pointer.

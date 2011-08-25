@@ -4,7 +4,8 @@
  * Author:
  * 	Paolo Molaro (lupus@ximian.com)
  *
- * Copyright 2005-2010 Novell, Inc (http://www.novell.com)
+ * Copyright 2005-2011 Novell, Inc (http://www.novell.com)
+ * Copyright 2011 Xamarin, Inc (http://www.xamarin.com)
  *
  * Thread start/stop adapted from Boehm's GC:
  * Copyright (c) 1994 by Xerox Corporation.  All rights reserved.
@@ -5022,7 +5023,7 @@ restart_threads_until_none_in_managed_allocator (void)
 #if defined(__MACH__) && MONO_MACH_ARCH_SUPPORTED
 					result = thread_resume (pthread_mach_thread_np (info->id)) == KERN_SUCCESS;
 #else
-					result = pthread_kill (info->id, restart_signal_num) == 0;
+					result = mono_sgen_pthread_kill (info, restart_signal_num) == 0;
 #endif
 					if (result) {
 						++restart_count;
@@ -5068,7 +5069,7 @@ restart_threads_until_none_in_managed_allocator (void)
 #if defined(__MACH__) && MONO_MACH_ARCH_SUPPORTED
 				result = mono_sgen_suspend_thread (info);
 #else
-				result = pthread_kill (info->id, suspend_signal_num) == 0;
+				result = mono_sgen_pthread_kill (info, suspend_signal_num) == 0;
 #endif
 				if (result) {
 					++restarted_count;
@@ -5740,6 +5741,10 @@ gc_register_current_thread (void *addr)
 
 #if defined(__MACH__)
 	info->mach_port = mach_thread_self ();
+#endif
+
+#if defined(PLATFORM_ANDROID)
+	info->android_tid = (gpointer) gettid ();
 #endif
 
 	/* try to get it with attributes first */

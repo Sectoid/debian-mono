@@ -1,3 +1,14 @@
+2011-08-18  Alan McGovern  <alan.mcgovern@gmail.com>
+
+	[LinkedList] Optimise Clear slightly.
+
+2011-08-18  Alan McGovern  <alan.mcgovern@gmail.com>
+
+	Merge pull request #161 from LogosBible/master
+
+	Fix bug #311: On LinkedList.Clear, detach each node instead of
+	dropping them en masse.
+
 2011-04-19  Lluis Sanchez  <lluis@novell.com>
 
 	Fix ICollection.CopyTo in the Stack class

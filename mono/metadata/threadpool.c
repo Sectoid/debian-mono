@@ -7,6 +7,7 @@
  *
  * Copyright 2001-2003 Ximian, Inc (http://www.ximian.com)
  * Copyright 2004-2010 Novell, Inc (http://www.novell.com)
+ * Copyright 2001 Xamarin Inc (http://www.xamarin.com)
  */
 
 #include <config.h>
@@ -17,6 +18,7 @@
 #include <mono/metadata/threads-types.h>
 #include <mono/metadata/threadpool-internals.h>
 #include <mono/metadata/exception.h>
+#include <mono/metadata/environment.h>
 #include <mono/metadata/mono-mlist.h>
 #include <mono/metadata/mono-perfcounters.h>
 #include <mono/metadata/socket-io.h>
@@ -1431,7 +1433,8 @@ async_invoke_thread (gpointer data)
 						unloaded = is_appdomainunloaded_exception (exc->vtable->domain, klass);
 						if (!unloaded && klass != mono_defaults.threadabortexception_class) {
 							mono_unhandled_exception (exc);
-							exit (255);
+							if (mono_environment_exitcode_get () == 1)
+								exit (255);
 						}
 						if (klass == mono_defaults.threadabortexception_class)
 							mono_thread_internal_reset_abort (thread);
@@ -1469,9 +1472,9 @@ async_invoke_thread (gpointer data)
 
 			InterlockedIncrement (&tp->waiting);
 #if defined(__OpenBSD__)
-			while ((res = mono_sem_wait (&tp->new_job, TRUE)) == -1) {// && errno == EINTR) {
+			while (mono_cq_count (tp->queue) == 0 && (res = mono_sem_wait (&tp->new_job, TRUE)) == -1) {// && errno == EINTR) {
 #else
-			while ((res = mono_sem_timedwait (&tp->new_job, 2000, TRUE)) == -1) {// && errno == EINTR) {
+			while (mono_cq_count (tp->queue) == 0 && (res = mono_sem_timedwait (&tp->new_job, 2000, TRUE)) == -1) {// && errno == EINTR) {
 #endif
 				if (mono_runtime_is_shutting_down ())
 					break;

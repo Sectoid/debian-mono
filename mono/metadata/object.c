@@ -6,7 +6,8 @@
  *   Paolo Molaro (lupus@ximian.com)
  *
  * Copyright 2001-2003 Ximian, Inc (http://www.ximian.com)
- * Copyright 2004-2009 Novell, Inc (http://www.novell.com)
+ * Copyright 2004-2011 Novell, Inc (http://www.novell.com)
+ * Copyright 2001 Xamarin Inc (http://www.xamarin.com)
  */
 #include <config.h>
 #ifdef HAVE_ALLOCA_H
@@ -3824,9 +3825,9 @@ mono_unhandled_exception (MonoObject *exc)
 		}
 
 		/* set exitcode only if we will abort the process */
-		if (abort_process)
-			mono_environment_exitcode_set (1);
 		if ((current_appdomain_delegate == NULL) && (root_appdomain_delegate == NULL)) {
+			if (abort_process)
+				mono_environment_exitcode_set (1);
 			mono_print_unhandled_exception (exc);
 		} else {
 			if (root_appdomain_delegate) {

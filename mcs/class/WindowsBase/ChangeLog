@@ -1,3 +1,11 @@
+2011-08-17  Alan McGovern  <alan.mcgovern@gmail.com>
+
+	[System.IO.Packaging] Fix calling convention related issues
+
+	The P/Invokes should be Cdecl as the library is compiled with that
+	calling convention. The delegates passed to native code must also
+	be marshalled as Cdecl. Fixes BXC #223.
+
 2011-02-01  Atsushi Eno  <atsushi@ximian.com>
 
 	in NET_4_0, remove types that went into System.Xaml.dll. Change

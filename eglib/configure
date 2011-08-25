@@ -11170,6 +11170,9 @@ case $host in
     ;;
 *-*-linux-android*)
     platform_android=yes
+
+$as_echo "#define PLATFORM_ANDROID 1" >>confdefs.h
+
     PATHSEP='/'
     SEARCHSEP=':'
     OS="UNIX"

@@ -1,3 +1,13 @@
+2011-08-17  Miguel de Icaza  <miguel@gnome.org>
+
+	updated copyrights
+
+2011-08-12  Sebastien Pouliot  <sebastien@xamarin.com>
+
+	Use 'as' for casting certificate extensions since we already deal
+	with null and malformed extensions will throw, hard to debug, ICE
+	when we just want to ignore them
+
 2011-02-11  Sebastien Pouliot  <sebastien@ximian.com>
 
 	Continue X509Chain processing even if the local machine directory

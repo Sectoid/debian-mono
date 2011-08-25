@@ -1,3 +1,32 @@
+2011-08-20  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Throw when a non-finished task is started
+
+2011-08-20  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Make TaskCompletionSource methods thread-safe
+
+	Conflicts:
+
+	mcs/class/corlib/System.Threading.Tasks/TaskCompletionSource.cs
+
+2011-08-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix coding style
+
+2011-08-16  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Backport TaskCreationOptions check from master
+
+2011-08-10  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Avoid creating a delegate instance in general case when setting up
+	continuations
+
+	Conflicts:
+
+	mcs/class/corlib/System.Threading.Tasks/Task.cs
+
 2011-08-05  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Fix for #162

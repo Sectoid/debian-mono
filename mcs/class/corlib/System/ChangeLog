@@ -1,3 +1,19 @@
+2011-08-17  Miguel de Icaza  <miguel@gnome.org>
+
+	updated copyrights
+
+2011-08-15  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	Fix for bug #445855
+
+	In this day and age of mobile personal computing devices, we need
+	to periodically check the underlying system timezone because the
+	device may have crossed a timezone boundary.
+
+2011-08-11  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add IObserver/IObservable to MOBILE profile.
+
 2011-07-27  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Move innerExceptions internal null check at the right place.

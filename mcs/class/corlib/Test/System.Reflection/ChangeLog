@@ -1,3 +1,8 @@
+2011-08-11  Marek Habersack  <grendel@twistedcode.net>
+
+	[runtime] Fix for Xamarin bug #99. Don't fail to parse assembly
+	names with spaces surrounding = in key=value pairs
+
 2011-02-03  Marek Habersack  <grendel@twistedcode.net>
 
 	[reflection] Default binder's AdjustArguments method treats
