@@ -1,3 +1,7 @@
+2011-08-16  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix g_log redirection under android.
+
 2011-07-29  Chris Toshok  <toshok@gmail.com>
 
 	don't redefine ABS

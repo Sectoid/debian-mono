@@ -1,3 +1,7 @@
+2011-08-19  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix variance test involving nullable types.
+
 2011-07-27  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Add test for various AggregateException ctor exception situations

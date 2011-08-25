@@ -1,3 +1,8 @@
+2011-08-08  Harry Wilkinson  <hwilkinson@mdsol.com>
+
+	Include mono/tests/delegate2.exe.config to the source tarball so
+	that the tests pass
+
 2011-03-10  Zoltan Varga  <vargaz@gmail.com>
 
 	Mark threads created when calling from native code into the

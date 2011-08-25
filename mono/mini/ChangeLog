@@ -1,3 +1,48 @@
+2011-08-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable some failing LLVM passes. Should fix bxc #280.
+
+2011-08-17  Sebastien Pouliot  <sebastien@xamarin.com>
+
+	Provide an error message if an instance method is decorated with
+	[MonoPInvokeCallback]. Ease finding issues like bug #296
+
+2011-08-17  Miguel de Icaza  <miguel@gnome.org>
+
+	updated copyrights
+
+2011-08-17  Miguel de Icaza  <miguel@gnome.org>
+
+	More updates
+
+2011-08-15  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	Fixed a typo in zoltan's last commit
+
+2011-08-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Escape characters in LLVM symbol names
+
+2011-08-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Don't pass MONO_UNWIND_ACTUAL_METHOD to the stack walker in a
+	signal handler, its not signal safe. Fixes bxc #263.
+
+2011-08-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the newly added test_0_llvm_regress_171 ().
+
+2011-08-09  Zoltan Varga  <vargaz@gmail.com>
+
+	LLVM requires two PHI entries if a previous bblock branches to the
+	current bblock using a conditional branch whose two targets are
+	the same. Fixes #171.
+
+2011-08-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Add support for reference instances of Interlocked.Exchange<T> to
+	full-aot, similarly to Interlocked.CompareExchange<T>.
+
 2011-08-03  Rodrigo Kumpera  <kumpera@gmail.com>
 
 	Fix padding of call instructions.

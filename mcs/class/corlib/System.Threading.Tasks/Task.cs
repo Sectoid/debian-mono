@@ -68,6 +68,9 @@ namespace System.Threading.Tasks
 
 		CancellationToken token;
 
+		const TaskCreationOptions MaxTaskCreationOptions =
+			TaskCreationOptions.PreferFairness | TaskCreationOptions.LongRunning | TaskCreationOptions.AttachedToParent;
+
 		public Task (Action action) : this (action, TaskCreationOptions.None)
 		{
 			
@@ -104,6 +107,9 @@ namespace System.Threading.Tasks
 		
 		public Task (Action<object> action, object state, CancellationToken cancellationToken, TaskCreationOptions creationOptions)
 		{
+			if (creationOptions > MaxTaskCreationOptions || creationOptions < TaskCreationOptions.None)
+				throw new ArgumentOutOfRangeException ("creationOptions");
+
 			this.taskCreationOptions = creationOptions;
 			this.action              = action == null ? EmptyFunc : action;
 			this.state               = state;
@@ -236,7 +242,7 @@ namespace System.Threading.Tasks
 		
 		internal void ContinueWithCore (Task continuation, TaskContinuationOptions continuationOptions, TaskScheduler scheduler)
 		{
-			ContinueWithCore (continuation, continuationOptions, scheduler, () => true);
+			ContinueWithCore (continuation, continuationOptions, scheduler, null);
 		}
 		
 		internal void ContinueWithCore (Task continuation, TaskContinuationOptions kind,
@@ -249,8 +255,8 @@ namespace System.Threading.Tasks
 			
 			AtomicBoolean launched = new AtomicBoolean ();
 			EventHandler action = delegate (object sender, EventArgs e) {
-				if (!launched.Value && launched.TrySet ()) {
-					if (!predicate ())
+				if (launched.TryRelaxedSet ()) {
+					if (predicate != null && !predicate ())
 						return;
 
 					if (!ContinuationStatusCheck (kind)) {
@@ -729,6 +735,9 @@ namespace System.Threading.Tasks
 		
 		protected virtual void Dispose (bool disposing)
 		{
+			if (!IsCompleted)
+				throw new InvalidOperationException ("A task may only be disposed if it is in a completion state");
+
 			// Set action to null so that the GC can collect the delegate and thus
 			// any big object references that the user might have captured in a anonymous method
 			if (disposing) {

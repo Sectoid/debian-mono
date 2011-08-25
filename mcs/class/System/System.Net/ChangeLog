@@ -1,3 +1,16 @@
+2011-08-17  Miguel de Icaza  <miguel@gnome.org>
+
+	updated copyrights
+
+2011-08-11  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix the range for rnd.Next()
+
+2011-08-09  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	If #CONFIGURATION_DEP isn't defined, we still want to get a
+	default proxy
+
 2011-07-06  Jeffrey Stedfast  <jeff@xamarin.com>
 
 	Load the correct type on MacOSX (as opposed to iOS)
