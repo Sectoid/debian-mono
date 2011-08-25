@@ -1,3 +1,9 @@
+mono (2.10.5-1) experimental; urgency=low
+
+  * [854fa78] Imported Upstream version 2.10.5
+
+ -- Mirco Bauer <meebey@debian.org>  Thu, 25 Aug 2011 22:26:08 +0200
+
 mono (2.10.4-3) experimental; urgency=low
 
   [ Jo Shields ]
