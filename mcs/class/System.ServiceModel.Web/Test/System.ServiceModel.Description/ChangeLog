@@ -1,3 +1,14 @@
+2011-08-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Skip serialization when the return type is void.
+
+	This batch should fix bug #206.
+
+2011-08-23  Atsushi Eno  <atsushi@ximian.com>
+
+	UriTemplate should not be mandatory, make it optional. Fix unit
+	test.
+
 2010-10-15  Frank Wilhelm  <fwilhelm@nowisys.de>
 
 	Make Validate() less restrictive for contracts with explicit

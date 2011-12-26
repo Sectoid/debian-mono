@@ -1,3 +1,15 @@
+2011-09-19  Sebastien Pouliot  <sebastien@xamarin.com>
+
+	fix previous fix (wrt #808)
+
+2011-09-18  Sebastien Pouliot  <sebastien@xamarin.com>
+
+	Fix typo (bug #808)
+
+2011-08-30  Atsushi Eno  <atsushieno@veritas-vos-liberabit.com>
+
+	Implement IXmlLineInfo on XLinq node reader.
+
 2011-07-26  Atsushi Eno  <atsushieno@veritas-vos-liberabit.com>
 
 	Fix bug #16: use Owner node instead of Parent. Patch by Martin

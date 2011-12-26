@@ -1,3 +1,8 @@
+2011-12-13  Marek Safar  <marek.safar@gmail.com>
+
+	Fixes NRE when checking most specific type of default parameters.
+	Fixes #2465
+
 2011-01-24  Marek Safar  <marek.safar@gmail.com>
 
 	[666476] Use correct parameter count when checking ambiguous

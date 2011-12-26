@@ -1,3 +1,9 @@
+2011-09-08  Sebastien Pouliot  <sebastien@xamarin.com>
+
+	Return null instead of catching Activator exception (and return
+	null). What was a corner case before is now very common when the
+	linker is used (e.g. monotouch, m4a). Reported in assistly #1741
+
 2011-08-05  Miguel de Icaza  <miguel@gnome.org>
 
 	Merge pull request #129 from grumpydev/CryptoFixo

@@ -1,3 +1,10 @@
+2011-10-16  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Don't 404 when any of the hashes has a / in it
+
+	This fixes "random" problems getting resources served by
+	WebResource.axd.
+
 2011-04-21  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Implemented composite scripts support in

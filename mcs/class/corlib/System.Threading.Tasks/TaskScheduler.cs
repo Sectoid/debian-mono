@@ -35,9 +35,7 @@ namespace System.Threading.Tasks
 	[System.Diagnostics.DebuggerTypeProxy ("System.Threading.Tasks.TaskScheduler+SystemThreadingTasks_TaskSchedulerDebugView")]
 	public abstract class TaskScheduler
 	{
-		static TaskScheduler defaultScheduler =
-			Environment.GetEnvironmentVariable ("USE_OLD_TASK_SCHED") != null ? (TaskScheduler)new Scheduler () : (TaskScheduler)new TpScheduler ();
-		SchedulerProxy proxy;
+		static TaskScheduler defaultScheduler = new TpScheduler ();
 		
 		[ThreadStatic]
 		static TaskScheduler currentScheduler;
@@ -50,9 +48,8 @@ namespace System.Threading.Tasks
 		protected TaskScheduler ()
 		{
 			this.id = Interlocked.Increment (ref lastId);
-			this.proxy = new SchedulerProxy (this);
 		}
-
+		
 		public static TaskScheduler FromCurrentSynchronizationContext ()
 		{
 			var syncCtx = SynchronizationContext.Current;
@@ -89,21 +86,6 @@ namespace System.Threading.Tasks
 			}
 		}
 
-		internal virtual void ParticipateUntil (Task task)
-		{
-			proxy.ParticipateUntil (task);
-		}
-
-		internal virtual bool ParticipateUntil (Task task, ManualResetEventSlim predicateEvt, int millisecondsTimeout)
-		{
-			return proxy.ParticipateUntil (task, predicateEvt, millisecondsTimeout);
-		}
-
-		internal virtual void PulseAll ()
-		{
-			proxy.PulseAll ();
-		}
-
 		protected abstract IEnumerable<Task> GetScheduledTasks ();
 		protected internal abstract void QueueTask (Task task);
 		protected internal virtual bool TryDequeue (Task task)
@@ -117,7 +99,7 @@ namespace System.Threading.Tasks
 				return false;
 
 			if (task.Status == TaskStatus.WaitingToRun) {
-				task.Execute (null);
+				task.Execute ();
 				return true;
 			}
 
@@ -125,8 +107,18 @@ namespace System.Threading.Tasks
 		}
 
 		protected abstract bool TryExecuteTaskInline (Task task, bool taskWasPreviouslyQueued);
-		
-		internal UnobservedTaskExceptionEventArgs FireUnobservedEvent (AggregateException e)
+
+		internal bool RunInline (Task task)
+		{
+			if (!TryExecuteTaskInline (task, false))
+				return false;
+
+			if (!task.IsCompleted)
+				throw new InvalidOperationException ("The TryExecuteTaskInline call to the underlying scheduler succeeded, but the task body was not invoked");
+			return true;
+		}
+
+		internal static UnobservedTaskExceptionEventArgs FireUnobservedEvent (Task task, AggregateException e)
 		{
 			UnobservedTaskExceptionEventArgs args = new UnobservedTaskExceptionEventArgs (e);
 			
@@ -134,7 +126,7 @@ namespace System.Threading.Tasks
 			if (temp == null)
 				return args;
 			
-			temp (this, args);
+			temp (task, args);
 			
 			return args;
 		}

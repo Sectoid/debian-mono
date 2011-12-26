@@ -1,3 +1,35 @@
+2011-11-16  Rolf Bjarne Kvinge  <rolf@xamarin.com>
+
+	[System.Data] Fix sorting in DataView when changing sort
+	value/default sort several times.
+
+2011-09-13  Rolf Bjarne Kvinge  <rolf@xamarin.com>
+
+	[System.Data] Delay column expression evaluation after all the
+	columns have been cloned when cloning a table. Fixes #666.
+
+	When cloning a table we loop over all the columns and clone them,
+	but if a column contains an expression with a reference to a later
+	column, we'll throw an exception unless we delay the expression
+	compilation until all the columns have been added to the new table
+	clone.
+
+	So I've split out the expression compilation logic from the
+	Expression property setter, and now the column Clone method only
+	sets the field. The Clone caller is responsible for calling
+	CompileExpression on the cloned column after adding all the cloned
+	columns to the cloned table.
+
+2011-09-13  Rolf Bjarne Kvinge  <rolf@xamarin.com>
+
+	[System.Data] Properly clone a column's extended properties when
+	cloning a table. Fixes #668.
+
+2011-08-31  Atsushi Eno  <atsushi@ximian.com>
+
+	DiffLoader didn't handle encoded name and caused mismatch between
+	.NET.
+
 2010-09-08  Jb Evain  <jbevain@gmail.com>
 
 	Enable the System.Data build for monodroid

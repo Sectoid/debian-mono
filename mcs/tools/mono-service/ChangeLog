@@ -1,3 +1,8 @@
+2011-10-22  Miguel de Icaza  <miguel@gnome.org>
+
+	Fix from github.com/sehe for passing the command line arguments to
+	the OnStart method
+
 2011-01-31  Bit Diff  <lists@bitdiff.com>
 
 	Fixes #527447 whereby it was not possible to pass additional

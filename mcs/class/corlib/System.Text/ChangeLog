@@ -1,3 +1,8 @@
+2011-08-31  Atsushi Eno  <atsushi@ximian.com>
+
+	EncoderReplacementFallbackBuffer.Reset() did not really reset its
+	internals.
+
 2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
 
 	Further .NET 4.0 ification of the mobile profile

@@ -1,3 +1,12 @@
+2011-11-02  Rolf Bjarne Kvinge  <rolf@xamarin.com>
+
+	[Mono.Data.Sqlite] Use a prebuilt resources file like
+	Managed.Windows.Forms does.
+
+	This makes it possible to build the monotouch profile, since
+	generating the resources file requires a System.Windows.Forms.dll,
+	which monotouch doesn't have.
+
 2007-02-03  Marek Habersack  <grendello@gmail.com>
 
 	* SR.resx: New file

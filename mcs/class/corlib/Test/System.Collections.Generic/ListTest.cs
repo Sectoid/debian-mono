@@ -337,7 +337,7 @@ namespace MonoTests.System.Collections.Generic {
 			Assert.AreEqual (- (l.Count + 1), l.BinarySearch (int.MaxValue));
 		}
 
-#if !NET_4_0 // FIXME: the blob contains the 2.0 mscorlib version
+#if !NET_4_0 && !NET_2_1 // FIXME: the blob contains the 2.0 mscorlib version
 
 		[Test]
 		[Category ("TargetJvmNotWorking")]
@@ -1306,6 +1306,12 @@ namespace MonoTests.System.Collections.Generic {
 			} catch (Exception e) {
 				Assert.IsTrue (e is ArgumentException, "#10");
 			}
+		}
+
+		[Test]
+		public void LastIndexOfEmpty_2558 () {
+			var l = new List<int> ();
+			Assert.AreEqual (-1, l.IndexOf (-1));
 		}
 	}
 }

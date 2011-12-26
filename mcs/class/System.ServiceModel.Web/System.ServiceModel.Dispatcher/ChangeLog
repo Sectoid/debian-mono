@@ -1,3 +1,55 @@
+2011-10-26  Atsushi Eno  <atsushieno@veritas-vos-liberabit.com>
+
+	Fix NET_2_1 builds.
+
+2011-10-16  Miguel de Icaza  <miguel@gnome.org>
+
+	Apply patch from Mario Kosmiskaso fix bug 1209: Patch to correctly
+	expose WebOperationContext.IncomingResponse
+
+	There was apparently no point in the call flow when the reponse
+	message was set in the context, resulting in
+	WebOperationContext.IncomingResponse always being null.
+
+	After patching WebMessageFormatter to set the response in the
+	context (if available) the value of
+	WebOperationContext.IncomingResponse was still null. A bit more
+	investigation showed that IncomingWebResponseContext would
+	construct a HttpResponseMessageProperty encapsulating the
+	OperationContext at the time the request was made but before the
+	response was received and cache that object. That caused the
+	HttpResponseMessageProperty to always have a null value for the
+	response. The second part of the patch changes this behavior and
+	always creates a new HttpResponseMessageProperty on GET.
+
+2011-08-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Revert GET switch for serializing requests. BodyWriter handles it
+	better.
+
+2011-08-24  Atsushi Eno  <atsushi@ximian.com>
+
+	for GET request, just skip the member. It does not contain xml for
+	null.
+
+2011-08-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Skip serialization when the return type is void.
+
+	This batch should fix bug #206.
+
+2011-08-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Differentiate GET query parameter binding from another request
+	binding.
+
+	This is one core of the bugfix for #206.
+
+2011-08-23  Atsushi Eno  <atsushi@ximian.com>
+
+	UriTemplate should not be mandatory, make it optional. Fix unit
+	test.
+
 2011-06-28  Atsushi Eno  <atsushi@ximian.com>
 
 	Implement support for Stream param with WebHttpBinding raw content

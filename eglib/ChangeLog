@@ -1,3 +1,9 @@
+2011-08-30  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Don't use vasprintf on PLATFORM_ANDROID.
+
+	This allows sanely using g_log() within signal handlers.
+
 2011-08-16  Rodrigo Kumpera  <kumpera@gmail.com>
 
 	Fix g_log redirection under android.

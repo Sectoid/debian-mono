@@ -1,3 +1,34 @@
+2011-12-16  Duncan Mak  <duncan.mak@xamarin.com>
+
+	Bump version number to 2.10.8.1.
+
+2011-12-14  Duncan Mak  <duncan.mak@xamarin.com>
+
+	Bump version number to 2.10.8
+
+2011-12-02  Duncan Mak  <duncan.mak@xamarin.com>
+
+	Bump to 2.10.7
+
+2011-04-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Don't allow compiling with stock LLVM versions, only the Mono LLVM
+	repo at https://github.com/mono/llvm is supported.
+
+2011-10-24  Miguel de Icaza  <miguel@gnome.org>
+
+	Remove the exit code so that we can get a little bit further on
+	MacOS X
+
+2011-09-13  Alex Corrado  <alexc@xamarin.com>
+
+	2.10.6
+
+2011-08-29  Hin-Tak Leung  <htl10@users.sourceforge.net>
+
+	Fix mingw32 cross-build on a git no-branch checkout. Fixes
+	#698446.
+
 2011-08-22  Alex Corrado  <alexc@xamarin.com>
 
 	2.10.5

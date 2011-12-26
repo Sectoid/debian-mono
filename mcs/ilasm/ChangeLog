@@ -1,3 +1,8 @@
+2011-08-30  Chris Toshok  <toshok@gmail.com>
+
+	prepend $(CURDIR) to jay input files so that the debugging info
+	references the right .jay
+
 2009-01-09  Miguel de Icaza  <miguel@novell.com>
 
 	* Add support for `strict' in .method declaration

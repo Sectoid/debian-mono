@@ -1,3 +1,8 @@
+2011-12-02  Jb Evain  <jbevain@gmail.com>
+
+	Test for assignability of arrays to generic interfaces. Fixes
+	#2304.
+
 2011-03-15  Jb Evain  <jbevain@gmail.com>
 
 	Handle conversion to System.Enum

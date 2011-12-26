@@ -1,3 +1,55 @@
+2011-11-21  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[MonoDroid] Only alias stdout/stderr on Android devices.
+
+	Mono for Android uses Mono 2.10 + smcs to build code, which thus
+	uses an smcs built against the Mono for Android profile
+	assemblies, which would thus be built with MONODROID defined. Thus
+	(understandably) dies at runtime with a DllNotFoundException, as
+	liblog.so can't be found.
+
+	Fix smcs.
+
+2011-11-21  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[corlib] On Android, alias stdout/stderr to logcat.
+
+	In Mono for Android, stdout and stderr (file descriptors 1 and 2)
+	are only visible when debugging within MonoDevelop and/or Visual
+	Studio, which is rather annoying.
+
+	This was changed in Mono for Android 1.9.2, by using
+	Console.SetOut() and Console.SetError() to send stdout/stderr
+	message to both stdout/stderr and to the Android Debug Log (`adb
+	logcat`), allowing e.g. Console.WriteLine() output to be viewed
+	outside of a debugger.
+
+	Problem: in order to capture user-generated messages at their
+	earliest point, Console.SetOut()/etc. must be called at the
+	earliest point in Mono for Android initialization, even if
+	Console.WriteLine() is never used. Worse, this adds ~180ms of
+	startup overhead on a Nexus One.
+
+	The fix here is to move the std*/logcat duplication logic into
+	mscorlib.dll, so that we can configure things within the
+	System.Console static constructor. This moves the initialization
+	penalty onto users of System.Console (instead of all users).
+
+2011-09-29  Jeffrey Stedfast  <jeff@xamarin.com>
+
+	[TimeZone] Fixed race condition with renewing the CurrentTimeZone
+	object.
+
+	Fixes bug #1055.
+
+2011-09-11  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Backport System.Threading.Tasks from master to mono-2-10
+
+2011-09-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement AppDomain.ResourceResolve. Fixes #579.
+
 2011-08-17  Miguel de Icaza  <miguel@gnome.org>
 
 	updated copyrights

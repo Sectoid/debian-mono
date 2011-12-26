@@ -1,3 +1,13 @@
+2011-12-13  Gonzalo Paniagua Javier  <gonzalo@xamarin.com>
+
+	Fix MAC address for Mac/iOS
+
+	The position of the first byte to copy was wrong. Fixes bug #2012.
+
+2011-11-04  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix marshaling of Win32_IN6_ADDR.
+
 2011-07-05  Jeffrey Stedfast  <jeff@xamarin.com>
 
 	Implemented a shared way to detect MacOSX for System.dll

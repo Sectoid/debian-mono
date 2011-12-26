@@ -1,3 +1,44 @@
+2011-11-09  Miguel de Icaza  <miguel@gnome.org>
+
+	Add locking around the ServiceModel.Logger, fixes a race reported
+	on the mono-devel list
+
+2011-10-16  Miguel de Icaza  <miguel@gnome.org>
+
+	Apply patch from Mario Kosmiskaso fix bug 1210: Correctly
+	propagate the Operation Context on async calls
+
+	The OperationContext is a [ThreadStatic] variable therefore when a
+	REST call is made asynchronously the worker thread will not see a
+	context set and will not expose any data through the context.
+
+	A possible solution (which I implemented in the attached patch) is
+	for ClientRealProxy to set the context in the channel prior to
+	executing the call (either sync or async). The
+	ClientRuntimeChannel needs to then properly set and reset the
+	context in the worker thread.
+
+	Because WCF operations marked [OperationContract(AsyncPattern =
+	true)] using IAsyncResult only generate an outgoing call on
+	End<OperationName> the ClientRuntimeChannel.EndProcess must not
+	reset the context as it's currently doing. The context can only be
+	reset after calling EndInvoke because the request will be only
+	generated at this point.
+
+2011-10-05  Rolf Bjarne Kvinge  <rolf@xamarin.com>
+
+	[System.ServiceModel] Write EndPointAddress properly in the 2.1
+	profile. Fixes #1244
+
+2011-08-29  Sebastien Pouliot  <sebastien@xamarin.com>
+
+	Fix bug #380. Patch from bnc#605795 were not committed to master
+	but part of MonoTouch 3.x (ended up missing in MT4)
+
+2011-08-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not try to output empty message body to logs.
+
 2011-08-03  Atsushi Eno  <atsushieno@veritas-vos-liberabit.com>
 
 	Fix NET_2_1 builds (regression from the previous

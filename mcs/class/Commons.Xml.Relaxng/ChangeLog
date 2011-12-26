@@ -1,3 +1,8 @@
+2011-08-30  Chris Toshok  <toshok@gmail.com>
+
+	prepend $(CURDIR) to jay input files so that the debugging info
+	references the right .jay
+
 2009-01-20  Atsushi Enomoto <atsushi@ximian.com>
 
 	* Commons.Xml.Relaxng_test.dll.sources : forgot to add

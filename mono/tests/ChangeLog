@@ -1,3 +1,9 @@
+2011-08-28  Zoltan Varga  <vargaz@gmail.com>
+
+	Allow pointers to structures to be passed in pinvoke, MS seems to
+	allow this at least in some cases. Fixes bxc #158. This partially
+	reverts c4d9097c5719bc9455593a47d8d7d2585f1219ec.
+
 2011-08-08  Harry Wilkinson  <hwilkinson@mdsol.com>
 
 	Include mono/tests/delegate2.exe.config to the source tarball so

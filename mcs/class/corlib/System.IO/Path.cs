@@ -439,6 +439,7 @@ namespace System.IO {
 			string path;
 			Random rnd;
 			int num = 0;
+			int count = 0;
 
 			SecurityManager.EnsureElevatedPermissions (); // this is a no-op outside moonlight
 
@@ -452,19 +453,9 @@ namespace System.IO {
 					f = new FileStream (path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.Read,
 							    8192, false, (FileOptions) 1);
 				}
-				catch (SecurityException) {
-					// avoid an endless loop
-					throw;
-				}
-				catch (UnauthorizedAccessException) {
-					// This can happen if we don't have write permission to /tmp
-					throw;
-				}
-				catch (DirectoryNotFoundException) {
-					// This happens when TMPDIR does not exist
-					throw;
-				}
-				catch {
+				catch (IOException ex){
+					if (ex.hresult != MonoIO.FileAlreadyExistsHResult || count ++ > 65536)
+						throw;
 				}
 			} while (f == null);
 			
@@ -841,6 +832,11 @@ namespace System.IO {
 				throw new ArgumentException (Locale.GetText ("Path is empty"));
 			if (path.IndexOfAny (Path.InvalidPathChars) != -1)
 				throw new ArgumentException (Locale.GetText ("Path contains invalid chars"));
+			if (Environment.IsRunningOnWindows) {
+				int idx = path.IndexOf (':');
+				if (idx >= 0 && idx != 1)
+					throw new ArgumentException (parameterName);
+			}
 #if MOONLIGHT
 			// On Moonlight (SL4+) there are some limitations in "Elevated Trust"
 			if (SecurityManager.HasElevatedPermissions) {

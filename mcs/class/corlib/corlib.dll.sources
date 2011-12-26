@@ -253,6 +253,7 @@ System/TimeZone.cs
 ../System.Core/System/TimeZoneInfo.cs
 ../System.Core/System/TimeZoneInfo.AdjustmentRule.cs
 ../System.Core/System/TimeZoneInfo.Android.cs
+../System.Core/System/TimeZoneInfo.MonoTouch.cs
 ../System.Core/System/TimeZoneInfo.TransitionTime.cs
 System/TimeZoneNotFoundException.cs
 System/TimeoutException.cs
@@ -422,6 +423,7 @@ System.IO/FileStream.cs
 System.IO/FileStreamAsyncResult.cs
 System.IO/FileSystemInfo.cs
 System.IO/IOException.cs
+System.IO/LogcatTextWriter.cs
 System.IO/MemoryStream.cs
 System.IO/MonoIO.cs
 System.IO/MonoIOError.cs
@@ -1531,19 +1533,25 @@ System/Predicate.cs
 System.Collections.Generic/Comparer.cs
 
 System.Threading.Tasks/TaskFactory.cs
+System.Threading.Tasks/TaskFactory_T.cs
 System.Threading.Tasks/TaskStatus.cs
 System.Threading.Tasks/TaskCreationOptions.cs
-System.Threading.Tasks/ThreadWorker.cs
-System.Threading.Tasks/SchedulerProxy.cs
-System.Threading.Tasks/Scheduler.cs
 System.Threading.Tasks/CyclicDeque.cs
 System.Threading.Tasks/TaskScheduler.cs
 System.Threading.Tasks/TaskContinuationOptions.cs
 System.Threading.Tasks/TaskCanceledException.cs
-System.Threading.Tasks/Future.cs
+System.Threading.Tasks/Task_T.cs
 System.Threading.Tasks/Task.cs
+System.Threading.Tasks/TaskCompletionQueue.cs
+System.Threading.Tasks/EventSlots.cs
+System.Threading.Tasks/TaskExceptionSlot.cs
+System.Threading.Tasks/TaskActionInvoker.cs
+System.Threading.Tasks/TaskDebuggerView.cs
 System.Threading.Tasks/TaskCompletionSource.cs
+System.Threading.Tasks/TaskContinuation.cs
 System.Threading.Tasks/TaskSchedulerException.cs
+System.Threading.Tasks/TaskConstants.cs
+System.Threading.Tasks/TaskConstants_T.cs
 System.Collections.Concurrent/OrderablePartitioner.cs
 System.Collections.Concurrent/ConcurrentDictionary.cs
 System.Collections.Concurrent/Partitioner.cs

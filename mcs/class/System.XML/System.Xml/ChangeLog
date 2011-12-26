@@ -1,3 +1,12 @@
+2011-09-13  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Delay initialization of the stream until first read
+
+	This way uri-based resources are not fetched before they are
+	supposed to.
+
+	Fixes Xamarin bug #762.
+
 2011-05-19  Atsushi Eno  <atsushi@ximian.com>
 
 	Allow DocumentType in ImportNode().

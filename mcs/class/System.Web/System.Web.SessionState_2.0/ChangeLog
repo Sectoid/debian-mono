@@ -1,3 +1,7 @@
+2011-11-05  Robert Jordan  <robertj@gmx.net>
+
+	[Web] Fix obvious typo in DELETE FROM WHERE statement.
+
 2011-05-24  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Don't throw an exception if a session item being

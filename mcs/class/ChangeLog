@@ -1,3 +1,61 @@
+2011-10-17  Rolf Bjarne Kvinge  <rolf@xamarin.com>
+
+	Add System.Numerics to the mobile profile.
+
+2011-01-13  Marek Safar  <marek.safar@gmail.com>
+
+	Fix System.Data.Services.Client public key
+
+2011-09-23  Rolf Bjarne Kvinge  <rolf@xamarin.com>
+
+	[Microsoft.Build] Stub out a lot of classes to make NuGet build
+	with mono.
+
+2011-09-21  Rolf Bjarne Kvinge  <rolf@xamarin.com>
+
+	[Microsoft.Build] Stub out a few types to make nuget run.
+
+2011-06-25  Leszek 'skolima' Ciesielski  <skolima@gmail.com>
+
+	[MSBuild] Fixed issues found by Paul Selormey.
+
+	Unset attributes should return String.Empty, null is only for
+	invalid.
+
+2011-06-21  Leszek 'skolima' Ciesielski  <skolima@gmail.com>
+
+	[MSBuild] LinkedList used for storing children
+
+	ProjectElementContainer should now handle modifications faster.
+
+2011-06-04  Leszek 'skolima' Ciesielski  <skolima@gmail.com>
+
+	[MSBuild] Preserve comments in build files
+
+	Contribution by Paul Selormey
+
+2011-06-04  Leszek 'skolima' Ciesielski  <skolima@gmail.com>
+
+	[MSBuild] Finishing Microsoft.Build.Construction
+
+	No more NotImplementedException.
+
+2011-04-29  Leszek 'skolima' Ciesielski  <skolima@gmail.com>
+
+	[MSBuild] Microsoft.Build.Construction loading project files
+
+2011-04-28  Leszek 'skolima' Ciesielski  <skolima@gmail.com>
+
+	fixing the build
+
+2011-02-13  Leszek 'skolima' Ciesielski  <skolima@gmail.com>
+
+	[MSBuild] Add Microsoft.Build for 4.0 profile
+
+	Namespace Microsoft.Build.Construction partiallly implemented,
+	enought to construct and save a valid project file. Some tests
+	present (work on .Net).
+
 2011-04-01  Marek Habersack  <grendel@twistedcode.net>
 
 	[mvc3] Part of fix for bug #683339. Override more

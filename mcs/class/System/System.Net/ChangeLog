@@ -1,3 +1,19 @@
+2011-10-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Return the correct length for input streams
+
+2011-10-11  QuickJack  <test051102@hotmail.com>
+
+	Edited mcs/class/System/System.Net/WebRequest.cs via GitHub
+
+2011-10-11  QuickJack  <test051102@hotmail.com>
+
+	Edited mcs/class/System/System.Net/WebRequest.cs via GitHub
+
+2011-09-23  Rolf Bjarne Kvinge  <rolf@xamarin.com>
+
+	[System] Added NetworkCredential.SecurePassword.
+
 2011-08-17  Miguel de Icaza  <miguel@gnome.org>
 
 	updated copyrights

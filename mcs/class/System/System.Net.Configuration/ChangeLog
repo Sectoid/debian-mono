@@ -1,3 +1,13 @@
+2011-10-11  QuickJack  <test051102@hotmail.com>
+
+	Edited mcs/class/System/System.Net.Configuration/BypassElement.cs
+	via GitHub
+
+2011-10-11  QuickJack  <test051102@hotmail.com>
+
+	Edited mcs/class/System/System.Net.Configuration/ProxyElement.cs
+	via GitHub
+
 2010-10-08  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Add support for EnableSsl in smtp config.

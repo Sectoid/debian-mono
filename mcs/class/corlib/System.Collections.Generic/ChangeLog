@@ -1,3 +1,11 @@
+2011-12-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix List.LastIndexOf () on empty lists. Fixes #2558.
+
+2011-11-07  Sebastien Pouliot  <sebastien@xamarin.com>
+
+	Workaround AOT limitation for bug #1443. Patch by Rodrigo Kumpera
+
 2011-06-30  Jb Evain  <jbevain@gmail.com>
 
 	Fix handling of null in the non generic implementation of

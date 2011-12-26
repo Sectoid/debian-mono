@@ -1,3 +1,35 @@
+2011-10-18  Alan McGovern  <alan.mcgovern@gmail.com>
+
+	[WindowsBase] Add better support for Default/Override
+	content_types
+
+	System.IO.Packaging already had full support for parsing
+	[Content_Types].xml if it contained both <Override> and <Default>
+	nodes when specifying content types for files. However we had
+	taken a shortcut before by explicitly writing the content type of
+	each file using an <Override> attribute for every file. We now
+	properly write a <Default> element and only use <Override>
+	attributes when required.
+
+2011-10-11  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[WindowsBase] Don't treat special file [Content-Types].xml as a
+	part, ends up as a duplicate when writing back a package
+
+2011-10-18  Alan McGovern  <alan.mcgovern@gmail.com>
+
+	[System.IO.Packaging] Fix some dispose related issues
+
+	Ensure we can call dispose multiple times without blowing up. Also
+	ensure that we do not close streams which are passed in by the
+	user. We should only close streams which are implicitly created by
+	the API. This is a modification of the patch proposed for bug
+	#1464, which is now fixed by this commit.
+
+2011-09-23  Rolf Bjarne Kvinge  <rolf@xamarin.com>
+
+	[WindowsBase] Relationship ids must be valid XML identifiers.
+
 2011-08-17  Alan McGovern  <alan.mcgovern@gmail.com>
 
 	[System.IO.Packaging] Fix calling convention related issues

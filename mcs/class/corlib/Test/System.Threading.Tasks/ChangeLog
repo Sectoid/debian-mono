@@ -1,3 +1,28 @@
+2011-11-10  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add missing Task_T_Test file
+
+2011-11-07  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Import TPL unit test from master
+
+2011-09-19  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix for #892
+
+2011-09-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add missing files.
+
+2011-09-11  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Backport System.Threading.Tasks from master to mono-2-10
+
+2011-08-28  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Check that CancellationToken coming from
+	OperationCanceledException isn't None. Fix #472.
+
 2011-08-20  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Throw when a non-finished task is started

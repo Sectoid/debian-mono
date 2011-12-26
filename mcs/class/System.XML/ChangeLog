@@ -1,3 +1,8 @@
+2011-08-30  Chris Toshok  <toshok@gmail.com>
+
+	prepend $(CURDIR) to jay input files so that the debugging info
+	references the right .jay
+
 2010-12-16  Marek Safar  <marek.safar@gmail.com>
 
 	Switch to single mcs compiler for all managed code build

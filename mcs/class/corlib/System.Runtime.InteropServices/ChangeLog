@@ -1,3 +1,9 @@
+2011-10-04  Sebastien Pouliot  <sebastien@xamarin.com>
+
+	Internalize [ComImport] in MONOTOUCH profile since it can make the
+	(unlinked) application code crash (and we better spot this at
+	compile time). Fix assistly #2357
+
 2011-01-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Fix Dispose()

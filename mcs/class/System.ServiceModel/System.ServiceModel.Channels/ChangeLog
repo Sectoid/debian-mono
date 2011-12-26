@@ -1,3 +1,47 @@
+2011-10-21  Miguel de Icaza  <miguel@gnome.org>
+
+	Make this build on the MOBILE profile
+
+2011-10-16  Miguel de Icaza  <miguel@gnome.org>
+
+	Apply patch from Mario Kosmiskaso fix bug 1207: Throw the correct
+	exception when a REST request returns a 404
+
+	.NET throws a EndpointNotFoundException encapsulating a
+	WebException when a REST request returns a 404.
+
+	The attached patch tests for a 404 and throws the same exception
+	chain thrown by .NET.
+
+2011-10-16  Miguel de Icaza  <miguel@gnome.org>
+
+	Apply patch from Mario Kosmiskaso fix bug 1207: Check reference
+	before copying values from Headers
+
+	OutgoingWebRequestContext throws a NullReferenceException when
+	making a REST call. The exception is thrown because there are no
+	Headers in the context.
+
+	Attached patch simply tests for null before copying values from
+	Headers.
+
+2011-10-16  Miguel de Icaza  <miguel@gnome.org>
+
+	Apply patch from Mario Kosmiskaso fix bug 1204: Add certificate to
+	the HttpWebRequest if configured
+
+	System.ServiceModel.Channels.HttpRequestChannel never added the
+	configured certificate to the HttpWebRequest which prevented
+	client side authentication.
+
+	The attached patch does exactly that if a certificate has been
+	configured.
+
+2011-10-16  Miguel de Icaza  <miguel@gnome.org>
+
+	Fix bug 1203, relaxes the test for the protocol to allow https
+	endpoints
+
 2011-08-02  Atsushi Eno  <atsushieno@gmail.com>
 
 	Merge pull request #143 from mistoll/master

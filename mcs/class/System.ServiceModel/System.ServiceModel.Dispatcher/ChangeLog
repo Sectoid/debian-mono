@@ -1,3 +1,20 @@
+2011-09-07  Sebastien Pouliot  <sebastien@xamarin.com>
+
+	Add null-check on 'partDesc'. Fix bug #612 (WCF regression)
+
+2011-08-24  Atsushi Eno  <atsushi@ximian.com>
+
+	When there is void return, the common message formatter should
+	ignore it.
+
+	This case occurs when MessageContract is used and there is no
+	member for the return value.
+
+2011-08-24  Atsushi Eno  <atsushi@ximian.com>
+
+	This filter should ignore port, and should not filter out
+	anonymous URIs.
+
 2011-08-02  Nicolas GRAZIANO  <nicolas.graziano@ineo-gdfsuez.com>
 
 	TypedMessageConverter do not take into account the xml attribute

@@ -1,3 +1,18 @@
+2011-09-29  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Merge pull request #167 from konrad-kruczynski/send_async_fix
+
+	Fix for Xamarin bug #531.
+
+2011-09-13  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Internal worker is kept while there is an ongoing operation
+
+	When there is an ongoing operation we can't dispose the internal
+	worker because it might be used by the IO threadpool.
+
+	Fixes Novell bug #691076 and Xamarin bug #766.
+
 2011-08-07  Bassam Tabbara  <bassam@symform.com>
 
 	Networkstream now throws IOException('connection closed') if the

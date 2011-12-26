@@ -1,3 +1,12 @@
+2011-09-13  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Stop lying in the comments
+
+2011-09-13  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Report compilation errors when the type named in 'class' can't be
+	loaded.
+
 2011-06-13  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Construct properly rooted paths when assigning values

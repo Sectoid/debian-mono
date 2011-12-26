@@ -1,3 +1,8 @@
+2011-10-24  Atsushi Eno  <atsushieno@veritas-vos-liberabit.com>
+
+	Give prefix "i" for xsi:nil. Patch by Alexander Riman, fixes pt.2
+	of #1198.
+
 2011-06-28  Atsushi Eno  <atsushi@ximian.com>
 
 	Implement support for generic data contract type name with "{x}".

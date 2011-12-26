@@ -1,3 +1,7 @@
+2011-12-05  Duncan Mak  <duncan.mak@xamarin.com>
+
+	Add TimeZoneInfo.MonoTouch.cs so that it's included in dist
+
 2011-01-07  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Directly use ConcurrentDictionary with PLinq set operations

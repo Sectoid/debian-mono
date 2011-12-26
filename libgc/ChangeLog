@@ -1,3 +1,7 @@
+2011-04-19  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	publish the same events as pthread_stop_world
+
 2011-08-02  Geoff Norton  <grompf@gmail.com>
 
 	[gc] Darwin/AMD64 can have 64-bit thread id's, so we need to

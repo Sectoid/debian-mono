@@ -1,3 +1,35 @@
+2011-10-16  Miguel de Icaza  <miguel@gnome.org>
+
+	Apply patch from Mario Kosmiskaso fix bug 1209: Patch to correctly
+	expose WebOperationContext.IncomingResponse
+
+	There was apparently no point in the call flow when the reponse
+	message was set in the context, resulting in
+	WebOperationContext.IncomingResponse always being null.
+
+	After patching WebMessageFormatter to set the response in the
+	context (if available) the value of
+	WebOperationContext.IncomingResponse was still null. A bit more
+	investigation showed that IncomingWebResponseContext would
+	construct a HttpResponseMessageProperty encapsulating the
+	OperationContext at the time the request was made but before the
+	response was received and cache that object. That caused the
+	HttpResponseMessageProperty to always have a null value for the
+	response. The second part of the patch changes this behavior and
+	always creates a new HttpResponseMessageProperty on GET.
+
+2011-10-16  Miguel de Icaza  <miguel@gnome.org>
+
+	Apply patch from Mario Kosmiskaso fix bug 1205: Check reference
+	before copying values from Headers
+
+	OutgoingWebRequestContext throws a NullReferenceException when
+	making a REST call. The exception is thrown because there are no
+	Headers in the context.
+
+	Attached patch simply tests for null before copying values from
+	Headers.
+
 2011-04-08  Atsushi Eno  <atsushi@ximian.com>
 
 	Implement 4.0 WebOperationContext.Create[Atom10|Json]Response()

@@ -1,3 +1,8 @@
+2011-08-24  Atsushi Eno  <atsushi@ximian.com>
+
+	This filter should ignore port, and should not filter out
+	anonymous URIs.
+
 2011-02-25  Atsushi Eno  <atsushi@ximian.com>
 
 	Fix 2.0 test build (disable it).
