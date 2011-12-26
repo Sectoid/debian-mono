@@ -29,6 +29,7 @@
 using System;
 using NUnit.Framework;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Linq;
 
 namespace MonoTests.System.Threading
@@ -405,6 +406,30 @@ namespace MonoTests.System.Threading
 		}
 
 		[Test]
+		public void EnterWriteLockWhileInUpgradeAndOtherWaiting ()
+		{
+			var v = new ReaderWriterLockSlim ();
+
+			var task2 = new Task(() => {
+                v.EnterWriteLock();
+                v.ExitWriteLock();
+            });
+
+            var task1 = new Task(() =>
+            {
+                v.EnterUpgradeableReadLock ();
+                task2.Start ();
+                Thread.Sleep (100);
+                v.EnterWriteLock ();
+                v.ExitWriteLock ();
+                v.ExitUpgradeableReadLock ();
+            });
+            task1.Start ();
+
+            Assert.IsTrue (task1.Wait (500));
+		}
+
+		[Test]
 		public void RecursiveReadLockTest ()
 		{
 			var v = new ReaderWriterLockSlim (LockRecursionPolicy.SupportsRecursion);
@@ -630,6 +655,44 @@ namespace MonoTests.System.Threading
 
 			Assert.IsTrue (v.IsUpgradeableReadLockHeld);
 			Assert.AreEqual (2, v.RecursiveUpgradeCount);
+		}
+
+		[Test]
+		public void RecursiveWriteUpgradeReadTest ()
+		{
+			var rwlock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+
+			rwlock.EnterWriteLock ();
+			Assert.IsTrue (rwlock.IsWriteLockHeld);
+			rwlock.EnterUpgradeableReadLock ();
+			Assert.IsTrue (rwlock.IsUpgradeableReadLockHeld);
+			rwlock.EnterReadLock ();
+			Assert.IsTrue (rwlock.IsReadLockHeld);
+			rwlock.ExitUpgradeableReadLock();
+			Assert.IsFalse (rwlock.IsUpgradeableReadLockHeld);
+			Assert.IsTrue (rwlock.IsReadLockHeld);
+			Assert.IsTrue (rwlock.IsWriteLockHeld);
+
+			rwlock.ExitReadLock ();
+			Assert.IsTrue (rwlock.IsWriteLockHeld);
+		}
+
+		[Test]
+		public void RecursiveWriteUpgradeTest ()
+		{
+			ReaderWriterLockSlim rwlock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+
+			rwlock.EnterWriteLock ();
+			Assert.IsTrue (rwlock.IsWriteLockHeld);
+			rwlock.EnterUpgradeableReadLock ();
+			Assert.IsTrue (rwlock.IsUpgradeableReadLockHeld);
+			rwlock.ExitUpgradeableReadLock ();
+			Assert.IsFalse (rwlock.IsUpgradeableReadLockHeld);
+			Assert.IsTrue (rwlock.IsWriteLockHeld);
+			rwlock.ExitWriteLock ();
+			Assert.IsFalse (rwlock.IsWriteLockHeld);
+			rwlock.EnterWriteLock ();
+			Assert.IsTrue (rwlock.IsWriteLockHeld);
 		}
 
 		[Test]

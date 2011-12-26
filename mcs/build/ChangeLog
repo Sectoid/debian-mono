@@ -1,3 +1,7 @@
+2011-09-15  Alex Corrado  <alexc@xamarin.com>
+
+	Fix prepending $(CURDIR) to paths failing under cygwin
+
 2010-12-29  Marek Safar  <marek.safar@gmail.com>
 
 	[661642] Fixed v4 resgen compilation

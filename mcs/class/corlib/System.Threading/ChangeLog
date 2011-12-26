@@ -1,3 +1,18 @@
+2011-11-29  Sebastien Pouliot  <sebastien@xamarin.com>
+
+	Ensure that [Parameterized]ThreadStart code is always wrapped in a
+	NSAutoreleasePool for MonoTouch. Fix bug #1999
+
+2011-10-05  Sebastien Pouliot  <sebastien@xamarin.com>
+
+	Ensure consistency when 'emitContext == true' is used in MONOTOUCH
+	profile (since it won't work when the linker is enabled). Fix bug
+	#1144
+
+2011-08-29  Sebastien Pouliot  <sebastien@xamarin.com>
+
+	Fix build. Adding #if MOBILE is just not enough ;-)
+
 2011-05-02  Jb Evain  <jbevain@gmail.com>
 
 	Fix non net_4_0 profiles build

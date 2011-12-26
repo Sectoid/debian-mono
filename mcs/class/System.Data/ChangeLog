@@ -1,3 +1,26 @@
+2011-09-09  Miguel de Icaza  <miguel@gnome.org>
+
+	Various fixes to the Expression parser, the fixes include:
+
+	* Fixes to the SUBSTRING and TRIM function to allow a wider range
+	of functions to be passed as parameters. This fixes xamarin #665
+
+	* Fix to the Parser.jay grammar to eliminate the reduce/reduce
+	conflicts.
+
+	* Dropping the string concatenation code and instead use the
+	existing arithmetic addition operator which also fixes the
+	concatenation operation in the presence of null values
+
+	* Adds the null literal
+
+	With the associated test cases.
+
+2011-08-30  Chris Toshok  <toshok@gmail.com>
+
+	prepend $(CURDIR) to jay input files so that the debugging info
+	references the right .jay
+
 2010-09-08  Jb Evain  <jbevain@gmail.com>
 
 	Fix the monodroid and monotouch profile builds

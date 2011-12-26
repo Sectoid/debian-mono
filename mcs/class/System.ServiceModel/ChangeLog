@@ -1,3 +1,8 @@
+2011-08-29  Sebastien Pouliot  <sebastien@xamarin.com>
+
+	Fix bug #380. Patch from bnc#605795 were not committed to master
+	but part of MonoTouch 3.x (ended up missing in MT4)
+
 2011-08-02  Atsushi Eno  <atsushi@ximian.com>
 
 	part of fix bug #41. MessageParameterAttribute is considered for

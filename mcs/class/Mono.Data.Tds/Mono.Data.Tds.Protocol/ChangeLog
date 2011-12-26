@@ -1,3 +1,8 @@
+2011-11-08  Neale Ferguson  <neale@sinenomine.net>
+
+	Fixes bug 1916 - incorrect appending of string to buffer when
+	remaining buffer size is less than string size.
+
 2011-05-05  Veerapuram Varadhan  <v.varadhan@gmail.com>
 
 	** Fixes #681916

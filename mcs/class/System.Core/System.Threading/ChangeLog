@@ -1,3 +1,12 @@
+2011-11-04  Jeremie Laval  <jeremie.laval@gmail.com>
+
+	Add RwWrite flag to status check when already owning upgradeable
+	lock. Fix #802.
+
+2011-11-01  Jeremie Laval  <jeremie.laval@gmail.com>
+
+	Set success boolean in all cases and avoid state masking. Fix #124
+
 2011-04-05  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Protect entering ReaderWriterLockSlim upgradable mode against

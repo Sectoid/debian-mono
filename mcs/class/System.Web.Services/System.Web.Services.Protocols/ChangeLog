@@ -1,3 +1,8 @@
+2011-12-13  Rolf Bjarne Kvinge  <rolf@xamarin.com>
+
+	[System.Web.Services] Make sure we don't keep results forever when
+	doing async requests. Fixes #2473.
+
 2010-09-08  Jb Evain  <jbevain@gmail.com>
 
 	Enable the System.Web.Services build for monodroid

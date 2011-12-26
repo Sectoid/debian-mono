@@ -1,3 +1,12 @@
+2011-12-13  Marek Safar  <marek.safar@gmail.com>
+
+	Fixes NRE when checking most specific type of default parameters.
+	Fixes #2465
+
+2011-05-17  Marek Habersack  <grendel@twistedcode.net>
+
+	Support colors on 256-color terminals
+
 2011-08-17  Miguel de Icaza  <miguel@gnome.org>
 
 	updated copyrights

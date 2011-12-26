@@ -1,3 +1,8 @@
+2011-11-24  Miguel de Icaza  <miguel@gnome.org>
+
+	Extend JsonSerializerReader to support nullables and parse a wider
+	range of Date formats, fixes x#163
+
 2011-04-05  Atsushi Eno  <atsushi@ximian.com>
 
 	Auto-detect text encoding from input stream for JsonReader. Fix

@@ -1,3 +1,23 @@
+2011-09-29  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Request ObjectMirror type and domain in a single request.
+
+2011-08-24  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Cache thread id.
+
+2011-08-24  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Cache source files.
+
+2011-08-23  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Cache ObjectMirror type and domain.
+
+2011-08-23  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Avoid looking up the ctor mirror twice.
+
 2011-04-27  Martin Baulig  <martin@novell.com>
 
 	Add socket timeouts to the soft debugger.

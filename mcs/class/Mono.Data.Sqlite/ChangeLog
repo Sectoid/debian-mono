@@ -1,3 +1,17 @@
+2011-11-02  Rolf Bjarne Kvinge  <rolf@xamarin.com>
+
+	[Mono.Data.Sqlite] Use a prebuilt resources file like
+	Managed.Windows.Forms does.
+
+	This makes it possible to build the monotouch profile, since
+	generating the resources file requires a System.Windows.Forms.dll,
+	which monotouch doesn't have.
+
+2011-09-15  Sebastien Pouliot  <sebastien@xamarin.com>
+
+	Allow commit/rollback/update events to work under MonoTouch. Fix
+	bug #233
+
 2010-12-29  Marek Safar  <marek.safar@gmail.com>
 
 	Fixed Mono.Data.Sqlite dependencies

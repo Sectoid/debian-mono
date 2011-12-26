@@ -1,3 +1,9 @@
+2011-08-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Skip serialization when the return type is void.
+
+	This batch should fix bug #206.
+
 2011-01-20  Atsushi Eno  <atsushi@ximian.com>
 
 	Read body content if required. Fixed all issues in bug #656020.

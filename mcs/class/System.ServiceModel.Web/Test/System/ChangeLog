@@ -1,3 +1,7 @@
+2011-08-24  Atsushi Eno  <atsushi@ximian.com>
+
+	When there was no path parameter, it ignored the whole path part.
+
 2011-05-23  Atsushi Eno  <atsushi@ximian.com>
 
 	Support named wildcard in UriTemplate matching. Fixed bug #693996.

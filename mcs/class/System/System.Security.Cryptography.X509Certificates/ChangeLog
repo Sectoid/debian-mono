@@ -1,3 +1,8 @@
+2011-10-18  Sebastien Pouliot  <sebastien@xamarin.com>
+
+	Ensure private key flow from the mono store into the
+	X509Certificate2 instance. Patch from bug #1201
+
 2011-08-17  Miguel de Icaza  <miguel@gnome.org>
 
 	updated copyrights

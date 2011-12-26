@@ -1,1 +1,1 @@
-#define FULL_VERSION "mono-2-10/350fcbd"
+#define FULL_VERSION "mono-2-10/6922ed8"

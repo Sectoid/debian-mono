@@ -1,3 +1,20 @@
+2011-09-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Plug an unmanaged memory leak
+
+	If Flush() was called with final_flush set to true, we were
+	leaking the unmanaged memory in the output stream (if allocated).
+
+	It was "only" an AS leak.
+
+	Thanks to Kumpera for the help debugging this.
+
+2011-09-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Return the right empty collection in ParseQueryString.
+
+	Fixes Xamarin bug #970.
+
 2011-04-21  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Inform user about all exceptions thrown during

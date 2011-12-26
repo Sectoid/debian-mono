@@ -11,6 +11,7 @@
 
 //
 // Copyright (C) 2004 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2011 Xamarin Inc. (http://www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -1041,6 +1042,43 @@ namespace MonoTests.System.Data
 			Assert.AreEqual ("Id",  copyTable.PrimaryKey[0].ColumnName, "#A28");
 			Assert.AreEqual (2, copyTable.Rows.Count, "#A29");
 			Assert.AreEqual ("Table#1", copyTable.TableName, "#A30");
+		}
+
+		[Test]
+		public void CloneExtendedProperties ()
+		{
+			// bug 668
+			DataTable t1 = new DataTable ("t1");
+			DataColumn c1 = t1.Columns.Add ("c1");
+			c1.ExtendedProperties.Add ("Company", "Xamarin");
+			
+			DataTable t2 = t1.Clone ();
+			Assert.AreEqual ("Xamarin", t1.Columns["c1"].ExtendedProperties["Company"], "CEP1");
+			Assert.AreEqual ("Xamarin", t2.Columns["c1"].ExtendedProperties["Company"], "CEP2");
+		}
+	
+		[Test]
+		[ExpectedException (typeof (EvaluateException))]
+		public void CloneExtendedProperties1 ()
+		{
+			// Xamarin bug 666
+			DataTable table1 = new DataTable("Table1") ;
+
+			DataColumn c1 = table1.Columns.Add("c1", typeof(string), "'hello ' + c2") ; /* Should cause an exception */
+		}
+
+		[Test]
+		public void CloneExtendedProperties2 ()
+		{
+			// Xamarin bug 666
+			DataTable table1 = new 	DataTable("Table1") ;
+
+			DataColumn c1 = table1.Columns.Add("c1") ;
+			DataColumn c2 = table1.Columns.Add("c2") ;
+
+			c1.Expression = "'hello ' + c2";
+
+			DataTable t2 = table1.Clone(); // this should not cause an exception
 		}
 
 		[Test]

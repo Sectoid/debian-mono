@@ -1,3 +1,37 @@
+2011-11-07  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Import TPL changes from master
+
+2011-09-19  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix for #892
+
+2011-09-19  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix more argument checking for Task<T>
+
+2011-09-19  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Check that supplied function argument in a Task<T> ctor isn't null
+
+2011-09-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add missing files.
+
+2011-09-11  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Backport System.Threading.Tasks from master to mono-2-10
+
+2011-09-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use a TaskCompletionSource in non-generic ContinueWhenAny case.
+	Fix #647.
+
+2011-08-28  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Check that CancellationToken coming from
+	OperationCanceledException isn't None. Fix #472.
+
 2011-08-20  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Throw when a non-finished task is started

@@ -1,3 +1,13 @@
+2011-09-24  Sebastien Pouliot  <sebastien@xamarin.com>
+
+	Provide binding for sqlite3_config to allow setting the threading
+	model. Fix bug #652
+
+2011-09-15  Sebastien Pouliot  <sebastien@xamarin.com>
+
+	Allow commit/rollback/update events to work under MonoTouch. Fix
+	bug #233
+
 2009-07-10  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* SQLiteConnection.cs : remove Console.WriteLine().

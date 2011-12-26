@@ -84,13 +84,13 @@ am__libmonoruntime_static_la_SOURCES_DIST = console-unix.c \
 	sgen-internal.c sgen-marksweep.c sgen-marksweep-fixed.c \
 	sgen-marksweep-par.c sgen-marksweep-fixed-par.c \
 	sgen-major-copying.c sgen-los.c sgen-protocol.c sgen-bridge.c \
-	sgen-bridge.h sgen-gc.h sgen-archdep.h sgen-cardtable.h \
-	sgen-major-copy-object.h sgen-major-scan-object.h \
-	sgen-protocol.h sgen-scan-object.h string-icalls.c \
-	string-icalls.h sysmath.h sysmath.c tabledefs.h threads.c \
-	threads-types.h threadpool.c threadpool.h \
-	threadpool-internals.h verify.c verify-internals.h \
-	wrapper-types.h
+	sgen-bridge.h sgen-toggleref.c sgen-toggleref.h sgen-gc.h \
+	sgen-archdep.h sgen-cardtable.h sgen-major-copy-object.h \
+	sgen-major-scan-object.h sgen-protocol.h sgen-scan-object.h \
+	string-icalls.c string-icalls.h sysmath.h sysmath.c \
+	tabledefs.h threads.c threads-types.h threadpool.c \
+	threadpool.h threadpool-internals.h verify.c \
+	verify-internals.h wrapper-types.h
 @HOST_WIN32_FALSE@am__objects_1 =  \
 @HOST_WIN32_FALSE@	libmonoruntime_static_la-console-unix.lo
 @HOST_WIN32_TRUE@am__objects_2 =  \
@@ -159,6 +159,7 @@ am__objects_4 = $(am__objects_3) libmonoruntime_static_la-appdomain.lo \
 	libmonoruntime_static_la-sgen-los.lo \
 	libmonoruntime_static_la-sgen-protocol.lo \
 	libmonoruntime_static_la-sgen-bridge.lo \
+	libmonoruntime_static_la-sgen-toggleref.lo \
 	libmonoruntime_static_la-string-icalls.lo \
 	libmonoruntime_static_la-sysmath.lo \
 	libmonoruntime_static_la-threads.lo \
@@ -200,13 +201,13 @@ am__libmonoruntime_la_SOURCES_DIST = console-unix.c console-win32.c \
 	sgen-internal.c sgen-marksweep.c sgen-marksweep-fixed.c \
 	sgen-marksweep-par.c sgen-marksweep-fixed-par.c \
 	sgen-major-copying.c sgen-los.c sgen-protocol.c sgen-bridge.c \
-	sgen-bridge.h sgen-gc.h sgen-archdep.h sgen-cardtable.h \
-	sgen-major-copy-object.h sgen-major-scan-object.h \
-	sgen-protocol.h sgen-scan-object.h string-icalls.c \
-	string-icalls.h sysmath.h sysmath.c tabledefs.h threads.c \
-	threads-types.h threadpool.c threadpool.h \
-	threadpool-internals.h verify.c verify-internals.h \
-	wrapper-types.h
+	sgen-bridge.h sgen-toggleref.c sgen-toggleref.h sgen-gc.h \
+	sgen-archdep.h sgen-cardtable.h sgen-major-copy-object.h \
+	sgen-major-scan-object.h sgen-protocol.h sgen-scan-object.h \
+	string-icalls.c string-icalls.h sysmath.h sysmath.c \
+	tabledefs.h threads.c threads-types.h threadpool.c \
+	threadpool.h threadpool-internals.h verify.c \
+	verify-internals.h wrapper-types.h
 @HOST_WIN32_FALSE@am__objects_5 = libmonoruntime_la-console-unix.lo
 @HOST_WIN32_TRUE@am__objects_6 = libmonoruntime_la-console-win32.lo
 @HOST_WIN32_FALSE@am__objects_7 = $(am__objects_5)
@@ -254,6 +255,7 @@ am_libmonoruntime_la_OBJECTS = $(am__objects_7) \
 	libmonoruntime_la-sgen-los.lo \
 	libmonoruntime_la-sgen-protocol.lo \
 	libmonoruntime_la-sgen-bridge.lo \
+	libmonoruntime_la-sgen-toggleref.lo \
 	libmonoruntime_la-string-icalls.lo \
 	libmonoruntime_la-sysmath.lo libmonoruntime_la-threads.lo \
 	libmonoruntime_la-threadpool.lo libmonoruntime_la-verify.lo
@@ -292,13 +294,13 @@ am__libmonoruntimemoon_la_SOURCES_DIST = console-unix.c \
 	sgen-internal.c sgen-marksweep.c sgen-marksweep-fixed.c \
 	sgen-marksweep-par.c sgen-marksweep-fixed-par.c \
 	sgen-major-copying.c sgen-los.c sgen-protocol.c sgen-bridge.c \
-	sgen-bridge.h sgen-gc.h sgen-archdep.h sgen-cardtable.h \
-	sgen-major-copy-object.h sgen-major-scan-object.h \
-	sgen-protocol.h sgen-scan-object.h string-icalls.c \
-	string-icalls.h sysmath.h sysmath.c tabledefs.h threads.c \
-	threads-types.h threadpool.c threadpool.h \
-	threadpool-internals.h verify.c verify-internals.h \
-	wrapper-types.h
+	sgen-bridge.h sgen-toggleref.c sgen-toggleref.h sgen-gc.h \
+	sgen-archdep.h sgen-cardtable.h sgen-major-copy-object.h \
+	sgen-major-scan-object.h sgen-protocol.h sgen-scan-object.h \
+	string-icalls.c string-icalls.h sysmath.h sysmath.c \
+	tabledefs.h threads.c threads-types.h threadpool.c \
+	threadpool.h threadpool-internals.h verify.c \
+	verify-internals.h wrapper-types.h
 @HOST_WIN32_FALSE@am__objects_8 =  \
 @HOST_WIN32_FALSE@	libmonoruntimemoon_la-console-unix.lo
 @HOST_WIN32_TRUE@am__objects_9 =  \
@@ -364,6 +366,7 @@ am__objects_11 = $(am__objects_10) libmonoruntimemoon_la-appdomain.lo \
 	libmonoruntimemoon_la-sgen-los.lo \
 	libmonoruntimemoon_la-sgen-protocol.lo \
 	libmonoruntimemoon_la-sgen-bridge.lo \
+	libmonoruntimemoon_la-sgen-toggleref.lo \
 	libmonoruntimemoon_la-string-icalls.lo \
 	libmonoruntimemoon_la-sysmath.lo \
 	libmonoruntimemoon_la-threads.lo \
@@ -405,13 +408,13 @@ am__libmonoruntimesgen_static_la_SOURCES_DIST = console-unix.c \
 	sgen-internal.c sgen-marksweep.c sgen-marksweep-fixed.c \
 	sgen-marksweep-par.c sgen-marksweep-fixed-par.c \
 	sgen-major-copying.c sgen-los.c sgen-protocol.c sgen-bridge.c \
-	sgen-bridge.h sgen-gc.h sgen-archdep.h sgen-cardtable.h \
-	sgen-major-copy-object.h sgen-major-scan-object.h \
-	sgen-protocol.h sgen-scan-object.h string-icalls.c \
-	string-icalls.h sysmath.h sysmath.c tabledefs.h threads.c \
-	threads-types.h threadpool.c threadpool.h \
-	threadpool-internals.h verify.c verify-internals.h \
-	wrapper-types.h
+	sgen-bridge.h sgen-toggleref.c sgen-toggleref.h sgen-gc.h \
+	sgen-archdep.h sgen-cardtable.h sgen-major-copy-object.h \
+	sgen-major-scan-object.h sgen-protocol.h sgen-scan-object.h \
+	string-icalls.c string-icalls.h sysmath.h sysmath.c \
+	tabledefs.h threads.c threads-types.h threadpool.c \
+	threadpool.h threadpool-internals.h verify.c \
+	verify-internals.h wrapper-types.h
 @HOST_WIN32_FALSE@am__objects_12 = libmonoruntimesgen_static_la-console-unix.lo
 @HOST_WIN32_TRUE@am__objects_13 = libmonoruntimesgen_static_la-console-win32.lo
 @HOST_WIN32_FALSE@am__objects_14 = $(am__objects_12)
@@ -479,6 +482,7 @@ am__objects_15 = $(am__objects_14) \
 	libmonoruntimesgen_static_la-sgen-los.lo \
 	libmonoruntimesgen_static_la-sgen-protocol.lo \
 	libmonoruntimesgen_static_la-sgen-bridge.lo \
+	libmonoruntimesgen_static_la-sgen-toggleref.lo \
 	libmonoruntimesgen_static_la-string-icalls.lo \
 	libmonoruntimesgen_static_la-sysmath.lo \
 	libmonoruntimesgen_static_la-threads.lo \
@@ -521,13 +525,13 @@ am__libmonoruntimesgen_la_SOURCES_DIST = console-unix.c \
 	sgen-internal.c sgen-marksweep.c sgen-marksweep-fixed.c \
 	sgen-marksweep-par.c sgen-marksweep-fixed-par.c \
 	sgen-major-copying.c sgen-los.c sgen-protocol.c sgen-bridge.c \
-	sgen-bridge.h sgen-gc.h sgen-archdep.h sgen-cardtable.h \
-	sgen-major-copy-object.h sgen-major-scan-object.h \
-	sgen-protocol.h sgen-scan-object.h string-icalls.c \
-	string-icalls.h sysmath.h sysmath.c tabledefs.h threads.c \
-	threads-types.h threadpool.c threadpool.h \
-	threadpool-internals.h verify.c verify-internals.h \
-	wrapper-types.h
+	sgen-bridge.h sgen-toggleref.c sgen-toggleref.h sgen-gc.h \
+	sgen-archdep.h sgen-cardtable.h sgen-major-copy-object.h \
+	sgen-major-scan-object.h sgen-protocol.h sgen-scan-object.h \
+	string-icalls.c string-icalls.h sysmath.h sysmath.c \
+	tabledefs.h threads.c threads-types.h threadpool.c \
+	threadpool.h threadpool-internals.h verify.c \
+	verify-internals.h wrapper-types.h
 @HOST_WIN32_FALSE@am__objects_16 =  \
 @HOST_WIN32_FALSE@	libmonoruntimesgen_la-console-unix.lo
 @HOST_WIN32_TRUE@am__objects_17 =  \
@@ -593,6 +597,7 @@ am__objects_19 = $(am__objects_18) libmonoruntimesgen_la-appdomain.lo \
 	libmonoruntimesgen_la-sgen-los.lo \
 	libmonoruntimesgen_la-sgen-protocol.lo \
 	libmonoruntimesgen_la-sgen-bridge.lo \
+	libmonoruntimesgen_la-sgen-toggleref.lo \
 	libmonoruntimesgen_la-string-icalls.lo \
 	libmonoruntimesgen_la-sysmath.lo \
 	libmonoruntimesgen_la-threads.lo \
@@ -1019,6 +1024,8 @@ libmonoruntime_la_SOURCES = \
 	sgen-protocol.c \
 	sgen-bridge.c		\
 	sgen-bridge.h		\
+	sgen-toggleref.c		\
+	sgen-toggleref.h		\
 	sgen-gc.h		\
 	sgen-archdep.h		\
 	sgen-cardtable.h	\
@@ -1104,9 +1111,9 @@ $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__confi
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign mono/metadata/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu mono/metadata/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign mono/metadata/Makefile
+	  $(AUTOMAKE) --gnu mono/metadata/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
@@ -1260,6 +1267,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntime_la-sgen-os-mach.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntime_la-sgen-os-posix.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntime_la-sgen-protocol.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntime_la-sgen-toggleref.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntime_la-socket-io.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntime_la-string-icalls.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntime_la-sysmath.Plo@am__quote@
@@ -1329,6 +1337,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntime_static_la-sgen-os-mach.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntime_static_la-sgen-os-posix.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntime_static_la-sgen-protocol.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntime_static_la-sgen-toggleref.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntime_static_la-socket-io.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntime_static_la-string-icalls.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntime_static_la-sysmath.Plo@am__quote@
@@ -1398,6 +1407,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimemoon_la-sgen-os-mach.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimemoon_la-sgen-os-posix.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimemoon_la-sgen-protocol.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimemoon_la-sgen-toggleref.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimemoon_la-socket-io.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimemoon_la-string-icalls.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimemoon_la-sysmath.Plo@am__quote@
@@ -1467,6 +1477,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimesgen_la-sgen-os-mach.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimesgen_la-sgen-os-posix.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimesgen_la-sgen-protocol.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimesgen_la-sgen-toggleref.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimesgen_la-socket-io.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimesgen_la-string-icalls.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimesgen_la-sysmath.Plo@am__quote@
@@ -1536,6 +1547,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimesgen_static_la-sgen-os-mach.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimesgen_static_la-sgen-os-posix.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimesgen_static_la-sgen-protocol.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimesgen_static_la-sgen-toggleref.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimesgen_static_la-socket-io.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimesgen_static_la-string-icalls.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmonoruntimesgen_static_la-sysmath.Plo@am__quote@
@@ -2012,6 +2024,13 @@ libmonoruntime_static_la-sgen-bridge.lo: sgen-bridge.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='sgen-bridge.c' object='libmonoruntime_static_la-sgen-bridge.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmonoruntime_static_la_CFLAGS) $(CFLAGS) -c -o libmonoruntime_static_la-sgen-bridge.lo `test -f 'sgen-bridge.c' || echo '$(srcdir)/'`sgen-bridge.c
+
+libmonoruntime_static_la-sgen-toggleref.lo: sgen-toggleref.c
+@am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmonoruntime_static_la_CFLAGS) $(CFLAGS) -MT libmonoruntime_static_la-sgen-toggleref.lo -MD -MP -MF $(DEPDIR)/libmonoruntime_static_la-sgen-toggleref.Tpo -c -o libmonoruntime_static_la-sgen-toggleref.lo `test -f 'sgen-toggleref.c' || echo '$(srcdir)/'`sgen-toggleref.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/libmonoruntime_static_la-sgen-toggleref.Tpo $(DEPDIR)/libmonoruntime_static_la-sgen-toggleref.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='sgen-toggleref.c' object='libmonoruntime_static_la-sgen-toggleref.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmonoruntime_static_la_CFLAGS) $(CFLAGS) -c -o libmonoruntime_static_la-sgen-toggleref.lo `test -f 'sgen-toggleref.c' || echo '$(srcdir)/'`sgen-toggleref.c
 
 libmonoruntime_static_la-string-icalls.lo: string-icalls.c
 @am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmonoruntime_static_la_CFLAGS) $(CFLAGS) -MT libmonoruntime_static_la-string-icalls.lo -MD -MP -MF $(DEPDIR)/libmonoruntime_static_la-string-icalls.Tpo -c -o libmonoruntime_static_la-string-icalls.lo `test -f 'string-icalls.c' || echo '$(srcdir)/'`string-icalls.c
@@ -2496,6 +2515,13 @@ libmonoruntime_la-sgen-bridge.lo: sgen-bridge.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmonoruntime_la_CFLAGS) $(CFLAGS) -c -o libmonoruntime_la-sgen-bridge.lo `test -f 'sgen-bridge.c' || echo '$(srcdir)/'`sgen-bridge.c
 
+libmonoruntime_la-sgen-toggleref.lo: sgen-toggleref.c
+@am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmonoruntime_la_CFLAGS) $(CFLAGS) -MT libmonoruntime_la-sgen-toggleref.lo -MD -MP -MF $(DEPDIR)/libmonoruntime_la-sgen-toggleref.Tpo -c -o libmonoruntime_la-sgen-toggleref.lo `test -f 'sgen-toggleref.c' || echo '$(srcdir)/'`sgen-toggleref.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/libmonoruntime_la-sgen-toggleref.Tpo $(DEPDIR)/libmonoruntime_la-sgen-toggleref.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='sgen-toggleref.c' object='libmonoruntime_la-sgen-toggleref.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmonoruntime_la_CFLAGS) $(CFLAGS) -c -o libmonoruntime_la-sgen-toggleref.lo `test -f 'sgen-toggleref.c' || echo '$(srcdir)/'`sgen-toggleref.c
+
 libmonoruntime_la-string-icalls.lo: string-icalls.c
 @am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmonoruntime_la_CFLAGS) $(CFLAGS) -MT libmonoruntime_la-string-icalls.lo -MD -MP -MF $(DEPDIR)/libmonoruntime_la-string-icalls.Tpo -c -o libmonoruntime_la-string-icalls.lo `test -f 'string-icalls.c' || echo '$(srcdir)/'`string-icalls.c
 @am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/libmonoruntime_la-string-icalls.Tpo $(DEPDIR)/libmonoruntime_la-string-icalls.Plo
@@ -2978,6 +3004,13 @@ libmonoruntimemoon_la-sgen-bridge.lo: sgen-bridge.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='sgen-bridge.c' object='libmonoruntimemoon_la-sgen-bridge.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmonoruntimemoon_la_CFLAGS) $(CFLAGS) -c -o libmonoruntimemoon_la-sgen-bridge.lo `test -f 'sgen-bridge.c' || echo '$(srcdir)/'`sgen-bridge.c
+
+libmonoruntimemoon_la-sgen-toggleref.lo: sgen-toggleref.c
+@am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmonoruntimemoon_la_CFLAGS) $(CFLAGS) -MT libmonoruntimemoon_la-sgen-toggleref.lo -MD -MP -MF $(DEPDIR)/libmonoruntimemoon_la-sgen-toggleref.Tpo -c -o libmonoruntimemoon_la-sgen-toggleref.lo `test -f 'sgen-toggleref.c' || echo '$(srcdir)/'`sgen-toggleref.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/libmonoruntimemoon_la-sgen-toggleref.Tpo $(DEPDIR)/libmonoruntimemoon_la-sgen-toggleref.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='sgen-toggleref.c' object='libmonoruntimemoon_la-sgen-toggleref.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmonoruntimemoon_la_CFLAGS) $(CFLAGS) -c -o libmonoruntimemoon_la-sgen-toggleref.lo `test -f 'sgen-toggleref.c' || echo '$(srcdir)/'`sgen-toggleref.c
 
 libmonoruntimemoon_la-string-icalls.lo: string-icalls.c
 @am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmonoruntimemoon_la_CFLAGS) $(CFLAGS) -MT libmonoruntimemoon_la-string-icalls.lo -MD -MP -MF $(DEPDIR)/libmonoruntimemoon_la-string-icalls.Tpo -c -o libmonoruntimemoon_la-string-icalls.lo `test -f 'string-icalls.c' || echo '$(srcdir)/'`string-icalls.c
@@ -3462,6 +3495,13 @@ libmonoruntimesgen_static_la-sgen-bridge.lo: sgen-bridge.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmonoruntimesgen_static_la_CFLAGS) $(CFLAGS) -c -o libmonoruntimesgen_static_la-sgen-bridge.lo `test -f 'sgen-bridge.c' || echo '$(srcdir)/'`sgen-bridge.c
 
+libmonoruntimesgen_static_la-sgen-toggleref.lo: sgen-toggleref.c
+@am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmonoruntimesgen_static_la_CFLAGS) $(CFLAGS) -MT libmonoruntimesgen_static_la-sgen-toggleref.lo -MD -MP -MF $(DEPDIR)/libmonoruntimesgen_static_la-sgen-toggleref.Tpo -c -o libmonoruntimesgen_static_la-sgen-toggleref.lo `test -f 'sgen-toggleref.c' || echo '$(srcdir)/'`sgen-toggleref.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/libmonoruntimesgen_static_la-sgen-toggleref.Tpo $(DEPDIR)/libmonoruntimesgen_static_la-sgen-toggleref.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='sgen-toggleref.c' object='libmonoruntimesgen_static_la-sgen-toggleref.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmonoruntimesgen_static_la_CFLAGS) $(CFLAGS) -c -o libmonoruntimesgen_static_la-sgen-toggleref.lo `test -f 'sgen-toggleref.c' || echo '$(srcdir)/'`sgen-toggleref.c
+
 libmonoruntimesgen_static_la-string-icalls.lo: string-icalls.c
 @am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmonoruntimesgen_static_la_CFLAGS) $(CFLAGS) -MT libmonoruntimesgen_static_la-string-icalls.lo -MD -MP -MF $(DEPDIR)/libmonoruntimesgen_static_la-string-icalls.Tpo -c -o libmonoruntimesgen_static_la-string-icalls.lo `test -f 'string-icalls.c' || echo '$(srcdir)/'`string-icalls.c
 @am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/libmonoruntimesgen_static_la-string-icalls.Tpo $(DEPDIR)/libmonoruntimesgen_static_la-string-icalls.Plo
@@ -3944,6 +3984,13 @@ libmonoruntimesgen_la-sgen-bridge.lo: sgen-bridge.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='sgen-bridge.c' object='libmonoruntimesgen_la-sgen-bridge.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmonoruntimesgen_la_CFLAGS) $(CFLAGS) -c -o libmonoruntimesgen_la-sgen-bridge.lo `test -f 'sgen-bridge.c' || echo '$(srcdir)/'`sgen-bridge.c
+
+libmonoruntimesgen_la-sgen-toggleref.lo: sgen-toggleref.c
+@am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmonoruntimesgen_la_CFLAGS) $(CFLAGS) -MT libmonoruntimesgen_la-sgen-toggleref.lo -MD -MP -MF $(DEPDIR)/libmonoruntimesgen_la-sgen-toggleref.Tpo -c -o libmonoruntimesgen_la-sgen-toggleref.lo `test -f 'sgen-toggleref.c' || echo '$(srcdir)/'`sgen-toggleref.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/libmonoruntimesgen_la-sgen-toggleref.Tpo $(DEPDIR)/libmonoruntimesgen_la-sgen-toggleref.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='sgen-toggleref.c' object='libmonoruntimesgen_la-sgen-toggleref.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmonoruntimesgen_la_CFLAGS) $(CFLAGS) -c -o libmonoruntimesgen_la-sgen-toggleref.lo `test -f 'sgen-toggleref.c' || echo '$(srcdir)/'`sgen-toggleref.c
 
 libmonoruntimesgen_la-string-icalls.lo: string-icalls.c
 @am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmonoruntimesgen_la_CFLAGS) $(CFLAGS) -MT libmonoruntimesgen_la-string-icalls.lo -MD -MP -MF $(DEPDIR)/libmonoruntimesgen_la-string-icalls.Tpo -c -o libmonoruntimesgen_la-string-icalls.lo `test -f 'string-icalls.c' || echo '$(srcdir)/'`string-icalls.c

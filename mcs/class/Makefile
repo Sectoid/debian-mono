@@ -144,6 +144,7 @@ mobile_dirs := \
 	System.Transactions	\
 	System.Data	\
 	Mono.Cairo	\
+	System.Numerics	\
 	Mono.Data.Sqlite
 
 net_3_5_only_dirs := \
@@ -156,6 +157,7 @@ net_4_0_dirs := \
 	System.Dynamic		\
 	System.Numerics		\
 	Microsoft.CSharp	\
+	Microsoft.Build		\
 	System.Windows.Forms.DataVisualization	\
 	System.ComponentModel.Composition \
 	System.Xaml \

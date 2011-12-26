@@ -1,3 +1,53 @@
+2011-11-16  Rolf Bjarne Kvinge  <rolf@xamarin.com>
+
+	[System.Data] Fix sorting in DataView when changing sort
+	value/default sort several times.
+
+2011-09-13  Rolf Bjarne Kvinge  <rolf@xamarin.com>
+
+	[System.Data] Delay column expression evaluation after all the
+	columns have been cloned when cloning a table. Fixes #666.
+
+	When cloning a table we loop over all the columns and clone them,
+	but if a column contains an expression with a reference to a later
+	column, we'll throw an exception unless we delay the expression
+	compilation until all the columns have been added to the new table
+	clone.
+
+	So I've split out the expression compilation logic from the
+	Expression property setter, and now the column Clone method only
+	sets the field. The Clone caller is responsible for calling
+	CompileExpression on the cloned column after adding all the cloned
+	columns to the cloned table.
+
+2011-09-13  Rolf Bjarne Kvinge  <rolf@xamarin.com>
+
+	[System.Data] Properly clone a column's extended properties when
+	cloning a table. Fixes #668.
+
+2011-09-09  Miguel de Icaza  <miguel@gnome.org>
+
+	Various fixes to the Expression parser, the fixes include:
+
+	* Fixes to the SUBSTRING and TRIM function to allow a wider range
+	of functions to be passed as parameters. This fixes xamarin #665
+
+	* Fix to the Parser.jay grammar to eliminate the reduce/reduce
+	conflicts.
+
+	* Dropping the string concatenation code and instead use the
+	existing arithmetic addition operator which also fixes the
+	concatenation operation in the presence of null values
+
+	* Adds the null literal
+
+	With the associated test cases.
+
+2011-08-31  Atsushi Eno  <atsushi@ximian.com>
+
+	DiffLoader didn't handle encoded name and caused mismatch between
+	.NET.
+
 2011-03-15  Veerapuram Varadhan  <v.varadhan@gmail.com>
 
 	* DataSetTest2.cs (WriteXmlSchema_Relations_ForeignKeys): Add

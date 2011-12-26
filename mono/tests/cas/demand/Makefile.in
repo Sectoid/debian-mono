@@ -273,9 +273,9 @@ $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__confi
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign mono/tests/cas/demand/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu mono/tests/cas/demand/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign mono/tests/cas/demand/Makefile
+	  $(AUTOMAKE) --gnu mono/tests/cas/demand/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
