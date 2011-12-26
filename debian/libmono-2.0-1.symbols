@@ -196,6 +196,7 @@ libmono-2.0.so.1 libmono-2.0-1 #MINVER#
  mono_debug_open_mono_symbols@VER_1 2.10~rc1
  mono_debug_print_stack_frame@VER_1 2.10~rc1
  mono_debug_print_vars@VER_1 2.10~rc1
+ mono_debug_remove_method@VER_1 2.10.8
  mono_debug_symfile_free_locals@VER_1 2.10~rc1
  mono_debug_symfile_free_location@VER_1 2.10~rc1
  mono_debug_symfile_get_line_numbers@VER_1 2.10~rc1
