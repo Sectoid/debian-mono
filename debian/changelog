@@ -1,3 +1,22 @@
+mono (2.10.5-2) unstable; urgency=low
+
+  [ Mirco Bauer ]
+  * Upload to unstable
+
+  [ Sebastien Pouliot ]
+  * [80b0a2d] Add support for validating RSA-based X.509 certifcates using
+              SHA256
+  * [977f0e0] Avoid ANE when a key algorithm parameters is really null
+              (not just ASN.1 null)
+  * [83468f9] Avoid throwing when verifying an RSA certificate with dsaSHA1
+  * [2050ee0] Add MD4, SHA384 and SHA512 signature verification to X.509
+              certificates
+  * [ab80293] Fix X.500 DN comparison
+  * [d864bce] Avoid throwing an ANE on an invalid X.509 extension
+  * [ab2997c] Add entries for MD4 in machine.config
+
+ -- Mirco Bauer <meebey@debian.org>  Mon, 16 Jan 2012 04:50:58 +0100
+
 mono (2.10.5-1) experimental; urgency=low
 
   * [854fa78] Imported Upstream version 2.10.5
