@@ -7,11 +7,20 @@ MONO_API_DIFF="mono /usr/lib/mono/4.0/mono-api-diff.exe"
 KEEP=0
 if [ "$1" = "-k" ]; then
 	KEEP=1
+	KEEP_PARAM="-k"
+	shift
+fi
+
+ABI=
+if [ "$1" = "-a" ]; then
+	ABI=1
+	ABI_PARAM="-a"
+	MONO_API_INFO_PARAMS=--abi
 	shift
 fi
 
 if [ $# -lt 2 ]; then
-	echo "usage: $NAME [-k] old.dll|deb|changes new.dll|deb|changes"
+	echo "usage: $NAME [-k] [-a] old.dll|deb|changes new.dll|deb|changes"
 	exit 1
 fi
 
@@ -60,11 +69,8 @@ if ! [ "$1" = "${1%.deb}" ]; then
 		#echo $DLL1
 		#echo $DLL2
 
-		if [ $KEEP = 1 ]; then
-			KEEP_PARAM="-k"
-		fi
 		echo -e "Library:\t\t/$FILE"
-		$0 $RUNTIME_VERSION_PARAM $KEEP_PARAM $DLL1 $DLL2
+		$0 $RUNTIME_VERSION_PARAM $KEEP_PARAM $ABI_PARAM $DLL1 $DLL2
 		echo
 	done
 
@@ -89,12 +95,9 @@ if ! [ "$1" = "${1%.changes}" ]; then
 		PKG_ARCH=$(dpkg -I $DEB_DIR1/$DEB1  | grep Architecture: | cut -d ':' -f 2 | sed -e 's/^ *//')
 		DEB2=$DEB_DIR2/${PKG_NAME}_${PKG_VERSION2}_${PKG_ARCH}.deb
 
-		if [ $KEEP = 1 ]; then
-			KEEP_PARAM="-k"
-		fi
 		echo -e "Package:\t\t$PKG_NAME"
 		echo    "------------------------------------------------------"
-		$0 $RUNTIME_VERSION_PARAM $KEEP_PARAM $DEB1 $DEB2
+		$0 $RUNTIME_VERSION_PARAM $KEEP_PARAM $ABI_PARAM $DEB1 $DEB2
 		echo
 	done
 
@@ -106,12 +109,12 @@ API_OLD=$(tempfile --suffix=_$ASM_NAME.api-old)
 API_NEW=$(tempfile --suffix=_$ASM_NAME.api-new)
 API_DIFF=$(tempfile --suffix=_$ASM_NAME.api-diff)
 
-${MONO_API_INFO} "$1" > ${API_OLD} 2> /dev/null
+${MONO_API_INFO} $MONO_API_INFO_PARAMS "$1" > ${API_OLD} 2> /dev/null
 if [ $? != 0 ]; then
 	echo "Error: ${MONO_API_INFO} on $1 failed!"
 	exit 1
 fi
-${MONO_API_INFO} "$2" > ${API_NEW} 2> /dev/null
+${MONO_API_INFO} $MONO_API_INFO_PARAMS "$2" > ${API_NEW} 2> /dev/null
 if [ $? != 0 ]; then
 	echo "Error: ${MONO_API_INFO} on $2 failed!"
 	exit 1
