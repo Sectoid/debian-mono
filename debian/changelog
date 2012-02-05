@@ -1,3 +1,27 @@
+mono (2.10.8.1-1) unstable; urgency=low
+
+  [ Jb Evain ]
+  * [b31e994] [mono-api-info] try to read local files before using the resolver
+
+  [ Mirco Bauer ]
+  * [e6134cc] Imported Upstream version 2.10.8.1
+  * [e8b34c9] Added s390x specific symbols to libmono-2.0-1.symbols.s390x
+  * [ad7a051] Copied armel specific symbols to libmono-2.0-1.symbols.armhf
+  * [1001d95] Added new symbol to libmono-2.0-1.symbols
+  * [c17bea6] Build mono-api-diff and MonoGetAssemblyName with dmcs
+              instead of gmcs
+  * [1388ad0] Bumped clilibs of libmono-system4.0-cil,
+              libmono-sqlite{2,4}.0-cil and
+              libmono-microsoft-build-framework4.0-cil to >= 2.10.7
+  * [7bb7153] Added -a switch (ABI) to mono-api-check
+  * [b35dd98] Imported Upstream version 2.10.8.1
+  * [a251cb0] Fixed typo in package short description of
+              libmono-webmatrix-data4.0-cil (closes: #656671)
+  * [b35dd98] Imported Upstream version 2.10.8.1
+  * [03f5030] Updated RUN_MONO variable for a 4.0 runtime
+
+ -- Mirco Bauer <meebey@debian.org>  Sun, 05 Feb 2012 19:21:10 +0100
+
 mono (2.10.5-2) unstable; urgency=low
 
   [ Mirco Bauer ]
