@@ -1,3 +1,11 @@
+mono (2.10.8.1-2+gnolltech1) unstable; urgency=low
+
+  [ Gleb Golubitsky ]
+  * [c42c332] Fixing crash in fixup_cattrs
+  * Non-maintainer upload
+
+ -- Gleb Golubitsky <sectoid@gnolltech.org>  Mon, 12 Mar 2012 23:36:18 +0200
+
 mono (2.10.8.1-1) unstable; urgency=low
 
   [ Jb Evain ]
