@@ -1,3 +1,15 @@
+mono (2.10.8.1-2) unstable; urgency=low
+
+  [ Zoltan Varga ]
+  * [52cf3ab] Modify fixup_cattrs () to handle a corner case where a cattr is
+              created using a MonoCMethod instead of a ConstructorBuilder.
+
+  [ Moritz Muehlenhoff ]
+  * [96d7d4a] Use dpkg-buildflags for enabling hardened build flags
+              (closes: #657518)
+
+ -- Mirco Bauer <meebey@debian.org>  Wed, 21 Mar 2012 22:00:09 +0100
+
 mono (2.10.8.1-1) unstable; urgency=low
 
   [ Jb Evain ]
