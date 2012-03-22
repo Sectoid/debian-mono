@@ -8,7 +8,11 @@ mono (2.10.8.1-2) unstable; urgency=low
   * [96d7d4a] Use dpkg-buildflags for enabling hardened build flags
               (closes: #657518)
 
- -- Mirco Bauer <meebey@debian.org>  Wed, 21 Mar 2012 22:00:09 +0100
+  [ Mirco Bauer ]
+  * [de40c42] Bumped dpkg-dev build-dep to >= 1.16.1~ as we include
+              buildflags.mk of it
+
+ -- Mirco Bauer <meebey@debian.org>  Thu, 22 Mar 2012 22:00:34 +0100
 
 mono (2.10.8.1-1) unstable; urgency=low
 
