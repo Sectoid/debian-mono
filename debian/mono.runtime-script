@@ -8,9 +8,6 @@
 use strict;
 use warnings;
 
-# Modules
-use File::Basename;
-
 # Figure out the mode
 my $mode = shift @ARGV;
 
