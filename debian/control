@@ -121,7 +121,6 @@ Depends: ${misc:Depends},
          mono-4.0-gac (= ${source:Version}),
          mono-2.0-service (= ${source:Version}),
          mono-4.0-service (= ${source:Version}),
-         mono-devel (= ${source:Version}),
          monodoc-base (= ${source:Version}),
          monodoc-manual (= ${source:Version}),
          libmono-cil-dev (= ${source:Version})
