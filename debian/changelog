@@ -1,3 +1,24 @@
+mono (2.10.8.1-3) UNRELEASED; urgency=low
+
+  * [c934e01] Remove unused File::Basename import from runtime script.
+    Having this present causes failures on release upgrades where perl-base
+    and perl-modules are not in a consistent state (e.g. this can happen
+    when upgrading across major Perl versions). (Closes: #665335) (LP:
+    #948848)
+  * [9e3cc40] Remove monodoc-base trigger.
+    This trigger updated the monodoc search index. It ended up calling
+    /usr/bin/monodoc, which is shipped in the monodoc-browser package
+    (source package mono-tools). The script attempted to check that
+    monodoc-browser was configured, but didn't get this right. This led to
+    numerous upgrade failures when Depends of monodoc-browser were not
+    satisfied when the trigger was invoked and calling monodoc to update the
+    search index bombed out due to this. It's more correct to just have
+    monodoc-browser ship this trigger itself. (LP: #972751)
+  * [dd2925c] Standards-Version bump to 3.9.3, no changes required
+  * [8299ee0] Remove duplicate Depends in mono-complete
+
+ -- Iain Lane <laney@debian.org>  Wed, 04 Apr 2012 21:15:59 +0100
+
 mono (2.10.8.1-2) unstable; urgency=low
 
   [ Zoltan Varga ]
