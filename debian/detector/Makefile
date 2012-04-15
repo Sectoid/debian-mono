@@ -1,5 +1,5 @@
 binfmt-detector-cli: binfmt-detector-cli.c cil-coff.h
-	$(CC) binfmt-detector-cli.c -o binfmt-detector-cli
+	$(CC) $(CFLAGS) $(CPPFLAGS) binfmt-detector-cli.c -o binfmt-detector-cli
 	strip binfmt-detector-cli
 
 clean:
