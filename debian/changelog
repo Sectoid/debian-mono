@@ -21,6 +21,20 @@ mono (2.10.8.1-3) UNRELEASED; urgency=low
     changes made to 55a1a20a4d858346ed8a8d840abc3f9230ea816e.
     This branch introduced regressions which caused both nant and mono-upnp
     (at least) to FTBFS. (Closes: #666623)
+  * [61fbbe4] Fix ARM printf format problems.
+    When building with -Werror=format-security on ARM, mono fails to build
+    due to incorrect format strings in arm-dis.c
+    (cherry picked from commit 32c1b70ad164640ff0a2739e66884d0279cfe7c7)
+    Signed-off-by: Iain Lane <laney@debian.org>
+  * [9883116] Pass CFLAGS and CPPFLAGS when building binfmt-detector.
+    Ensures hardening support is enabled for this binary.
+    Thanks to Simon Ruderich <simon@ruderich.org> (Closes: #657518)
+  * [4bb0138] Ensure compiler flags are passed into build system.
+    This issue was discovered when it was noted that Debian's hardening
+    buildflags weren't being propogated to all binaries.
+    The patch is from Simon Ruderich <simon@ruderich.org>
+    (cherry picked from commit d6dcfb27fc6252352f6ad6f8bd9ef5cff206fd46)
+    Also Closes: #657518
 
  -- Iain Lane <laney@debian.org>  Wed, 04 Apr 2012 21:15:59 +0100
 
