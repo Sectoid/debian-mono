@@ -16,6 +16,11 @@ mono (2.10.8.1-3) UNRELEASED; urgency=low
     monodoc-browser ship this trigger itself. (LP: #972751)
   * [dd2925c] Standards-Version bump to 3.9.3, no changes required
   * [8299ee0] Remove duplicate Depends in mono-complete
+  * [508c4f5] Revert "Merge branch 'master-patches/fix_crash_in_fixup_cattrs'"
+    This reverts commit 86127dcf508213eac5b50a65c989cf5971b57378, reversing
+    changes made to 55a1a20a4d858346ed8a8d840abc3f9230ea816e.
+    This branch introduced regressions which caused both nant and mono-upnp
+    (at least) to FTBFS. (Closes: #666623)
 
  -- Iain Lane <laney@debian.org>  Wed, 04 Apr 2012 21:15:59 +0100
 
