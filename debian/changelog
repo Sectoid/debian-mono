@@ -1,4 +1,4 @@
-mono (2.10.8.1-3) UNRELEASED; urgency=low
+mono (2.10.8.1-3) unstable; urgency=low
 
   * [c934e01] Remove unused File::Basename import from runtime script.
     Having this present causes failures on release upgrades where perl-base
