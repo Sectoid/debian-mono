@@ -1,3 +1,14 @@
+mono (2.10.8.1-4) unstable; urgency=low
+
+  [ Iain Lane ]
+  * [10b15d4] Pass LDFLAGS to binfmt-detector-cli too (Closes: #657518)
+
+  [ Jo Shields ]
+  * [f77ef2f] Tweak build system to check multiarch library folder for 
+    libX11.so.
+
+ -- Jo Shields <directhex@apebox.org>  Sun, 27 May 2012 15:28:00 +0100
+
 mono (2.10.8.1-3) unstable; urgency=low
 
   * [c934e01] Remove unused File::Basename import from runtime script.
