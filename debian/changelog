@@ -1,3 +1,19 @@
+mono (2.10.8.1-5) unstable; urgency=high
+
+  [ Jo Shields ]
+  * [c05ec16] Add symbols file for ppc64 (Closes: #651664)
+
+  [ Mirco Bauer ]
+  * [4e87058] Fixed version of ppc64 specific symbol
+    mono_exc_esp_offset was introduced in 2.10.1 which is also 
+    backport-friendly
+
+  [ Gonzalo Paniagua Javier ]
+  * [1930eb3] HtmlEncode the path.
+    	Fixes Novell bug #769799. (Closes: #681095, CVE-2012-3382)
+
+ -- Jo Shields <directhex@apebox.org>  Wed, 11 Jul 2012 19:13:12 +0100
+
 mono (2.10.8.1-4) unstable; urgency=low
 
   [ Iain Lane ]
