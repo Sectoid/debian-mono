@@ -1,3 +1,12 @@
+mono (2.10.8.1-6) unstable; urgency=low
+
+  * [da2fc97] Remove armhf from list of supported architectures. It 
+    ain't supported by the runtime in Mono 2.10.x, and trying to 
+    shoehorn it in was more difficult than we had hoped. It will 
+    return in the future, for Mono 2.12. (Closes: #682284)
+
+ -- Jo Shields <directhex@apebox.org>  Mon, 27 Aug 2012 17:15:03 +0100
+
 mono (2.10.8.1-5) unstable; urgency=high
 
   [ Jo Shields ]
