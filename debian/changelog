@@ -1,3 +1,79 @@
+mono (2.10.8.1-6) unstable; urgency=low
+
+  * [da2fc97] Remove armhf from list of supported architectures. It 
+    ain't supported by the runtime in Mono 2.10.x, and trying to 
+    shoehorn it in was more difficult than we had hoped. It will 
+    return in the future, for Mono 2.12. (Closes: #682284)
+
+ -- Jo Shields <directhex@apebox.org>  Mon, 27 Aug 2012 17:15:03 +0100
+
+mono (2.10.8.1-5) unstable; urgency=high
+
+  [ Jo Shields ]
+  * [c05ec16] Add symbols file for ppc64 (Closes: #651664)
+
+  [ Mirco Bauer ]
+  * [4e87058] Fixed version of ppc64 specific symbol
+    mono_exc_esp_offset was introduced in 2.10.1 which is also 
+    backport-friendly
+
+  [ Gonzalo Paniagua Javier ]
+  * [1930eb3] HtmlEncode the path.
+    	Fixes Novell bug #769799. (Closes: #681095, CVE-2012-3382)
+
+ -- Jo Shields <directhex@apebox.org>  Wed, 11 Jul 2012 19:13:12 +0100
+
+mono (2.10.8.1-4) unstable; urgency=low
+
+  [ Iain Lane ]
+  * [10b15d4] Pass LDFLAGS to binfmt-detector-cli too (Closes: #657518)
+
+  [ Jo Shields ]
+  * [f77ef2f] Tweak build system to check multiarch library folder for 
+    libX11.so.
+
+ -- Jo Shields <directhex@apebox.org>  Sun, 27 May 2012 15:28:00 +0100
+
+mono (2.10.8.1-3) unstable; urgency=low
+
+  * [c934e01] Remove unused File::Basename import from runtime script.
+    Having this present causes failures on release upgrades where perl-base
+    and perl-modules are not in a consistent state (e.g. this can happen
+    when upgrading across major Perl versions). (Closes: #665335) (LP:
+    #948848)
+  * [9e3cc40] Remove monodoc-base trigger.
+    This trigger updated the monodoc search index. It ended up calling
+    /usr/bin/monodoc, which is shipped in the monodoc-browser package
+    (source package mono-tools). The script attempted to check that
+    monodoc-browser was configured, but didn't get this right. This led to
+    numerous upgrade failures when Depends of monodoc-browser were not
+    satisfied when the trigger was invoked and calling monodoc to update the
+    search index bombed out due to this. It's more correct to just have
+    monodoc-browser ship this trigger itself. (LP: #972751)
+  * [dd2925c] Standards-Version bump to 3.9.3, no changes required
+  * [8299ee0] Remove duplicate Depends in mono-complete
+  * [508c4f5] Revert "Merge branch 'master-patches/fix_crash_in_fixup_cattrs'"
+    This reverts commit 86127dcf508213eac5b50a65c989cf5971b57378, reversing
+    changes made to 55a1a20a4d858346ed8a8d840abc3f9230ea816e.
+    This branch introduced regressions which caused both nant and mono-upnp
+    (at least) to FTBFS. (Closes: #666623)
+  * [61fbbe4] Fix ARM printf format problems.
+    When building with -Werror=format-security on ARM, mono fails to build
+    due to incorrect format strings in arm-dis.c
+    (cherry picked from commit 32c1b70ad164640ff0a2739e66884d0279cfe7c7)
+    Signed-off-by: Iain Lane <laney@debian.org>
+  * [9883116] Pass CFLAGS and CPPFLAGS when building binfmt-detector.
+    Ensures hardening support is enabled for this binary.
+    Thanks to Simon Ruderich <simon@ruderich.org> (Closes: #657518)
+  * [4bb0138] Ensure compiler flags are passed into build system.
+    This issue was discovered when it was noted that Debian's hardening
+    buildflags weren't being propogated to all binaries.
+    The patch is from Simon Ruderich <simon@ruderich.org>
+    (cherry picked from commit d6dcfb27fc6252352f6ad6f8bd9ef5cff206fd46)
+    Also Closes: #657518
+
+ -- Iain Lane <laney@debian.org>  Wed, 04 Apr 2012 21:15:59 +0100
+
 mono (2.10.8.1-2+gnolltech1) unstable; urgency=low
 
   [ Gleb Golubitsky ]
@@ -5,6 +81,22 @@ mono (2.10.8.1-2+gnolltech1) unstable; urgency=low
   * Non-maintainer upload
 
  -- Gleb Golubitsky <sectoid@gnolltech.org>  Mon, 12 Mar 2012 23:36:18 +0200
+
+mono (2.10.8.1-2) unstable; urgency=low
+
+  [ Zoltan Varga ]
+  * [52cf3ab] Modify fixup_cattrs () to handle a corner case where a cattr is
+              created using a MonoCMethod instead of a ConstructorBuilder.
+
+  [ Moritz Muehlenhoff ]
+  * [96d7d4a] Use dpkg-buildflags for enabling hardened build flags
+              (closes: #657518)
+
+  [ Mirco Bauer ]
+  * [de40c42] Bumped dpkg-dev build-dep to >= 1.16.1~ as we include
+              buildflags.mk of it
+
+ -- Mirco Bauer <meebey@debian.org>  Thu, 22 Mar 2012 22:00:34 +0100
 
 mono (2.10.8.1-1) unstable; urgency=low
 

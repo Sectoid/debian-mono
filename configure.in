@@ -2590,7 +2590,7 @@ case "$host" in
     *-*-*linux*)
 	AC_PATH_X
 	AC_MSG_CHECKING(for the soname of libX11.so)
-	for i in $x_libraries /usr/lib /usr/lib64; do
+	for i in $x_libraries /usr/lib /usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/; do
 		for r in 4 5 6; do
 			if test -f $i/libX11.so.$r; then
 				X11=libX11.so.$r
